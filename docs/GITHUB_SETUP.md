@@ -1,38 +1,67 @@
-# GitHub 조직 생성 후 설정
+# GitHub 조직과 협업 설정
 
-로컬 협업 기반은 준비되어 있습니다. 조직·원격 저장소 생성, 팀원 초대, push는 아직 수행하지 않았습니다. 조직명·팀원 ID·공개 범위·라이선스가 정해지면 연결합니다.
+기준일: 2026-11-04 KST. [ArriveOn Lab](https://github.com/arriveon-lab)의 공개 모노레포 [pleos-reservation-assistant](https://github.com/arriveon-lab/pleos-reservation-assistant)를 사용합니다. 조직은 GitHub Free, 기본 브랜치는 `main`입니다.
 
-## 추천 구조
+## 저장소 설정
 
-초기에는 이 모노레포 하나를 `pleos-reservation-assistant` 같은 이름으로 운영합니다. 차량/서버를 별도 저장소로 나누는 시점은 권한·릴리스 주기가 실제로 달라질 때 결정합니다. 공통 계약을 한 PR에서 검토할 수 있는 현재 구조를 유지합니다.
+| 항목 | 운영 설정 |
+| --- | --- |
+| 공개 범위 | Public |
+| 기본 브랜치 | main |
+| 병합 | Squash만 허용, 제목은 PR 제목, 본문은 PR 본문 |
+| 작업 브랜치 | merge 후 자동 삭제 |
+| 문서·이슈 | 저장소 docs + Issues/템플릿, Wiki 비활성화 |
+| Actions 권한 | 기본 read, Actions의 PR 승인 금지 |
+| 비밀정보 보호 | Secret scanning + Push protection 활성화 |
+| 의존성 보안 | Dependabot alerts 활성화, 자동 업데이트 PR은 아직 미설정 |
+| 조직 멤버 기본 권한 | read, 저장소 생성은 owner만 가능 |
+| 조직 인증 | 모든 멤버 2단계 인증 필수 |
+| 공개 라이선스 | 미지정. 팀 소유권·재사용 조건 합의 후 별도 PR |
 
-조직 owner는 대표와 백업 1명, 나머지는 member로 두는 안을 제안합니다. 5명 규모라면 팀 하나로 시작해도 충분합니다. 역할별 리뷰가 필요하면 vehicle/backend/voice/integration 팀을 만들고 `.github/CODEOWNERS.example`을 실제 ID로 바꿔 CODEOWNERS로 등록합니다. 현재 예제는 GitHub에 적용되지 않습니다. [GitHub 조직 설명](https://docs.github.com/en/organizations/collaborating-with-groups-in-organizations/about-organizations)
+공개 저장소의 표준 GitHub-hosted runner는 무료 범위입니다. 현재 워크플로는 `ubuntu-latest`와 `ubuntu-24.04`만 사용하며 larger runner·유료 플랜·유료 API를 활성화하지 않았습니다. 공개 저장소용 Secret scanning/Push protection의 무료 범위도 확인했습니다. [Actions 과금](https://docs.github.com/en/billing/concepts/product-billing/github-actions), [Secret scanning](https://docs.github.com/en/code-security/concepts/secret-security/about-alerts), [Push protection](https://github.blog/changelog/2023-05-09-secret-scannings-push-protection-is-available-on-public-repositories-for-free/)
 
-## 순서
+## main 보호 규칙
 
-1. 조직명, 무료/유료 플랜, 공개 범위를 결정합니다. 유료 플랜이나 유료 Actions 사용을 자동으로 활성화하지 않습니다. 비공개 조직 저장소에서 보호 규칙을 사용할 수 있는지는 선택 플랜을 확인합니다. 공개 저장소의 GitHub Free 보호와 비공개 저장소의 유료 플랜 지원 범위가 다릅니다. [공식 보호 브랜치 안내](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
-2. 조직에 빈 저장소를 생성합니다. 이 로컬 저장소에 README와 gitignore가 이미 있으므로 웹에서 중복 초기화하지 않습니다. 2FA와 멤버 최소 권한을 설정합니다.
-3. `git status`, `git branch -a`, `git remote -v`로 다시 확인합니다. 현재 main/커밋 없음/원격 없음입니다. 로컬 main은 사용자 요청으로 변경했습니다. GitHub 기본 브랜치도 main으로 지정합니다.
-4. 포함 파일을 검토하고 첫 커밋을 만듭니다. `work`, `data`, 빌드 결과, `.env`, 녹음, SDK 원본, 서명은 제외됩니다. `outputs/CODEX_HANDOFF.md`는 공유되도록 예외 처리했습니다.
-5. 실제 조직 URL로 origin을 연결하고 기본 브랜치를 push합니다. 아래는 자리표시자이며 그대로 실행하지 않습니다.
+main은 다음 규칙으로 운영합니다. 현재 적용값은 [브랜치 설정](https://github.com/arriveon-lab/pleos-reservation-assistant/settings/branches) 또는 아래 API로 확인할 수 있습니다.
+
+- PR 필수, 다른 리뷰어 1명 승인, 새 변경 시 기존 승인 무효화
+- `Server and contract`, `Android checks`, `PR naming` 통과 및 최신 main 반영
+- 대화 해결 필수, 선형 이력, 관리자에게도 동일 규칙 적용
+- force push·브랜치 삭제 금지
 
 ```bash
-git add .
-git diff --cached --stat
-git commit -m "chore(repo): 로컬 MOCK MVP와 협업 기반 구성"
-git remote add origin https://github.com/ORG/REPOSITORY.git
-git push -u origin main
+gh api repos/arriveon-lab/pleos-reservation-assistant/branches/main/protection
 ```
 
-6. GitHub에서 `Verify / Server and contract`, `Verify / Android checks`, PR의 `Conventions / PR naming` 실행 결과를 확인합니다. 첫 push/PR 시 워크플로가 실행되므로 비용 정책·Actions 예산을 먼저 설정합니다. 로컬 검증 결과와 원격 CI 결과를 별도로 기록합니다. Android job은 [Ubuntu 24.04 hosted image](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md)의 SDK 35/build-tools 35.0.0을 점검한 뒤 Lint/단위 테스트 태스크/debug APK를 실행합니다. 필수 패키지가 이미지에서 제거되면 명시적으로 설치 단계를 갱신합니다.
-7. 지원 플랜에서 기본 브랜치 PR 필수, 리뷰 1명, Server and contract·Android checks·PR naming 통과, force push/삭제 제한을 설정합니다. 규칙을 설정할 수 없는 플랜에서는 팀 규칙만 있는 상태임을 명시합니다.
-8. Squash merge만 활성화하고 기본 squash 제목을 PR 제목으로 설정합니다. merge 후 작업 브랜치 삭제, Issue 템플릿, 리뷰 담당, 릴리스 담당을 정합니다. 5개 역할별 초기 이슈는 `docs/PLAN.md`에서 생성합니다.
+초기 설정 PR은 팀원 초대 및 보호 규칙 적용 전에 소유자가 CI를 확인하고 한 번 통합합니다. 이후 PR에는 다른 리뷰어가 필요합니다. 현재 소유자는 `tiemo0708` 한 명이며, 팀원 ID가 정해지면 초대·write 권한·백업 owner를 지정합니다. 다른 리뷰어가 아직 없다는 이유로 보호 규칙을 임의 해제하지 않습니다.
 
-## 공개·제출 전
+`.github/CODEOWNERS.example`은 예시이며 자동 리뷰 요청에 적용되지 않습니다. 실제 담당자/팀을 확인한 뒤 CODEOWNERS로 등록합니다. 사용자의 본인 재인증 후 조직 전체 2FA 필수 정책을 적용했습니다. 기존 계정의 인증 수단이나 비밀번호는 변경하지 않았습니다.
 
-- 팀 소유권과 공개 라이선스를 합의합니다. 오픈소스 라이선스를 임의로 붙이지 않았습니다.
-- 키/번호/개인정보/서명/DB/SDK 재배포 파일 포함 여부를 확인합니다.
-- README의 검증 수준과 APK 경로를 실제 산출물에 맞춥니다.
-- 비공개 제출이면 공지된 심사용 계정의 접근을 검증합니다. 개인 저장소와 조직 권한 모델을 혼동하지 않습니다. [공식 제출 안내](https://appdevchallenge.auto-hmg.io/guide/submission)
+## 팀원 시작 절차
 
-조직 생성 자체를 이 저장소 초기 세팅 완료의 필수 조건으로 두지 않습니다. 지금 로컬에서 팀원이 실행할 수 있는 기준은 README와 verify/smoke입니다.
+```bash
+git clone https://github.com/arriveon-lab/pleos-reservation-assistant.git
+cd pleos-reservation-assistant
+python3 scripts/setup-git.py
+./gradlew -PincludeAndroid=false verify
+```
+
+Android 담당자는 [ANDROID_SETUP](ANDROID_SETUP.md)에 따라 SDK를 설치한 뒤 `python3 scripts/setup-android.py --configure`, `./gradlew -PincludeAndroid=true verifyAndroid`를 실행합니다. SDK 설치 경로·키·서명·빌드 산출물은 Git에서 제외합니다.
+
+실제 초기 작업 이슈는 [#1 차량](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1), [#2 장소](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2), [#3 전화](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3), [#4 서버](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/4), [#5 UX](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/5)입니다. 저장소 초기 설정 기록은 [#6](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/6)입니다. 담당자는 미배정입니다.
+
+```bash
+git switch main
+git pull --ff-only origin main
+git switch -c feat/1-navi-probe
+```
+
+브랜치 번호는 실제 이슈 번호입니다. `dev-1`이나 사람별 번호를 만들지 않습니다. 커밋/PR은 `feat(android): 목적지 조회 probe 검증`처럼 작성하고 PR 본문에 `Closes #1`을 별도 줄로 적습니다. 세부 규칙은 [CONTRIBUTING](../CONTRIBUTING.md)을 따릅니다.
+
+## 실행 증거와 공개 범위
+
+첫 커밋 `81f0b40`의 [원격 Verify 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions/runs/41801748006)에서 `Server and contract`와 `Android checks`가 성공했습니다. 초기 설정 [PR #7](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/7)의 세 검사도 통과했으며 [PR naming 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions/runs/41802342293)으로 명명 규칙을 확인했습니다. 최신 커밋의 검사 결과는 [Actions](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)에서 확인합니다. Android 단위 테스트는 NO-SOURCE이며 기기 실행 성공을 의미하지 않습니다.
+
+업로드 전에 키·실제 전화번호·연락처 패턴과 포함 파일을 검토하고 개인 작업 경로를 제거했습니다. 커밋 작성자는 GitHub noreply 이메일을 사용합니다. 개인정보 동의서·서명·DB·녹음·SDK 원본·로컬 설정·빌드 결과는 업로드하지 않았습니다.
+
+공개한 것은 소스 저장소입니다. 서버는 단일 사용자 localhost MOCK용이며 공용 서비스로 배포하지 않았습니다. 실발신·번호 구매·유료 API 실행은 별도 승인이 필요합니다.

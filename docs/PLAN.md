@@ -10,7 +10,7 @@
 
 후속으로 `지속 지연 감지 → 허용 시간/비용 대조 → 변경 요청 → 기존 예약과 변경 결과 안내`를 연결합니다. 모든 단계에서 출처·관측/적용 시각·확실성·MOCK/LIVE를 보존합니다. UNKNOWN은 성공으로 안내하거나 자동 재발신하지 않습니다.
 
-이 문서는 개발 전체 계획입니다. 상세 계약은 [API](../api/README.md), 코드/명명 규칙은 [CONTRIBUTING](../CONTRIBUTING.md), 환경 준비는 [ANDROID_SETUP](ANDROID_SETUP.md), 현재 실행 증거는 [STATUS](STATUS.md)로 연결합니다. 제출용 DOCX 작성과 서명 수집은 별도 작업이며 아직 완료되지 않았습니다.
+이 문서는 개발 전체 계획입니다. 상세 계약은 [API](../api/README.md), 코드/명명 규칙은 [CONTRIBUTING](../CONTRIBUTING.md), 환경 준비는 [ANDROID_SETUP](ANDROID_SETUP.md), 현재 실행 증거는 [STATUS](STATUS.md)로 연결합니다. 참가신청 초안은 별도 비공개 Notion에 작성했으며 최종 DOCX·서명 수집·제출은 완료되지 않았습니다.
 
 ## 일정
 
@@ -27,27 +27,27 @@
 
 공식 안내상 대표자 포함 최대 5인입니다. 현재 5명은 인원 요건에 맞지만 각 구성원의 자격과 참가 부문은 별도 확인해야 합니다. 기획서 역할의 접수양식과 전원 개별 동의/서명이 필요하고, 영상·GitHub·APK는 선택 가산점입니다. 2차 PT 전에는 실제 동작 앱이 필요합니다. [참가 규정](https://appdevchallenge.auto-hmg.io/guide/rules), [제출 안내](https://appdevchallenge.auto-hmg.io/guide/submission)
 
-공식 [양식 DOCX](https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx) 링크까지 확인했습니다. 이번 개발 작업에서는 양식 내용 작성·서명·제출을 수행하지 않았습니다. 서명 파일은 코드 저장소에 보관하지 않습니다. 외부 API에 대한 포괄적 허용/금지를 확인한 것으로 간주하지 않습니다. 약관은 코드·데이터·라이브러리 등 구성 요소의 적법한 사용 권한을 요구합니다. [이용약관 제7조](https://appdevchallenge.auto-hmg.io/terms)
+공식 [양식 DOCX](https://appdevchallenge.auto-hmg.io/downloads/contest-application-consent.docx) 링크까지 확인했습니다. 별도 사용자 요청으로 양식 초안을 비공개 Notion에 작성했으며 서명·제출은 수행하지 않았습니다. 서명 파일은 코드 저장소에 보관하지 않습니다. 외부 API에 대한 포괄적 허용/금지를 확인한 것으로 간주하지 않습니다. 약관은 코드·데이터·라이브러리 등 구성 요소의 적법한 사용 권한을 요구합니다. [이용약관 제7조](https://appdevchallenge.auto-hmg.io/terms)
 
 ## 작업 분담
 
 | 이슈 후보 | 담당 1명 | 현재 기반 | 다음 완료 조건 | 선행 입력 |
 | --- | --- | --- | --- | --- |
-| VEH-01 | 차량/Pleos | `android/probe`, API 계약 | 목적지/TripInfo 원시값, 갱신 주기, 권한/백그라운드/도착 이벤트 로그 | SDK 신청·Pleos Emulator·Android SDK |
-| REC-01 | 추천/장소 | 가상 후보·조건 우선·사실 만료 | 시범 지역 결정, 공식 장소 데이터 adapter, 저장/재표시 조건 기록 | 지역·사업자 키·약관 |
-| VOICE-01 | AI 전화 | MockCallAdapter·outcome 계약 | 업체 선정 근거, 한국 발신/음성 PoC, 정규화/서명 검증 | 계정·발신번호·협의 수신번호·비용 승인 |
-| BE-01 | 서버/예약 | 상태 전이·멱등성·H2 | 사용자/여정 소유권, UNKNOWN 대조, timeout/outbox, 운영 DB 결정 | 팀 DB 경험·운영 환경 |
-| UX-01 | UX/통합/시연 | CLI 모의 시연·실패 시나리오 | 후보3개/명시적 선택/수락 전후/변경 미확인 화면, 주행 제한, 영상 | emulator·CarUxRestrictions·서명 계획 |
+| [#1 / VEH-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1) | 차량/Pleos | `android/probe`, API 계약 | 목적지/TripInfo 원시값, 갱신 주기, 권한/백그라운드/도착 이벤트 로그 | SDK 신청·Pleos Emulator·Android SDK |
+| [#2 / REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | 추천/장소 | 가상 후보·조건 우선·사실 만료 | 시범 지역 결정, 공식 장소 데이터 adapter, 저장/재표시 조건 기록 | 지역·사업자 키·약관 |
+| [#3 / VOICE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | AI 전화 | MockCallAdapter·outcome 계약 | 업체 선정 근거, 한국 발신/음성 PoC, 정규화/서명 검증 | 계정·발신번호·협의 수신번호·비용 승인 |
+| [#4 / BE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/4) | 서버/예약 | 상태 전이·멱등성·H2 | 사용자/여정 소유권, UNKNOWN 대조, timeout/outbox, 운영 DB 결정 | 팀 DB 경험·운영 환경 |
+| [#5 / UX-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/5) | UX/통합/시연 | CLI 모의 시연·실패 시나리오 | 후보3개/명시적 선택/수락 전후/변경 미확인 화면, 주행 제한, 영상 | emulator·CarUxRestrictions·서명 계획 |
 
 차량과 전화 담당은 v1 계약을 통해 독립 개발합니다. SDK probe는 raw 데이터만 기록하고, 전화 담당은 `CallTask`를 읽어 mock 결과 예제를 만들 수 있습니다. 계약 변경은 세 담당(차량/전화/서버)이 검토합니다.
 
-표의 VEH-01/REC-01 등은 계획 분류용 코드입니다. GitHub 이슈를 생성하면 실제 번호를 기록하고 브랜치는 `feat/12-navi-probe`처럼 만듭니다. 현재 원격 이슈 번호는 부여되지 않았습니다. 담당자별 고정 번호나 dev-1 별도 순번을 만들지 않습니다.
+표의 VEH-01/REC-01 등은 계획 분류용 코드입니다. GitHub 이슈 #1–5를 생성했습니다. 차량 #1의 브랜치는 `feat/1-navi-probe`처럼 만듭니다. 담당자별 고정 번호나 dev-1 별도 순번을 만들지 않습니다.
 
 ## 단계별 작업과 통과 조건
 
 | 단계 | 세부 작업 | 현재 상태 | 다음 단계 진입 조건 |
 | --- | --- | --- | --- |
-| A. 팀 기반 | main, Gradle, 규칙, 계약, CI, 조직/리뷰 권한 | 로컬 설정 완료, 원격 미연결 | 팀원이 verify 재현, 첫 커밋/원격 CI 확인 |
+| A. 팀 기반 | main, Gradle, 규칙, 계약, CI, 조직/리뷰 권한 | 공개 원격·첫 커밋·원격 Verify 확인 | 팀원이 verify 재현, 담당자·리뷰 권한 배정 |
 | B. 핵심 연동 검증 | Android SDK·Pleos probe, 전화 사업자·한국어 품질·비용 검토 | 빌드 SDK 설치·debug APK/Lint 확인, Pleos 기기 미검증, 전화 미선정 | 목적지/ETA 로그, 승인된 통화 PoC 또는 차단 근거 |
 | C. 차량 UI | 조건 입력, 후보 3개, 선택/승인, 결과·실패 화면, 주행 제한 | 미구현 | MOCK API와 화면 연동, 주행 제한별 동작 확인 |
 | D. 장소·전화 연결 | 공식 장소 데이터, 누락 정보 선별, AI 고지·문의·예약 대화, 결과 정규화 | fixture/모의 결과만 구현 | 출처/유효기간 유지, 한국어 시간·비용·부정표현 대조 |
@@ -82,7 +82,7 @@
 
 ## 제출 전 필요한 결정
 
-- 팀명, 팀원 GitHub ID, 대표자, 참가 부문, 원격 공개 범위, 소스 라이선스
+- 팀원 GitHub ID, 대표자, 참가 부문, 소스 라이선스. GitHub 조직은 ArriveOn Lab, 저장소는 Public으로 생성했으며 공모전 제출용 팀명은 별도 확정
 - 지역/업종·전화 사업자·장소 데이터 사업자·DB 경험·테스트 기기
 - 비용 승인 주체, 번호 allowlist, 최대 통화 수/분, 로그 보관·삭제 범위
 - 실제/모의 구분이 드러나는 시연과 문서. 전화 예약 자체를 최초라고 주장하지 않음

@@ -4,6 +4,8 @@
 
 현재 **로컬 MOCK 서버**를 실행하고 **SDK 진단용 debug APK**를 빌드할 수 있습니다. 성수동 이름을 사용한 가상 식당 3곳이며 실제 장소 검색·AI 모델·전화·예약이 아닙니다. `app.mode=LIVE`는 서버 시작 단계에서 차단됩니다. Pleos 기기 실행과 실통화 검증은 아직 없습니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
 
+[GitHub 저장소](https://github.com/arriveon-lab/pleos-reservation-assistant) · [작업 이슈](https://github.com/arriveon-lab/pleos-reservation-assistant/issues) · [CI 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)
+
 ## 빠른 시작
 
 필수: JDK 21, Python 3.9+, 인터넷(첫 의존성 다운로드). 서버와 Android는 루트의 Gradle Wrapper 8.11.1 / Kotlin DSL을 공유합니다. 시스템 Gradle 설치는 필요 없습니다. 서버만 개발할 때 Android SDK는 필요 없습니다.
@@ -35,7 +37,7 @@ python3 scripts/smoke-test.py
 2. [API 계약](api/README.md), [OpenAPI 3.1](api/openapi.json): 차량/전화/서버 공통 계약
 3. [팀 계획](docs/PLAN.md): 5명 작업 분담, 일정, 선행 조건
 4. [연동 검증](docs/INTEGRATIONS.md): SDK 증거, 전화 후보 비교, 필요한 계정
-5. [GitHub 조직 준비](docs/GITHUB_SETUP.md): 조직 생성 후 설정 순서
+5. [GitHub 조직·협업 설정](docs/GITHUB_SETUP.md): 권한·보호 규칙·팀원 시작 절차
 6. [Android 설치·설정](docs/ANDROID_SETUP.md): Studio·SDK·Pleos emulator 및 프로젝트 연결
 7. [인계 문서](outputs/CODEX_HANDOFF.md): 다음 작업과 알려진 한계
 8. [코드 컨벤션](docs/CODE_CONVENTIONS.md): 언어별 스타일·Android 계층/수명/오류·테스트 기준
@@ -56,6 +58,6 @@ docs/         상태·팀 계획·연동 조사·조직 준비
 
 ## 제출 산출물
 
-현재 진단용 debug APK는 `android/probe/build/outputs/apk/debug/probe-debug.apk`에 생성됩니다. release 예약 앱·release 서명·시연 영상·GitHub 원격은 없습니다. 실행 가능한 release APK를 검증한 뒤 `apk/` 또는 GitHub Releases에 제공할 예정이며, 현재 JAR·모의 API 시연·probe APK 생성은 차량 앱의 실제 동작 증거가 아닙니다.
+현재 진단용 debug APK는 `android/probe/build/outputs/apk/debug/probe-debug.apk`에 생성됩니다. 공개 GitHub 원격은 연결했습니다. release 예약 앱·release 서명·시연 영상은 없습니다. 실행 가능한 release APK를 검증한 뒤 `apk/` 또는 GitHub Releases에 제공할 예정이며, 현재 JAR·모의 API 시연·probe APK 생성은 차량 앱의 실제 동작 증거가 아닙니다.
 
 실제 전화 발신·번호 구매·유료 API 실행은 대상, 목적, 예상 비용과 상한을 제시해 명시적 승인 후 진행합니다. 공개 라이선스는 팀 합의 전까지 지정하지 않습니다.
