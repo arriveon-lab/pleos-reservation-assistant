@@ -68,7 +68,7 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - 패키징 JAR HTTP 흐름 및 H2 재시작 후 확정/미해결 변경 유지 통과
 - OpenAPI 문서·예제·실제 시연 요청/응답 대조 통과
 - LIVE 시작 차단 확인
-- GitHub 첫 main의 `Server and contract`, `Android checks` 성공. 초기 설정 PR은 실제 #6 이슈 브랜치를 사용하며, PR naming과 main 보호 규칙은 GITHUB_SETUP 및 원격 설정을 확인합니다.
+- GitHub 첫 main의 `Server and contract`, `Android checks` 성공. 초기 설정 PR #7은 실제 #6 이슈 브랜치를 사용하고 PR naming을 포함한 세 검사를 통과했습니다. main 보호 규칙과 최신 결과는 GITHUB_SETUP 및 원격 설정을 확인합니다.
 - 이전 SDK 부재 오류는 해결. **verifyAll 및 최종 verifyAndroid 성공**, Java/DEX/debug APK 생성·debug 서명 검증, Lint **오류 0/경고 0**. Android 테스트 소스는 없어 NO-SOURCE이고 기기 실행은 미검증
 - 코드 규칙: Java GJF 1.28.0, Kotlin/Gradle ktfmt 0.54 kotlinlangStyle, Spotless 7.0.4. 서버만 포함해도 Android 소스 포맷을 검사. Android 비활성화 상태의 verifyAndroid는 명확히 실패함을 확인
 - SDK CLI 22.0 / Platform 35 rev 2 / Build-Tools 35.0.0 / Platform-Tools 37.0.1. Studio·Emulator·Pleos 이미지 미설치. 전역 셸/Codex 설정 변경 없음
@@ -89,7 +89,7 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 
 사용자가 추가 공유한 SDK API 정책과 연결된 가용성/주행 규제 문서는 `docs/INTEGRATIONS.md`의 API 선택 정책 절에 반영했습니다. 다음 차량 구현은 이 기준을 먼저 읽고 기능 미지원·권한 거부·서비스 단절 대체 흐름을 포함합니다. 이번 반영은 문서/계획 변경이며 기기 검증 완료를 뜻하지 않습니다.
 
-1. 팀원에게 README 기준 재현 확인을 받고 실제 GitHub ID·역할·백업 owner·라이선스 결정. 조직/공개 원격은 생성했으며 이슈 #1–5의 담당자를 배정합니다. 조직 2FA 강제와 CODEOWNERS는 팀원 초대 전 확인. 유료 플랜/Actions 비용은 승인 없이 실행하지 않음.
+1. 팀원에게 README 기준 재현 확인을 받고 실제 GitHub ID·역할·백업 owner·라이선스 결정. 조직/공개 원격은 생성했으며 이슈 #1–5의 담당자를 배정합니다. 조직 2FA 필수 정책은 적용했으며 CODEOWNERS는 팀원 초대 후 실제 담당자로 등록. 유료 플랜/Actions 비용은 승인 없이 실행하지 않음.
 2. 빌드 SDK와 debug APK는 준비됨. Pleos 계정/SDK 신청, Android Studio와 Pleos Emulator/Virtual Console 확보 후 probe 설치·실행. 실제 콜백/권한·초기화 실패 후 재실행·종료 중 늦은 콜백 등 수명 경계도 기기에서 확인.
 3. ETA 단위는 확인됐으므로 시간 기준·갱신 주기·권한·백그라운드·도착 이벤트 증거 확보, 변환 adapter+테스트.
 4. Android 제품 UI/후보 선택/명시적 예약 승인/변경 미확인 안내, CarUxRestrictions, Gleo 또는 STT/TTS. 현재 probe는 제출용 앱 아님.

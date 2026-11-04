@@ -15,13 +15,14 @@
 | 비밀정보 보호 | Secret scanning + Push protection 활성화 |
 | 의존성 보안 | Dependabot alerts 활성화, 자동 업데이트 PR은 아직 미설정 |
 | 조직 멤버 기본 권한 | read, 저장소 생성은 owner만 가능 |
+| 조직 인증 | 모든 멤버 2단계 인증 필수 |
 | 공개 라이선스 | 미지정. 팀 소유권·재사용 조건 합의 후 별도 PR |
 
 공개 저장소의 표준 GitHub-hosted runner는 무료 범위입니다. 현재 워크플로는 `ubuntu-latest`와 `ubuntu-24.04`만 사용하며 larger runner·유료 플랜·유료 API를 활성화하지 않았습니다. 공개 저장소용 Secret scanning/Push protection의 무료 범위도 확인했습니다. [Actions 과금](https://docs.github.com/en/billing/concepts/product-billing/github-actions), [Secret scanning](https://docs.github.com/en/code-security/concepts/secret-security/about-alerts), [Push protection](https://github.blog/changelog/2023-05-09-secret-scannings-push-protection-is-available-on-public-repositories-for-free/)
 
 ## main 보호 규칙
 
-초기 설정 PR을 통합한 뒤 다음 규칙을 적용합니다. 현재 적용값은 [브랜치 설정](https://github.com/arriveon-lab/pleos-reservation-assistant/settings/branches) 또는 아래 API로 확인할 수 있습니다.
+main은 다음 규칙으로 운영합니다. 현재 적용값은 [브랜치 설정](https://github.com/arriveon-lab/pleos-reservation-assistant/settings/branches) 또는 아래 API로 확인할 수 있습니다.
 
 - PR 필수, 다른 리뷰어 1명 승인, 새 변경 시 기존 승인 무효화
 - `Server and contract`, `Android checks`, `PR naming` 통과 및 최신 main 반영
@@ -34,7 +35,7 @@ gh api repos/arriveon-lab/pleos-reservation-assistant/branches/main/protection
 
 초기 설정 PR은 팀원 초대 및 보호 규칙 적용 전에 소유자가 CI를 확인하고 한 번 통합합니다. 이후 PR에는 다른 리뷰어가 필요합니다. 현재 소유자는 `tiemo0708` 한 명이며, 팀원 ID가 정해지면 초대·write 권한·백업 owner를 지정합니다. 다른 리뷰어가 아직 없다는 이유로 보호 규칙을 임의 해제하지 않습니다.
 
-`.github/CODEOWNERS.example`은 예시이며 자동 리뷰 요청에 적용되지 않습니다. 실제 담당자/팀을 확인한 뒤 CODEOWNERS로 등록합니다. 조직 전체 2FA 강제는 아직 설정하지 않았으며, 팀원 초대 전에 조직 인증 설정에서 확인합니다. 기존 계정의 인증 수단이나 비밀번호는 변경하지 않았습니다.
+`.github/CODEOWNERS.example`은 예시이며 자동 리뷰 요청에 적용되지 않습니다. 실제 담당자/팀을 확인한 뒤 CODEOWNERS로 등록합니다. 사용자의 본인 재인증 후 조직 전체 2FA 필수 정책을 적용했습니다. 기존 계정의 인증 수단이나 비밀번호는 변경하지 않았습니다.
 
 ## 팀원 시작 절차
 
@@ -59,7 +60,7 @@ git switch -c feat/1-navi-probe
 
 ## 실행 증거와 공개 범위
 
-첫 커밋 `81f0b40`의 [원격 Verify 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions/runs/41801748006)에서 `Server and contract`와 `Android checks`가 성공했습니다. 이후 PR의 검사 결과는 [Actions](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)에서 확인합니다. Android 단위 테스트는 NO-SOURCE이며 기기 실행 성공을 의미하지 않습니다.
+첫 커밋 `81f0b40`의 [원격 Verify 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions/runs/41801748006)에서 `Server and contract`와 `Android checks`가 성공했습니다. 초기 설정 [PR #7](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/7)의 세 검사도 통과했으며 [PR naming 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions/runs/41802342293)으로 명명 규칙을 확인했습니다. 최신 커밋의 검사 결과는 [Actions](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)에서 확인합니다. Android 단위 테스트는 NO-SOURCE이며 기기 실행 성공을 의미하지 않습니다.
 
 업로드 전에 키·실제 전화번호·연락처 패턴과 포함 파일을 검토하고 개인 작업 경로를 제거했습니다. 커밋 작성자는 GitHub noreply 이메일을 사용합니다. 개인정보 동의서·서명·DB·녹음·SDK 원본·로컬 설정·빌드 결과는 업로드하지 않았습니다.
 
