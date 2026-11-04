@@ -1,0 +1,6 @@
+# Copy to CODEOWNERS after replacing placeholders with actual organization teams.
+# GitHub does not apply this example file.
+# /server/ @ORG/backend
+# /api/ @ORG/backend @ORG/vehicle @ORG/voice
+# /android/ @ORG/vehicle
+# /docs/ @ORG/integration

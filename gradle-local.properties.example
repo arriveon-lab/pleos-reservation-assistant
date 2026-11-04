@@ -1,0 +1,3 @@
+# Copy to gradle-local.properties on Android developers' machines only.
+# CLI -PincludeAndroid=false overrides this local setting.
+includeAndroid=true

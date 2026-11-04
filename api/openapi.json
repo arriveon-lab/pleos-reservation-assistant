@@ -1,0 +1,1444 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pleos Reservation Assistant — local MOCK API",
+    "version": "1.0.0",
+    "description": "Local single-user development API. No external calls. Unauthenticated: loopback access only; do not deploy publicly. All successful commands return HTTP 200. LIVE is reserved in schemas but disabled at startup."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8080/api/v1"
+    }
+  ],
+  "paths": {
+    "/status": {
+      "get": {
+        "operationId": "getStatus",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/searches": {
+      "post": {
+        "operationId": "createSearch",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Search"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/searches/{id}": {
+      "get": {
+        "operationId": "getSearch",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Search"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/searches/{id}/calls": {
+      "get": {
+        "operationId": "listSearchCalls",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CallTask"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/searches/{id}/inquiries": {
+      "post": {
+        "operationId": "createInquiry",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InquiryRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/searches/{id}/reservations": {
+      "post": {
+        "operationId": "requestBooking",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reservations/{id}": {
+      "get": {
+        "operationId": "getReservation",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/reservations/{id}/changes": {
+      "post": {
+        "operationId": "requestChange",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calls/{id}": {
+      "get": {
+        "operationId": "getCall",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/mock/calls/{id}/outcomes": {
+      "post": {
+        "operationId": "injectMockOutcome",
+        "responses": {
+          "200": {
+            "description": "MOCK result. Command replay returns its original response snapshot; GET the resource for latest state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallTask"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicting command, lifecycle, or authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutcomeRequest"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Destination": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        },
+        "required": [
+          "name",
+          "latitude",
+          "longitude"
+        ]
+      },
+      "Navigation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Destination"
+          },
+          "eta": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "MOCK",
+              "MANUAL",
+              "PLEOS"
+            ]
+          }
+        },
+        "required": [
+          "tripId",
+          "destination",
+          "eta",
+          "observedAt",
+          "source"
+        ],
+        "description": "eta is an absolute RFC3339 instant, at most 24 hours ahead. observedAt must be within 5 minutes. PLEOS is reserved but rejected until ETA time-base verification; never guess a conversion from raw SDK integers. Reuse tripId for the same journey."
+      },
+      "Party": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "adults": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "children": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "adults",
+          "children"
+        ]
+      },
+      "SearchRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "navigation": {
+            "$ref": "#/components/schemas/Navigation"
+          },
+          "party": {
+            "$ref": "#/components/schemas/Party"
+          },
+          "maxWaitMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "requiredFeatures": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "childFriendly",
+                "parking"
+              ]
+            },
+            "uniqueItems": true,
+            "maxItems": 2
+          },
+          "preferredCuisines": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            },
+            "uniqueItems": true,
+            "maxItems": 8
+          },
+          "learningConsent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "navigation",
+          "party",
+          "maxWaitMinutes",
+          "requiredFeatures",
+          "preferredCuisines",
+          "learningConsent"
+        ]
+      },
+      "InquiryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "candidateId"
+        ]
+      },
+      "ChangePolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "latestTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxAdditionalCostKrw": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "enabled",
+          "maxAdditionalCostKrw"
+        ],
+        "description": "When enabled, latestTime must be non-null and at or after requestedTime. Budget is cumulative over accepted changes; learning consent grants no booking permission."
+      },
+      "BookingRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "requestedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allowBooking": {
+            "type": "boolean",
+            "const": true
+          },
+          "changePolicy": {
+            "$ref": "#/components/schemas/ChangePolicy"
+          }
+        },
+        "required": [
+          "candidateId",
+          "requestedTime",
+          "allowBooking",
+          "changePolicy"
+        ]
+      },
+      "ChangeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "additionalCostKrw": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "approveAdditionalCost": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "requestedTime",
+          "additionalCostKrw",
+          "approveAdditionalCost"
+        ]
+      },
+      "InquiryFacts": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "childFriendly": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parking": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seatsAvailable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reservationAvailable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nowWaitMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 240
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "arrivalWaitMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 240
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "arrivalAppliesAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "description": "Missing/null means no new information. reservationAvailable and arrivalWaitMinutes require arrivalAppliesAt exactly equal to search ETA. NOW values never imply ARRIVAL values."
+      },
+      "OutcomeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ANSWERED",
+              "ACCEPTED",
+              "REJECTED",
+              "UNKNOWN"
+            ]
+          },
+          "explicitAcceptance": {
+            "type": "boolean"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acceptedTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "additionalCostKrw": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "facts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InquiryFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "eventId",
+          "outcome",
+          "explicitAcceptance",
+          "observedAt",
+          "additionalCostKrw"
+        ],
+        "description": "Mock injection only, not a provider webhook. observedAt is preserved and must not precede the task. Booking/change confirms only on ACCEPTED + explicitAcceptance + exact time + exact cost. Completed/ANSWERED is UNKNOWN. Terminal outcomes cannot be overwritten."
+      },
+      "Fact": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": [
+              "boolean",
+              "integer"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "MOCK",
+              "LIVE"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "MOCK_FIXTURE",
+              "MOCK_CALL"
+            ]
+          },
+          "evidenceRef": {
+            "type": "string"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "appliesAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "certainty": {
+            "type": "string",
+            "enum": [
+              "CONFIRMED",
+              "ESTIMATED",
+              "UNKNOWN"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "NOW",
+              "ARRIVAL",
+              "GENERAL"
+            ]
+          }
+        },
+        "required": [
+          "value",
+          "mode",
+          "source",
+          "evidenceRef",
+          "observedAt",
+          "appliesAt",
+          "validUntil",
+          "certainty",
+          "scope"
+        ]
+      },
+      "Candidate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string"
+          },
+          "cuisine": {
+            "type": "string"
+          },
+          "facts": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Fact"
+            }
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "eligible": {
+            "type": "boolean"
+          },
+          "bookable": {
+            "type": "boolean"
+          },
+          "exclusionReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "preferenceScore": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "cuisine",
+          "facts",
+          "missing",
+          "eligible",
+          "bookable",
+          "exclusionReasons",
+          "preferenceScore"
+        ]
+      },
+      "Search": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "MOCK",
+              "LIVE"
+            ]
+          },
+          "region": {
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/SearchRequest"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Candidate"
+            },
+            "maxItems": 3
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "region",
+          "request",
+          "createdAt",
+          "candidates"
+        ]
+      },
+      "Reservation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "MOCK",
+              "LIVE"
+            ]
+          },
+          "searchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "candidateId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "tripId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "REJECTED",
+              "UNKNOWN"
+            ]
+          },
+          "originalRequestedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "changePolicy": {
+            "$ref": "#/components/schemas/ChangePolicy"
+          },
+          "bookingCallId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pendingChangeCallId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "changeCallIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "lastChangeRequestedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "totalAdditionalCostKrw": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "searchId",
+          "candidateId",
+          "tripId",
+          "status",
+          "originalRequestedTime",
+          "confirmedTime",
+          "changePolicy",
+          "bookingCallId",
+          "pendingChangeCallId",
+          "changeCallIds",
+          "lastChangeRequestedAt",
+          "totalAdditionalCostKrw"
+        ]
+      },
+      "CallTask": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "MOCK",
+              "LIVE"
+            ]
+          },
+          "searchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "candidateId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "reservationId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "INQUIRY",
+              "BOOKING",
+              "CHANGE"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ANSWERED",
+              "ACCEPTED",
+              "REJECTED",
+              "UNKNOWN"
+            ]
+          },
+          "requestedTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "additionalCostKrw": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "resultReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "disclosure": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "searchId",
+          "candidateId",
+          "reservationId",
+          "purpose",
+          "status",
+          "requestedTime",
+          "createdAt",
+          "additionalCostKrw",
+          "resultReason",
+          "disclosure",
+          "message"
+        ]
+      },
+      "Status": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "const": "1.0.0"
+          },
+          "mode": {
+            "const": "MOCK"
+          },
+          "externalCallsEnabled": {
+            "const": false
+          },
+          "pleosEtaVerified": {
+            "const": false
+          },
+          "dataSource": {
+            "const": "FICTIONAL_FIXTURES"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "mode",
+          "externalCallsEnabled",
+          "pleosEtaVerified",
+          "dataSource"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "mode": {
+            "const": "MOCK"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "mode"
+        ]
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._:-]{1,100}$"
+        },
+        "description": "Stable per user command. Reuse after timeout; changed body with same key returns 409. Event IDs independently deduplicate outcomes globally."
+      }
+    }
+  }
+}

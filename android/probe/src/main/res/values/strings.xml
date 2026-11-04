@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">Pleos SDK Probe · 개발용</string>
+  <string name="probe_description">SDK PROBE · 정차한 개발 환경 전용\n예약·전화·서버 연결 없음\nETA 단위: 초 / 시간 기준: 미검증</string>
+  <string name="initialize_navi">NaviHelper 초기화 · 목적지 조회</string>
+  <string name="request_trip">현재 목적지 TripInfo 1회 요청</string>
+</resources>

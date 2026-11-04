@@ -1,0 +1,45 @@
+name: Verify
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  server:
+    name: Server and contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: ./gradlew --no-daemon -PincludeAndroid=false verify
+      - run: python -m pip install -r scripts/requirements-dev.txt
+      - run: python scripts/smoke-test.py --check-contract
+  android:
+    name: Android checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # The hosted image includes SDK 35 and build-tools 35.0.0. Fail clearly if that changes.
+      - run: python scripts/setup-android.py --sdk "$ANDROID_HOME"
+      - run: ./gradlew --no-daemon -PincludeAndroid=true verifyAndroid

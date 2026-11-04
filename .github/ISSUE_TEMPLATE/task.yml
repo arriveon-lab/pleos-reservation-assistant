@@ -1,0 +1,27 @@
+name: 개발 작업
+description: 팀 작업과 완료 조건
+title: "[작업] "
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 영역
+      options: [차량/Pleos, 추천/장소, AI 전화, 서버/예약, UX/통합]
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 해결할 문제와 범위
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 완료 조건과 검증 방법
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 선행 작업·필요 계정·비용 승인
