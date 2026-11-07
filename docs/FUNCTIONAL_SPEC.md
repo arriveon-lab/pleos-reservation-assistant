@@ -6,6 +6,10 @@
 
 현재 기준은 커밋 `f4f98732e243ddd7b806c3f91d0cef03e001aaec`, OpenAPI 계약 **1.0.0**, 2026-11-07 상태를 재확인한 GitHub 이슈입니다. 현재 실행 범위는 **로컬 단일 사용자 MOCK**입니다. 표의 목표 기능은 구현 완료를 의미하지 않습니다. 실제 DB는 6개 테이블이고 11개 ERD는 제안안입니다.
 
+2026-11-07 REC-01 후속 변경: MOCK 조회와 가상 조건 생성을 adapter/factory로 분리하고, 가상 Kakao 응답 정규화와 후보 선택·사실 검증을 추가했습니다. 공개 API 계약과 DB 구조는 유지했습니다. 최신 실행 결과는 [STATUS](STATUS.md), 상세 범위는 [REC-01 계획](REC01_PLAN.md)을 따릅니다.
+
+HTTP adapter도 loopback에서 검증했지만 실제 서비스에는 연결하지 않았습니다. [실제 연동 검토](REC01_INTEGRATION.md)의 공식 저장 제한을 해결하기 전에는 Kakao 결과를 검색/명령 snapshot에 저장하지 않습니다.
+
 [이슈별 해설](ISSUE_GUIDE.md) · [ERD와 상세 필드](ERD.md) · [관계 시각화](ERD.md#2-핵심-관계) · [OpenAPI](../api/openapi.json) · [검증 현황](STATUS.md)
 
 ## 1. 범위와 용어
@@ -109,8 +113,9 @@
 ### FR-04 장소 검색과 후보 평가
 
 - **시작:** `POST /searches` + Idempotency-Key. 입력은 SearchRequest입니다.
-- **현재 출력:** Search.id, mode, request, createdAt과 가상 Candidate 3개. candidateId는 mock-1 등으로 검색 간 반복되므로 searchId와 함께 해석합니다.
+- **현재 출력:** Search.id, mode, request, createdAt과 기본 MOCK Candidate 3개. 조회 경계는 0~3개 결과를 보충 없이 저장·반환할 수 있도록 검증했습니다. 기본 candidateId는 mock-1 등으로 검색 간 반복되므로 searchId와 함께 해석합니다.
 - **현재 정렬:** eligible=true 우선 → missing 개수 적은 순 → preferenceScore 내림차순 → candidateId 순. 예약 가능 여부는 조회와 예약 시점에 다시 평가합니다.
+- **사실 검증:** 필수 boolean은 GENERAL, 도착 대기와 예약 가능은 ARRIVAL scope와 해당 ETA를 요구합니다. 값 타입 오류·미래 관측·만료·MOCK 흐름의 LIVE 사실은 missing으로 남겨 예약을 보류합니다.
 - **상태:** 알려진 필수 조건 불충족, 도착 대기 초과, 해당 ETA의 예약 불가이면 eligible=false. 필수 정보가 부족하면 bookable=false. 제외 후보는 이유와 함께 비교 목록에 남습니다.
 - **목표 adapter:** 실제 결과 0–3개, 중복 제거·사업자 출처·사용 조건 보존. 조회 실패와 정상 0건을 구분하며 fixture로 조용히 대체하지 않습니다. 에러/페이지 정책은 #2/#4 계약에서 확정합니다.
 - **데이터/인수:** searches, places, search_candidates 제안. AT-03/04/05. 현재는 searches.payload에 후보가 포함됩니다.

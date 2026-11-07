@@ -138,3 +138,37 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - 사용자 명시 요청으로 main의 required_approving_review_count를 1에서 0으로 변경했다. 리뷰 없이 필수 CI 통과 후 squash merge할 수 있다.
 - 필수 CI 3개와 strict, enforce_admins, 선형 이력, 대화 해결, force push/삭제 금지는 유지됨을 API로 확인했다. PR #9의 REVIEW_REQUIRED 차단 해제 확인.
 - CONTRIBUTING·GITHUB_SETUP·PLAN·STATUS를 새 정책에 맞춰 갱신했다. 이 작업은 PR을 자동으로 병합하거나 CI를 우회하는 설정이 아니다.
+
+## 2026-11-07 REC-01 상세 착수 계획
+
+- PR #9는 main `35561ee`로 squash merge되었고 문서 게시 이슈 #8은 종료되었다. REC-01은 별도 OPEN 이슈 #2이며 담당자는 `tiemo0708`로 확인했다.
+- 사용자 선택: 성수·서울숲 주변 음식점, Kakao Local 우선 검토. 공식 API 적합성 비교와 실제 앱 쿼터·저장/재표시 조건 확인 항목을 `docs/REC01_PLAN.md`에 기록했다. 사업자 실제 채택과 사용 조건 검토는 남아 있다.
+- 저장소 지침·기존 브랜치·원격 main을 확인하고 `feat/2-place-adapter`를 생성했다. 상세 계획과 목차·이슈 안내·PLAN·STATUS를 갱신했으며, 이번 변경의 commit/push/PR은 아직 수행하지 않았다.
+- 다음 작업은 P1 MOCK adapter 분리다. 기존 mock-1~mock-3, facts와 TTL, 공개 API·저장 구조를 유지한 뒤 P2 가상 JSON 매핑·실패 테스트로 확장한다. 코드 구현·테스트 실행은 아직 하지 않았다.
+- 실제 HTTP를 현재 `WorkflowService.search()`의 `Store.command()` 안에 넣지 않는다. #4와 트랜잭션 밖 IO·중복 요청·저장 snapshot, #5와 실제 장소/모의 예약 표시를 합의한다.
+- PR naming은 `Closes #2`를 요구하므로 계획만으로 #2를 닫지 않는다. 완료 조건까지 누적하거나 먼저 병합할 범위는 별도 실제 이슈로 분리한다.
+- 실제 장소 API 조회·전화 발신·번호 구매·유료 API 실행 없음. 외부 전화·비용 발생 작업은 기존의 사전 승인 규칙을 유지한다.
+- 문서 6개의 로컬 링크 77개·계획 테스트 ID 16개·코드 블록·개인 절대 경로와 브랜치/제목 규칙·diff 공백 검사를 통과했다. Gradle이나 제품 실행 테스트를 새로 수행한 결과는 아니다.
+
+## 2026-11-07 REC-01 MOCK 분리와 오프라인 검증
+
+- 후속 사용자 요청에 따라 P1과 P2 오프라인 범위를 구현했다. `RecommendationEngine.fixtures()`를 제거하고 `MockPlaceSearchAdapter`와 `MockCandidateFactory`로 조회/가상 사실 생성을 분리했다. WorkflowService는 구체적인 MOCK adapter만 받으며 외부 IO를 추가하지 않았다.
+- 내부 계약은 `PlaceQuery`, `PlaceSummary`, `PlaceSearchResult.Success/Failure`, `PlaceSearchFailure`. 실패 enum은 공개 HTTP 오류 코드가 아니다. `KakaoPlaceMapper`는 HTTP 응답 문자열을 정규화하는 순수 변환기이며 Spring bean·HTTP 클라이언트가 아니다.
+- 가상 Kakao JSON은 `server/src/test/resources/places/kakao-fictional.json`. FD6·필수 식별자·유한한 좌표·숫자·응답 구조/크기·최대 15개를 검사하고 provider ID 중복을 제거한다. 일부 불량 항목은 계수하고 전부 불량인 응답은 정상 0건과 구분한다. 실제 연락처·API 키 없음.
+- 추천 엔진에 scope·ETA·모드·관측/만료 시각·값 타입 검사를 추가했다. `select()`는 전체 후보 평가 후 최대 3곳을 선택하며 조회 결과를 가상 장소로 채우지 않는다. 기존 mock-1~3과 가상 facts/TTL, 공개 API·schema·migration·의존성은 유지했다.
+- `./gradlew -PincludeAndroid=false format verify` 성공. 5개 suite의 **104개 테스트 실행, 실패/오류/skip 0**. 기존 WorkflowTest 25개 + 신규 79개. 리포트는 `server/build/test-results/test/`, 로컬 요약은 Git 제외 `work/rec01-tests.json`.
+- `work/contract-venv/bin/python scripts/smoke-test.py --check-contract` 성공. 패키징 JAR의 MOCK HTTP·OpenAPI 대조·Flyway/H2 재시작·LIVE 시작 차단을 확인했다. Git 제외 `work/rec01-smoke.log`에 기록했다. Android와 원격 CI를 이번에 실행한 결과는 없다.
+- `docs/REC01_PLAN.md`의 구현 상태·테스트 연결과 STATUS·PLAN·ISSUE_GUIDE·FUNCTIONAL_SPEC·문서 목차를 갱신했다. 현재 로컬 작업 브랜치는 `feat/2-place-adapter`, 이번 변경의 commit/push/PR은 아직 하지 않았다.
+- 다음 작업: P0 저장/재표시·실제 앱 무료 적용 조건 확인, P3 #4와 IO/잠금·중복 실행·실패 응답·저장 snapshot, #5와 실제 장소/모의 예약 표시 합의. `TIMEOUT`은 실패 종류만 정의했으며 transport 처리는 P4에서 구현·검증한다. #2 완료 처리 전 이 남은 항목을 확인한다.
+- 실제 장소 API 조회·전화 발신·번호 구매·유료 API 실행 없음. 실전화와 비용 발생 작업은 대상·목적·예상 비용·상한을 제시해 별도 명시적 승인을 받는다.
+
+## 2026-11-07 REC-01 HTTP 경계와 정책 검토
+
+- `docs/REC01_INTEGRATION.md`에 공식 Kakao FAQ와 2026-08-20 지도/로컬 담당 답변의 응답·가공 데이터 저장 제한을 기록했다. 일반 캐시 조항으로 예외를 가정하지 않는다. 현재 H2 검색 payload와 commands 응답 snapshot에는 실제 Kakao 결과를 연결하지 않는다.
+- 사용자는 팀 Kakao 앱이 아직 없다고 확인했다. 앱 생성/무료 배지·쿼터 확인 절차, #4·#5 검토안과 사업자 문의 문안을 준비했으며 앱 생성·약관 동의·키 발급·문의 발송은 수행하지 않았다.
+- `KakaoPlaceSearchAdapter`를 구현했다. Spring 미등록·실제 workflow 미연결이며 고정 Kakao HTTPS endpoint 또는 package-local loopback 테스트 endpoint만 허용한다. 연결/전체 응답 timeout, 취소, redirect 차단, 수신 중 256KiB 제한, UTF-8 검증과 내부 실패 분류를 제공한다. 새 의존성은 없다.
+- `KakaoPlaceSearchAdapterTest` 26개에서 합성 목적지 3개, 정상/빈 응답, 상태 오류, header/body timeout, 진행 중 취소·인터럽트 보존, 연결 실패, 크기·인코딩·키/endpoint 설정을 127.0.0.1 가상 서버로 검증했다. 총 **130개 테스트 실행, 실패/오류/skip 0**, 6개 suite. `format verify`와 패키징 JAR의 MOCK HTTP/계약·H2 재시작·LIVE 차단도 통과했다.
+- 로컬 증거는 Git 제외 `work/rec01-http-verify.log`, `work/rec01-http-tests.json`, `work/rec01-http-smoke.log`. Android·실제 TLS·키·IP 제한·무료 쿼터·지역 데이터 품질을 확인한 결과가 아니다.
+- 앱 수준의 재시도/페이지 확장은 없지만 JDK transport의 연결 장애 재전송은 별도로 통제·검증해야 한다. 이를 모든 장애에서 정확히 1건만 과금되는 보장으로 취급하지 않는다. 전역 JVM·셸 설정은 변경하지 않았다.
+- 작업 브랜치는 `feat/2-place-adapter`. 현재 범위는 초안 PR로 검토하며 #2 완료나 main 병합으로 간주하지 않는다. 남은 작업은 팀 앱 준비, 보관·제3자 제공 범위 해결, #4·#5 실제 연동 계약, transport 재전송 제어와 실제 환경 검증이다.
+- 실제 Kakao 요청·전화 발신·번호 구매·유료 API 실행은 0회다. 실제 비용 발생과 발신은 기존 사전 승인 규칙을 따른다.

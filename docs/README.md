@@ -18,6 +18,8 @@
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
 | [PLAN](PLAN.md) | 전체 범위·일정·5명 역할·통합 순서 | 기존 개발 계획 |
 | [ISSUE_GUIDE](ISSUE_GUIDE.md) | 각 이슈의 입력/출력·파일 경계·완료 조건 | 작업 해설, 이슈 상태는 GitHub가 기준 |
+| [REC-01 상세 계획](REC01_PLAN.md) | #2 지역·장소 adapter의 단계별 작업·계약·테스트·협업 | MOCK 분리·가상 Kakao 응답 검증 완료, 실제 연동 전 |
+| [REC-01 실제 연동 검토](REC01_INTEGRATION.md) | 공식 저장 제한·무료 앱 준비·HTTP 경계·서버/화면 검토안 | HTTP loopback 검증, 실제 API 미실행 |
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |

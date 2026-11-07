@@ -1,0 +1,26 @@
+{
+  "meta": { "total_count": 2, "pageable_count": 2, "is_end": true },
+  "documents": [
+    {
+      "id": "fictional-kakao-1",
+      "place_name": "가상 성수 테스트식당",
+      "category_name": "음식점 > 한식 > 국수",
+      "category_group_code": "FD6",
+      "x": "127.055",
+      "y": "37.544",
+      "road_address_name": "가상 도로명 주소 A",
+      "address_name": "가상 지번 주소 A",
+      "phone": "",
+      "place_url": "",
+      "distance": "120"
+    },
+    {
+      "id": "fictional-kakao-2",
+      "place_name": "가상 성수 테스트식당",
+      "category_group_code": "FD6",
+      "x": "127.056",
+      "y": "37.545",
+      "address_name": "가상 지번 주소 B"
+    }
+  ]
+}
