@@ -1,6 +1,6 @@
 # REC-01 서버·화면 연동 계약 초안
 
-작성: 2026-11-07 KST. 검토 대상: #2 장소, #3 전화, #4 서버, #5 화면. **팀 합의 전 제안이며 현재 OpenAPI·DB·제품 화면에 적용하지 않았습니다.** 사용 조건과 실제 adapter 검증은 [연동 검토](REC01_INTEGRATION.md), 현재 구현은 [STATUS](STATUS.md)를 따릅니다.
+작성: 2026-11-07 KST. 기반: #2 장소 adapter. 후속 실행 이슈: [#12 REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12). 검토 대상: 장소 담당, #3 전화, #4 서버, #5 화면. 실제 데이터 사용 조건은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11)에서 확인합니다. **팀 합의 전 제안이며 현재 OpenAPI·DB·제품 화면에 적용하지 않았습니다.** 사용 조건과 실제 adapter 검증은 [연동 검토](REC01_INTEGRATION.md), 현재 구현은 [STATUS](STATUS.md)를 따릅니다.
 
 ## 먼저 결정할 사항
 

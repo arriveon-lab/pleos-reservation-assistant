@@ -1,5 +1,7 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+**최신 범위 정리 (2026-11-07):** #2는 장소 adapter 기반·MOCK 검증의 PR #10 병합 대기입니다. 미완료 정책/공급자 결정은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11), 서버·화면 계약과 IO 구현은 [#12](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12), 실제 API 검증은 [#13](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13)에 이관했습니다. 현재 PR은 Draft이고 이슈는 모두 OPEN이며 머지는 실행하지 않았습니다. 아래 앞선 기록의 “#2 전체 미완료/병합 보류”는 범위 분리 전 상태입니다.
+
 문서 갱신: 2026-11-07 KST. 기존 제품 실행 기록은 2026-11-04이며, 현재 검증 상태의 기준 문서는 `docs/STATUS.md`입니다.
 
 ## 작업 위치와 사용자의 최신 결정
@@ -197,3 +199,12 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - `KakaoTransportStartupTest` 신규 14개: 시작 옵션 누락/오류/충돌·늦은 변경·정상 생성, 정상 빈 응답·응답 전/본문 중단·TCP 연결 재사용 후 단절. 모두 별도 JVM과 127.0.0.1 가상 서버이며, 기존 130개와 합해 총 144개 실패/오류/skip 0입니다. verify와 JAR smoke/계약·H2 재시작 검증 통과. 실제 TLS/사업자 요청 수 보장으로 확대 해석하지 않습니다.
 - `docs/REC01_CONTRACT_DRAFT.md`는 #3/#4/#5 검토용 제안입니다. 외부 미리보기/저장 예약 분리, IO·중복·목적지 변경·출처/모드·오류/화면 상태·인수 조건을 작성했으나 API/DB에 적용하지 않았습니다.
 - 정책 문의는 새로고침 후에도 답변 없음. Kakao 검색·비용·전화 0회. 다음은 사업자 답변과 #4/#5 계약 검토를 반영한 실행 경계 구현이며 #2를 완료하거나 PR을 병합하지 않습니다. 실제 호출 전 목적/횟수/상한, 무료 잔량과 유료 꺼짐을 다시 확인합니다.
+
+
+## 2026-11-07 이슈·브랜치·PR 범위 정리
+
+- 사용자 요청으로 #2 제목을 “REC-01: 장소 adapter 기반 구현과 MOCK 검증”으로 조정했습니다. 원래의 미완료 조건은 #11(정책/공급자), #12(계약·IO/중복/복구), #13(실계정 API 검증)으로 실제 생성해 이관했습니다. 세 이슈 모두 tiemo0708 담당이며 OPEN입니다. #4/#5의 기존 범위/배정은 바꾸지 않았습니다.
+- 현재 브랜치 `feat/2-place-adapter`를 유지합니다. PR #10은 “feat(recommendation): 장소 adapter 기반과 MOCK 검증 추가”, `Closes #2`와 `Refs #11/#12/#13`으로 정리했습니다. 이번 작업은 머지가 아니며 PR은 Draft입니다.
+- 후속 브랜치 계획: `docs/11-place-data-policy`, `feat/12-place-preview`, `feat/13-place-api-validation`. 아직 생성하지 않았습니다. #2 통합 뒤 최신 main에서 해당 번호의 브랜치를 만듭니다.
+- 후속 이관 시 완료 범위·원래 범위·담당/의존성·Refs 연결을 함께 기록하도록 CONTRIBUTING과 PR 템플릿을 보강했습니다. 기존 Closes 규칙·CI·main 보호는 변경하지 않았습니다.
+- 제품 코드 변경은 없습니다. 기존 144개 테스트·JAR smoke 증거를 유지하며 이번에는 명명·문서 링크·diff 정적 검사를 수행합니다. 실제 Kakao 조회·전화·비용 0회와 MOCK/LIVE 차단을 유지합니다.

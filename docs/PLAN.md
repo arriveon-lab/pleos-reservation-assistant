@@ -4,7 +4,7 @@
 
 2026-11-07 공유 문서 정리: [문서 목차](README.md), [이슈별 상세 작업·병행 개발](ISSUE_GUIDE.md), [기능 명세](FUNCTIONAL_SPEC.md), [ERD](ERD.md)를 추가했습니다. 아래 기존 계획과 별도로 [제품 방향·다중 예약·지연 대응 제안](DESIGN_PROPOSALS.md)을 검토하며, 해당 제안의 MVP 포함 여부는 미확정입니다.
 
-2026-11-07 REC-01 진행: #2 담당자는 `tiemo0708`이며, 사용자가 성수·서울숲 음식점과 Kakao Local 우선 검토를 선택했습니다. [REC-01 상세 계획](REC01_PLAN.md)의 MOCK 분리와 가상 Kakao 응답 매핑·실패 테스트를 구현했습니다. HTTP adapter의 loopback 검증을 더해 서버 테스트 144개와 MOCK HTTP/계약·H2 재시작 검증을 통과했습니다. JVM 시작 옵션 검사·연결 단절 시 재전송 방지를 검증하고 [서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md)을 준비했습니다. [실제 연동 검토](REC01_INTEGRATION.md)의 공식 저장 제한에 따라 H2 snapshot에는 실제 결과를 연결하지 않습니다. 사용자 동의 후 ArriveOn 앱과 카카오맵 무료 쿼터 설정을 완료했습니다. 다음은 보관 범위 해결·실제 연동 경계 합의입니다.
+2026-11-07 REC-01 진행: #2 담당자는 `tiemo0708`이며, 사용자가 성수·서울숲 음식점과 Kakao Local 우선 검토를 선택했습니다. [REC-01 상세 계획](REC01_PLAN.md)의 MOCK 분리와 가상 Kakao 응답 매핑·실패 테스트를 구현했습니다. HTTP adapter의 loopback 검증을 더해 서버 테스트 144개와 MOCK HTTP/계약·H2 재시작 검증을 통과했습니다. JVM 시작 옵션 검사·연결 단절 시 재전송 방지를 검증하고 [서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md)을 준비했습니다. [실제 연동 검토](REC01_INTEGRATION.md)의 공식 저장 제한에 따라 H2 snapshot에는 실제 결과를 연결하지 않습니다. 사용자 동의 후 ArriveOn 앱과 카카오맵 무료 쿼터 설정을 완료했습니다. 사용자 요청으로 #2를 기반/MOCK 검증의 병합 범위로 정리했습니다. 미완료 정책·공급자 결정은 #11, 서버/화면 계약·IO 구현은 #12, 실제 API 검증은 #13에서 이어갑니다. 아직 머지는 실행하지 않았습니다.
 
 ## 목표와 전체 흐름
 
@@ -38,7 +38,10 @@
 | 이슈 후보 | 담당 1명 | 현재 기반 | 다음 완료 조건 | 선행 입력 |
 | --- | --- | --- | --- | --- |
 | [#1 / VEH-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1) | 차량/Pleos | `android/probe`, API 계약 | 목적지/TripInfo 원시값, 갱신 주기, 권한/백그라운드/도착 이벤트 로그 | SDK 신청·Pleos Emulator·Android SDK |
-| [#2 / REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | 추천/장소 | 가상 후보·조건 우선·사실 만료 | 시범 지역 결정, 공식 장소 데이터 adapter, 저장/재표시 조건 기록 | 지역·사업자 키·약관 |
+| [#2 / REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | 추천/장소 | adapter·정규화·MOCK/loopback 144개 검증 | 기반 PR #10 최종 검토·squash merge | 필수 CI·범위/문서 정리 |
+| [#11 / REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | 추천/장소 (`tiemo0708`) | 공식 저장 제한·문의 등록 | 사용/보관/제공 조건과 공급자 최종 결정 | 사업자 답변·대안 근거 |
+| [#12 / REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | 추천/장소 (`tiemo0708`), #4/#5 협업 | 서버·화면 계약 초안 | 트랜잭션 밖 IO·중복/복구·출처/모드 계약과 가상 검증 | 기반 main 통합, 실제 연결은 #11 조건 |
+| [#13 / REC-04](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13) | 추천/장소 (`tiemo0708`) | 독립 HTTP 경계·무료 앱 설정 | 실제 TLS/키/IP/쿼터·지역 품질 검증 | #11·실행 경계·호출/비용 상한 |
 | [#3 / VOICE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | AI 전화 | MockCallAdapter·outcome 계약 | 업체 선정 근거, 한국 발신/음성 PoC, 정규화/서명 검증 | 계정·발신번호·협의 수신번호·비용 승인 |
 | [#4 / BE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/4) | 서버/예약 | 상태 전이·멱등성·H2 | 사용자/여정 소유권, UNKNOWN 대조, timeout/outbox, 운영 DB 결정 | 팀 DB 경험·운영 환경 |
 | [#5 / UX-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/5) | UX/통합/시연 | CLI 모의 시연·실패 시나리오 | 후보3개/명시적 선택/수락 전후/변경 미확인 화면, 주행 제한, 영상 | emulator·CarUxRestrictions·서명 계획 |
