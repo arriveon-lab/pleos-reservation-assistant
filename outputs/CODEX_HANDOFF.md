@@ -1,6 +1,6 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
-**최신 범위 정리 (2026-11-07):** #2는 장소 adapter 기반·MOCK 검증의 PR #10 병합 대기입니다. 미완료 정책/공급자 결정은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11), 서버·화면 계약과 IO 구현은 [#12](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12), 실제 API 검증은 [#13](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13)에 이관했습니다. 현재 PR은 Draft이고 이슈는 모두 OPEN이며 머지는 실행하지 않았습니다. 아래 앞선 기록의 “#2 전체 미완료/병합 보류”는 범위 분리 전 상태입니다.
+**최신 상태 (2026-11-07):** 사용자 승인 후 [PR #10](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/10)을 squash merge했습니다(`a55de3a`). #2는 CLOSED, #11/#12/#13은 OPEN입니다. 최신 main에서 `feat/12-place-preview`를 생성해 [REC-03 내부 세션 첫 구현](../docs/REC03_PREVIEW.md)을 진행했고, 서버 테스트 169개와 JAR smoke/계약 검증을 통과했습니다. 신규 실행기는 제품 경로·공개 API에 연결하지 않았습니다. 아래 범위 분리/병합 대기 기록은 병합 전 이력입니다.
 
 문서 갱신: 2026-11-07 KST. 기존 제품 실행 기록은 2026-11-04이며, 현재 검증 상태의 기준 문서는 `docs/STATUS.md`입니다.
 
@@ -208,3 +208,13 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - 후속 브랜치 계획: `docs/11-place-data-policy`, `feat/12-place-preview`, `feat/13-place-api-validation`. 아직 생성하지 않았습니다. #2 통합 뒤 최신 main에서 해당 번호의 브랜치를 만듭니다.
 - 후속 이관 시 완료 범위·원래 범위·담당/의존성·Refs 연결을 함께 기록하도록 CONTRIBUTING과 PR 템플릿을 보강했습니다. 기존 Closes 규칙·CI·main 보호는 변경하지 않았습니다.
 - 제품 코드 변경은 없습니다. 기존 144개 테스트·JAR smoke 증거를 유지하며 이번에는 명명·문서 링크·diff 정적 검사를 수행합니다. 실제 Kakao 조회·전화·비용 0회와 MOCK/LIVE 차단을 유지합니다.
+
+
+## 2026-11-07 후속 인계: 기반 merge와 REC-03 첫 구현
+
+- 사용자 명시 지시로 PR #10 squash merge 완료: `a55de3a`. #2 CLOSED, #11/#12/#13 OPEN. main 보호·리뷰 0명·필수 CI·squash-only를 유지했고 원격 기반 브랜치는 삭제됐습니다.
+- 현재 작업 브랜치 `feat/12-place-preview`는 merge commit을 받은 main에서 생성했습니다. `docs/REC03_PREVIEW.md`가 현재 단계의 계약/한계/테스트 안내입니다.
+- `PlacePreviewSession`을 가상 adapter로 검증했습니다. 동일 진행 세대 합류, 완료 세대 자동 재호출 없음, 충돌/구세대, 새 목적지·취소·deadline·늦은 결과와 최신 큐를 처리합니다. 세션당 worker 1개/대기 1개, 결과 캐시 없음, 마지막 query 1개는 close까지 메모리 보유입니다. 실제 Kakao 데이터의 메모리 보유 허가는 #11에서 확인해야 합니다.
+- 신규 25개 + 기존 144개 = 169개 실패/오류/skip 0, format/verify 및 JAR smoke/OpenAPI/H2 재시작/LIVE 차단 통과. 가상 작업 대기 중 기존 H2 명령이 진행되고 preview는 DB를 쓰지 않으며 트랜잭션 안 start는 거부됩니다.
+- Spring bean·public endpoint·WorkflowService 연결은 하지 않았고 공개 API/Model·migration·의존성 변경도 없습니다. #12는 팀 검토, 실제 세션 소유권/상한/재시작 복구, navigation freshness, 공개 계약/화면이 남아 OPEN입니다. 신규 PR은 초안으로 유지하며 사용자 지시는 기존 PR #10 머지와 #12 착수입니다.
+- 실제 Kakao 조회·전화·비용 0회. #11 답변 확인, #12 계약/소유권/복구 구현, #13 조건부 실제 검증 순서로 이어갑니다. 외부 문의 추가 발송이나 신규 실제 호출은 수행하지 않았습니다.

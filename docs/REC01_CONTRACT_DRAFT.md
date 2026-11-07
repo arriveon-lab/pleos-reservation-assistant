@@ -2,6 +2,8 @@
 
 작성: 2026-11-07 KST. 기반: #2 장소 adapter. 후속 실행 이슈: [#12 REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12). 검토 대상: 장소 담당, #3 전화, #4 서버, #5 화면. 실제 데이터 사용 조건은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11)에서 확인합니다. **팀 합의 전 제안이며 현재 OpenAPI·DB·제품 화면에 적용하지 않았습니다.** 사용 조건과 실제 adapter 검증은 [연동 검토](REC01_INTEGRATION.md), 현재 구현은 [STATUS](STATUS.md)를 따릅니다.
 
+[REC-03 내부 세션 첫 구현](REC03_PREVIEW.md)에서 동시 합류·트랜잭션 거부·세대/취소·실행 상한을 가상 adapter로 검증했습니다. 이 구현은 아래 공개 API/화면 제안의 팀 합의를 대신하지 않으며 제품 endpoint도 추가하지 않았습니다.
+
 ## 먼저 결정할 사항
 
 제안은 **외부 장소 검색 미리보기와 저장하는 예약 업무를 분리**하는 것입니다. 현재 `POST /searches`는 검색 후보와 최초 명령 응답을 H2에 저장하므로 Kakao 결과를 넣지 않습니다. 미리보기 분리 역시 세션 메모리 보유까지 허용됐다는 뜻은 아닙니다. [사업자 문의](https://devtalk.kakao.com/t/local-api/152647)의 답변을 확인하기 전에는 가상 응답으로만 개발합니다.
