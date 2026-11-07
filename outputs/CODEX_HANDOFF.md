@@ -189,3 +189,11 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - 공개 문의는 답변 대기이며 저장·제3자 제공 허가를 받은 상태가 아니다. 후속 답변의 적용 범위를 확인한 뒤 실제 연동 경계를 결정한다. 공개 화면은 Git 제외 work/kakao-policy-posted.png에 보관했다.
 - 사용자가 Pleos 내부 지도 사용 여부를 물어 공식 NaviHelper 3.0.5 안내와 배포 SDK 공개 메서드를 재확인했다. 내비게이션·목적지·ETA는 Pleos, 주변 식당 후보는 별도 장소 adapter라는 현재 설계를 INTEGRATIONS에 명시했다. Kakao 지도 SDK/지도 화면 교체는 구현하지 않았다. 일반 음식점 후보 목록 검색 메서드는 이번 NaviHelper 확인 범위에서 찾지 못했으며, Pleos 전체 기능 부재로 단정하지 않는다.
 - 앱 설정 문서는 f4a1001으로 업로드됐고 서버·Android·PR naming CI가 통과했다. 이번 후속 문서도 같은 Draft PR #10에 이어가며 #2는 OPEN이다. 소스·API·DB 변경, 실제 장소 요청·전화·유료 작업은 없다.
+
+
+## 2026-11-07 후속 인계: 재전송 제어와 P3 계약 검토
+
+- 같은 `feat/2-place-adapter` / Draft PR #10에서 진행했습니다. 실제 adapter 생성 시 두 JVM 시작 옵션(`-Djdk.httpclient.disableRetryConnect=true`, `-Djdk.httpclient.redirects.retrylimit=1`)을 검사하며 HTTP/1.1을 명시합니다. 속성을 늦게 추가하는 방식은 거부합니다. 기본 MOCK 서버는 이 adapter를 생성하지 않으므로 기존 실행 명령을 유지합니다.
+- `KakaoTransportStartupTest` 신규 14개: 시작 옵션 누락/오류/충돌·늦은 변경·정상 생성, 정상 빈 응답·응답 전/본문 중단·TCP 연결 재사용 후 단절. 모두 별도 JVM과 127.0.0.1 가상 서버이며, 기존 130개와 합해 총 144개 실패/오류/skip 0입니다. verify와 JAR smoke/계약·H2 재시작 검증 통과. 실제 TLS/사업자 요청 수 보장으로 확대 해석하지 않습니다.
+- `docs/REC01_CONTRACT_DRAFT.md`는 #3/#4/#5 검토용 제안입니다. 외부 미리보기/저장 예약 분리, IO·중복·목적지 변경·출처/모드·오류/화면 상태·인수 조건을 작성했으나 API/DB에 적용하지 않았습니다.
+- 정책 문의는 새로고침 후에도 답변 없음. Kakao 검색·비용·전화 0회. 다음은 사업자 답변과 #4/#5 계약 검토를 반영한 실행 경계 구현이며 #2를 완료하거나 PR을 병합하지 않습니다. 실제 호출 전 목적/횟수/상한, 무료 잔량과 유료 꺼짐을 다시 확인합니다.

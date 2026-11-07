@@ -64,7 +64,16 @@
 | 실패 | 인증·권한·429·상위 장애·잘못된 응답·timeout·취소를 내부 결과로 반환. 정상 0건과 구분 |
 | 기록 | 응답 본문·키·장소 정보를 로그/DB에 쓰는 코드 없음. 실제 데이터를 test fixture로 저장하지 않음 |
 
-애플리케이션 재시도 루프와 자동 페이지 확장은 없습니다. HTTP 오류 응답과 timeout의 로컬 테스트에서 추가 요청이 없음을 확인했습니다. 다만 JDK HTTP Client는 연결 실패 등의 내부 재전송 동작을 가지므로, 현재 구현을 모든 장애에서 정확히 1건만 과금되는 보장으로 취급하지 않습니다. 실제 실행 전 JVM 시작 설정 또는 재시도 제어가 가능한 transport를 선택하고 연결 단절 시 요청 수를 추가 검증합니다. 이번 작업은 전역 JVM/셸 설정을 변경하지 않았습니다. [JDK 21 네트워크 속성](https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/module-summary.html)
+애플리케이션 재시도 루프와 자동 페이지 확장은 없습니다. HTTP/1.1을 명시하고, 생성 시 아래 두 JVM 시작 옵션과 현재 속성 값이 모두 일치하는지 검사합니다. 누락·충돌·런타임에 뒤늦게 설정한 값은 생성 단계에서 차단합니다. 이 옵션은 해당 JVM의 다른 JDK HTTP Client에도 영향을 주므로 실제 통합 시 #4가 실행 프로세스 경계를 함께 결정합니다.
+
+```text
+-Djdk.httpclient.disableRetryConnect=true
+-Djdk.httpclient.redirects.retrylimit=1
+```
+
+위 옵션은 최초 시도를 포함한 요청 시도 상한을 1로 두기 위한 설정입니다. `System.setProperty`로 시작 후 값을 추가하는 방식을 지원하지 않습니다. Gradle은 `:server:test` JVM에만 옵션을 전달합니다. 전역 셸·Gradle daemon·기본 MOCK 실행 설정은 바꾸지 않았으며, 옵션만으로 실제 검색 경로가 활성화되지는 않습니다. [JDK 21 공식 네트워크 속성](https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/module-summary.html), [OpenJDK 21 요청 시도 구현](https://github.com/openjdk/jdk21u/blob/master/src/java.net.http/share/classes/jdk/internal/net/http/MultiExchange.java)
+
+[KakaoTransportStartupTest](../server/src/test/java/ai/pleos/assistant/KakaoTransportStartupTest.java)는 새 JVM을 띄워 시작 옵션 누락/잘못된 값/중복 충돌, 늦은 속성 변경과 정상 생성을 검증합니다. loopback 서버의 응답 전 단절·본문 중단·재사용 연결 단절에서도 검색당 추가 요청이 없음을 확인했습니다. 정상 빈 응답도 최초 시도가 차단되지 않고 성공합니다. 이 검증은 현재 JDK 21의 로컬 HTTP/1.1 범위이며, 실제 Kakao TLS·중간 프록시·사업자 과금 집계까지 보장한 결과는 아닙니다.
 
 ## 로컬 검증과 시범 입력
 
@@ -113,7 +122,8 @@
 - [x] #4·#5 검토안 준비와 사용자 승인 후 사업자 문의 등록
 - [x] 팀 앱 생성·관리 계정·무료 쿼터 제공·유료 API 꺼짐 확인
 - [ ] 예약 서비스에 필요한 보관·재사용·제3자 제공 범위 확인
-- [ ] 실제 연동 API/DB/화면 계약 합의 및 transport 재전송 제어 검증
+- [x] JVM 시작 옵션 검사와 연결 단절 시 재전송 방지의 로컬 검증
+- [ ] [서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md)의 팀 합의와 실제 TLS/호출 수 검증
 - [ ] 실제 요청의 목적·횟수·비용/상한 확정. 비용 발생이면 명시적 승인
 
 현재 #2는 진행 중입니다. 이 문서 작성이나 HTTP adapter 테스트 성공을 실제 서비스 연동 완료로 세지 않습니다.

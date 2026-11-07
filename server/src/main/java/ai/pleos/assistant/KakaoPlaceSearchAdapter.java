@@ -2,6 +2,7 @@ package ai.pleos.assistant;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -62,16 +63,34 @@ public final class KakaoPlaceSearchAdapter implements PlaceSearchAdapter, AutoCl
       throw new IllegalArgumentException("Invalid place endpoint configuration");
     if (timeout == null || timeout.toMillis() < 1 || timeout.compareTo(REQUEST_TIMEOUT) > 0)
       throw new IllegalArgumentException("Invalid place timeout configuration");
+    requireStartupProperty("jdk.httpclient.disableRetryConnect", "true");
+    requireStartupProperty("jdk.httpclient.redirects.retrylimit", "1");
     this.restApiKey = restApiKey;
     this.mapper = Objects.requireNonNull(mapper);
     this.endpoint = endpoint;
     this.timeout = timeout;
     this.client =
         HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(
                 timeout.compareTo(Duration.ofSeconds(2)) < 0 ? timeout : Duration.ofSeconds(2))
             .followRedirects(HttpClient.Redirect.NEVER)
             .build();
+  }
+
+  // JDK networking properties may be cached before this adapter is created. Checking only
+  // System.getProperty would incorrectly accept a late System.setProperty after initialization.
+  private static void requireStartupProperty(String name, String expected) {
+    String prefix = "-D" + name + "=";
+    String startupValue =
+        ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
+            .filter(argument -> argument.startsWith(prefix))
+            .reduce((earlier, later) -> later)
+            .map(argument -> argument.substring(prefix.length()))
+            .orElse(null);
+    if (!expected.equals(startupValue) || !expected.equals(System.getProperty(name)))
+      throw new IllegalStateException(
+          "Place transport requires JVM startup option " + prefix + expected);
   }
 
   @Override

@@ -32,6 +32,9 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+    // These apply to the isolated test JVM, not the Gradle daemon or developer's global settings.
+    jvmArgs("-Djdk.httpclient.disableRetryConnect=true", "-Djdk.httpclient.redirects.retrylimit=1")
+    systemProperty("placeTestClasspath", sourceSets.test.get().runtimeClasspath.asPath)
     testLogging { events("failed", "skipped") }
 }
 
