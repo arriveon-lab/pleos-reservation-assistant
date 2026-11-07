@@ -10,16 +10,16 @@
 
 ## 이번 PR의 완료 범위와 후속 이슈
 
-2026-11-07 사용자 요청으로 #2를 **장소 adapter 기반 구현과 MOCK 검증**으로 명확히 했습니다. 아래 미완료 조건을 실제 이슈로 이관했으며, 정책 확정이나 실연동이 완료됐다는 뜻은 아닙니다. PR #10은 #2만 종료하도록 준비했고 현재는 OPEN/Draft·병합 전입니다.
+2026-11-07 사용자 요청으로 #2를 **장소 adapter 기반 구현과 MOCK 검증**으로 명확히 했습니다. 아래 미완료 조건을 실제 이슈로 이관했으며, 정책 확정이나 실연동이 완료됐다는 뜻은 아닙니다. 사용자 승인 후 PR #10을 squash merge해 #2만 종료했습니다(`a55de3a`). #12는 최신 main에서 생성한 `feat/12-place-preview`에서 첫 내부 세션 구현을 진행 중입니다.
 
 | 이슈 | 범위 / 상태 | 다음 작업 브랜치 |
 | --- | --- | --- |
-| [#2 REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | 기반 구현·정규화·추천·MOCK/loopback 검증 완료, 병합 대기 | 현재 `feat/2-place-adapter` |
+| [#2 REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | 기반 검증 완료·#10 MERGED·#2 CLOSED | 원격 `feat/2-place-adapter` 삭제 |
 | [#11 REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | 보관/재사용/제3자 제공 조건과 공급자 최종 결정 — OPEN | `docs/11-place-data-policy` |
-| [#12 REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | 서버·화면 계약, DB 잠금 밖 IO·중복·복구 구현 — OPEN | `feat/12-place-preview` |
+| [#12 REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | 서버·화면 계약·IO/중복/복구 — OPEN, [첫 내부 구현](REC03_PREVIEW.md) | 현재 `feat/12-place-preview` |
 | [#13 REC-04](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13) | 실제 TLS/키/IP/쿼터·요청 집계·지역 품질 검증 — OPEN | `feat/13-place-api-validation` |
 
-후속 브랜치는 아직 생성하지 않았습니다. #12의 가상 데이터 설계/동시성 검증은 정책 답변과 병행할 수 있고, 실제 데이터 연결은 #11 조건 해결 후 진행합니다. #13은 #11과 합의된 실행 경계를 선행 조건으로 둡니다. 실제 전화/비용 승인은 별도입니다.
+#12 브랜치는 main 통합 후 생성했고 #11/#13 브랜치는 아직 생성하지 않았습니다. #12의 가상 데이터 설계/동시성 검증은 정책 답변과 병행할 수 있고, 실제 데이터 연결은 #11 조건 해결 후 진행합니다. #13은 #11과 합의된 실행 경계를 선행 조건으로 둡니다. 실제 전화/비용 승인은 별도입니다.
 
 ## 범위와 선택 사항
 
@@ -190,7 +190,7 @@ P4 초기 제안은 자동 재시도 0회, 검색당 요청 1회, 연결 timeout
 
 ## 브랜치와 PR 운영
 
-완료한 기반 구현·MOCK 검증과 후속 범위 정리를 `feat/2-place-adapter` / PR #10에서 통합 준비합니다. P3 서비스 연결 구현은 #12의 새 브랜치에서 진행합니다. 예시 제목은 모두 현재 scope 규칙에 맞습니다.
+완료한 기반 구현·MOCK 검증과 후속 범위 정리를 PR #10으로 squash merge했습니다. 원격 `feat/2-place-adapter`는 삭제했습니다. P3 서비스 연결 구현은 #12의 새 브랜치에서 진행합니다. 예시 제목은 모두 현재 scope 규칙에 맞습니다.
 
 ```text
 docs(recommendation): REC-01 장소 adapter 개발 계획 정리
@@ -199,7 +199,7 @@ feat(recommendation): 장소 응답 정규화와 실패 모델 추가
 test(recommendation): 빈 결과와 사실 만료 경계 검증
 ```
 
-현 CI는 PR 본문에 브랜치 이슈와 일치하는 `Closes #2`를 요구합니다. 사용자 요청으로 실제 후속 #11/#12/#13을 만들고 #2의 완료 범위를 기반 구현·MOCK 검증으로 조정했습니다. PR #10은 `Closes #2`와 `Refs #11`, `Refs #12`, `Refs #13`을 사용합니다. 머지하면 #2만 종료하며 실제 연동의 미완료 조건은 후속 이슈에 남깁니다. 명명/CI/보호 규칙은 변경하지 않았고 이번 정리에서 머지는 실행하지 않았습니다.
+현 CI는 PR 본문에 브랜치 이슈와 일치하는 `Closes #2`를 요구합니다. 사용자 요청으로 실제 후속 #11/#12/#13을 만들고 #2의 완료 범위를 기반 구현·MOCK 검증으로 조정했습니다. PR #10은 `Closes #2`와 `Refs #11`, `Refs #12`, `Refs #13`을 사용합니다. 머지하면 #2만 종료하며 실제 연동의 미완료 조건은 후속 이슈에 남깁니다. 범위 정리 단계에서는 머지를 하지 않았고, 이후 사용자 승인으로 PR #10을 squash merge했습니다. 명명/CI/보호 규칙은 그대로 유지합니다.
 
 ### 코드 변경 뒤 실행할 검증
 
@@ -227,9 +227,9 @@ git diff --check
 - [x] P2 가상 응답 매핑·빈 결과·HTTP 상태별 내부 실패·시각/사실 경계 테스트 통과
 - [x] P3 계약 합의와 IO 경계 구현을 #12로 이관하고 #4/#5 협업·인수 조건 기록 (합의·구현 자체는 미완료)
 - [x] #2의 기반 구현/검증 범위와 미완료 #11/#12/#13을 구분하고 PR #10의 종료 대상 정리
-- [ ] PR #10 최종 검토와 squash merge (이번 정리에서 미실행)
+- [x] 사용자 승인 후 PR #10 최종 검토·squash merge 및 #2 종료 확인 (`a55de3a`)
 
-**현재는 기반 PR #10의 병합 준비 단계입니다.** 정책 답변과 공급자 결정은 #11, #4/#5와의 실제 연동 계약·IO/중복/화면 상태 구현은 #12, 실제 API 검증은 #13으로 진행합니다. [공식 저장 제한](REC01_INTEGRATION.md)에 따라 현재 snapshot에 Kakao 결과를 연결하지 않습니다. #2는 아직 OPEN이며 실제로 머지하기 전까지 수동 종료하지 않습니다.
+**기반 PR #10은 병합 완료이며 #12의 내부 세션 첫 구현을 진행 중입니다.** 정책 답변과 공급자 결정은 #11, #4/#5와의 실제 연동 계약·IO/중복/화면 상태 구현은 #12, 실제 API 검증은 #13으로 진행합니다. [공식 저장 제한](REC01_INTEGRATION.md)에 따라 현재 snapshot에 Kakao 결과를 연결하지 않습니다. #2는 PR #10 병합으로 CLOSED이며 #11/#12/#13은 OPEN입니다. #12는 [REC-03 첫 구현](REC03_PREVIEW.md)을 따릅니다.
 
 ## 2026-11-07 P1과 P2 검증 기록
 
