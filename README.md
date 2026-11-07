@@ -33,6 +33,8 @@ python3 scripts/smoke-test.py
 
 ## 팀원이 처음 읽을 문서
 
+전체 목록과 읽는 순서는 [팀 문서 안내](docs/README.md)에서 확인합니다. [이슈별 상세 작업](docs/ISSUE_GUIDE.md), [기능 명세](docs/FUNCTIONAL_SPEC.md), [ERD·컬럼 정의](docs/ERD.md)를 함께 공유하며, 설계 초안과 미확정 제안은 구현 완료와 구분합니다.
+
 1. [CONTRIBUTING](CONTRIBUTING.md): 브랜치·커밋·PR·코딩 규칙과 완료 기준
 2. [API 계약](api/README.md), [OpenAPI 3.1](api/openapi.json): 차량/전화/서버 공통 계약
 3. [팀 계획](docs/PLAN.md): 5명 작업 분담, 일정, 선행 조건
