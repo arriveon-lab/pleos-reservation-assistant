@@ -1,5 +1,7 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+**최신 범위 정리 (2026-11-07):** #2는 장소 adapter 기반·MOCK 검증의 PR #10 병합 대기입니다. 미완료 정책/공급자 결정은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11), 서버·화면 계약과 IO 구현은 [#12](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12), 실제 API 검증은 [#13](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13)에 이관했습니다. 현재 PR은 Draft이고 이슈는 모두 OPEN이며 머지는 실행하지 않았습니다. 아래 앞선 기록의 “#2 전체 미완료/병합 보류”는 범위 분리 전 상태입니다.
+
 문서 갱신: 2026-11-07 KST. 기존 제품 실행 기록은 2026-11-04이며, 현재 검증 상태의 기준 문서는 `docs/STATUS.md`입니다.
 
 ## 작업 위치와 사용자의 최신 결정
@@ -138,3 +140,71 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - 사용자 명시 요청으로 main의 required_approving_review_count를 1에서 0으로 변경했다. 리뷰 없이 필수 CI 통과 후 squash merge할 수 있다.
 - 필수 CI 3개와 strict, enforce_admins, 선형 이력, 대화 해결, force push/삭제 금지는 유지됨을 API로 확인했다. PR #9의 REVIEW_REQUIRED 차단 해제 확인.
 - CONTRIBUTING·GITHUB_SETUP·PLAN·STATUS를 새 정책에 맞춰 갱신했다. 이 작업은 PR을 자동으로 병합하거나 CI를 우회하는 설정이 아니다.
+
+## 2026-11-07 REC-01 상세 착수 계획
+
+- PR #9는 main `35561ee`로 squash merge되었고 문서 게시 이슈 #8은 종료되었다. REC-01은 별도 OPEN 이슈 #2이며 담당자는 `tiemo0708`로 확인했다.
+- 사용자 선택: 성수·서울숲 주변 음식점, Kakao Local 우선 검토. 공식 API 적합성 비교와 실제 앱 쿼터·저장/재표시 조건 확인 항목을 `docs/REC01_PLAN.md`에 기록했다. 사업자 실제 채택과 사용 조건 검토는 남아 있다.
+- 저장소 지침·기존 브랜치·원격 main을 확인하고 `feat/2-place-adapter`를 생성했다. 상세 계획과 목차·이슈 안내·PLAN·STATUS를 갱신했으며, 이번 변경의 commit/push/PR은 아직 수행하지 않았다.
+- 다음 작업은 P1 MOCK adapter 분리다. 기존 mock-1~mock-3, facts와 TTL, 공개 API·저장 구조를 유지한 뒤 P2 가상 JSON 매핑·실패 테스트로 확장한다. 코드 구현·테스트 실행은 아직 하지 않았다.
+- 실제 HTTP를 현재 `WorkflowService.search()`의 `Store.command()` 안에 넣지 않는다. #4와 트랜잭션 밖 IO·중복 요청·저장 snapshot, #5와 실제 장소/모의 예약 표시를 합의한다.
+- PR naming은 `Closes #2`를 요구하므로 계획만으로 #2를 닫지 않는다. 완료 조건까지 누적하거나 먼저 병합할 범위는 별도 실제 이슈로 분리한다.
+- 실제 장소 API 조회·전화 발신·번호 구매·유료 API 실행 없음. 외부 전화·비용 발생 작업은 기존의 사전 승인 규칙을 유지한다.
+- 문서 6개의 로컬 링크 77개·계획 테스트 ID 16개·코드 블록·개인 절대 경로와 브랜치/제목 규칙·diff 공백 검사를 통과했다. Gradle이나 제품 실행 테스트를 새로 수행한 결과는 아니다.
+
+## 2026-11-07 REC-01 MOCK 분리와 오프라인 검증
+
+- 후속 사용자 요청에 따라 P1과 P2 오프라인 범위를 구현했다. `RecommendationEngine.fixtures()`를 제거하고 `MockPlaceSearchAdapter`와 `MockCandidateFactory`로 조회/가상 사실 생성을 분리했다. WorkflowService는 구체적인 MOCK adapter만 받으며 외부 IO를 추가하지 않았다.
+- 내부 계약은 `PlaceQuery`, `PlaceSummary`, `PlaceSearchResult.Success/Failure`, `PlaceSearchFailure`. 실패 enum은 공개 HTTP 오류 코드가 아니다. `KakaoPlaceMapper`는 HTTP 응답 문자열을 정규화하는 순수 변환기이며 Spring bean·HTTP 클라이언트가 아니다.
+- 가상 Kakao JSON은 `server/src/test/resources/places/kakao-fictional.json`. FD6·필수 식별자·유한한 좌표·숫자·응답 구조/크기·최대 15개를 검사하고 provider ID 중복을 제거한다. 일부 불량 항목은 계수하고 전부 불량인 응답은 정상 0건과 구분한다. 실제 연락처·API 키 없음.
+- 추천 엔진에 scope·ETA·모드·관측/만료 시각·값 타입 검사를 추가했다. `select()`는 전체 후보 평가 후 최대 3곳을 선택하며 조회 결과를 가상 장소로 채우지 않는다. 기존 mock-1~3과 가상 facts/TTL, 공개 API·schema·migration·의존성은 유지했다.
+- `./gradlew -PincludeAndroid=false format verify` 성공. 5개 suite의 **104개 테스트 실행, 실패/오류/skip 0**. 기존 WorkflowTest 25개 + 신규 79개. 리포트는 `server/build/test-results/test/`, 로컬 요약은 Git 제외 `work/rec01-tests.json`.
+- `work/contract-venv/bin/python scripts/smoke-test.py --check-contract` 성공. 패키징 JAR의 MOCK HTTP·OpenAPI 대조·Flyway/H2 재시작·LIVE 시작 차단을 확인했다. Git 제외 `work/rec01-smoke.log`에 기록했다. Android와 원격 CI를 이번에 실행한 결과는 없다.
+- `docs/REC01_PLAN.md`의 구현 상태·테스트 연결과 STATUS·PLAN·ISSUE_GUIDE·FUNCTIONAL_SPEC·문서 목차를 갱신했다. 현재 로컬 작업 브랜치는 `feat/2-place-adapter`, 이번 변경의 commit/push/PR은 아직 하지 않았다.
+- 다음 작업: P0 저장/재표시·실제 앱 무료 적용 조건 확인, P3 #4와 IO/잠금·중복 실행·실패 응답·저장 snapshot, #5와 실제 장소/모의 예약 표시 합의. `TIMEOUT`은 실패 종류만 정의했으며 transport 처리는 P4에서 구현·검증한다. #2 완료 처리 전 이 남은 항목을 확인한다.
+- 실제 장소 API 조회·전화 발신·번호 구매·유료 API 실행 없음. 실전화와 비용 발생 작업은 대상·목적·예상 비용·상한을 제시해 별도 명시적 승인을 받는다.
+
+## 2026-11-07 REC-01 HTTP 경계와 정책 검토
+
+- `docs/REC01_INTEGRATION.md`에 공식 Kakao FAQ와 2026-08-20 지도/로컬 담당 답변의 응답·가공 데이터 저장 제한을 기록했다. 일반 캐시 조항으로 예외를 가정하지 않는다. 현재 H2 검색 payload와 commands 응답 snapshot에는 실제 Kakao 결과를 연결하지 않는다.
+- 사용자는 팀 Kakao 앱이 아직 없다고 확인했다. 앱 생성/무료 배지·쿼터 확인 절차, #4·#5 검토안과 사업자 문의 문안을 준비했으며 앱 생성·약관 동의·키 발급·문의 발송은 수행하지 않았다.
+- `KakaoPlaceSearchAdapter`를 구현했다. Spring 미등록·실제 workflow 미연결이며 고정 Kakao HTTPS endpoint 또는 package-local loopback 테스트 endpoint만 허용한다. 연결/전체 응답 timeout, 취소, redirect 차단, 수신 중 256KiB 제한, UTF-8 검증과 내부 실패 분류를 제공한다. 새 의존성은 없다.
+- `KakaoPlaceSearchAdapterTest` 26개에서 합성 목적지 3개, 정상/빈 응답, 상태 오류, header/body timeout, 진행 중 취소·인터럽트 보존, 연결 실패, 크기·인코딩·키/endpoint 설정을 127.0.0.1 가상 서버로 검증했다. 총 **130개 테스트 실행, 실패/오류/skip 0**, 6개 suite. `format verify`와 패키징 JAR의 MOCK HTTP/계약·H2 재시작·LIVE 차단도 통과했다.
+- 로컬 증거는 Git 제외 `work/rec01-http-verify.log`, `work/rec01-http-tests.json`, `work/rec01-http-smoke.log`. Android·실제 TLS·키·IP 제한·무료 쿼터·지역 데이터 품질을 확인한 결과가 아니다.
+- 앱 수준의 재시도/페이지 확장은 없지만 JDK transport의 연결 장애 재전송은 별도로 통제·검증해야 한다. 이를 모든 장애에서 정확히 1건만 과금되는 보장으로 취급하지 않는다. 전역 JVM·셸 설정은 변경하지 않았다.
+- 작업 브랜치는 `feat/2-place-adapter`. 현재 범위는 초안 PR로 검토하며 #2 완료나 main 병합으로 간주하지 않는다. 남은 작업은 팀 앱 준비, 보관·제3자 제공 범위 해결, #4·#5 실제 연동 계약, transport 재전송 제어와 실제 환경 검증이다.
+- 실제 Kakao 요청·전화 발신·번호 구매·유료 API 실행은 0회다. 실제 비용 발생과 발신은 기존 사전 승인 규칙을 따른다.
+
+## 2026-11-07 Kakao 앱 생성과 무료 쿼터 설정
+
+- 사용자 개인 계정 로그인을 확인한 뒤 앱 이름 ArriveOn, 운영 단체 ArriveOn Lab, 자동차/교통수단 카테고리로 생성했다. 생성 화면의 운영정책 준수 확인과 앱 생성 시 키 발급에 대해 사용자 명시 동의를 받았다.
+- 카카오맵 활성화 시 첫 무료 쿼터 대상이 변경 불가하다는 경고를 제시하고 사용자 별도 동의 후 ON으로 설정했다. 이 앱에 일간 무료 쿼터가 제공된다는 안내·배지를 확인했다.
+- 유료 API 화면에서 카카오맵·카카오톡 공유 모두 사용 안 함을 확인했다. 비즈월렛·결제 설정 없음. 일간 쿼터 화면에는 조회 기간 내 호출 없음이 표시됐다. 키 값은 열람·복사·환경 파일 저장하지 않았다.
+- 비밀 키 없는 앱 ID/관리 URL·설정 요약은 로컬 Git 제외 work/kakao-setup-result.json, 화면은 work/kakao-setup-complete.png 및 work/kakao-paid-disabled.png에 있다. 개인 계정 이메일·다른 앱 정보·캡처·키는 공개 저장소에 넣지 않는다.
+- 앞선 구현은 4931126으로 커밋·업로드했고 Draft PR #10을 생성했다. 서버/계약·Android·PR naming CI 3개가 통과했으며 #2는 OPEN이다. 이번 설정 결과는 같은 작업 브랜치의 문서 변경으로 이어간다.
+- 다음은 보관·재사용·제3자 제공 범위 해결, #4/#5 실제 연동 계약, transport 재전송 제어와 실제 환경 검증이다. 앱 생성/활성화가 데이터 저장 허가나 서버 연동 성공을 뜻하지 않는다. 외부 문의는 초안만 준비했으며 보내지 않았다.
+- 제품 코드·API·migration 변경 없이 문서만 갱신했다. 실제 장소 API 요청·전화 발신·유료 작업은 0회다.
+
+## 2026-11-07 Kakao 공개 문의 등록과 내비게이션 역할
+
+- 사용자에게 정확한 공개 대상·앱 이름/App ID·기능 설명·질문 4개를 제시하고 ‘문의 문안 그대로 등록’ 승인을 받은 뒤 DevTalk에 게시했다: https://devtalk.kakao.com/t/local-api/152647 . 게시 제목·본문이 승인 문안과 일치함을 확인했다. 키·계정 이메일·실제 연락처·첨부파일은 포함하지 않았다.
+- 공개 문의는 답변 대기이며 저장·제3자 제공 허가를 받은 상태가 아니다. 후속 답변의 적용 범위를 확인한 뒤 실제 연동 경계를 결정한다. 공개 화면은 Git 제외 work/kakao-policy-posted.png에 보관했다.
+- 사용자가 Pleos 내부 지도 사용 여부를 물어 공식 NaviHelper 3.0.5 안내와 배포 SDK 공개 메서드를 재확인했다. 내비게이션·목적지·ETA는 Pleos, 주변 식당 후보는 별도 장소 adapter라는 현재 설계를 INTEGRATIONS에 명시했다. Kakao 지도 SDK/지도 화면 교체는 구현하지 않았다. 일반 음식점 후보 목록 검색 메서드는 이번 NaviHelper 확인 범위에서 찾지 못했으며, Pleos 전체 기능 부재로 단정하지 않는다.
+- 앱 설정 문서는 f4a1001으로 업로드됐고 서버·Android·PR naming CI가 통과했다. 이번 후속 문서도 같은 Draft PR #10에 이어가며 #2는 OPEN이다. 소스·API·DB 변경, 실제 장소 요청·전화·유료 작업은 없다.
+
+
+## 2026-11-07 후속 인계: 재전송 제어와 P3 계약 검토
+
+- 같은 `feat/2-place-adapter` / Draft PR #10에서 진행했습니다. 실제 adapter 생성 시 두 JVM 시작 옵션(`-Djdk.httpclient.disableRetryConnect=true`, `-Djdk.httpclient.redirects.retrylimit=1`)을 검사하며 HTTP/1.1을 명시합니다. 속성을 늦게 추가하는 방식은 거부합니다. 기본 MOCK 서버는 이 adapter를 생성하지 않으므로 기존 실행 명령을 유지합니다.
+- `KakaoTransportStartupTest` 신규 14개: 시작 옵션 누락/오류/충돌·늦은 변경·정상 생성, 정상 빈 응답·응답 전/본문 중단·TCP 연결 재사용 후 단절. 모두 별도 JVM과 127.0.0.1 가상 서버이며, 기존 130개와 합해 총 144개 실패/오류/skip 0입니다. verify와 JAR smoke/계약·H2 재시작 검증 통과. 실제 TLS/사업자 요청 수 보장으로 확대 해석하지 않습니다.
+- `docs/REC01_CONTRACT_DRAFT.md`는 #3/#4/#5 검토용 제안입니다. 외부 미리보기/저장 예약 분리, IO·중복·목적지 변경·출처/모드·오류/화면 상태·인수 조건을 작성했으나 API/DB에 적용하지 않았습니다.
+- 정책 문의는 새로고침 후에도 답변 없음. Kakao 검색·비용·전화 0회. 다음은 사업자 답변과 #4/#5 계약 검토를 반영한 실행 경계 구현이며 #2를 완료하거나 PR을 병합하지 않습니다. 실제 호출 전 목적/횟수/상한, 무료 잔량과 유료 꺼짐을 다시 확인합니다.
+
+
+## 2026-11-07 이슈·브랜치·PR 범위 정리
+
+- 사용자 요청으로 #2 제목을 “REC-01: 장소 adapter 기반 구현과 MOCK 검증”으로 조정했습니다. 원래의 미완료 조건은 #11(정책/공급자), #12(계약·IO/중복/복구), #13(실계정 API 검증)으로 실제 생성해 이관했습니다. 세 이슈 모두 tiemo0708 담당이며 OPEN입니다. #4/#5의 기존 범위/배정은 바꾸지 않았습니다.
+- 현재 브랜치 `feat/2-place-adapter`를 유지합니다. PR #10은 “feat(recommendation): 장소 adapter 기반과 MOCK 검증 추가”, `Closes #2`와 `Refs #11/#12/#13`으로 정리했습니다. 이번 작업은 머지가 아니며 PR은 Draft입니다.
+- 후속 브랜치 계획: `docs/11-place-data-policy`, `feat/12-place-preview`, `feat/13-place-api-validation`. 아직 생성하지 않았습니다. #2 통합 뒤 최신 main에서 해당 번호의 브랜치를 만듭니다.
+- 후속 이관 시 완료 범위·원래 범위·담당/의존성·Refs 연결을 함께 기록하도록 CONTRIBUTING과 PR 템플릿을 보강했습니다. 기존 Closes 규칙·CI·main 보호는 변경하지 않았습니다.
+- 제품 코드 변경은 없습니다. 기존 144개 테스트·JAR smoke 증거를 유지하며 이번에는 명명·문서 링크·diff 정적 검사를 수행합니다. 실제 Kakao 조회·전화·비용 0회와 MOCK/LIVE 차단을 유지합니다.

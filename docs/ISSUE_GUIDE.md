@@ -1,6 +1,6 @@
 # Pleos 예약 비서 이슈별 상세 해설
 
-소스 대조: 2026-11-06 · GitHub 이슈 상태 재확인 및 공유본 갱신: 2026-11-07 KST. 대상: 5명 개발팀. GitHub 이슈 #1–6의 현재 내용과 소스 `f4f98732e243ddd7b806c3f91d0cef03e001aaec`를 기준으로 정리했습니다. **#1–5는 OPEN, #6은 CLOSED이며 담당자는 모두 미배정**입니다. 아래 세부 작업과 역할 분리는 팀 검토용 제안이고, 이슈가 완료되었다는 뜻은 아닙니다.
+소스 대조: 2026-11-06 · 공유본 갱신: 2026-11-07 KST. 대상: 5명 개발팀. 초기 공유 시 GitHub #1–5는 OPEN·미배정, #6은 CLOSED였으며 소스 `f4f98732e243ddd7b806c3f91d0cef03e001aaec`를 기준으로 정리했습니다. 이후 #2는 OPEN·`tiemo0708` 배정으로 재확인했습니다. 다른 이슈의 최신 배정은 GitHub에서 확인합니다. 아래 세부 작업과 역할 분리는 이슈가 완료되었다는 뜻이 아닙니다.
 
 [기능 명세서](FUNCTIONAL_SPEC.md) · [ERD와 컬럼 정의](ERD.md) · [ERD 관계 개요](ERD.md#2-핵심-관계) · [GitHub 이슈 목록](https://github.com/arriveon-lab/pleos-reservation-assistant/issues)
 
@@ -11,13 +11,13 @@
 | GitHub 이슈 | 계획 코드 | 담당 역할 | 핵심 질문 | DB 관여 | 현재 상태 |
 | --- | --- | --- | --- | --- | --- |
 | [#1](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1) | VEH-01 | 차량/Pleos | 목적지와 ETA를 신뢰할 수 있는 값으로 받을 수 있는가? | 여정·검색 입력 계약 참여, 직접 DB 접속 없음 | probe APK 빌드·Lint 기록 있음, 기기 미검증 |
-| [#2](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | REC-01 | 추천/장소 | 어떤 후보를 제시하고 어떤 정보가 부족한지 판단하는가? | 장소·검색 후보·관측 정보 정의 | 가상 후보·규칙 기반 평가 구현, 실장소 미연동 |
+| [#2](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | REC-01 | 추천/장소 | 어떤 후보를 제시하고 어떤 정보가 부족한지 판단하는가? | 장소·검색 후보·관측 정보 정의 | 기반/MOCK 검증 완료·병합 대기, 실연동은 #11–13 |
 | [#3](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | VOICE-01 | AI 전화 | 전화로 확인한 말을 검증 가능한 결과로 바꾸는가? | 통화·이벤트·문의 사실 정의 | 네트워크 없는 MockCallAdapter만 구현 |
 | [#4](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/4) | BE-01 | 서버/예약 | 누구의 요청인지 확인하고 중복·모순 없이 예약을 저장하는가? | ERD·migration·트랜잭션·무결성 총괄 | 단일 사용자 MOCK 상태 처리 구현, 운영 경계 미구현 |
 | [#5](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/5) | UX-01 | 차량 UI/통합/시연 | 사용자가 조건·승인·결과를 주행 상황에 맞게 이해하는가? | API로 읽고 쓰기, 직접 DB 접속 없음 | 제품 UI 미구현, CLI 시연만 있음 |
 | [#6](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/6) | 초기 설정 | 저장소/협업 기반 | 팀이 같은 규칙으로 빌드하고 리뷰할 수 있는가? | 공통 개발 환경 규칙 | 완료 기록, 후속 기능의 포괄 이슈가 아님 |
 
-`#4`는 GitHub 실제 번호이고 `BE-01`은 계획 분류 코드입니다. `FR-01` 등은 기능 명세 내부 식별자로 GitHub 번호가 아닙니다. `dev-1`이나 팀원별 고정 번호는 사용하지 않습니다. 브랜치는 `feat/1-navi-probe`, `feat/2-place-adapter`, `feat/3-call-normalizer`, `feat/4-owner-validation`, `feat/5-vehicle-ui`처럼 **실제 이슈 번호**를 사용합니다. 여기에 적은 브랜치는 예시이며 생성하지 않았습니다.
+`#4`는 GitHub 실제 번호이고 `BE-01`은 계획 분류 코드입니다. `FR-01` 등은 기능 명세 내부 식별자로 GitHub 번호가 아닙니다. `dev-1`이나 팀원별 고정 번호는 사용하지 않습니다. 브랜치는 `feat/1-navi-probe`, `feat/2-place-adapter`, `feat/3-call-normalizer`, `feat/4-owner-validation`, `feat/5-vehicle-ui`처럼 **실제 이슈 번호**를 사용합니다. `feat/2-place-adapter`는 REC-01 착수용 로컬 브랜치로 생성했으며 나머지는 명명 예시입니다.
 
 ## 2. #1 차량 목적지와 ETA 검증
 
@@ -51,37 +51,44 @@
 
 SDK 실행 환경이 없으면 로그 양식과 MOCK 입력으로 #2/#5 개발을 지원할 수 있지만 #1의 기기 검증 완료를 대신하지 못합니다.
 
-## 3. #2 장소 데이터와 추천
+## 3. #2 장소 adapter 기반과 후속 연동
 
-원제: **REC-01: 시범 지역과 장소 데이터 adapter 설계**. 주 담당: 추천/장소 1명. 협업: #3 문의 사실, #4 저장·계약, #5 후보 화면. 연결 기능: FR-03, FR-04, FR-05.
+현재 제목: **REC-01: 장소 adapter 기반 구현과 MOCK 검증**. 원제는 “시범 지역과 장소 데이터 adapter 설계”입니다. 담당: `tiemo0708`. 협업: #3 문의 사실, #4 저장·계약, #5 후보 화면. 연결 기능: FR-03–05.
 
-### 해야 하는 이유와 경계
+### 범위 분리와 현재 상태
 
-후보의 음식 취향 점수가 높아도 아이 동행이나 주차 같은 필수 조건을 만족하지 못하면 예약 대상으로 제시하면 안 됩니다. 알려진 불충족과 아직 모르는 정보도 구분해야 합니다. 현재 성수동 이름의 3개 후보는 가상 데이터이며, 지역·장소 사업자가 선정된 상태가 아닙니다.
+2026-11-07 사용자 요청으로 기존 #2를 검증된 기반 구현 범위로 명확히 하고, 원래의 미완료 조건은 아래 후속 이슈로 이관했습니다. #2는 OPEN·PR #10 Draft·병합 대기이며, 이 정리로 실제 연동이 완료되거나 이슈가 닫힌 것은 아닙니다.
 
-### 세부 작업
+| 이슈 | 담당 / 범위 | 선행 조건과 브랜치 |
+| --- | --- | --- |
+| [#2 REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | `tiemo0708` / adapter·정규화·추천·MOCK/loopback 검증 | 현재 `feat/2-place-adapter`, PR #10에서 이 이슈만 종료 |
+| [#11 REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | `tiemo0708` / 데이터 보관·재사용·제공 조건, 공급자 최종 결정 | 정책 답변·대안 근거, `docs/11-place-data-policy` |
+| [#12 REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | `tiemo0708`, #4/#5 협업 / 계약·트랜잭션 밖 IO·중복·복구 | 기반 main 통합 후 가상 구현 가능, 실제 연결은 #11 조건 필요. `feat/12-place-preview` |
+| [#13 REC-04](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13) | `tiemo0708` / 실제 TLS/키/IP/쿼터·지역 품질 검증 | #11과 실행 경계·호출 상한 확인 후. `feat/13-place-api-validation` |
 
-1. 시범 지역과 사업자를 비교하고 제공 필드·저장/재표시 조건·쿼터·비용 근거를 남깁니다. 유료 호출은 승인 후 별도 실행합니다.
-2. 장소 식별자, 상호, 음식 종류와 시점별 사실을 분리하는 adapter 계약을 작성합니다.
-3. `eligible`, `bookable`, `missing`, `exclusionReasons`의 의미를 보존합니다. 필수 조건 → 미확인 항목 수 → 취향 점수 순으로 현재 규칙을 유지하거나 변경 근거를 제시합니다.
-4. `seatsAvailable`, `reservationAvailable`, 실제 예약 확정을 다른 정보로 다룹니다. NOW 대기를 ARRIVAL 대기로 복사하지 않습니다.
-5. 조회 실패·0건·3건 미만·중복 장소·정보 만료를 정의합니다. 실제 결과가 부족하면 가짜 후보로 채우지 않습니다.
-6. #3의 문의 결과를 받아 관측 시간·적용 ETA·유효기간을 유지하고 후보를 다시 평가합니다.
+후속 브랜치는 명명 계획이며 아직 생성하지 않았습니다. #4/#5의 기존 담당 범위나 이슈 배정을 변경하지 않았습니다. #12는 계약/서버 경계를 맡고 제품 UI 자체는 #5가 담당합니다.
 
-**입력 → 출력:** 목적지·ETA·동행 조건·취향 → 최대 3개 후보 제안, 후보별 적격/미확인/제외 사유·출처. 현재 fixture는 항상 3개이며 “최대 3개·빈 결과”는 실제 adapter 도입 시 목표입니다.
+### #2에서 구현·검증한 것
 
-**관련 DB:** `places`, `search_candidates`, `candidate_facts`를 주로 정의하고 `searches.request_snapshot`을 #4와 협의합니다. 지금은 후보·사실이 `searches.payload` 안에 있습니다. #2가 별도 공유 DB에 임의 테이블을 만들지 않습니다.
+- 성수·서울숲 음식점과 Kakao 우선 검토 선택, 반경 1km·합성 목적지 3개 및 공식 저장 제한 기록
+- 조회 adapter·가상 사실 생성 분리, 가상 Kakao JSON 정규화·실패 분류
+- 전체 후보 평가 후 최대 3곳 선택, 필수 조건·미확인·만료·NOW/ARRIVAL·ETA 경계
+- HTTP timeout·취소·redirect·응답 크기/UTF-8·JVM 시작 옵션과 연결 단절 시 재전송 제한의 loopback 검증
+- 총 144개 테스트 실패/오류/skip 0, JAR MOCK HTTP·OpenAPI·H2 재시작·LIVE 차단 통과
 
-**주요 파일:** [추천 엔진](../server/src/main/java/ai/pleos/assistant/RecommendationEngine.java), [모델](../server/src/main/java/ai/pleos/assistant/Model.java), [검색 예제](../api/examples/search.json).
+현재 제품은 MOCK만 주입받고 공개 API/Model·migration·의존성 변경은 없습니다. 기본 fixture는 가상 3곳이며 0·1·2·5개 입력에서 최대 3개 반환도 검증했습니다. 실제 장소에 MOCK facts를 붙이지 않습니다.
 
-### 완료 조건
+**입력 → 출력:** 목적지 좌표·ETA·동행 조건·취향 → 최대 3개 가상 후보, 적격/미확인/제외 사유와 출처. 실제 Kakao 식당 결과는 아직 연결하지 않았습니다.
 
-- [ ] 사업자/지역 선정 근거와 사용 조건이 있다.
-- [ ] 저장 가능한 필드·조회 실패·빈 결과를 포함하는 adapter 계약이 있다.
-- [ ] 필수 조건 불충족/미확인/만료/NOW·ARRIVAL 혼동 테스트 기준을 충족한다.
-- [ ] 실제 장소와 MOCK fixture가 구분되고 확인하지 않은 값을 생성하지 않는다.
+**관련 DB:** 현재 `searches.payload`와 `commands` 응답 snapshot을 유지합니다. 제안 `places`·`search_candidates`·`candidate_facts` migration과 실제 데이터 보관은 #4/#11/#12가 조율합니다.
 
-현 #2의 완료 조건은 사업자·adapter 설계와 검증 준비 중심입니다. 실제 연결 구현이 커지면 별도 이슈로 나누고 이슈 번호는 생성 후 연결합니다.
+**주요 문서:** [상세 계획](REC01_PLAN.md), [연동 검토](REC01_INTEGRATION.md), [서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md). 주요 코드: [추천 엔진](../server/src/main/java/ai/pleos/assistant/RecommendationEngine.java), [장소 adapter](../server/src/main/java/ai/pleos/assistant/PlaceSearchAdapter.java).
+
+### 이번 완료 범위와 실행 제한
+
+#2는 위 기반 구현·검증·제약 기록과 후속 이슈 이관으로 범위를 정리했습니다. PR #10은 `Closes #2`만 사용하고 #11/#12/#13은 `Refs`로 연결합니다. 정책 확정·실제 연결·실계정 검증을 완료로 바꾸지 않았으며, 각 후속 이슈에 별도의 완료 조건이 있습니다.
+
+ArriveOn 앱·무료 쿼터 설정과 [정책 문의](https://devtalk.kakao.com/t/local-api/152647) 등록은 완료했고 답변 확인은 #11에서 이어갑니다. 키 값 복사·실제 Kakao 조회·전화·유료 실행 0회입니다. Pleos 내비·ETA와 외부 식당 데이터의 역할은 [INTEGRATIONS](INTEGRATIONS.md#내비게이션과-장소-검색의-역할)를 따릅니다.
 
 ## 4. #3 AI 전화와 결과 정규화
 

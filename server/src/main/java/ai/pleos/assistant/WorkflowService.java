@@ -13,13 +13,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class WorkflowService {
   private final Store store;
   private final RecommendationEngine recommendations;
+  private final MockPlaceSearchAdapter places;
+  private final MockCandidateFactory candidates;
   private final MockCallAdapter calls;
   private final Clock clock;
 
   public WorkflowService(
-      Store store, RecommendationEngine recommendations, MockCallAdapter calls, Clock clock) {
+      Store store,
+      RecommendationEngine recommendations,
+      MockPlaceSearchAdapter places,
+      MockCandidateFactory candidates,
+      MockCallAdapter calls,
+      Clock clock) {
     this.store = store;
     this.recommendations = recommendations;
+    this.places = places;
+    this.candidates = candidates;
     this.calls = calls;
     this.clock = clock;
   }
@@ -44,8 +53,11 @@ public class WorkflowService {
           s.id = id();
           s.createdAt = clock.instant();
           s.request = request;
-          s.candidates = recommendations.fixtures(request);
-          recommendations.rank(s);
+          // MOCK is local-only. A network adapter requires a separate transaction/idempotency
+          // design.
+          s.candidates =
+              candidates.create(places.search(PlaceQuery.forDestination(n.destination())));
+          recommendations.select(s);
           store.insertSearch(s);
           return s;
         });

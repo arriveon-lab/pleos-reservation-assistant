@@ -4,6 +4,8 @@
 
 2026-11-07 공유 문서 정리: [문서 목차](README.md), [이슈별 상세 작업·병행 개발](ISSUE_GUIDE.md), [기능 명세](FUNCTIONAL_SPEC.md), [ERD](ERD.md)를 추가했습니다. 아래 기존 계획과 별도로 [제품 방향·다중 예약·지연 대응 제안](DESIGN_PROPOSALS.md)을 검토하며, 해당 제안의 MVP 포함 여부는 미확정입니다.
 
+2026-11-07 REC-01 진행: #2 담당자는 `tiemo0708`이며, 사용자가 성수·서울숲 음식점과 Kakao Local 우선 검토를 선택했습니다. [REC-01 상세 계획](REC01_PLAN.md)의 MOCK 분리와 가상 Kakao 응답 매핑·실패 테스트를 구현했습니다. HTTP adapter의 loopback 검증을 더해 서버 테스트 144개와 MOCK HTTP/계약·H2 재시작 검증을 통과했습니다. JVM 시작 옵션 검사·연결 단절 시 재전송 방지를 검증하고 [서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md)을 준비했습니다. [실제 연동 검토](REC01_INTEGRATION.md)의 공식 저장 제한에 따라 H2 snapshot에는 실제 결과를 연결하지 않습니다. 사용자 동의 후 ArriveOn 앱과 카카오맵 무료 쿼터 설정을 완료했습니다. 사용자 요청으로 #2를 기반/MOCK 검증의 병합 범위로 정리했습니다. 미완료 정책·공급자 결정은 #11, 서버/화면 계약·IO 구현은 #12, 실제 API 검증은 #13에서 이어갑니다. 아직 머지는 실행하지 않았습니다.
+
 ## 목표와 전체 흐름
 
 목적지·ETA·오늘 동행자의 필수 조건·직접 입력한 취향으로 식당 3곳을 비교하고, 결정에 필요한 누락 정보를 전화로 확인한 뒤 사용자 선택과 매장 수락을 거쳐 예약을 확정합니다.
@@ -36,7 +38,10 @@
 | 이슈 후보 | 담당 1명 | 현재 기반 | 다음 완료 조건 | 선행 입력 |
 | --- | --- | --- | --- | --- |
 | [#1 / VEH-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1) | 차량/Pleos | `android/probe`, API 계약 | 목적지/TripInfo 원시값, 갱신 주기, 권한/백그라운드/도착 이벤트 로그 | SDK 신청·Pleos Emulator·Android SDK |
-| [#2 / REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | 추천/장소 | 가상 후보·조건 우선·사실 만료 | 시범 지역 결정, 공식 장소 데이터 adapter, 저장/재표시 조건 기록 | 지역·사업자 키·약관 |
+| [#2 / REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | 추천/장소 | adapter·정규화·MOCK/loopback 144개 검증 | 기반 PR #10 최종 검토·squash merge | 필수 CI·범위/문서 정리 |
+| [#11 / REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | 추천/장소 (`tiemo0708`) | 공식 저장 제한·문의 등록 | 사용/보관/제공 조건과 공급자 최종 결정 | 사업자 답변·대안 근거 |
+| [#12 / REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | 추천/장소 (`tiemo0708`), #4/#5 협업 | 서버·화면 계약 초안 | 트랜잭션 밖 IO·중복/복구·출처/모드 계약과 가상 검증 | 기반 main 통합, 실제 연결은 #11 조건 |
+| [#13 / REC-04](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13) | 추천/장소 (`tiemo0708`) | 독립 HTTP 경계·무료 앱 설정 | 실제 TLS/키/IP/쿼터·지역 품질 검증 | #11·실행 경계·호출/비용 상한 |
 | [#3 / VOICE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | AI 전화 | MockCallAdapter·outcome 계약 | 업체 선정 근거, 한국 발신/음성 PoC, 정규화/서명 검증 | 계정·발신번호·협의 수신번호·비용 승인 |
 | [#4 / BE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/4) | 서버/예약 | 상태 전이·멱등성·H2 | 사용자/여정 소유권, UNKNOWN 대조, timeout/outbox, 운영 DB 결정 | 팀 DB 경험·운영 환경 |
 | [#5 / UX-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/5) | UX/통합/시연 | CLI 모의 시연·실패 시나리오 | 후보3개/명시적 선택/수락 전후/변경 미확인 화면, 주행 제한, 영상 | emulator·CarUxRestrictions·서명 계획 |
@@ -52,7 +57,7 @@
 | A. 팀 기반 | main, Gradle, 규칙, 계약, CI, 조직/리뷰 권한 | 공개 원격·첫 커밋·원격 Verify 확인 | 팀원이 verify 재현, 담당자·리뷰 권한 배정 |
 | B. 핵심 연동 검증 | Android SDK·Pleos probe, 전화 사업자·한국어 품질·비용 검토 | 빌드 SDK 설치·debug APK/Lint 확인, Pleos 기기 미검증, 전화 미선정 | 목적지/ETA 로그, 승인된 통화 PoC 또는 차단 근거 |
 | C. 차량 UI | 조건 입력, 후보 3개, 선택/승인, 결과·실패 화면, 주행 제한 | 미구현 | MOCK API와 화면 연동, 주행 제한별 동작 확인 |
-| D. 장소·전화 연결 | 공식 장소 데이터, 누락 정보 선별, AI 고지·문의·예약 대화, 결과 정규화 | fixture/모의 결과만 구현 | 출처/유효기간 유지, 한국어 시간·비용·부정표현 대조 |
+| D. 장소·전화 연결 | 공식 장소 데이터, 누락 정보 선별, AI 고지·문의·예약 대화, 결과 정규화 | MOCK adapter 분리·가상 Kakao 응답 매핑 검증, 장소/전화 실연동 전 | 출처/유효기간 유지, 한국어 시간·비용·부정표현 대조 |
 | E. 실제 예약 통합 | 사용자 인증·소유권, 승인 증빙, allowlist/비용 상한, webhook 서명, outbox/timeout, UNKNOWN 대조 | 예약 상태 테스트 완료, 운영 경계 미구현 | 수락/거절/단절/중복 각각 실험, 중복 예약 없음 |
 | F. 1차 산출물 | 기획서·전원 서명, release APK, GitHub 접근, 영상 | 코드/문서만 준비 | 실제/모의 기능 표시, 설치·링크 검수, 기한 내 제출 |
 | G. PT 안정화 | 실제 동작 앱, 차량 UX, 장애 복구, 증거 정리 | 예정 | 다른 팀원이 환경부터 시연까지 재현 |
@@ -78,14 +83,14 @@
 
 ## 1차 MVP와 후속 범위
 
-1차: 한 지역·식당, 후보 3곳, 명시적 동행 조건·직접 취향, 결정에 필요한 누락 정보 문의, 사용자 선택, 명시적 매장 수락. 현재 장소 fixture는 시범 지역 합의를 의미하지 않습니다.
+1차: 한 지역·식당, 후보 최대 3곳, 명시적 동행 조건·직접 취향, 결정에 필요한 누락 정보 문의, 사용자 선택, 명시적 매장 수락. 시범 지역은 성수·서울숲 음식점으로 선택했으며, 현재 장소 fixture는 실제 지역 검색 결과가 아닙니다.
 
 후속: 지속 ETA 지연 감지→허용 변경, 개인화 학습, 카페/체험 확대. 현재 서버의 변경 API는 정책·원 예약 보존을 검증하기 위한 모의 수동 명령입니다. 자동 ETA 변경 판단은 구현되지 않았습니다. 도입 시 5분 지연 임계·2분 지속·관측 공백 시 초기화·10분 재통화 간격을 **실험 초기값**으로 검토하고 테스트로 고정합니다. 실차 관측 전 제품 기준으로 확정하지 않습니다.
 
 ## 제출 전 필요한 결정
 
 - 팀원 GitHub ID, 대표자, 참가 부문, 소스 라이선스. GitHub 조직은 ArriveOn Lab, 저장소는 Public으로 생성했으며 공모전 제출용 팀명은 별도 확정
-- 지역/업종·전화 사업자·장소 데이터 사업자·DB 경험·테스트 기기
+- 성수·서울숲 시범 지역의 테스트 목적지·반경, Kakao 사용 조건·최종 채택, 전화 사업자·DB 경험·테스트 기기
 - 비용 승인 주체, 번호 allowlist, 최대 통화 수/분, 로그 보관·삭제 범위
 - 실제/모의 구분이 드러나는 시연과 문서. 전화 예약 자체를 최초라고 주장하지 않음
 

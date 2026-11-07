@@ -2,7 +2,21 @@
 
 기준일 2026-11-04 KST. 문서/소스 확인은 실기기·계정별 실행 성공을 의미하지 않습니다.
 
+2026-11-07 장소 연동 추가 검토: [REC-01 실제 연동 검토](REC01_INTEGRATION.md)에 Kakao 저장 제한과 무료 앱 준비 절차를 기록했습니다. HTTP adapter는 loopback 가상 서버로 검증했으며 제품 검색은 MOCK입니다. 후속 사용자 동의로 ArriveOn 앱 생성·카카오맵 활성화·일간 무료 쿼터 제공·유료 API 사용 안 함을 확인했습니다. 키 값 복사·실제 데이터의 H2 저장·장소 API 요청은 수행하지 않았습니다.
+
 ## Pleos
+
+### 내비게이션과 장소 검색의 역할
+
+현재 설계는 Pleos 내장 내비게이션을 길안내·목적지·ETA 연동에 사용하고, 목적지 주변 음식점 후보 데이터는 별도 장소 adapter로 받습니다. 카카오맵 활성화는 Local REST API 준비이며 차량 지도를 Kakao 지도 화면으로 교체하는 구현이 아닙니다.
+
+| 기능 | 담당 경계 | 현재 검증 수준 |
+| --- | --- | --- |
+| 길안내·목적지·ETA | Pleos Navi Service와 NaviHelper | 3.0.5 probe 빌드·공개 API 확인. 기기 실행·ETA 시간 기준 미검증 |
+| 주변 음식점 후보 목록 | REC-01 장소 adapter, Kakao Local 우선 검토 | 계정 무료 설정·loopback HTTP 검증. 실제 장소 요청·제품 연결 전 |
+| 우리 앱의 화면 | 차량 조건 비교·명시적 승인·예약 결과 | 제품 UI 미구현. Android Kakao 지도 SDK/지도 렌더러는 도입하지 않음 |
+
+공식 [NaviHelper 3.0.5 안내](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/intro)는 목적지·경유지·경로·내비 정보·Navigation 화면 요청을 설명합니다. 같은 버전의 배포 SDK 공개 메서드도 대조했으며 일반 음식점 후보 목록 검색 메서드는 이번 확인 범위에서 찾지 못했습니다. 새로운 공식 POI API가 확인되면 사용 조건·가용성을 검토해 장소 adapter의 공급자로 비교할 수 있습니다.
 
 ### API 선택 정책과 가용성
 
