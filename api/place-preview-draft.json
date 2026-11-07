@@ -1,0 +1,1188 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Place preview — experimental MOCK contract draft",
+    "version": "0.1.0-draft",
+    "description": "Default disabled (404). Opt-in app.place-preview.enabled=true is MOCK-only and requires a trusted Servlet Principal (401 otherwise). Login/authentication protocol and UI agreement are not implemented; do not deploy publicly. No header/body owner or fake-login fallback. Existing /api/v1 contract remains 1.0.0. All bodies are no-store. No DB/place cache, reservation linkage, navigation/ETA claims or live calls."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8080/api/experimental"
+    }
+  ],
+  "x-status": "DRAFT_REQUIRES_TEAM_REVIEW",
+  "x-authentication-dependency": "Issue #4 must provide an authenticated, stable, unique Principal; mechanism is deliberately unresolved. Tests inject fictional principals only.",
+  "paths": {
+    "/place-previews": {
+      "post": {
+        "operationId": "openPlacePreviewDraft",
+        "description": "Create an ephemeral session. No provider call. Creation is bounded but not idempotent; do not automatically retry.",
+        "x-server-principal-required": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MOCK contract result; not a real reservation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, field or UUID",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid trusted server principal",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, expired or foreign session (same error)",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Session capacity reached",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registry closed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/place-previews/{id}/queries": {
+      "post": {
+        "operationId": "queryPlacePreviewDraft",
+        "description": "One async result. In-flight same generation/query joins; completed generation never replays places or re-dispatches. New intent increments generation. No polling/cache.",
+        "x-server-principal-required": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MOCK contract result; not a real reservation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, field or UUID",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid trusted server principal",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, expired or foreign session (same error)",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Session capacity reached",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registry closed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/place-previews/{id}/cancel": {
+      "post": {
+        "operationId": "cancelPlacePreviewDraft",
+        "description": "Fence this generation even if no work is running. cancelledWork reports whether pending work was cancelled; it is not provider-call reversal.",
+        "x-server-principal-required": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MOCK contract result; not a real reservation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cancelled"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, field or UUID",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid trusted server principal",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, expired or foreign session (same error)",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Session capacity reached",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registry closed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/place-previews/{id}/close": {
+      "post": {
+        "operationId": "closePlacePreviewDraft",
+        "description": "Remove session and cancel pending work. Repeated close returns the same not-found shape as an unknown session.",
+        "x-server-principal-required": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MOCK contract result; not a real reservation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Closed"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, field or UUID",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid trusted server principal",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, expired or foreign session (same error)",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Session capacity reached",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registry closed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "Query": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude",
+          "radiusMeters",
+          "limit"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "radiusMeters": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20000
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          }
+        }
+      },
+      "QueryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation",
+          "query"
+        ],
+        "properties": {
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "query": {
+            "$ref": "#/components/schemas/Query"
+          }
+        }
+      },
+      "CancelRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation"
+        ],
+        "properties": {
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewId",
+          "mode"
+        ],
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        }
+      },
+      "Closed": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewId",
+          "state",
+          "mode"
+        ],
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "const": "CLOSED"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        }
+      },
+      "Cancelled": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewId",
+          "generation",
+          "cancelledWork",
+          "state",
+          "mode"
+        ],
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "cancelledWork": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "const": "CANCEL_REQUESTED"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        }
+      },
+      "Place": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "cuisine",
+          "address",
+          "distanceMeters",
+          "parking",
+          "childFriendly",
+          "reservationAvailability",
+          "bookable"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cuisine": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "distanceMeters": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "parking": {
+            "type": "string",
+            "const": "UNKNOWN"
+          },
+          "childFriendly": {
+            "type": "string",
+            "const": "UNKNOWN"
+          },
+          "reservationAvailability": {
+            "type": "string",
+            "const": "UNKNOWN"
+          },
+          "bookable": {
+            "const": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "Result": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewId",
+          "generation",
+          "state",
+          "placeSource",
+          "reservationMode",
+          "places",
+          "fetchedAt",
+          "expiresAt",
+          "failure",
+          "rejectedRecords",
+          "mode"
+        ],
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "RESULTS",
+              "EMPTY",
+              "FAILED",
+              "SUPERSEDED",
+              "CANCELLED",
+              "TIMED_OUT",
+              "STALE_GENERATION",
+              "REQUEST_CONFLICT",
+              "ALREADY_FINISHED",
+              "CLOSED"
+            ]
+          },
+          "placeSource": {
+            "type": "string",
+            "const": "MOCK"
+          },
+          "reservationMode": {
+            "type": "string",
+            "const": "MOCK"
+          },
+          "places": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "$ref": "#/components/schemas/Place"
+            }
+          },
+          "fetchedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "failure": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "AUTHENTICATION",
+              "FORBIDDEN",
+              "RATE_LIMITED",
+              "TIMEOUT",
+              "CANCELLED",
+              "UPSTREAM_UNAVAILABLE",
+              "INVALID_RESPONSE",
+              "INVALID_QUERY",
+              null
+            ]
+          },
+          "rejectedRecords": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "enum": [
+                    "RESULTS",
+                    "EMPTY"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "fetchedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "failure": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "places": {
+                  "maxItems": 0
+                },
+                "fetchedAt": {
+                  "type": "null"
+                },
+                "expiresAt": {
+                  "type": "null"
+                },
+                "rejectedRecords": {
+                  "const": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "RESULTS"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "places": {
+                  "minItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "EMPTY"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "places": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "FAILED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "failure": {
+                  "type": "string",
+                  "enum": [
+                    "AUTHENTICATION",
+                    "FORBIDDEN",
+                    "RATE_LIMITED",
+                    "TIMEOUT",
+                    "CANCELLED",
+                    "UPSTREAM_UNAVAILABLE",
+                    "INVALID_RESPONSE",
+                    "INVALID_QUERY"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "failure": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "mode"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "INVALID_REQUEST",
+              "PREVIEW_AUTHENTICATION_REQUIRED",
+              "PREVIEW_NOT_FOUND",
+              "PREVIEW_SESSION_LIMIT",
+              "PREVIEW_UNAVAILABLE"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        }
+      }
+    }
+  }
+}

@@ -4,6 +4,12 @@
 
 요청의 boolean·정수 필드는 OpenAPI `required`에 따라 0/false도 명시합니다. null이나 누락을 암묵적으로 승인/기본값으로 바꾸지 않습니다. 알 수 없는 필드, 정수에 소수/문자열을 보내는 요청도 거부합니다.
 
+## 실험 중인 장소 미리보기 계약
+
+[#16의 OpenAPI 초안](place-preview-draft.json)은 `/api/experimental`의 별도 MOCK 계약입니다. 기본 비활성(404)이고 명시적으로 켜도 검증된 서버 Principal이 없으면 401입니다. 실제 로그인·차량 화면·navigation 연결은 미구현이며 위 v1 경로/버전 1.0.0은 유지합니다. [구현 범위와 화면 의미](../docs/REC05_PREVIEW_API.md), [가상 요청 예제](examples/place-preview-query.json)를 참고합니다. 이 초안을 팀 합의된 제품 API로 취급하지 않습니다.
+
+`verify` 후 `python scripts/check-contract.py --preview-exchanges`로 테스트가 생성한 가상 HTTP 교환을 초안과 대조합니다. `smoke-test.py --check-contract`는 이 대조와 JAR의 기본 404/opt-in 무인증 401도 검사합니다. 기존 v1 POST의 Idempotency-Key/snapshot 의미를 실험 경로에 그대로 적용하지 않습니다.
+
 | 메서드 | 경로 | 응답 |
 | --- | --- | --- |
 | GET | `/status` | 실행 모드·계약 버전·외부 발신 차단 상태 |

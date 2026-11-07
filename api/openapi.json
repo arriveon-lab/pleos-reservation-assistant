@@ -1440,5 +1440,13 @@
         "description": "Stable per user command. Reuse after timeout; changed body with same key returns 409. Event IDs independently deduplicate outcomes globally."
       }
     }
-  }
+  },
+  "x-experimental-contracts": [
+    {
+      "document": "place-preview-draft.json",
+      "status": "DRAFT_REQUIRES_TEAM_REVIEW",
+      "enabledByDefault": false,
+      "issue": 16
+    }
+  ]
 }
