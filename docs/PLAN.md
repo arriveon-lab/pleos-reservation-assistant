@@ -4,7 +4,7 @@
 
 2026-11-07 공유 문서 정리: [문서 목차](README.md), [이슈별 상세 작업·병행 개발](ISSUE_GUIDE.md), [기능 명세](FUNCTIONAL_SPEC.md), [ERD](ERD.md)를 추가했습니다. 아래 기존 계획과 별도로 [제품 방향·다중 예약·지연 대응 제안](DESIGN_PROPOSALS.md)을 검토하며, 해당 제안의 MVP 포함 여부는 미확정입니다.
 
-2026-11-07 REC-01 진행: #2 담당자는 `tiemo0708`이며, 사용자가 성수·서울숲 음식점과 Kakao Local 우선 검토를 선택했습니다. [REC-01 상세 계획](REC01_PLAN.md)의 MOCK 분리와 가상 Kakao 응답 매핑·실패 테스트를 구현했습니다. HTTP adapter의 loopback 검증을 더해 서버 테스트 130개와 MOCK HTTP/계약·H2 재시작 검증을 통과했습니다. [실제 연동 검토](REC01_INTEGRATION.md)의 공식 저장 제한에 따라 H2 snapshot에는 실제 결과를 연결하지 않습니다. 다음은 팀 앱 준비·보관 범위 해결·실제 연동 경계 합의입니다.
+2026-11-07 REC-01 진행: #2 담당자는 `tiemo0708`이며, 사용자가 성수·서울숲 음식점과 Kakao Local 우선 검토를 선택했습니다. [REC-01 상세 계획](REC01_PLAN.md)의 MOCK 분리와 가상 Kakao 응답 매핑·실패 테스트를 구현했습니다. HTTP adapter의 loopback 검증을 더해 서버 테스트 130개와 MOCK HTTP/계약·H2 재시작 검증을 통과했습니다. [실제 연동 검토](REC01_INTEGRATION.md)의 공식 저장 제한에 따라 H2 snapshot에는 실제 결과를 연결하지 않습니다. 사용자 동의 후 ArriveOn 앱과 카카오맵 무료 쿼터 설정을 완료했습니다. 다음은 보관 범위 해결·실제 연동 경계 합의입니다.
 
 ## 목표와 전체 흐름
 
