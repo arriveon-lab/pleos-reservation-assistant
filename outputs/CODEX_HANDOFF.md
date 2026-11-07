@@ -131,3 +131,10 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - #1–5는 2026-11-07 GitHub API 확인 시 OPEN·미배정, #6은 CLOSED다. 문서 게시 이슈는 기능 완료와 별도로 관리한다.
 - 제품 실행/기기/실통화 상태는 기존 STATUS 기록과 구분한다. 실제 전화·번호 구매·유료 API 실행 없음.
 - 문서 게시 추적은 GitHub #8, 브랜치 docs/8-team-design-docs. 기능 이슈 #1–5는 이 PR에서 닫지 않는다. 정적 대조 12항목과 naming/diff 검사 통과, 서버 verify 성공(15개 태스크 UP-TO-DATE)으로 검증했다. 로컬 대조 상세는 Git 제외 work/team-docs-validation.json에 있다.
+
+
+## 2026-11-07 리뷰 승인 선택 정책
+
+- 사용자 명시 요청으로 main의 required_approving_review_count를 1에서 0으로 변경했다. 리뷰 없이 필수 CI 통과 후 squash merge할 수 있다.
+- 필수 CI 3개와 strict, enforce_admins, 선형 이력, 대화 해결, force push/삭제 금지는 유지됨을 API로 확인했다. PR #9의 REVIEW_REQUIRED 차단 해제 확인.
+- CONTRIBUTING·GITHUB_SETUP·PLAN·STATUS를 새 정책에 맞춰 갱신했다. 이 작업은 PR을 자동으로 병합하거나 CI를 우회하는 설정이 아니다.

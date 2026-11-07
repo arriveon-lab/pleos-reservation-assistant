@@ -1,6 +1,6 @@
 # GitHub 조직과 협업 설정
 
-기준일: 2026-11-04 KST. [ArriveOn Lab](https://github.com/arriveon-lab)의 공개 모노레포 [pleos-reservation-assistant](https://github.com/arriveon-lab/pleos-reservation-assistant)를 사용합니다. 조직은 GitHub Free, 기본 브랜치는 `main`입니다.
+초기 설정: 2026-11-04 · 리뷰 정책 갱신: 2026-11-07 KST. [ArriveOn Lab](https://github.com/arriveon-lab)의 공개 모노레포 [pleos-reservation-assistant](https://github.com/arriveon-lab/pleos-reservation-assistant)를 사용합니다. 조직은 GitHub Free, 기본 브랜치는 `main`입니다.
 
 ## 저장소 설정
 
@@ -24,7 +24,7 @@
 
 main은 다음 규칙으로 운영합니다. 현재 적용값은 [브랜치 설정](https://github.com/arriveon-lab/pleos-reservation-assistant/settings/branches) 또는 아래 API로 확인할 수 있습니다.
 
-- PR 필수, 다른 리뷰어 1명 승인, 새 변경 시 기존 승인 무효화
+- PR 필수, **필수 승인 0명**으로 리뷰 없이 병합 가능. 리뷰는 권장하며 새 변경 시 기존 승인 무효화 설정은 유지
 - `Server and contract`, `Android checks`, `PR naming` 통과 및 최신 main 반영
 - 대화 해결 필수, 선형 이력, 관리자에게도 동일 규칙 적용
 - force push·브랜치 삭제 금지
@@ -33,7 +33,7 @@ main은 다음 규칙으로 운영합니다. 현재 적용값은 [브랜치 설�
 gh api repos/arriveon-lab/pleos-reservation-assistant/branches/main/protection
 ```
 
-초기 설정 PR은 팀원 초대 및 보호 규칙 적용 전에 소유자가 CI를 확인하고 한 번 통합합니다. 이후 PR에는 다른 리뷰어가 필요합니다. 현재 소유자는 `tiemo0708` 한 명이며, 팀원 ID가 정해지면 초대·write 권한·백업 owner를 지정합니다. 다른 리뷰어가 아직 없다는 이유로 보호 규칙을 임의 해제하지 않습니다.
+초기에는 다른 리뷰어 1명 승인을 요구했습니다. **2026-11-07 사용자가 리뷰 없이 병합할 수 있도록 명시적으로 요청해 required_approving_review_count를 1에서 0으로 변경**했습니다. 변경 후 API로 필수 CI 3개·최신 main 반영·관리자 포함 적용·대화 해결·선형 이력·force push/삭제 금지가 유지되는 것을 확인했고, PR #9의 리뷰 차단이 해제됐습니다. 이는 리뷰 없이 CI를 통과한 PR을 병합하는 설정이며 CI 우회나 main 직접 push 허용 설정은 아닙니다. 팀원 권한은 실제 저장소 설정을 기준으로 확인합니다.
 
 `.github/CODEOWNERS.example`은 예시이며 자동 리뷰 요청에 적용되지 않습니다. 실제 담당자/팀을 확인한 뒤 CODEOWNERS로 등록합니다. 사용자의 본인 재인증 후 조직 전체 2FA 필수 정책을 적용했습니다. 기존 계정의 인증 수단이나 비밀번호는 변경하지 않았습니다.
 
