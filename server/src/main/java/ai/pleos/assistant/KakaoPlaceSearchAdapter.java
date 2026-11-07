@@ -24,8 +24,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Explicitly constructed transport, not a Spring bean. Real use requires an approved account and a
- * data-retention/transaction contract; the current workflow injects MockPlaceSearchAdapter only.
+ * Explicitly constructed transport, not a Spring bean. Real-time preview requires a configured
+ * account; persistence/booking integration additionally needs a data-use and transaction contract.
+ * The product workflow injects MockPlaceSearchAdapter only.
  */
 public final class KakaoPlaceSearchAdapter implements PlaceSearchAdapter, AutoCloseable {
   private static final URI ENDPOINT =

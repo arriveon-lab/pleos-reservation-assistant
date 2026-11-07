@@ -1,5 +1,7 @@
 # REC-01 실제 장소 연동 검토
 
+**후속 범위 정정:** 일반 실시간 장소 조회의 별도 미저장 시연은 [REC-04](REC04_LIVE_SEARCH.md)에서 진행합니다. #11의 예약 이력/전화 제공 조건 확정이나 #12 전체 완료가 모든 실제 조회의 선행 조건은 아닙니다. 아래 H2 snapshot에 실제 결과를 연결하지 않는 결정은 유지합니다.
+
 확인일: 2026-11-07 KST. 담당: `tiemo0708`, GitHub [#2](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2). 구현 순서는 [REC-01 계획](REC01_PLAN.md), 실행 증거는 [STATUS](STATUS.md)를 따릅니다.
 
 **Kakao는 목적지 주변 검색 API의 기능에 적합하지만, 현재 H2 검색 snapshot에 실제 결과를 저장하는 방식에는 연결하지 않습니다.** 공식 카카오맵 FAQ는 실시간 사용을 안내하고 별도 결과 저장을 허용하지 않는다고 설명합니다. 최근 지도/로컬 담당 답변도 원문과 파생 데이터의 기기·서버 저장을 허용하지 않는다고 안내합니다. 이 프로젝트에 대한 별도 예외가 확인된 상태는 아닙니다. [카카오맵 공식 FAQ](https://devtalk.kakao.com/t/faq-api/125610), [2026-08-20 담당 답변](https://devtalk.kakao.com/t/local-api/151263)
