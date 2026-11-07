@@ -66,7 +66,7 @@ SDK 실행 환경이 없으면 로그 양식과 MOCK 입력으로 #2/#5 개발�
 | [#12 REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | `tiemo0708`, #4/#5 협업 / 계약·트랜잭션 밖 IO·중복·복구 | 기반 main 통합 후 가상 구현 가능, 실제 연결은 #11 조건 필요. `feat/12-place-preview` |
 | [#13 REC-04](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13) | `tiemo0708` / 실제 TLS/키/IP/쿼터·지역 품질 검증 | #11과 실행 경계·호출 상한 확인 후. `feat/13-place-api-validation` |
 
-#12는 최신 main에서 `feat/12-place-preview`를 생성해 [내부 세션 실행 경계](REC03_PREVIEW.md)를 구현·검증했습니다. 신규 25개 포함 총 169개가 통과했습니다. 공개 API/화면·소유권·재시작 복구·전체 호출 상한은 남아 있습니다. #11/#13 브랜치는 아직 생성하지 않았습니다. #4/#5의 기존 담당 범위나 이슈 배정을 변경하지 않았습니다. #12는 계약/서버 경계를 맡고 제품 UI 자체는 #5가 담당합니다.
+#12는 최신 main에서 `feat/12-place-preview`를 생성해 [내부 세션 실행 경계](REC03_PREVIEW.md)를 구현·검증했습니다. 소유 scope 대조·세션 만료/개수 상한·Registry 동시/누적 실행 상한을 보강해 총 188개가 통과했습니다. 실제 로그인 인증·공개 API/화면·자동 정리 스케줄·재시작/다중 서버 복구와 비용 관리는 남아 있습니다. #11/#13 브랜치는 아직 생성하지 않았습니다. #4/#5의 기존 담당 범위나 이슈 배정을 변경하지 않았습니다. #12는 계약/서버 경계를 맡고 제품 UI 자체는 #5가 담당합니다.
 
 ### #2에서 구현·검증한 것
 

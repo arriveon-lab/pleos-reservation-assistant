@@ -70,10 +70,7 @@ final class PlacePreviewSession implements AutoCloseable {
   CompletionStage<Outcome> start(long generation, PlaceQuery query) {
     requireGeneration(generation);
     Objects.requireNonNull(query);
-    // Offloading must not hide a transaction that the waiting caller still holds open.
-    if (TransactionSynchronizationManager.isActualTransactionActive()
-        || TransactionSynchronizationManager.isSynchronizationActive())
-      throw new IllegalStateException("Place preview must start outside a transaction");
+    requireOutsideTransaction();
     Flight previous;
     Flight next;
     synchronized (lock) {
@@ -177,6 +174,13 @@ final class PlacePreviewSession implements AutoCloseable {
 
   private static void requireGeneration(long generation) {
     if (generation < 1) throw new IllegalArgumentException("Invalid preview generation");
+  }
+
+  static void requireOutsideTransaction() {
+    // Offloading must not hide a transaction that the waiting caller still holds open.
+    if (TransactionSynchronizationManager.isActualTransactionActive()
+        || TransactionSynchronizationManager.isSynchronizationActive())
+      throw new IllegalStateException("Place preview must start outside a transaction");
   }
 
   private static Outcome terminal(long generation, Status status) {

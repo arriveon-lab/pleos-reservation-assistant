@@ -60,6 +60,33 @@ class PlacePreviewTransactionTest {
   }
 
   @Test
+  void registryRejectsTransactionBeforeTouchingALeaseOrDispatchBudget() {
+    AtomicInteger calls = new AtomicInteger();
+    var owner = new PlacePreviewRegistry.Owner("fictional-transaction-owner");
+    var limits =
+        new PlacePreviewRegistry.Limits(1, 1, 1, 1, Duration.ofMinutes(1), Duration.ofSeconds(3));
+    try (var registry =
+        new PlacePreviewRegistry(
+            query -> {
+              calls.incrementAndGet();
+              return EMPTY;
+            },
+            limits)) {
+      UUID id = registry.open(owner);
+      new TransactionTemplate(transactions)
+          .executeWithoutResult(
+              transaction -> {
+                store.lock();
+                assertThatThrownBy(() -> registry.start(owner, id, 1, QUERY))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Place preview must start outside a transaction");
+              });
+      assertThat(calls).hasValue(0);
+      assertThat(registry.statistics()).isEqualTo(new PlacePreviewRegistry.Statistics(1, 0, 0));
+    }
+  }
+
+  @Test
   void delayedPreviewDoesNotBlockAnExistingWorkflowOrPersistPlaceResponses() throws Exception {
     workflow.search(UUID.randomUUID().toString(), request()); // Warm the real H2 workflow first.
     List<Long> before = databaseCounts();
@@ -75,10 +102,13 @@ class PlacePreviewTransactionTest {
           awaitRelease(release);
           return EMPTY;
         };
-    try (var session = new PlacePreviewSession(delayed, Duration.ofSeconds(3));
+    var owner = new PlacePreviewRegistry.Owner("fictional-db-progress-owner");
+    var limits =
+        new PlacePreviewRegistry.Limits(1, 1, 1, 1, Duration.ofMinutes(1), Duration.ofSeconds(3));
+    try (var registry = new PlacePreviewRegistry(delayed, limits);
         var caller = Executors.newSingleThreadExecutor()) {
       try {
-        var preview = session.start(1, QUERY).toCompletableFuture();
+        var preview = registry.start(owner, registry.open(owner), 1, QUERY).toCompletableFuture();
         assertThat(entered.await(2, TimeUnit.SECONDS)).isTrue();
         assertThat(workerTransaction).isFalse();
         assertThat(databaseCounts()).isEqualTo(before);

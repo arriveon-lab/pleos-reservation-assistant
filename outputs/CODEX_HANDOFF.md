@@ -1,6 +1,6 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
-**최신 상태 (2026-11-07):** 사용자 승인 후 [PR #10](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/10)을 squash merge했습니다(`a55de3a`). #2는 CLOSED, #11/#12/#13은 OPEN입니다. 최신 main에서 `feat/12-place-preview`를 생성해 [REC-03 내부 세션 첫 구현](../docs/REC03_PREVIEW.md)을 진행했고, 서버 테스트 169개와 JAR smoke/계약 검증을 통과했습니다. 신규 실행기는 제품 경로·공개 API에 연결하지 않았습니다. 아래 범위 분리/병합 대기 기록은 병합 전 이력입니다.
+**최신 상태 (2026-11-07):** 사용자 승인 후 [PR #10](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/10)을 squash merge했습니다(`a55de3a`). #2는 CLOSED, #11/#12/#13은 OPEN입니다. 최신 main에서 `feat/12-place-preview`를 생성해 [REC-03 내부 세션 첫 구현](../docs/REC03_PREVIEW.md)을 진행했고, 소유 scope·세션 수명/상한 보강까지 서버 테스트 188개와 JAR smoke/계약 검증을 통과했습니다. 신규 실행기는 제품 경로·공개 API에 연결하지 않았습니다. 아래 범위 분리/병합 대기 기록은 병합 전 이력입니다.
 
 문서 갱신: 2026-11-07 KST. 기존 제품 실행 기록은 2026-11-04이며, 현재 검증 상태의 기준 문서는 `docs/STATUS.md`입니다.
 
@@ -218,3 +218,12 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - 신규 25개 + 기존 144개 = 169개 실패/오류/skip 0, format/verify 및 JAR smoke/OpenAPI/H2 재시작/LIVE 차단 통과. 가상 작업 대기 중 기존 H2 명령이 진행되고 preview는 DB를 쓰지 않으며 트랜잭션 안 start는 거부됩니다.
 - Spring bean·public endpoint·WorkflowService 연결은 하지 않았고 공개 API/Model·migration·의존성 변경도 없습니다. #12는 팀 검토, 실제 세션 소유권/상한/재시작 복구, navigation freshness, 공개 계약/화면이 남아 OPEN입니다. 신규 PR은 초안으로 유지하며 사용자 지시는 기존 PR #10 머지와 #12 착수입니다.
 - 실제 Kakao 조회·전화·비용 0회. #11 답변 확인, #12 계약/소유권/복구 구현, #13 조건부 실제 검증 순서로 이어갑니다. 외부 문의 추가 발송이나 신규 실제 호출은 수행하지 않았습니다.
+
+
+## 2026-11-07 REC-03 소유 scope·세션 수명과 실행 상한
+
+- 같은 `feat/12-place-preview` / Draft PR #14에서 `PlacePreviewRegistry`를 추가했습니다. 서버 생성 UUID, 신뢰된 호출자 owner scope 대조, owner별/전체 세션 상한, 단조 경과 시간의 유휴 만료를 구현했습니다. foreign/미존재/만료 세션은 같은 NOT_FOUND로 처리하고 비정상 요청은 수명을 갱신하지 않습니다.
+- 여러 세션의 동시 실행 슬롯·Registry 수명 누적 승인 예산을 공유합니다. 취소/만료를 무시하는 adapter가 실제로 반환하기 전까지 슬롯을 유지하고 실패·취소나 세션 재생성으로 누적 예산을 돌려주지 않습니다. 삭제/재시작된 UUID를 자동 복원하거나 재조회하지 않습니다.
+- Registry 18개 + H2 추가 1개를 더해 총 **188개 실행, 실패/오류/skip 0**입니다. 기존 H2 비차단/DB 미저장 테스트도 Registry 경로에서 통과했습니다. format/verify와 JAR MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단 통과. 로컬 증거는 Git 제외 `work/rec03-registry-results.json`, `work/rec03-registry-verify.log`, `work/rec03-registry-smoke.log`에 있습니다. 초기 테스트 helper 컴파일 오류는 수정했고 초기 로그도 따로 보관했습니다.
+- 로그인 인증·외부 요청의 owner 검증은 아직 미구현이며, Owner는 trusted caller가 공급할 내부 scope입니다. 만료는 요청/명시적 reap 시 정리하고 자동 정리 스케줄은 아직 없습니다. Registry 재생성/다중 인스턴스를 넘는 누적 예산·영속 claim·불확실한 실행 대조도 미완료입니다.
+- 공개 REST API·Spring bean·기존 WorkflowService 연결·Model/migration/의존성 변경 없음. navigation freshness/ETA 재검증, #4/#5 계약·공개 API/화면, 실제 인증/복구는 다음 작업입니다. #12는 OPEN·PR #14는 Draft로 유지하며 실제 Kakao 조회·전화·비용은 0회입니다.
