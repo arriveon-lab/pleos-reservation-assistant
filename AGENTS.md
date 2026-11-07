@@ -1,6 +1,7 @@
 # Pleos 예약 비서 작업 지침
 
 - 먼저 README.md, CONTRIBUTING.md, docs/STATUS.md를 읽고 검증 수준을 유지한다.
+- 팀 문서 목차는 docs/README.md. 기능은 docs/FUNCTIONAL_SPEC.md, 역할은 docs/ISSUE_GUIDE.md, 제안 스키마는 docs/ERD.md를 참고한다. docs/DESIGN_PROPOSALS.md의 미확정 제안을 현행 API·구현으로 취급하지 않는다.
 - 코드 규칙은 docs/CODE_CONVENTIONS.md, 검증 환경은 docs/AGENT_HARNESS.md를 따른다. android/ 또는 server/ 수정 전 해당 디렉터리의 AGENTS.md도 읽는다.
 - 브랜치를 만들거나 바꾸기 전 이 파일, 기여 가이드, 로컬·원격 브랜치 이름을 확인한다. 기존 관례를 따르며 codex/ 접두사를 임의로 붙이지 않는다.
 - 기본 브랜치는 main. 작업 브랜치는 type/<GitHub 이슈번호>-<topic>, 커밋/PR 제목은 type(scope): 설명. 상세 규칙은 CONTRIBUTING.md.

@@ -1,6 +1,6 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
-갱신: 2026-11-04 KST. 현재 검증 상태의 기준 문서는 `docs/STATUS.md`입니다.
+문서 갱신: 2026-11-07 KST. 기존 제품 실행 기록은 2026-11-04이며, 현재 검증 상태의 기준 문서는 `docs/STATUS.md`입니다.
 
 ## 작업 위치와 사용자의 최신 결정
 
@@ -112,3 +112,29 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 - Android 설치 절차는 docs/ANDROID_SETUP.md. SDK 설치 후 scripts/setup-android.py --configure로 local.properties와 gradle-local.properties 연결. -PincludeAndroid가 로컬 설정보다 우선.
 
 공식 접수 마감 2026-11-15, PT 12-03~04를 기준으로 한 내부 계획은 `docs/PLAN.md`. 팀원 포함 최대5인 요건은 공식 안내 확인, 개인 자격/참가부문/정확한 마감 시각은 추가 확인이 필요합니다.
+
+## 2026-11-06 ERDCloud 설계 초안
+
+- 사용자 요청으로 비공개 ERDCloud 도표를 생성: https://www.erdcloud.com/d/GLtbN3YfiazAMYi6X
+- 11 테이블, 107 컬럼, 11 PK, 15 FK를 가져오고 SQL 내보내기로 이름·타입·NULL·키 관계를 대조했다.
+- 사용자→trip→검색→후보, 예약→변경→통화→이벤트 흐름으로 테이블을 수동 재배치해 겹침과 교차선을 줄였다. 새로고침 후 위치와 메모 유지 확인.
+- ERDCloud 가져오기에서 UNIQUE 5개가 누락되어 도표 메모에 명시했다. 실제 마이그레이션에는 원본 ERDCLOUD_IMPORT.sql의 UNIQUE 및 업무별 조건부 제약을 별도로 구현해야 한다.
+- 로컬 원본·대조 자료는 outputs/erd/에 보관. 팀 공유 관계도·컬럼·검증 요약은 docs/ERD.md, 가져오기 SQL은 docs/erd/ERDCLOUD_IMPORT.sql, Mermaid 원본은 docs/erd/ERD.mmd를 사용한다.
+- 설계 초안이며 현재 DB/API에 적용하지 않았다. MySQL 문법은 ERD 가져오기용이며 운영 DB 선정 결정이 아니다. 실제 전화·유료 API 실행 없음.
+
+
+## 2026-11-07 팀 공유 문서 정리
+
+- 읽는 순서와 문서 상태는 docs/README.md, 상세 기능은 docs/FUNCTIONAL_SPEC.md, 이슈별 역할·병행 작업은 docs/ISSUE_GUIDE.md로 정리했다. 기존 outputs의 검토본보다 docs의 공유본을 우선한다.
+- docs/ERD.md와 docs/erd/의 SQL·Mermaid는 11개 테이블의 설계 제안이다. 107컬럼·15FK·5UNIQUE 표기를 공유하지만 DB migration으로 실행하지 않았다. ERDCloud는 비공개이며 링크 게시가 팀원 권한을 바꾸지 않는다.
+- 다중 방문 예약, 아이 동반 운전자 타깃, 주차·도보·대기 비교, 지연 감지/변경 제안의 MVP 승격은 docs/DESIGN_PROPOSALS.md에 미확정 제안으로 기록했다. 현행 활성 예약 제한·OpenAPI·구현 동작을 변경하지 않았다.
+- #1–5는 2026-11-07 GitHub API 확인 시 OPEN·미배정, #6은 CLOSED다. 문서 게시 이슈는 기능 완료와 별도로 관리한다.
+- 제품 실행/기기/실통화 상태는 기존 STATUS 기록과 구분한다. 실제 전화·번호 구매·유료 API 실행 없음.
+- 문서 게시 추적은 GitHub #8, 브랜치 docs/8-team-design-docs. 기능 이슈 #1–5는 이 PR에서 닫지 않는다. 정적 대조 12항목과 naming/diff 검사 통과, 서버 verify 성공(15개 태스크 UP-TO-DATE)으로 검증했다. 로컬 대조 상세는 Git 제외 work/team-docs-validation.json에 있다.
+
+
+## 2026-11-07 리뷰 승인 선택 정책
+
+- 사용자 명시 요청으로 main의 required_approving_review_count를 1에서 0으로 변경했다. 리뷰 없이 필수 CI 통과 후 squash merge할 수 있다.
+- 필수 CI 3개와 strict, enforce_admins, 선형 이력, 대화 해결, force push/삭제 금지는 유지됨을 API로 확인했다. PR #9의 REVIEW_REQUIRED 차단 해제 확인.
+- CONTRIBUTING·GITHUB_SETUP·PLAN·STATUS를 새 정책에 맞춰 갱신했다. 이 작업은 PR을 자동으로 병합하거나 CI를 우회하는 설정이 아니다.

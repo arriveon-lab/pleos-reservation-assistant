@@ -1,0 +1,96 @@
+erDiagram
+    USERS ||--o{ TRIPS : owns
+    TRIPS ||--o{ SEARCHES : has
+    SEARCHES ||--o{ SEARCH_CANDIDATES : returns
+    PLACES ||--o{ SEARCH_CANDIDATES : appears_in
+    SEARCH_CANDIDATES ||--o{ CANDIDATE_FACTS : records
+    TRIPS ||--o{ RESERVATIONS : has_history
+    SEARCH_CANDIDATES ||--o{ RESERVATIONS : selected_for
+    RESERVATIONS ||--o{ RESERVATION_CHANGES : has
+    SEARCH_CANDIDATES ||--o{ CALLS : concerns
+    RESERVATIONS o|--o{ CALLS : relates_to
+    RESERVATION_CHANGES o|--o| CALLS : has_change_call
+    CALLS ||--o{ EVENTS : receives
+    USERS ||--o{ COMMANDS : submits
+    USERS ||--o{ RESERVATIONS : approves_booking
+    USERS o|--o{ RESERVATION_CHANGES : approves_cost
+
+    USERS {
+        uuid id PK
+        string auth_provider
+        string auth_subject
+    }
+    TRIPS {
+        uuid id PK
+        uuid user_id FK
+        string client_trip_id
+        string mode
+    }
+    SEARCHES {
+        uuid id PK
+        uuid trip_id FK
+        instant eta
+        json request_snapshot
+    }
+    PLACES {
+        uuid id PK
+        string provider
+        string provider_place_id
+        string mode
+        string name
+    }
+    SEARCH_CANDIDATES {
+        uuid id PK
+        uuid search_id FK
+        uuid place_id FK
+        json place_snapshot
+    }
+    CANDIDATE_FACTS {
+        uuid id PK
+        uuid candidate_id FK
+        string fact_key
+        json value
+        instant observed_at
+        instant applies_at
+        instant valid_until
+    }
+    RESERVATIONS {
+        uuid id PK
+        uuid trip_id FK
+        uuid candidate_id FK
+        string status
+        instant original_requested_time
+        instant confirmed_time
+        uuid booking_approved_by FK
+    }
+    RESERVATION_CHANGES {
+        uuid id PK
+        uuid reservation_id FK
+        string status
+        instant previous_confirmed_time
+        instant requested_time
+        int requested_additional_cost_krw
+        uuid cost_approved_by FK "nullable"
+    }
+    CALLS {
+        uuid id PK
+        uuid candidate_id FK
+        uuid reservation_id FK "nullable"
+        uuid change_id FK, UK "nullable"
+        string purpose
+        string status
+    }
+    EVENTS {
+        string event_id PK
+        uuid call_id FK
+        string request_hash
+        json normalized_payload
+    }
+    COMMANDS {
+        uuid actor_id PK, FK
+        string mode PK
+        string scope PK
+        string idempotency_key PK
+        string request_hash
+        json response_snapshot
+    }
