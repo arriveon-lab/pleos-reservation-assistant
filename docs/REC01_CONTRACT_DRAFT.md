@@ -1,5 +1,7 @@
 # REC-01 서버·화면 연동 계약 초안
 
+**현재 담당 범위:** #12의 내부 세션 기반 통합 이후 공개 계약·인증·화면 연결은 [#16](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16), 수명/운영 관리는 [#17](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/17)로 이관했습니다. 아래 제안은 여전히 미확정이며 [후속 인수 조건](REC_FOLLOWUPS.md)을 따릅니다.
+
 작성: 2026-11-07 KST. 기반: #2 장소 adapter. 후속 실행 이슈: [#12 REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12). 검토 대상: 장소 담당, #3 전화, #4 서버, #5 화면. 실제 데이터 사용 조건은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11)에서 확인합니다. **팀 합의 전 제안이며 현재 OpenAPI·DB·제품 화면에 적용하지 않았습니다.** 사용 조건과 실제 adapter 검증은 [연동 검토](REC01_INTEGRATION.md), 현재 구현은 [STATUS](STATUS.md)를 따릅니다.
 
 [REC-03 내부 세션 첫 구현](REC03_PREVIEW.md)에서 동시 합류·트랜잭션 거부·세대/취소·실행 상한을 가상 adapter로 검증했습니다. 이 구현은 아래 공개 API/화면 제안의 팀 합의를 대신하지 않으며 제품 endpoint도 추가하지 않았습니다.

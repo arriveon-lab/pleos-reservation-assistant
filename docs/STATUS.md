@@ -1,5 +1,7 @@
 # 구현·검증 현황
 
+**현재 통합 범위 (2026-11-07):** 사용자 승인으로 PR #14의 #12를 내부 세션·Registry 기반, PR #15의 #13을 독립 시연·최초 실제 검색 검증 범위로 정리했습니다. 미완료 인증/API/화면은 #16, 수명·재시작/다중 서버 실행 관리는 #17, 지역 품질·실제 IP 검증은 #18로 이관했고 #11 정책 검토는 계속 OPEN입니다. [통합 범위와 후속 조건](REC_FOLLOWUPS.md)을 우선합니다. #14 기반은 서버 188개·JAR smoke/계약 검증을 통과했으며 이번 변경은 범위 문서 정리입니다. 실제 추가 API·전화·유료 실행은 없습니다. 아래 OPEN/Draft 기록은 각 작성 시점의 이력이며 최신 병합 상태는 GitHub를 확인합니다.
+
 **최신 상태 (2026-11-07):** 사용자 승인 후 [PR #10](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/10)을 squash merge했습니다(`a55de3a`). #2는 CLOSED, #11/#12/#13은 OPEN입니다. 최신 main에서 `feat/12-place-preview`를 생성해 [REC-03 내부 세션 첫 구현](REC03_PREVIEW.md)을 진행했고, 소유 scope·세션 수명/상한 보강까지 서버 테스트 188개와 JAR smoke/계약 검증을 통과했습니다. 신규 실행기는 제품 경로·공개 API에 연결하지 않았습니다. 아래 범위 분리/병합 대기 기록은 병합 전 이력입니다.
 
 갱신: **2026-11-07 KST**. 기준 환경: macOS arm64, Corretto OpenJDK 21.0.6, Gradle 8.11.1, Spring Boot 3.5.16, Python 3. 본 문서는 실제 실행 결과와 미검증을 구분합니다.
