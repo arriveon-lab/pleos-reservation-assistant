@@ -1,5 +1,7 @@
 # 구현·검증 현황
 
+**최신 #16 첫 단계 (2026-11-07):** main `9518b6a`에서 `feat/16-place-preview-integration`을 생성했습니다. [HTTP 계약 초안과 MOCK 통합](REC05_PREVIEW_API.md)에 기본 비활성 실험 API의 생성/검색/취소/종료와 가상 Principal 소유 범위를 구현했습니다. 전체 서버 **244개 실행·실패/오류/skip 0**, 가상 HTTP 96건·4개 연산의 OpenAPI 초안 대조, JAR 기본 404/opt-in 무인증·위조 헤더 401, 기존 MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단을 통과했습니다. 실제 로그인·차량 화면·navigation 계약과 팀 인수는 미완료이며 #16은 OPEN·PR은 Draft입니다. 기존 v1은 1.0.0, 제품 MOCK 유지, 추가 실제 장소/전화/AI/유료 실행은 0회입니다. Android는 이번 로컬 변경/검사 대상이 아닙니다.
+
 **통합 범위와 검증 기준 (2026-11-07):** [PR #14](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/14)를 `8cbe890`으로 squash merge했고 #12는 CLOSED입니다. #15는 이 main을 반영한 상태에서 통합 검증했습니다. #13의 종료 범위는 독립 미저장 시연·최초 실제 검색 검증입니다. 미완료 제품 인증/API/화면·navigation 계약은 #16, 자동 정리·재시작/다중 서버 실행 관리는 #17, 지역 품질·실제 IP 제한 검증은 #18로 이관했고 #11 정책 검토는 OPEN입니다. [통합 범위와 후속 조건](REC_FOLLOWUPS.md)을 우선합니다.
 
 **통합 검증:** `./gradlew -PincludeAndroid=true verifyAll` 성공. 서버 200개 실행·실패/오류/skip 0, Android Lint/APK 검사 통과(일부 UP-TO-DATE, 단위 테스트 NO-SOURCE). `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`로 JAR MOCK HTTP·OpenAPI·H2 재시작·LIVE 시작 차단을 확인했습니다. 기기 실행과 실제 예약은 검증하지 않았습니다.
