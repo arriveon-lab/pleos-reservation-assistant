@@ -6,6 +6,18 @@
 
 ## Pleos
 
+### 내비게이션과 장소 검색의 역할
+
+현재 설계는 Pleos 내장 내비게이션을 길안내·목적지·ETA 연동에 사용하고, 목적지 주변 음식점 후보 데이터는 별도 장소 adapter로 받습니다. 카카오맵 활성화는 Local REST API 준비이며 차량 지도를 Kakao 지도 화면으로 교체하는 구현이 아닙니다.
+
+| 기능 | 담당 경계 | 현재 검증 수준 |
+| --- | --- | --- |
+| 길안내·목적지·ETA | Pleos Navi Service와 NaviHelper | 3.0.5 probe 빌드·공개 API 확인. 기기 실행·ETA 시간 기준 미검증 |
+| 주변 음식점 후보 목록 | REC-01 장소 adapter, Kakao Local 우선 검토 | 계정 무료 설정·loopback HTTP 검증. 실제 장소 요청·제품 연결 전 |
+| 우리 앱의 화면 | 차량 조건 비교·명시적 승인·예약 결과 | 제품 UI 미구현. Android Kakao 지도 SDK/지도 렌더러는 도입하지 않음 |
+
+공식 [NaviHelper 3.0.5 안내](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/intro)는 목적지·경유지·경로·내비 정보·Navigation 화면 요청을 설명합니다. 같은 버전의 배포 SDK 공개 메서드도 대조했으며 일반 음식점 후보 목록 검색 메서드는 이번 확인 범위에서 찾지 못했습니다. 새로운 공식 POI API가 확인되면 사용 조건·가용성을 검토해 장소 adapter의 공급자로 비교할 수 있습니다.
+
 ### API 선택 정책과 가용성
 
 사용자가 공유한 [SDK API 정책](https://document.pleos.ai/docs/pleos-only/vehicle-app-planning-guide/pleos-connect-sdk-api)을 2026-11-04 확인했습니다. 같은 기능의 AAOS 표준이 있으면 이를 우선하고, 표준으로 제공되지 않는 특화 영역에 Pleos SDK를 사용합니다. SDK 전용 API가 표준에 편입돼도 기존 API는 최소 2개 메이저 버전까지 호환성을 유지한다는 정책이며, 모든 차종의 기능 제공이나 무기한 호환을 뜻하지 않습니다.
