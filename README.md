@@ -6,6 +6,8 @@
 
 [GitHub 저장소](https://github.com/arriveon-lab/pleos-reservation-assistant) · [작업 이슈](https://github.com/arriveon-lab/pleos-reservation-assistant/issues) · [CI 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)
 
+목적지 주변 장소의 독립 조회 도구는 [REC-04 시연 안내](docs/REC04_LIVE_SEARCH.md)를 따릅니다. 기본은 가상 화면이며, 실제 조회는 명시적 실행 모드·무료 설정·키 확인 후 1회 시연으로 진행합니다. 제품 서버의 실제 예약 연동과 구분합니다.
+
 ## 빠른 시작
 
 필수: JDK 21, Python 3.9+, 인터넷(첫 의존성 다운로드). 서버와 Android는 루트의 Gradle Wrapper 8.11.1 / Kotlin DSL을 공유합니다. 시스템 Gradle 설치는 필요 없습니다. 서버만 개발할 때 Android SDK는 필요 없습니다.

@@ -44,4 +44,16 @@ tasks.jar { enabled = false }
 
 tasks.bootRun { workingDir = rootProject.projectDir }
 
+tasks.register<JavaExec>("placePreview") {
+    group = "application"
+    description = "Run a loopback-only, one-request place preview; default is MOCK."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "ai.pleos.assistant.PlacePreviewDemo"
+    workingDir = rootProject.projectDir
+    jvmArgs("-Djdk.httpclient.disableRetryConnect=true", "-Djdk.httpclient.redirects.retrylimit=1")
+    jvmArgs("-Djdk.httpclient.HttpClient.log=")
+    args(providers.gradleProperty("placePreviewMode").getOrElse("mock"))
+    providers.gradleProperty("placePreviewKeyFile").orNull?.let { args(it) }
+}
+
 spotless { java { googleJavaFormat("1.28.0") } }
