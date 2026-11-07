@@ -1,6 +1,8 @@
 # 구현·검증 현황
 
-**최신 범위 정리 (2026-11-07):** #2는 장소 adapter 기반·MOCK 검증의 PR #10 병합 대기입니다. 미완료 정책/공급자 결정은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11), 서버·화면 계약과 IO 구현은 [#12](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12), 실제 API 검증은 [#13](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13)에 이관했습니다. 현재 PR은 Draft이고 이슈는 모두 OPEN이며 머지는 실행하지 않았습니다. 아래 앞선 기록의 “#2 전체 미완료/병합 보류”는 범위 분리 전 상태입니다.
+**현재 통합 범위 (2026-11-07):** 사용자 승인으로 PR #14의 #12를 내부 세션·Registry 기반, PR #15의 #13을 독립 시연·최초 실제 검색 검증 범위로 정리했습니다. 미완료 인증/API/화면은 #16, 수명·재시작/다중 서버 실행 관리는 #17, 지역 품질·실제 IP 검증은 #18로 이관했고 #11 정책 검토는 계속 OPEN입니다. [통합 범위와 후속 조건](REC_FOLLOWUPS.md)을 우선합니다. #14 기반은 서버 188개·JAR smoke/계약 검증을 통과했으며 이번 변경은 범위 문서 정리입니다. 실제 추가 API·전화·유료 실행은 없습니다. 아래 OPEN/Draft 기록은 각 작성 시점의 이력이며 최신 병합 상태는 GitHub를 확인합니다.
+
+**최신 상태 (2026-11-07):** 사용자 승인 후 [PR #10](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/10)을 squash merge했습니다(`a55de3a`). #2는 CLOSED, #11/#12/#13은 OPEN입니다. 최신 main에서 `feat/12-place-preview`를 생성해 [REC-03 내부 세션 첫 구현](REC03_PREVIEW.md)을 진행했고, 소유 scope·세션 수명/상한 보강까지 서버 테스트 188개와 JAR smoke/계약 검증을 통과했습니다. 신규 실행기는 제품 경로·공개 API에 연결하지 않았습니다. 아래 범위 분리/병합 대기 기록은 병합 전 이력입니다.
 
 갱신: **2026-11-07 KST**. 기준 환경: macOS arm64, Corretto OpenJDK 21.0.6, Gradle 8.11.1, Spring Boot 3.5.16, Python 3. 본 문서는 실제 실행 결과와 미검증을 구분합니다.
 
@@ -122,3 +124,22 @@ GitHub 업로드 직전 로컬 `verifyAll` 및 `smoke-test.py --check-contract`�
 - 후속 브랜치 계획: `docs/11-place-data-policy`, `feat/12-place-preview`, `feat/13-place-api-validation`. 아직 생성하지 않았습니다. #2 통합 뒤 최신 main에서 해당 번호의 브랜치를 만듭니다.
 - 후속 이관 시 완료 범위·원래 범위·담당/의존성·Refs 연결을 함께 기록하도록 CONTRIBUTING과 PR 템플릿을 보강했습니다. 기존 Closes 규칙·CI·main 보호는 변경하지 않았습니다.
 - 제품 코드 변경은 없습니다. 기존 144개 테스트·JAR smoke 증거를 유지하며 이번에는 명명·문서 링크·diff 정적 검사를 수행합니다. 실제 Kakao 조회·전화·비용 0회와 MOCK/LIVE 차단을 유지합니다.
+
+
+## 2026-11-07 PR #10 통합과 REC-03 첫 구현
+
+- 사용자가 머지와 후속 착수를 승인해 PR #10을 Ready 전환 후 필수 CI·충돌·미해결 대화·현재 head를 확인하고 squash merge했습니다. merge commit: `a55de3aaa6e0b715f77495984ae96ca9ddc30b06`. 원격 `feat/2-place-adapter`는 삭제됐으며 #2 CLOSED, #11/#12/#13 OPEN을 확인했습니다. main 보호나 Closes 규칙 우회는 없습니다.
+- 최신 main에서 `feat/12-place-preview`를 생성했습니다. package-private `PlacePreviewSession`은 진행 중 동일 세대/query 합류, 세대 충돌/구세대 거부, 목적지 변경·취소·제한 시간·늦은 응답, 세션당 실제 실행 1개+최신 대기 1개를 구현합니다. Spring bean·공개 endpoint·기존 workflow에는 등록하지 않았습니다.
+- 단위 22개와 실제 Spring/H2 통합 3개를 추가했습니다. 조회 지연 중 기존 검색 진행, preview DB 미저장, DB mutex 점유와 preview 독립, 트랜잭션 안 start 거부를 검증했습니다. 기존 144개를 재실행해 **169개 실행, 실패/오류/skip 0**입니다.
+- `./gradlew -PincludeAndroid=false format verify`와 `work/contract-venv/bin/python scripts/smoke-test.py --check-contract` 통과. 로컬 Git 제외 증거: `work/rec03-preview-verify.log`, `work/rec03-preview-tests.json`, `work/rec03-preview-smoke.log`.
+- [REC-03 구현 범위](REC03_PREVIEW.md)에 세션 메모리 수명, 완료 결과 재조회/캐시 없음, 취소/응답 세대, 재시작 후 중복 기억 없음과 후속 계약을 기록했습니다. #12의 팀 검토·인증/세션 수·전체 호출 상한·재시작 복구·navigation freshness·공개 API/화면은 미완료입니다.
+- 공개 API/Model·migration·의존성 변경 없음. 실제 Kakao 조회·키 값 복사·전화·유료 실행 0회, 제품 MOCK과 LIVE 차단 유지. Android 기기 검증이나 실제 서비스 연결 성공으로 세지 않습니다.
+
+
+## 2026-11-07 REC-03 소유 scope·세션 수명과 실행 상한
+
+- 같은 `feat/12-place-preview` / Draft PR #14에서 `PlacePreviewRegistry`를 추가했습니다. 서버 생성 UUID, 신뢰된 호출자 owner scope 대조, owner별/전체 세션 상한, 단조 경과 시간의 유휴 만료를 구현했습니다. foreign/미존재/만료 세션은 같은 NOT_FOUND로 처리하고 비정상 요청은 수명을 갱신하지 않습니다.
+- 여러 세션의 동시 실행 슬롯·Registry 수명 누적 승인 예산을 공유합니다. 취소/만료를 무시하는 adapter가 실제로 반환하기 전까지 슬롯을 유지하고 실패·취소나 세션 재생성으로 누적 예산을 돌려주지 않습니다. 삭제/재시작된 UUID를 자동 복원하거나 재조회하지 않습니다.
+- Registry 18개 + H2 추가 1개를 더해 총 **188개 실행, 실패/오류/skip 0**입니다. 기존 H2 비차단/DB 미저장 테스트도 Registry 경로에서 통과했습니다. format/verify와 JAR MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단 통과. 로컬 증거는 Git 제외 `work/rec03-registry-results.json`, `work/rec03-registry-verify.log`, `work/rec03-registry-smoke.log`에 있습니다. 초기 테스트 helper 컴파일 오류는 수정했고 초기 로그도 따로 보관했습니다.
+- 로그인 인증·외부 요청의 owner 검증은 아직 미구현이며, Owner는 trusted caller가 공급할 내부 scope입니다. 만료는 요청/명시적 reap 시 정리하고 자동 정리 스케줄은 아직 없습니다. Registry 재생성/다중 인스턴스를 넘는 누적 예산·영속 claim·불확실한 실행 대조도 미완료입니다.
+- 공개 REST API·Spring bean·기존 WorkflowService 연결·Model/migration/의존성 변경 없음. navigation freshness/ETA 재검증, #4/#5 계약·공개 API/화면, 실제 인증/복구는 다음 작업입니다. #12는 OPEN·PR #14는 Draft로 유지하며 실제 Kakao 조회·전화·비용은 0회입니다.

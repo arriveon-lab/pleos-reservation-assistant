@@ -1,5 +1,7 @@
 # Pleos 예약 비서 이슈별 상세 해설
 
+**최신 범위 조정 (2026-11-07):** #12/PR #14는 내부 세션·Registry 기반, #13/PR #15는 독립 시연·첫 실제 검색 검증을 종료 대상으로 정리했습니다. 미완료 제품 연결은 #16, 수명/운영 관리는 #17, 지역 품질/IP는 #18에 이관했습니다. [후속 이슈별 상세와 담당](REC_FOLLOWUPS.md)을 우선하며 #11 정책 검토와 기존 #1/#3/#4/#5 역할을 유지합니다. 아래 OPEN/Draft는 작성 당시 이력입니다.
+
 소스 대조: 2026-11-06 · 공유본 갱신: 2026-11-07 KST. 대상: 5명 개발팀. 초기 공유 시 GitHub #1–5는 OPEN·미배정, #6은 CLOSED였으며 소스 `f4f98732e243ddd7b806c3f91d0cef03e001aaec`를 기준으로 정리했습니다. 이후 #2는 OPEN·`tiemo0708` 배정으로 재확인했습니다. 다른 이슈의 최신 배정은 GitHub에서 확인합니다. 아래 세부 작업과 역할 분리는 이슈가 완료되었다는 뜻이 아닙니다.
 
 [기능 명세서](FUNCTIONAL_SPEC.md) · [ERD와 컬럼 정의](ERD.md) · [ERD 관계 개요](ERD.md#2-핵심-관계) · [GitHub 이슈 목록](https://github.com/arriveon-lab/pleos-reservation-assistant/issues)
@@ -11,7 +13,7 @@
 | GitHub 이슈 | 계획 코드 | 담당 역할 | 핵심 질문 | DB 관여 | 현재 상태 |
 | --- | --- | --- | --- | --- | --- |
 | [#1](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1) | VEH-01 | 차량/Pleos | 목적지와 ETA를 신뢰할 수 있는 값으로 받을 수 있는가? | 여정·검색 입력 계약 참여, 직접 DB 접속 없음 | probe APK 빌드·Lint 기록 있음, 기기 미검증 |
-| [#2](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | REC-01 | 추천/장소 | 어떤 후보를 제시하고 어떤 정보가 부족한지 판단하는가? | 장소·검색 후보·관측 정보 정의 | 기반/MOCK 검증 완료·병합 대기, 실연동은 #11–13 |
+| [#2](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | REC-01 | 추천/장소 | 어떤 후보를 제시하고 어떤 정보가 부족한지 판단하는가? | 장소·검색 후보·관측 정보 정의 | PR #10 통합·CLOSED, 실연동은 #11–13 |
 | [#3](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | VOICE-01 | AI 전화 | 전화로 확인한 말을 검증 가능한 결과로 바꾸는가? | 통화·이벤트·문의 사실 정의 | 네트워크 없는 MockCallAdapter만 구현 |
 | [#4](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/4) | BE-01 | 서버/예약 | 누구의 요청인지 확인하고 중복·모순 없이 예약을 저장하는가? | ERD·migration·트랜잭션·무결성 총괄 | 단일 사용자 MOCK 상태 처리 구현, 운영 경계 미구현 |
 | [#5](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/5) | UX-01 | 차량 UI/통합/시연 | 사용자가 조건·승인·결과를 주행 상황에 맞게 이해하는가? | API로 읽고 쓰기, 직접 DB 접속 없음 | 제품 UI 미구현, CLI 시연만 있음 |
@@ -57,16 +59,16 @@ SDK 실행 환경이 없으면 로그 양식과 MOCK 입력으로 #2/#5 개발�
 
 ### 범위 분리와 현재 상태
 
-2026-11-07 사용자 요청으로 기존 #2를 검증된 기반 구현 범위로 명확히 하고, 원래의 미완료 조건은 아래 후속 이슈로 이관했습니다. #2는 OPEN·PR #10 Draft·병합 대기이며, 이 정리로 실제 연동이 완료되거나 이슈가 닫힌 것은 아닙니다.
+2026-11-07 사용자 요청으로 기존 #2를 검증된 기반 구현 범위로 명확히 하고, 원래의 미완료 조건은 아래 후속 이슈로 이관했습니다. 범위 정리 후 사용자 승인으로 PR #10을 squash merge했고 #2는 CLOSED입니다. 실제 연동 완료를 뜻하지 않으며 #11/#12/#13은 OPEN입니다.
 
 | 이슈 | 담당 / 범위 | 선행 조건과 브랜치 |
 | --- | --- | --- |
-| [#2 REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | `tiemo0708` / adapter·정규화·추천·MOCK/loopback 검증 | 현재 `feat/2-place-adapter`, PR #10에서 이 이슈만 종료 |
+| [#2 REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | `tiemo0708` / adapter·정규화·추천·MOCK/loopback 검증 | PR #10 MERGED·#2 CLOSED, 원격 작업 브랜치 삭제 |
 | [#11 REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | `tiemo0708` / 데이터 보관·재사용·제공 조건, 공급자 최종 결정 | 정책 답변·대안 근거, `docs/11-place-data-policy` |
 | [#12 REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | `tiemo0708`, #4/#5 협업 / 계약·트랜잭션 밖 IO·중복·복구 | 기반 main 통합 후 가상 구현 가능, 실제 연결은 #11 조건 필요. `feat/12-place-preview` |
 | [#13 REC-04](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13) | `tiemo0708` / 실제 TLS/키/IP/쿼터·지역 품질 검증 | #11과 실행 경계·호출 상한 확인 후. `feat/13-place-api-validation` |
 
-후속 브랜치는 명명 계획이며 아직 생성하지 않았습니다. #4/#5의 기존 담당 범위나 이슈 배정을 변경하지 않았습니다. #12는 계약/서버 경계를 맡고 제품 UI 자체는 #5가 담당합니다.
+#12는 최신 main에서 `feat/12-place-preview`를 생성해 [내부 세션 실행 경계](REC03_PREVIEW.md)를 구현·검증했습니다. 소유 scope 대조·세션 만료/개수 상한·Registry 동시/누적 실행 상한을 보강해 총 188개가 통과했습니다. 실제 로그인 인증·공개 API/화면·자동 정리 스케줄·재시작/다중 서버 복구와 비용 관리는 남아 있습니다. #11/#13 브랜치는 아직 생성하지 않았습니다. #4/#5의 기존 담당 범위나 이슈 배정을 변경하지 않았습니다. #12는 계약/서버 경계를 맡고 제품 UI 자체는 #5가 담당합니다.
 
 ### #2에서 구현·검증한 것
 
@@ -86,7 +88,7 @@ SDK 실행 환경이 없으면 로그 양식과 MOCK 입력으로 #2/#5 개발�
 
 ### 이번 완료 범위와 실행 제한
 
-#2는 위 기반 구현·검증·제약 기록과 후속 이슈 이관으로 범위를 정리했습니다. PR #10은 `Closes #2`만 사용하고 #11/#12/#13은 `Refs`로 연결합니다. 정책 확정·실제 연결·실계정 검증을 완료로 바꾸지 않았으며, 각 후속 이슈에 별도의 완료 조건이 있습니다.
+#2는 위 기반 구현·검증·제약 기록과 후속 이슈 이관으로 범위를 정리하고 PR #10으로 통합했습니다. PR #10은 `Closes #2`만 사용하고 #11/#12/#13은 `Refs`로 연결합니다. 정책 확정·실제 연결·실계정 검증을 완료로 바꾸지 않았으며, 각 후속 이슈에 별도의 완료 조건이 있습니다.
 
 ArriveOn 앱·무료 쿼터 설정과 [정책 문의](https://devtalk.kakao.com/t/local-api/152647) 등록은 완료했고 답변 확인은 #11에서 이어갑니다. 키 값 복사·실제 Kakao 조회·전화·유료 실행 0회입니다. Pleos 내비·ETA와 외부 식당 데이터의 역할은 [INTEGRATIONS](INTEGRATIONS.md#내비게이션과-장소-검색의-역할)를 따릅니다.
 

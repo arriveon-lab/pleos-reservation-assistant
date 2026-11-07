@@ -126,4 +126,4 @@
 - [ ] [서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md)의 팀 합의와 실제 TLS/호출 수 검증
 - [ ] 실제 요청의 목적·횟수·비용/상한 확정. 비용 발생이면 명시적 승인
 
-범위 분리 후 #2는 기반 구현·MOCK 검증의 병합 대기이며 아직 OPEN입니다. 미완료 사용 조건/공급자 결정은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11), 서버·화면 계약과 IO 구현은 [#12](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12), 실제 API 검증은 [#13](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13)에서 관리합니다. PR #10의 병합은 #2만 종료하며 실제 연동 완료를 뜻하지 않습니다.
+범위 분리 후 사용자 승인으로 PR #10을 squash merge해 #2의 기반 구현·MOCK 검증을 통합했고 #2는 CLOSED입니다. 미완료 사용 조건/공급자 결정은 [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11), 서버·화면 계약과 IO 구현은 [#12](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12), 실제 API 검증은 [#13](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13)에서 관리합니다. PR #10은 #2만 종료했고 실제 연동 완료를 뜻하지 않습니다. #12의 [내부 세션 첫 구현](REC03_PREVIEW.md)은 가상 adapter 검증 단계이며 제품 경로에 연결하지 않았습니다.
