@@ -52,4 +52,6 @@ adb logcat -s PleosNaviProbe:I '*:S'
 
 ## MOCK 제품 화면 첫 구현
 
-`android/app`은 probe와 분리한 UX-01 개발용 앱입니다. `verifyAndroid`가 두 앱의 Lint와 debug APK, SDK 없는 UX 테스트를 검사합니다. 현재 앱은 계약 1.0.0/loopback MOCK 전용이며 실제 CarUxRestrictions·기기·release는 미완료입니다. [실행·복구·검증 범위](../docs/UX01_MOCK_APP.md), 후속 #25/#26을 확인합니다.
+`android/app`은 probe와 분리한 UX-01 개발용 앱입니다. `verifyAndroid`가 두 앱의 Lint와 debug APK, SDK 없는 UX 테스트를 검사합니다. 현재 앱은 계약 1.0.0/loopback MOCK 전용이며 Pleos debug 실행은 확인했으며 실제 CarUxRestrictions·release는 미완료입니다. [실행·복구·검증 범위](../docs/UX01_MOCK_APP.md), 후속 #25/#26을 확인합니다.
+
+2026-11-09 Pleos Connect v2.1.0/API 34 실제 설치·MOCK 흐름/복구 결과와 APK hash는 [에뮬레이터 검증](../docs/UX01_EMULATOR_VALIDATION.md)을 참고합니다. 서버가 18080이면 `adb reverse tcp:8080 tcp:18080`으로 연결합니다.

@@ -46,6 +46,8 @@ adb shell am start -n ai.pleos.assistant.mock/ai.pleos.assistant.app.Reservation
 
 ## 실제 검증과 미검증
 
+최신: [2026-11-09 Pleos 에뮬레이터 실행 검증](UX01_EMULATOR_VALIDATION.md). debug 설치·화면 흐름·응답 유실/재실행·0원 변경 UNKNOWN을 실제 확인했고, 본문/버튼 확대·현재 작업 우선 배치·상세 접기·스크롤 보존을 적용했습니다. 새 검색에서는 완료 문의를 정리하고 PENDING/UNKNOWN 문의 중 재검색을 막습니다. UX 테스트는 현재 14개입니다. 실제 CarUxRestrictions/회전/release/영상은 여전히 미검증입니다. 아래는 최초 구현 당시 이력입니다.
+
 2026-11-08 로컬 `format verify` 성공. 기존 서버 200개는 UP-TO-DATE(앞선 환경 준비 시 실제 실행 성공), 신규 UX 13개는 실제 실행·실패/오류/skip 0입니다. UX 테스트는 패키징 JAR과 임시 H2·loopback HTTP를 사용합니다. 흐름·명시적 승인·UNKNOWN/거절·미확인 주행 상태·디스크 저장 실패·예약 중복 클릭·응답 유실/동일 키 재전송·Repository 재생성 후 GET 복구·계약 불일치를 검증합니다.
 
 이 테스트는 Android Activity의 강제 종료·회전·화면 배치·실제 기기 상태 검증을 대신하지 않습니다. 이 Mac의 SDK 점검에서 Platform 35/build-tools/platform-tools/CLI/emulator가 없음을 확인했습니다. 로컬 APK/Lint/기기·영상/release는 미검증이며 원격 CI 결과는 PR과 STATUS에 별도로 기록합니다.

@@ -184,7 +184,7 @@ PoC 준비 완료와 실통화 성공은 다른 상태입니다. 실제 발신·
 
 **관련 DB:** `searches`, `candidate_facts`, `reservations`, `reservation_changes`, `calls`의 API 표현을 읽습니다. 스키마나 SQL을 차량 앱에 내장하지 않습니다.
 
-**주요 파일:** 제품 화면 모듈은 아직 없음. [Android 구성](../android/README.md), [API 계약](../api/openapi.json), [모의 시연](../scripts/mock-demo.py)을 시작점으로 사용합니다.
+**주요 파일:** `android/app`, `ux/core`. #5/PR #27에서 MOCK 화면을 구현했고 [Pleos 실행 검증](UX01_EMULATOR_VALIDATION.md)을 기록했습니다. 실제 주행 제한/release·영상은 #25, 인증/미리보기/비용 승인은 #26이며 #5 전체 완료는 아닙니다. [Android 구성](../android/README.md), [API 계약](../api/openapi.json), [모의 시연](../scripts/mock-demo.py)을 시작점으로 사용합니다.
 
 ### 완료 조건
 
