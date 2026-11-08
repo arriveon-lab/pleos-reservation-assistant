@@ -57,10 +57,14 @@ Android probe 사용·기기 로그 수집 방법: [android/README.md](../androi
 
 ## 전화 사업자 비교
 
+2026-11-08 업체 문서·약관 검토는 [VOICE-01 업체 검토](calls/VENDOR_REVIEW.md)에 상세히 기록했습니다. 아래 표는 요약이며 계정 생성·발신은 하지 않았습니다.
+
 | 후보 | 공식 자료로 확인한 범위 | 아직 확인할 사항 | 현재 판단 |
 | --- | --- | --- | --- |
-| Twilio Programmable Voice | 한국 PSTN 발신 reachability 표, Toll-Free 발신 제한, Caller ID 조건. Gather 한국어 옵션 | 계정/리전/발신번호별 국내 연결, 모델 조합, 자유 대화 지연, 녹음/전사, 요금·번호 구매 | 개발형 API 후보. 선정/실통화 안 함 |
-| NAVER CLOVA AiCall | inbound/outbound AI call bot, 한국어 대응 사업자 후보. outbound 최소 3채널 및 외부 솔루션 연계 안내 | 외부 매장 대행 허용, 자유 목적지 발신 API, 계약 소요, 최소 고정비·종량비, 데이터 저장 | 국내 후보. 계정/계약/발신 검증 안 함 |
+| Vox (주식회사 플릭) | 070 개통, `POST /v3/calls`, 서명 webhook, 통화 후 구조화 추출, `metadata` 조회 필터, 요금·약관·녹음 보관 설정 | 실제 식당 발신의 업체 확인, 녹음 해제 API 필드, 한국어 인식 품질, 발신 멱등 키 부재 대응 | PoC 1순위 후보. 계정/발신 안 함 |
+| 한국AI통신 (팀러너스 주식회사) | 070 즉시 발급, `POST /v1/accounts/{accountId}/calls`, 서명 webhook, Agent SDK, 요금·약관 | 체험 기간 발신 불가, 외부 참조 조회 없음, webhook 재시도 규칙, 업체 검증 모델 범위 | 2순위 후보. 계정/발신 안 함 |
+| Twilio Programmable Voice | 한국 PSTN 발신 reachability 표, Toll-Free 발신 제한, Caller ID 조건. Gather 한국어 옵션 | 한국 번호 발급 여부, 국내 발신 Caller ID 비보장의 실제 표시, 모델 조합, 자유 대화 지연, 녹음/전사, 요금·번호 구매 | 보류. 선정/실통화 안 함 |
+| NAVER CLOVA AiCall | inbound/outbound AI call bot, 한국어 대응 사업자 후보. outbound 최소 3채널·캠페인형 고정 메시지·외부 솔루션 연계 안내 | 외부 매장 대행 허용, 자유 목적지 발신 API, 계약 소요, 최소 고정비·종량비, 데이터 저장 | 매장별 자유 대화와 맞지 않아 보류. 계정/계약/발신 검증 안 함 |
 | KT AICC/A’Cen | 공식 소개자료에 음성 인식·대화·합성과 inbound/outbound 구성 | 스타트업 PoC 개통, 외부 API, 한국 발신 정책, 과금·녹음·콜백 | 국내 후보. 계약/SDK/발신 검증 안 함 |
 
 근거: [Twilio 한국 가이드](https://www.twilio.com/en-us/guidelines/kr/south-korea-voice-guidelines---twilio), [Gather](https://www.twilio.com/docs/voice/twiml/gather), [CLOVA AiCall](https://guide.ncloud-docs.com/docs/en/clovaaicall-aicall-1-1), [KT 공식 AICC 자료](https://enterprise.kt.com/resource/files/DX_Webinar_Oct_02.pdf). 가격 수치는 확인되지 않았으므로 비용을 0원이나 임의 단가로 가정하지 않습니다. STT 한국어 지원과 한국 전화망 발신은 서로 다른 검증입니다.

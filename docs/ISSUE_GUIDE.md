@@ -14,7 +14,7 @@
 | --- | --- | --- | --- | --- | --- |
 | [#1](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1) | VEH-01 | 차량/Pleos | 목적지와 ETA를 신뢰할 수 있는 값으로 받을 수 있는가? | 여정·검색 입력 계약 참여, 직접 DB 접속 없음 | probe APK 빌드·Lint 기록 있음, 기기 미검증 |
 | [#2](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | REC-01 | 추천/장소 | 어떤 후보를 제시하고 어떤 정보가 부족한지 판단하는가? | 장소·검색 후보·관측 정보 정의 | PR #10 통합·CLOSED, 실연동은 #11–13 |
-| [#3](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | VOICE-01 | AI 전화 | 전화로 확인한 말을 검증 가능한 결과로 바꾸는가? | 통화·이벤트·문의 사실 정의 | 네트워크 없는 MockCallAdapter만 구현 |
+| [#3](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | VOICE-01 | AI 전화 | 전화로 확인한 말을 검증 가능한 결과로 바꾸는가? | 통화·이벤트·문의 사실 정의 | 네트워크 없는 MockCallAdapter만 구현, [업체 문서 검토](calls/VENDOR_REVIEW.md) 기록·미선정 |
 | [#4](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/4) | BE-01 | 서버/예약 | 누구의 요청인지 확인하고 중복·모순 없이 예약을 저장하는가? | ERD·migration·트랜잭션·무결성 총괄 | 단일 사용자 MOCK 상태 처리 구현, 운영 경계 미구현 |
 | [#5](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/5) | UX-01 | 차량 UI/통합/시연 | 사용자가 조건·승인·결과를 주행 상황에 맞게 이해하는가? | API로 읽고 쓰기, 직접 DB 접속 없음 | 제품 UI 미구현, CLI 시연만 있음 |
 | [#6](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/6) | 초기 설정 | 저장소/협업 기반 | 팀이 같은 규칙으로 빌드하고 리뷰할 수 있는가? | 공통 개발 환경 규칙 | 완료 기록, 후속 기능의 포괄 이슈가 아님 |
