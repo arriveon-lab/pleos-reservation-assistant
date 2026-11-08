@@ -212,6 +212,18 @@ class AuthenticationTest {
   }
 
   @Test
+  void refreshRetryReturnsIdenticalExpirationsWithNanosecondClock() {
+    clock.now = START.plusNanos(123_456_789);
+    var issued = auth.issue();
+    String key = key();
+    var refreshed = auth.refresh(issued.refreshToken(), key);
+
+    assertThat(auth.refresh(issued.refreshToken(), key)).isEqualTo(refreshed);
+    assertThat(refreshed.accessTokenExpiresAt().getNano() % 1_000).isZero();
+    assertThat(refreshed.refreshTokenExpiresAt().getNano() % 1_000).isZero();
+  }
+
+  @Test
   void previousRetryCannotRollBackASecondRotation() {
     var a = auth.issue();
     String key = key();

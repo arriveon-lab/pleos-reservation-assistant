@@ -7,6 +7,7 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.UUID;
@@ -107,7 +108,7 @@ public class AuthService {
   }
 
   private Tokens savePair(String session, String access, String refresh) {
-    Instant now = clock.instant();
+    Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
     store.insertToken(hash(access), session, "ACCESS", now.plus(accessTtl));
     store.insertToken(hash(refresh), session, "REFRESH", now.plus(refreshTtl));
     return new Tokens("Bearer", access, now.plus(accessTtl), refresh, now.plus(refreshTtl), "MOCK");
