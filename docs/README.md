@@ -30,6 +30,7 @@
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |
 | [연동 근거](INTEGRATIONS.md) | Pleos API 정책·ETA 증거·전화 PoC 조건 | 문서/정적 확인과 실행 확인 구분 |
+| [AI 전화·매장 회신 검토](CALLBACK_DESIGN_DRAFT.md) | STT/통화 오디오 경계·수신번호·사용자 연결·예약 매칭 | 팀 검토안, 실제 통화/구현 전 |
 | [Android 환경](ANDROID_SETUP.md), [probe 사용법](../android/README.md) | SDK·APK·Pleos emulator·관측 절차 | 빌드와 기기 실행 구분 |
 | [GitHub 설정](GITHUB_SETUP.md) | 조직·main 보호·CI·팀원 시작 절차 | 기록된 설정 기준 |
 | [에이전트·검증 환경](AGENT_HARNESS.md) | 영역별 AGENTS와 공통 검사 명령 | 사람·에이전트 공통 |
