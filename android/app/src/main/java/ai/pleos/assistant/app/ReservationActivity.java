@@ -2,6 +2,7 @@ package ai.pleos.assistant.app;
 
 import ai.pleos.assistant.ux.MockRepository;
 import android.app.AlertDialog;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
@@ -17,13 +18,19 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class ReservationActivity extends ComponentActivity {
   private ReservationViewModel model;
   private LinearLayout content;
+  private ScrollView scroll;
+  private boolean showConditions;
+  private final Set<String> expandedFacts = new HashSet<>();
+  private String displayedStage = "";
   private AlertDialog approval;
   private String adultsInput = "2";
   private String childrenInput = "1";
@@ -64,18 +71,21 @@ public final class ReservationActivity extends ComponentActivity {
     TextView view = new TextView(this);
     view.setText(value);
     view.setTextSize(size);
+    view.setTextColor(Color.rgb(24, 36, 52));
     view.setPadding(0, dp(8), 0, dp(8));
     content.addView(view);
   }
 
   private void text(int resource) {
-    text(getString(resource), 18);
+    text(getString(resource), 24);
   }
 
   private void button(int resource, boolean enabled, View.OnClickListener action) {
     Button button = new Button(this);
     button.setText(resource);
-    button.setMinHeight(dp(56));
+    button.setMinHeight(dp(72));
+    button.setTextSize(22);
+    button.setAllCaps(false);
     button.setEnabled(enabled);
     button.setOnClickListener(action);
     content.addView(button);
@@ -87,7 +97,8 @@ public final class ReservationActivity extends ComponentActivity {
     field.setContentDescription(getString(label));
     field.setInputType(InputType.TYPE_CLASS_NUMBER);
     field.setText(initial);
-    field.setMinHeight(dp(56));
+    field.setMinHeight(dp(72));
+    field.setTextSize(24);
     field.setEnabled(model.canWrite());
     content.addView(field);
     return field;
@@ -101,13 +112,15 @@ public final class ReservationActivity extends ComponentActivity {
     children = null;
     parking = null;
     if (approval != null && !model.canWrite()) approval.dismiss();
-    ScrollView scroll = new ScrollView(this);
+    int previousY = scroll == null ? 0 : scroll.getScrollY();
+    scroll = new ScrollView(this);
     content = new LinearLayout(this);
     content.setOrientation(LinearLayout.VERTICAL);
-    content.setPadding(dp(24), dp(32), dp(24), dp(24));
+    content.setPadding(dp(32), dp(24), dp(32), dp(32));
+    content.setBackgroundColor(Color.rgb(247, 249, 252));
     scroll.addView(content);
     setContentView(scroll);
-    text(getString(R.string.title), 28);
+    text(getString(R.string.title), 32);
     text(R.string.disclosure);
     int restriction =
         switch (model.restriction()) {
@@ -117,6 +130,10 @@ public final class ReservationActivity extends ComponentActivity {
         };
     text(restriction);
     if (BuildConfig.DEBUG) {
+      LinearLayout parent = content;
+      content = new LinearLayout(this);
+      content.setOrientation(LinearLayout.HORIZONTAL);
+      parent.addView(content);
       button(
           R.string.simulate_parked,
           true,
@@ -127,12 +144,29 @@ public final class ReservationActivity extends ComponentActivity {
           v -> model.restrict(MockRepository.Restriction.RESTRICTED));
       button(
           R.string.simulate_unknown, true, v -> model.restrict(MockRepository.Restriction.UNKNOWN));
+      for (int i = 0; i < content.getChildCount(); i++)
+        content.getChildAt(i).setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+      content = parent;
     }
     button(R.string.connect, !model.busy(), v -> model.run(MockRepository::connect));
     button(R.string.refresh, !model.busy(), v -> model.run(MockRepository::refresh));
+    text(model.connected() ? R.string.connected : R.string.disconnected);
     if (model.busy()) text(R.string.busy);
     if (model.failed()) text(R.string.failure);
     JSONObject state = model.snapshot();
+    JSONObject activeCall = state.optJSONObject("call");
+    String stage =
+        state.optString("searchId")
+            + state.optString("reservationId")
+            + (activeCall == null
+                ? ""
+                : activeCall.optString("id") + activeCall.optString("status"));
+    boolean unresolvedCall =
+        activeCall != null
+            && ("PENDING".equals(activeCall.optString("status"))
+                || "UNKNOWN".equals(activeCall.optString("status")));
+    int restoredY = stage.equals(displayedStage) ? previousY : 0;
+    displayedStage = stage;
     if (state.has("pending")) {
       text(R.string.pending);
       button(
@@ -141,7 +175,18 @@ public final class ReservationActivity extends ComponentActivity {
           v -> model.run(MockRepository::retry));
     }
     try {
-      if (!state.has("reservationId")) {
+      if (state.has("reservation")) reservation(state.getJSONObject("reservation"));
+      if (activeCall != null) call(activeCall);
+      if (state.has("search") && !state.has("reservationId")) {
+        button(
+            showConditions ? R.string.hide_conditions : R.string.edit_conditions,
+            model.canWrite() && !unresolvedCall,
+            v -> {
+              showConditions = !showConditions;
+              render();
+            });
+      }
+      if (!state.has("reservationId") && (!state.has("search") || showConditions)) {
         text(R.string.conditions);
         text(R.string.synthetic_trip);
         adults = number(R.string.adults, adultsInput);
@@ -150,16 +195,18 @@ public final class ReservationActivity extends ComponentActivity {
         parking.setText(R.string.parking);
         parking.setChecked(parkingInput);
         parking.setEnabled(model.canWrite());
-        parking.setMinHeight(dp(56));
+        parking.setMinHeight(dp(72));
+        parking.setTextSize(24);
         content.addView(parking);
         button(
             R.string.search,
-            model.canWrite(),
+            model.canWrite() && !unresolvedCall,
             v -> {
               try {
                 int adultCount = Integer.parseInt(adults.getText().toString());
                 int childCount = Integer.parseInt(children.getText().toString());
                 boolean requiredParking = parking.isChecked();
+                showConditions = false;
                 model.run(r -> r.search(adultCount, childCount, requiredParking));
               } catch (NumberFormatException error) {
                 text(R.string.invalid_input);
@@ -167,11 +214,11 @@ public final class ReservationActivity extends ComponentActivity {
             });
       }
       if (state.has("search")) candidates(state);
-      if (state.has("reservation")) reservation(state.getJSONObject("reservation"));
-      if (state.has("call")) call(state.getJSONObject("call"));
+
     } catch (Exception malformed) {
       text(R.string.failure);
     }
+    scroll.post(() -> scroll.scrollTo(0, restoredY));
   }
 
   private String list(JSONArray array) throws Exception {
@@ -179,9 +226,31 @@ public final class ReservationActivity extends ComponentActivity {
     StringBuilder text = new StringBuilder();
     for (int i = 0; i < array.length(); i++) {
       if (i > 0) text.append(", ");
-      text.append(array.getString(i));
+      text.append(label(array.getString(i)));
     }
     return text.toString();
+  }
+
+  private String label(String raw) {
+    int resource =
+        switch (raw) {
+          case "INQUIRY" -> R.string.call_inquiry;
+          case "BOOKING" -> R.string.call_booking;
+          case "CHANGE" -> R.string.call_change;
+          case "PENDING" -> R.string.call_pending;
+          case "ANSWERED" -> R.string.call_answered;
+          case "ACCEPTED" -> R.string.call_accepted;
+          case "REJECTED" -> R.string.call_rejected;
+          case "UNKNOWN" -> R.string.call_unknown;
+          case "parking" -> R.string.feature_parking;
+          case "childFriendly" -> R.string.feature_children;
+          case "seatsAvailable" -> R.string.feature_seats;
+          case "reservationAvailable" -> R.string.feature_booking;
+          case "nowWaitMinutes" -> R.string.feature_now;
+          case "arrivalWaitMinutes" -> R.string.feature_arrival;
+          default -> 0;
+        };
+    return resource == 0 ? raw : getString(resource);
   }
 
   private String time(String raw) {
@@ -214,16 +283,23 @@ public final class ReservationActivity extends ComponentActivity {
               getString(candidate.getBoolean("bookable") ? R.string.yes : R.string.no),
               list(candidate.getJSONArray("missing")),
               list(candidate.getJSONArray("exclusionReasons"))),
-          18);
+          24);
       JSONObject facts = candidate.getJSONObject("facts");
-      Iterator<String> keys = facts.keys();
+      button(
+          expandedFacts.contains(id) ? R.string.hide_facts : R.string.show_facts,
+          true,
+          v -> {
+            if (!expandedFacts.remove(id)) expandedFacts.add(id);
+            render();
+          });
+      Iterator<String> keys = expandedFacts.contains(id) ? facts.keys() : new JSONObject().keys();
       while (keys.hasNext()) {
         String key = keys.next();
         JSONObject fact = facts.getJSONObject(key);
         text(
             getString(
                 R.string.fact,
-                key,
+                label(key),
                 fact.optString("value", "UNKNOWN"),
                 fact.optString("source"),
                 fact.optString("certainty"),
@@ -231,9 +307,14 @@ public final class ReservationActivity extends ComponentActivity {
                 time(fact.optString("observedAt")),
                 time(fact.optString("appliesAt")),
                 time(fact.optString("validUntil"))),
-            14);
+            20);
       }
-      boolean available = model.canWrite() && !state.has("reservationId");
+      JSONObject lastCall = state.optJSONObject("call");
+      boolean unresolved =
+          lastCall != null
+              && ("PENDING".equals(lastCall.optString("status"))
+                  || "UNKNOWN".equals(lastCall.optString("status")));
+      boolean available = model.canWrite() && !state.has("reservationId") && !unresolved;
       button(
           R.string.inquire,
           available && candidate.getBoolean("eligible"),
@@ -256,9 +337,14 @@ public final class ReservationActivity extends ComponentActivity {
 
   private void confirm(int title, String message, ReservationViewModel.Action action) {
     if (!model.canWrite()) return;
+    TextView dialogTitle = new TextView(this);
+    dialogTitle.setText(title);
+    dialogTitle.setTextSize(28);
+    dialogTitle.setTextColor(Color.rgb(24, 36, 52));
+    dialogTitle.setPadding(dp(24), dp(24), dp(24), dp(12));
     approval =
         new AlertDialog.Builder(this)
-            .setTitle(title)
+            .setCustomTitle(dialogTitle)
             .setMessage(message)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(
@@ -268,6 +354,19 @@ public final class ReservationActivity extends ComponentActivity {
                 })
             .create();
     approval.show();
+    TextView messageView = approval.findViewById(android.R.id.message);
+    if (messageView != null) messageView.setTextSize(24);
+    for (int which : new int[] {AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE}) {
+      Button actionButton = approval.getButton(which);
+      actionButton.setTextSize(22);
+      actionButton.setMinHeight(dp(72));
+      actionButton.setAllCaps(false);
+    }
+    if (approval.getWindow() != null)
+      approval
+          .getWindow()
+          .setLayout(
+              Math.min(dp(1200), (int) (getResources().getDisplayMetrics().widthPixels * 0.9)), -2);
   }
 
   private void reservation(JSONObject value) throws Exception {
@@ -286,7 +385,7 @@ public final class ReservationActivity extends ComponentActivity {
             time(value.getString("originalRequestedTime")),
             time(value.optString("confirmedTime")),
             value.getInt("totalAdditionalCostKrw")),
-        18);
+        24);
     if (!value.isNull("pendingChangeCallId")) text(R.string.change_unresolved);
     boolean allowed =
         model.canWrite()
@@ -310,11 +409,11 @@ public final class ReservationActivity extends ComponentActivity {
     text(
         getString(
             R.string.call,
-            value.getString("purpose"),
-            value.getString("status"),
+            label(value.getString("purpose")),
+            label(value.getString("status")),
             time(value.getString("requestedTime"))),
-        18);
-    if (!BuildConfig.DEBUG) return;
+        24);
+    if (!BuildConfig.DEBUG || !"PENDING".equals(value.getString("status"))) return;
     text(R.string.operator);
     boolean pending = model.canWrite() && "PENDING".equals(value.getString("status"));
     String outcome = "INQUIRY".equals(value.getString("purpose")) ? "ANSWERED" : "ACCEPTED";

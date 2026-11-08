@@ -22,6 +22,7 @@ public final class ReservationViewModel extends AndroidViewModel {
   private Runnable observer;
   private JSONObject snapshot = new JSONObject();
   private boolean busy;
+  private boolean connected;
   private boolean failed;
   private boolean closed;
   private MockRepository.Restriction restriction = MockRepository.Restriction.UNKNOWN;
@@ -69,8 +70,13 @@ public final class ReservationViewModel extends AndroidViewModel {
     return restriction;
   }
 
+  boolean connected() {
+    return connected;
+  }
+
   boolean canWrite() {
     return BuildConfig.DEBUG
+        && connected
         && repository != null
         && !busy
         && restriction == MockRepository.Restriction.SIMULATED_PARKED
@@ -101,6 +107,7 @@ public final class ReservationViewModel extends AndroidViewModel {
           } catch (Exception failure) {
             error = true;
           }
+          final boolean connection = repository.isVerified() && !error;
           final boolean result = error;
           final JSONObject state = next;
           main.post(
@@ -108,6 +115,7 @@ public final class ReservationViewModel extends AndroidViewModel {
                 if (closed) return;
                 busy = false;
                 failed = result;
+                connected = connection;
                 snapshot = state;
                 if (observer != null) observer.run();
               });

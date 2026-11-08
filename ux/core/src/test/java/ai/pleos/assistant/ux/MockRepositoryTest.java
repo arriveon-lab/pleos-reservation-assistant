@@ -285,6 +285,28 @@ class MockRepositoryTest {
     repository.inquire("mock-1");
     repository.simulate("UNKNOWN");
     assertThrows(IllegalStateException.class, () -> repository.inquire("mock-1"));
+    assertThrows(IllegalStateException.class, () -> repository.search(3, 0, false));
+  }
+
+  @Test
+  void newSearchClearsFinishedCallButKeepsTripAndUpdatedParty() throws Exception {
+    MockRepository repository = searchable();
+    String trip = repository.snapshot().getString("tripId");
+    repository.inquire("mock-1");
+    assertThrows(IllegalStateException.class, () -> repository.search(3, 0, false));
+    repository.simulate("ANSWERED");
+    repository.search(3, 0, false);
+    JSONObject state = repository.snapshot();
+    assertEquals(trip, state.getString("tripId"));
+    assertFalse(state.has("call"));
+    assertFalse(state.has("callId"));
+    assertEquals(
+        3,
+        state
+            .getJSONObject("search")
+            .getJSONObject("request")
+            .getJSONObject("party")
+            .getInt("adults"));
   }
 
   @Test

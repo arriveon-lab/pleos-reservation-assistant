@@ -54,6 +54,10 @@ public final class MockRepository {
     return new JSONObject(state.toString());
   }
 
+  public boolean isVerified() {
+    return verified;
+  }
+
   public void connect() throws Exception {
     verified = false;
     JSONObject status = transport.exchange("/status", null, null);
@@ -134,6 +138,10 @@ public final class MockRepository {
             pending.getString("path"), pending.getJSONObject("body"), pending.getString("key"));
     checkMode(result);
     String target = pending.getString("target");
+    if ("searchId".equals(target) && !result.getString("id").equals(state.optString("searchId"))) {
+      state.remove("callId");
+      state.remove("call");
+    }
     if (!target.isEmpty()) state.put(target, result.getString("id"));
     state.remove("pending");
     try {
@@ -148,6 +156,7 @@ public final class MockRepository {
 
   public void search(int adults, int children, boolean parking) throws Exception {
     requireWrite();
+    if (hasUnresolvedCall()) throw new IllegalStateException("CALL_PENDING");
     if (state.has("reservationId") || adults < 1 || adults > 8 || children < 0 || children > 6)
       throw new IllegalArgumentException("INVALID_PARTY");
     Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
@@ -177,14 +186,17 @@ public final class MockRepository {
   public void inquire(String candidateId) throws Exception {
     if (!candidate(candidateId).getBoolean("eligible"))
       throw new IllegalStateException("INELIGIBLE");
-    if (state.has("call")
-        && ("PENDING".equals(state.getJSONObject("call").getString("status"))
-            || "UNKNOWN".equals(state.getJSONObject("call").getString("status"))))
-      throw new IllegalStateException("CALL_PENDING");
+    if (hasUnresolvedCall()) throw new IllegalStateException("CALL_PENDING");
     command(
         "/searches/" + state.getString("searchId") + "/inquiries",
         new JSONObject().put("candidateId", candidateId),
         "callId");
+  }
+
+  private boolean hasUnresolvedCall() throws Exception {
+    return state.has("call")
+        && ("PENDING".equals(state.getJSONObject("call").getString("status"))
+            || "UNKNOWN".equals(state.getJSONObject("call").getString("status")));
   }
 
   public JSONObject candidate(String id) throws Exception {
