@@ -2,6 +2,7 @@ package ai.pleos.assistant;
 
 import static ai.pleos.assistant.Model.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -33,56 +34,64 @@ public class ApiController {
 
   @PostMapping("/searches")
   public Search search(
-      @RequestHeader("Idempotency-Key") String key, @Valid @RequestBody SearchRequest body) {
-    return workflow.search(key, body);
+      HttpServletRequest request,
+      @RequestHeader("Idempotency-Key") String key,
+      @Valid @RequestBody SearchRequest body) {
+    return workflow.search(RequestActor.from(request), key, body);
   }
 
   @GetMapping("/searches/{id}")
-  public Search getSearch(@PathVariable String id) {
-    return workflow.getSearch(id);
+  public Search getSearch(HttpServletRequest request, @PathVariable String id) {
+    return workflow.getSearch(RequestActor.from(request), id);
   }
 
   @GetMapping("/searches/{id}/calls")
-  public List<CallTask> getCalls(@PathVariable String id) {
-    return workflow.getCalls(id);
+  public List<CallTask> getCalls(HttpServletRequest request, @PathVariable String id) {
+    return workflow.getCalls(RequestActor.from(request), id);
   }
 
   @PostMapping("/searches/{id}/inquiries")
   public CallTask inquire(
+      HttpServletRequest request,
       @PathVariable String id,
       @RequestHeader("Idempotency-Key") String key,
       @Valid @RequestBody InquiryRequest body) {
-    return workflow.inquire(id, key, body);
+    return workflow.inquire(RequestActor.from(request), id, key, body);
   }
 
   @PostMapping("/searches/{id}/reservations")
   public Reservation book(
+      HttpServletRequest request,
       @PathVariable String id,
       @RequestHeader("Idempotency-Key") String key,
       @Valid @RequestBody BookingRequest body) {
-    return workflow.book(id, key, body);
+    return workflow.book(RequestActor.from(request), id, key, body);
   }
 
   @GetMapping("/reservations/{id}")
-  public Reservation getReservation(@PathVariable String id) {
-    return workflow.getReservation(id);
+  public Reservation getReservation(HttpServletRequest request, @PathVariable String id) {
+    return workflow.getReservation(RequestActor.from(request), id);
   }
 
   @PostMapping("/reservations/{id}/changes")
   public Reservation change(
+      HttpServletRequest request,
       @PathVariable String id,
       @RequestHeader("Idempotency-Key") String key,
       @Valid @RequestBody ChangeRequest body) {
-    return workflow.change(id, key, body);
+    return workflow.change(RequestActor.from(request), id, key, body);
   }
 
   @GetMapping("/calls/{id}")
-  public CallTask getCall(@PathVariable String id) {
-    return workflow.getCall(id);
+  public CallTask getCall(HttpServletRequest request, @PathVariable String id) {
+    return workflow.getCall(RequestActor.from(request), id);
   }
 
   @PostMapping("/mock/calls/{id}/outcomes")
-  public CallTask outcome(@PathVariable String id, @Valid @RequestBody OutcomeRequest body) {
-    return workflow.outcome(id, body);
+  public CallTask outcome(
+      HttpServletRequest request,
+      @PathVariable String id,
+      @Valid @RequestBody OutcomeRequest body) {
+    return workflow.outcome(RequestActor.from(request), id, body);
   }
 }

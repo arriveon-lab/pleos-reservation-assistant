@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:places;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
 class PlaceSearchWorkflowTest {
+  private static final RequestActor ACTOR = new RequestActor("test-owner", true);
   private static final Instant NOW = Instant.parse("2026-11-07T03:00:00Z");
   @Autowired WorkflowService service;
   @Autowired ControlledPlaces places;
@@ -123,7 +124,7 @@ class PlaceSearchWorkflowTest {
             .andExpect(jsonPath("$.candidates.length()").value(Math.min(3, count)))
             .andReturn();
     Search created = json.readValue(response.getResponse().getContentAsByteArray(), Search.class);
-    Search saved = service.getSearch(created.id);
+    Search saved = service.getSearch(ACTOR, created.id);
     assertThat(saved.candidates).hasSize(Math.min(3, count));
     assertThat(saved.candidates)
         .allSatisfy(
@@ -143,13 +144,13 @@ class PlaceSearchWorkflowTest {
     String key = UUID.randomUUID().toString();
     SearchRequest request = request();
     places.listings = listings(1);
-    Search first = service.search(key, request);
+    Search first = service.search(ACTOR, key, request);
     places.listings = listings(2);
-    Search replay = service.search(key, request);
+    Search replay = service.search(ACTOR, key, request);
     assertThat(replay.id).isEqualTo(first.id);
     assertThat(replay.candidates).hasSize(1);
     assertThat(places.calls).isEqualTo(1);
-    assertThatThrownBy(() -> service.search(key, request()))
+    assertThatThrownBy(() -> service.search(ACTOR, key, request()))
         .isInstanceOfSatisfying(
             ApiError.class, error -> assertThat(error.code).isEqualTo("KEY_REUSED"));
     assertThat(places.calls).isEqualTo(1);
