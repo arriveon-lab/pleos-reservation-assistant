@@ -1184,5 +1184,13 @@
         }
       }
     }
+  },
+  "x-authentication-candidate": {
+    "pullRequest": "https://github.com/arriveon-lab/pleos-reservation-assistant/pull/21",
+    "headCommit": "8484a0469a1aed2a1661dbbd55b7bcd6c73139bf",
+    "status": "UNMERGED_NOT_INCLUDED_IN_THIS_BRANCH",
+    "mechanism": "Server-issued opaque Bearer token mapped to Servlet Principal",
+    "contractVersion": "1.1.0",
+    "client": "scripts/preview-session-demo.py"
   }
 }

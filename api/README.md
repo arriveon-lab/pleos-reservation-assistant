@@ -6,6 +6,8 @@
 
 ## 실험 중인 장소 미리보기 계약
 
+2026-11-08: [#21 후보 인증 PR 연동](../docs/REC05_TOKEN_INTEGRATION.md)을 별도 임시 환경에서 검증했습니다. `scripts/preview-session-demo.py`는 통합된 계약 1.1.0의 loopback MOCK 서버용이며 현재 1.0.0 서버에서는 토큰 발급 전에 중단합니다. 이 브랜치에 #21 인증 구현을 포함하거나 main의 계약을 변경한 것은 아닙니다.
+
 [#16의 OpenAPI 초안](place-preview-draft.json)은 `/api/experimental`의 별도 MOCK 계약입니다. 기본 비활성(404)이고 명시적으로 켜도 검증된 서버 Principal이 없으면 401입니다. 실제 로그인·차량 화면·navigation 연결은 미구현이며 위 v1 경로/버전 1.0.0은 유지합니다. [구현 범위와 화면 의미](../docs/REC05_PREVIEW_API.md), [가상 요청 예제](examples/place-preview-query.json)를 참고합니다. 이 초안을 팀 합의된 제품 API로 취급하지 않습니다.
 
 `verify` 후 `python scripts/check-contract.py --preview-exchanges`로 테스트가 생성한 가상 HTTP 교환을 초안과 대조합니다. `smoke-test.py --check-contract`는 이 대조와 JAR의 기본 404/opt-in 무인증 401도 검사합니다. 기존 v1 POST의 Idempotency-Key/snapshot 의미를 실험 경로에 그대로 적용하지 않습니다.

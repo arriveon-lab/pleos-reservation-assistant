@@ -25,6 +25,7 @@
 | [REC-03 세션 관리와 실행 경계](REC03_PREVIEW.md) | #12 소유 scope·수명/상한·동시 합류·취소·H2 경계 | 전체 188개 검증, 인증/제품 API 미연결 |
 | [추천·장소 후속 작업](REC_FOLLOWUPS.md) | #12/#13 완료 범위와 #11/#16–18 담당·의존성·인수 조건 | 검증한 기반과 미완료 제품 연결 구분 |
 | [REC-05 HTTP 계약 초안](REC05_PREVIEW_API.md) | #16 기본 비활성 MOCK 실험 API·가상 인증 HTTP 통합 | 244개 검증, 실제 로그인/차량 화면 미연결 |
+| [REC-05 토큰 연동 검토](REC05_TOKEN_INTEGRATION.md) | #21 후보 인증 PR·개발용 호출자·임시 통합 증거 | 단독 244/Python 7·임시 통합 271·실제 토큰 HTTP 16건, main 미병합 |
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |

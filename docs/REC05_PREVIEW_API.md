@@ -1,5 +1,7 @@
 # REC-05 미리보기 HTTP 계약 초안과 MOCK 통합
 
+**2026-11-08 후속:** [#21 인증 PR 연동 검토](REC05_TOKEN_INTEGRATION.md)에서 실제 서버 발급 토큰을 사용하는 개발용 호출자를 추가했습니다. #19 단독 244개·Python 7개와 #21 임시 통합 271개·토큰 HTTP 16건을 구분합니다. #21은 아직 미병합이며 아래 단독 브랜치의 기본 비활성/인증 계층 미포함 상태는 유지합니다.
+
 작성: 2026-11-07 KST. 담당: `tiemo0708`, [#16](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16). 브랜치: `feat/16-place-preview-integration`, 시작 main `9518b6a`.
 
 **#16의 첫 단계입니다.** 내부 세션·Registry를 HTTP 요청에 연결하고 가상 인증 주체로 검증했습니다. 실제 로그인·차량 화면·navigation freshness/ETA와 팀 계약 합의는 아직 없습니다. 인증 프로토콜을 임의로 정하거나 #4/#5의 인수를 완료로 처리하지 않습니다. 기존 제품 `/api/v1` 계약 1.0.0과 MOCK/LIVE 차단을 유지합니다.

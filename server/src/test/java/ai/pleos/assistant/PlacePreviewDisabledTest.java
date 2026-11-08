@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -26,7 +29,14 @@ class PlacePreviewDisabledTest {
         .andExpect(status().isNotFound());
     mvc.perform(get("/api/v1/status"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.contractVersion").value("1.0.0"))
+        .andExpect(
+            jsonPath("$.contractVersion")
+                .value(
+                    new ObjectMapper()
+                        .readTree(Files.readString(Path.of("../api/openapi.json")))
+                        .path("info")
+                        .path("version")
+                        .asText()))
         .andExpect(jsonPath("$.externalCallsEnabled").value(false));
   }
 }
