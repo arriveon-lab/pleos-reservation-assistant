@@ -1,5 +1,22 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-08 UX-01 MOCK 앱 첫 구현 (진행 중)
+
+- #5 / `feat/5-mock-vehicle-ui`: 독립 Android 앱과 SDK 없는 `ux/core` API·복구 계층을 추가했습니다. 조건·후보·명시적 승인·예약 결과·0원 변경·미확인 변경 표시를 구현했습니다. 기본 main의 계약 1.0.0과 MOCK/loopback만 허용합니다.
+- 로컬 `format verify` 성공: 기존 서버 200개는 UP-TO-DATE, 새 UX 실제 JAR HTTP 테스트 12개 실행·실패/오류/skip 0. 예약 응답 유실·동일 키 재전송·복구 GET·중복 클릭·승인/주행 정책·UNKNOWN/거절을 검증했습니다.
+- Android SDK 점검은 Platform 35/build-tools/platform-tools/CLI/emulator 부재입니다. 로컬 Android 빌드·기기 실행·영상/release는 미검증이며 원격 CI 결과는 별도 기록합니다.
+- #25 실제 주행 제한·기기/시연 산출물, #26 인증 보관/갱신·미리보기/비용 승인 후속 이슈를 생성했습니다. #5 원래 조건과 OPEN 상태를 유지하며 다른 담당자의 #1/#4/#16/#20 범위는 바꾸지 않았습니다.
+- `docs/UX01_MOCK_APP.md`에 실행·복구·후속 범위를 기록했습니다. 개발용 모의 정차는 실제 CarUxRestrictions 검증이 아닙니다. 실제 외부 호출·전화·비용 0회, 병합 없음.
+
+## 2026-11-08 로컬 개발 환경 준비
+
+- 저장소 루트와 AGENTS/README/CONTRIBUTING/STATUS/AGENT_HARNESS를 확인했습니다. 기존 main 브랜치를 유지했고 제품 코드는 변경하지 않았습니다.
+- Temurin Java/Javac 21.0.12, JAVA_HOME의 Java 21 경로, Python 3.11.9, Git 2.55.0 확인. `python3 scripts/setup-git.py`로 로컬 `.githooks`와 커밋 템플릿 적용; 전역 설정 변경 없음.
+- `./gradlew -PincludeAndroid=false verify`: 16개 태스크 실행, 테스트 200개 통과(11개 suite, 실패/오류/skip 0), 포맷·패키징 성공.
+- `python3 scripts/smoke-test.py`: MOCK HTTP 흐름·Flyway·임시 H2 재시작 영속화·LIVE 시작 차단 통과, 외부 호출 0회.
+- 초기 샌드박스의 `.git/config`/Gradle 캐시 쓰기 및 localhost bind 제한은 승인된 재실행으로 해결했습니다. 요청된 서버 개발 환경의 미해결 차단 사항은 없습니다.
+- Android·기기·원격 CI·선택적 OpenAPI `--check-contract`는 이번에 검증하지 않았습니다. 기존 검증 이력은 아래에 보존합니다.
+
 **통합 범위와 검증 기준 (2026-11-07):** [PR #14](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/14)를 `8cbe890`으로 squash merge했고 #12는 CLOSED입니다. #15는 이 main을 반영한 상태에서 통합 검증했습니다. #13의 종료 범위는 독립 미저장 시연·최초 실제 검색 검증입니다. 미완료 제품 인증/API/화면·navigation 계약은 #16, 자동 정리·재시작/다중 서버 실행 관리는 #17, 지역 품질·실제 IP 제한 검증은 #18로 이관했고 #11 정책 검토는 OPEN입니다. [통합 범위와 후속 조건](../docs/REC_FOLLOWUPS.md)을 우선합니다.
 
 **통합 검증:** `./gradlew -PincludeAndroid=true verifyAll` 성공. 서버 200개 실행·실패/오류/skip 0, Android Lint/APK 검사 통과(일부 UP-TO-DATE, 단위 테스트 NO-SOURCE). `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`로 JAR MOCK HTTP·OpenAPI·H2 재시작·LIVE 시작 차단을 확인했습니다. 기기 실행과 실제 예약은 검증하지 않았습니다.

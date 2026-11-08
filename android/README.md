@@ -49,3 +49,7 @@ adb logcat -s PleosNaviProbe:I '*:S'
 | 미실행 | 최초 조회 | — | — | — | — | 미검증 |
 
 현행 결과와 차단 사유는 [STATUS](../docs/STATUS.md)에 기록합니다. APK 생성 성공과 emulator 실행 성공은 따로 판정합니다.
+
+## MOCK 제품 화면 첫 구현
+
+`android/app`은 probe와 분리한 UX-01 개발용 앱입니다. `verifyAndroid`가 두 앱의 Lint와 debug APK, SDK 없는 UX 테스트를 검사합니다. 현재 앱은 계약 1.0.0/loopback MOCK 전용이며 실제 CarUxRestrictions·기기·release는 미완료입니다. [실행·복구·검증 범위](../docs/UX01_MOCK_APP.md), 후속 #25/#26을 확인합니다.
