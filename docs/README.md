@@ -24,7 +24,7 @@
 | [REC-01 서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md) | 미리보기/예약 분리·IO/중복·출처/모드·후속 인수 조건 | 팀 합의 전 제안, API/DB 미적용 |
 | [REC-03 세션 관리와 실행 경계](REC03_PREVIEW.md) | #12 소유 scope·수명/상한·동시 합류·취소·H2 경계 | 전체 188개 검증, 인증/제품 API 미연결 |
 | [추천 담당 잔여 작업 정리](REC_WORK_SUMMARY.md) | #11/#16–18 코드·테스트·PR·협업 대기 | 이슈 OPEN·Draft, main 통합과 구분 |
-| [REC-07 품질 검증](REC07_QUALITY.md) | 6개 공개 입력·dry-run/MOCK·승인/쿼터/일회 실행 보호·IP 테스트 계획 | 도구 244개 검증, 추가 실제 조회/IP 미검증 |
+| [REC-07 품질 검증](REC07_QUALITY.md) | 6개 공개 입력·dry-run/MOCK·승인/쿼터/일회 실행 보호·IP 테스트 계획 | 도구244개·승인 실제6회/쿼터6회·0원, 실제0건/IP 미관측 |
 | [추천·장소 후속 작업](REC_FOLLOWUPS.md) | #12/#13 완료 범위와 #11/#16–18 담당·의존성·인수 조건 | 검증한 기반과 미완료 제품 연결 구분 |
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |

@@ -1,0 +1,113 @@
+{
+  "report": {
+    "mode": "REAL_SEARCH",
+    "planId": "rec07-seongsu-grid-v1",
+    "recordedAt": "2026-11-08T13:51:41.368516Z",
+    "plannedRequests": 6,
+    "adapterCalls": 6,
+    "stoppedBecause": "NONE",
+    "observations": [
+      {
+        "caseId": "center",
+        "status": "SUCCESS",
+        "returned": 3,
+        "rejected": 0,
+        "duplicateIds": 0,
+        "outsideRadius": 0,
+        "missingCuisine": 1,
+        "missingAddress": 0,
+        "missingPhone": 2
+      },
+      {
+        "caseId": "west",
+        "status": "SUCCESS",
+        "returned": 3,
+        "rejected": 0,
+        "duplicateIds": 0,
+        "outsideRadius": 0,
+        "missingCuisine": 0,
+        "missingAddress": 0,
+        "missingPhone": 0
+      },
+      {
+        "caseId": "east",
+        "status": "SUCCESS",
+        "returned": 3,
+        "rejected": 0,
+        "duplicateIds": 0,
+        "outsideRadius": 0,
+        "missingCuisine": 1,
+        "missingAddress": 0,
+        "missingPhone": 1
+      },
+      {
+        "caseId": "north",
+        "status": "SUCCESS",
+        "returned": 3,
+        "rejected": 0,
+        "duplicateIds": 0,
+        "outsideRadius": 0,
+        "missingCuisine": 2,
+        "missingAddress": 0,
+        "missingPhone": 2
+      },
+      {
+        "caseId": "south",
+        "status": "SUCCESS",
+        "returned": 3,
+        "rejected": 0,
+        "duplicateIds": 0,
+        "outsideRadius": 0,
+        "missingCuisine": 2,
+        "missingAddress": 0,
+        "missingPhone": 1
+      },
+      {
+        "caseId": "narrow",
+        "status": "SUCCESS",
+        "returned": 3,
+        "rejected": 0,
+        "duplicateIds": 0,
+        "outsideRadius": 0,
+        "missingCuisine": 1,
+        "missingAddress": 0,
+        "missingPhone": 2
+      }
+    ]
+  },
+  "approvedMaxRequests": 6,
+  "maxCostKRW": 0,
+  "precheck": {
+    "planId": "rec07-seongsu-grid-v1",
+    "planSha256": "f19b16ef5ddf1398b34586f7b2c08f34f49c105e6fbfaf34508d5a4ff2e19322",
+    "userApprovedMaxRequests": 6,
+    "maxCostKRW": 0,
+    "consoleCheckedAt": "2026-11-08T13:51:38.980500Z",
+    "mapEnabled": true,
+    "freeQuotaEligible": true,
+    "paidApiEnabled": false,
+    "quotaBefore": {
+      "used": 0,
+      "limit": 100000,
+      "displayedAsOf": "2026-11-08 22:00 KST"
+    },
+    "consoleSource": "ArriveOn app 1640993; native UI read-only, fresh quota reload",
+    "keysOrIpOrBillingSettingsChanged": false
+  },
+  "supplierQuotaAfter": {
+    "checkedAt": "2026-11-08T13:53:29.645556Z",
+    "used": 6,
+    "limit": 100000,
+    "displayedAsOf": "2026-11-08 22:00 KST",
+    "delta": 6
+  },
+  "costKRW": 0,
+  "costBasis": "Verified free-quota target, paid API disabled, observed six calls within daily free quota.",
+  "retention": "Aggregates only; no place payload, listing fields, screenshots or contact values retained.",
+  "limitations": [
+    "Returned counts are per-query observations, not distinct restaurants across queries.",
+    "Missing cuisine means normalized cuisine unknown; source field absence is not established.",
+    "No actual empty response, auth failure, quota failure or IP denial observed.",
+    "Sample cannot establish regional coverage, freshness, availability or bookability."
+  ]
+}
