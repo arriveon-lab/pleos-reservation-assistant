@@ -8,6 +8,15 @@
 - #25 실제 주행 제한·기기/시연 산출물, #26 인증 보관/갱신·미리보기/비용 승인 후속 이슈를 생성했습니다. #5 원래 조건과 OPEN 상태를 유지하며 다른 담당자의 #1/#4/#16/#20 범위는 바꾸지 않았습니다.
 - `docs/UX01_MOCK_APP.md`에 실행·복구·후속 범위를 기록했습니다. 개발용 모의 정차는 실제 CarUxRestrictions 검증이 아닙니다. 실제 외부 호출·전화·비용 0회, 병합 없음.
 
+
+### UX-01 원격 검증 결과
+
+코드 `5406a7a`의 [Verify 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions/runs/42484812195)에서 **Server and contract·Android checks 통과**, 별도 PR naming도 통과했습니다. Android 앱 Java/DEX/debug APK 생성과 Lint를 확인했습니다. 신규 UX 테스트 13개, JAR MOCK/OpenAPI/H2 재시작/LIVE 차단 성공입니다. 첫 실행의 network-security-config `includeSubdomains` 누락은 수정했습니다.
+
+앱 Lint **오류 0 / 경고 3**: 팀 targetSdk 35의 OldTargetApi 1개, 고정 AndroidX activity 1.9.3/lifecycle-viewmodel 2.8.7의 GradleDependency 2개. 기존 probe는 오류 0 / OldTargetApi 경고 1개입니다. SDK/AGP/Pleos 호환 기준을 이번 UI 작업에서 임의 변경하지 않았고 억제/baseline은 추가하지 않았습니다. SDK·AndroidX 갱신과 기기 호환성은 #25에서 검증합니다.
+
+CI artifact `android-mock-evidence`에 debug APK·두 앱의 Lint 보고서를 보존했습니다. 앱 APK SHA-256: `888c79de273d67353db3cdee3dcf6b1bd62d55509a7f9480ef5fffda96d99fc2`. debug APK 생성 성공이며 설치/기기 실행·영상·release 서명 성공이 아닙니다. PR #27은 Draft, #5/#25/#26은 OPEN이고 병합하지 않았습니다.
+
 ## 2026-11-08 로컬 개발 환경 준비
 
 - 저장소 루트와 AGENTS/README/CONTRIBUTING/STATUS/AGENT_HARNESS를 확인했습니다. 기존 main 브랜치를 유지했고 제품 코드는 변경하지 않았습니다.
