@@ -1,6 +1,6 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
-**최신 #16 후속 (2026-11-08):** [#21 인증 후보 연동과 호출자](../docs/REC05_TOKEN_INTEGRATION.md)를 먼저 읽습니다. `preview-session-demo.py`는 #21+#19가 함께 있는 loopback MOCK/1.1.0 서버용이며 토큰은 메모리에서만 사용하고 1회 가상 검색 후 갱신·종료·폐기합니다. 단독 서버244/Python7과 임시 통합 서버271·토큰HTTP16건·신규호출자8요청/가상검색1회의 성공을 구분합니다. #21 head `8484a04`는 미병합이고 CI 다운로드 장애를 확인했으며 원본/main 변경 없음. #19 자체는 여전히 기본 비활성·v1 1.0.0입니다. 인증 통합 후 status 버전 테스트는 OpenAPI를 읽어 대조합니다. #16 OPEN·PR #19 Draft, 실제 장소/전화/AI/유료 추가 실행 0회입니다.
+**최신 #16 후속 (2026-11-08):** [#21 인증 후보 연동과 호출자](../docs/REC05_TOKEN_INTEGRATION.md)를 먼저 읽습니다. `preview-session-demo.py`는 #21+#19가 함께 있는 loopback MOCK/1.1.0 서버용이며 토큰은 메모리에서만 사용하고 1회 가상 검색 후 갱신·종료·폐기합니다. 단독 서버244/Python7과 임시 통합 서버271·토큰HTTP16건·신규호출자8요청/가상검색1회의 성공을 구분합니다. #19 코드 `5b8e874` 원격 3개 검사 통과, #21 head `8484a04`는 실패 검사를 한 번 재실행해도 Gradle 타임아웃/504로 테스트 전 실패했습니다. #21 코드/본문·main 변경이나 병합은 없습니다. #19 자체는 여전히 기본 비활성·v1 1.0.0입니다. 인증 통합 후 status 버전 테스트는 OpenAPI를 읽어 대조합니다. #16 OPEN·PR #19 Draft, 실제 장소/전화/AI/유료 추가 실행 0회입니다.
 
 **최신 #16 첫 단계 (2026-11-07):** 브랜치 `feat/16-place-preview-integration`은 main `9518b6a` 기준입니다. [HTTP 계약 초안·MOCK 통합](../docs/REC05_PREVIEW_API.md)을 먼저 읽습니다. 기본 비활성 실험 API 4개 연산, 가상 Principal 기반 owner 대조, 서버 244개·가상 HTTP 교환 96건의 초안 대조·JAR 404/401 및 기존 smoke/계약/LIVE 차단을 확인했습니다. 실제 인증은 #4, 화면은 #5, navigation freshness/ETA는 #1과 합의 전이며 #16은 OPEN·PR Draft입니다. 기본 v1/제품 MOCK 유지, 실제 장소/전화/AI/유료 작업 추가 0회입니다. `verify` 후 `check-contract.py --preview-exchanges`, `smoke-test.py --check-contract`로 재현합니다. Android는 이번 로컬 검증 대상이 아닙니다.
 
