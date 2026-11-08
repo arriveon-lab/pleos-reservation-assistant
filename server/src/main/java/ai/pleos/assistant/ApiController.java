@@ -21,7 +21,7 @@ public class ApiController {
   public Map<String, Object> status() {
     return Map.of(
         "contractVersion",
-        "1.0.0",
+        "1.1.0",
         "mode",
         "MOCK",
         "externalCallsEnabled",
