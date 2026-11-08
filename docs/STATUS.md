@@ -1,5 +1,7 @@
 # 구현·검증 현황
 
+**최신 #11 정책 검토 (2026-11-08):** `docs/11-place-data-policy`에서 [사용 범위·공급 경로](PLACE_DATA_USE_MATRIX.md)를 정리했습니다. 공식 FAQ/담당 답변/운영정책과 기존 문의를 공개 재확인했으며, 열람본에서 운영자 답변은 확인되지 않았습니다. Naver·Google·직접 확보 매장 데이터 후보의 제약과 #3/#4/#5 provenance/보관/제공 인계안을 작성했습니다. 현재 제품 MOCK·독립 미저장 조회 유지, 최종 예약 공급자·사용 조건 합의는 미완료라 #11 OPEN/PR Draft입니다. 문서 변경이며 제품 테스트를 새로 실행한 결과가 아닙니다. API/DB/계정 설정·외부 메시지·실제 조회/전화/유료 실행 없음.
+
 **통합 범위와 검증 기준 (2026-11-07):** [PR #14](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/14)를 `8cbe890`으로 squash merge했고 #12는 CLOSED입니다. #15는 이 main을 반영한 상태에서 통합 검증했습니다. #13의 종료 범위는 독립 미저장 시연·최초 실제 검색 검증입니다. 미완료 제품 인증/API/화면·navigation 계약은 #16, 자동 정리·재시작/다중 서버 실행 관리는 #17, 지역 품질·실제 IP 제한 검증은 #18로 이관했고 #11 정책 검토는 OPEN입니다. [통합 범위와 후속 조건](REC_FOLLOWUPS.md)을 우선합니다.
 
 **통합 검증:** `./gradlew -PincludeAndroid=true verifyAll` 성공. 서버 200개 실행·실패/오류/skip 0, Android Lint/APK 검사 통과(일부 UP-TO-DATE, 단위 테스트 NO-SOURCE). `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`로 JAR MOCK HTTP·OpenAPI·H2 재시작·LIVE 시작 차단을 확인했습니다. 기기 실행과 실제 예약은 검증하지 않았습니다.

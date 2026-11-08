@@ -1,5 +1,7 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+**최신 #11 정책 검토 (2026-11-08):** [사용 범위·공급 경로](../docs/PLACE_DATA_USE_MATRIX.md)를 읽습니다. 공식 근거와 기존 문의를 공개 열람했으며 답변 미확인을 기록했습니다. 표시/메모리/영속 보관/전화 공급자 제공의 상태를 분리하고 대체 경로·직접 확보 데이터 인계 계약을 정리했습니다. 실제 권한 확보나 최종 공급자 합의가 아니므로 #11 OPEN/PR Draft입니다. 문서만 변경, 제품 실행/실조회/발신/비용/계정 설정/외부 메시지 없음. 다른 담당자의 #21은 변경하지 않습니다.
+
 **통합 범위와 검증 기준 (2026-11-07):** [PR #14](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/14)를 `8cbe890`으로 squash merge했고 #12는 CLOSED입니다. #15는 이 main을 반영한 상태에서 통합 검증했습니다. #13의 종료 범위는 독립 미저장 시연·최초 실제 검색 검증입니다. 미완료 제품 인증/API/화면·navigation 계약은 #16, 자동 정리·재시작/다중 서버 실행 관리는 #17, 지역 품질·실제 IP 제한 검증은 #18로 이관했고 #11 정책 검토는 OPEN입니다. [통합 범위와 후속 조건](../docs/REC_FOLLOWUPS.md)을 우선합니다.
 
 **통합 검증:** `./gradlew -PincludeAndroid=true verifyAll` 성공. 서버 200개 실행·실패/오류/skip 0, Android Lint/APK 검사 통과(일부 UP-TO-DATE, 단위 테스트 NO-SOURCE). `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`로 JAR MOCK HTTP·OpenAPI·H2 재시작·LIVE 시작 차단을 확인했습니다. 기기 실행과 실제 예약은 검증하지 않았습니다.

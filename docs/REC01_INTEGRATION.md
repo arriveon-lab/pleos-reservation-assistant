@@ -1,5 +1,7 @@
 # REC-01 실제 장소 연동 검토
 
+**2026-11-08 재확인:** [데이터 이용 범위·공급 경로](PLACE_DATA_USE_MATRIX.md)에 공식 자료, 기존 문의 공개 열람, Naver/Google/직접 확보 경로 비교와 #3/#4/#5 인계 계약을 정리했습니다. 현재 제품 MOCK·독립 미저장 조회를 유지하며 실제 예약 공급 경로는 미확정입니다. 아래 설정·진행 기록은 각 작성 시점의 이력입니다.
+
 **후속 범위 정정:** 일반 실시간 장소 조회의 별도 미저장 시연은 [REC-04](REC04_LIVE_SEARCH.md)에서 진행합니다. #11의 예약 이력/전화 제공 조건 확정이나 #12 전체 완료가 모든 실제 조회의 선행 조건은 아닙니다. 아래 H2 snapshot에 실제 결과를 연결하지 않는 결정은 유지합니다.
 
 확인일: 2026-11-07 KST. 담당: `tiemo0708`, GitHub [#2](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2). 구현 순서는 [REC-01 계획](REC01_PLAN.md), 실행 증거는 [STATUS](STATUS.md)를 따릅니다.
