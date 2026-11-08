@@ -1,5 +1,7 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+**최신 #17 독립 구현 (2026-11-08):** `feat/17-preview-lifecycle`, main `9518b6a` 기준. [자동 정리·원장 검토안](../docs/REC06_LIFECYCLE.md)을 읽습니다. 서버211개·JAR smoke/계약/LIVE 차단 통과, 실제 시간 Registry 생성자에 자동 정리와 close 연동, 타이머 RuntimeException 시 Registry 차단을 추가했습니다. 3인자 가상 ticker는 결정적 수동 테스트용입니다. 재시작/다중 서버 비용 원장은 #4/#11 합의 전이며 구현/배포하지 않았습니다. #17 OPEN/Draft 유지, 다른 담당 PR 수정/병합 없음. 실제 공급자/전화/유료 작업 추가 0회입니다.
+
 **통합 범위와 검증 기준 (2026-11-07):** [PR #14](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/14)를 `8cbe890`으로 squash merge했고 #12는 CLOSED입니다. #15는 이 main을 반영한 상태에서 통합 검증했습니다. #13의 종료 범위는 독립 미저장 시연·최초 실제 검색 검증입니다. 미완료 제품 인증/API/화면·navigation 계약은 #16, 자동 정리·재시작/다중 서버 실행 관리는 #17, 지역 품질·실제 IP 제한 검증은 #18로 이관했고 #11 정책 검토는 OPEN입니다. [통합 범위와 후속 조건](../docs/REC_FOLLOWUPS.md)을 우선합니다.
 
 **통합 검증:** `./gradlew -PincludeAndroid=true verifyAll` 성공. 서버 200개 실행·실패/오류/skip 0, Android Lint/APK 검사 통과(일부 UP-TO-DATE, 단위 테스트 NO-SOURCE). `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`로 JAR MOCK HTTP·OpenAPI·H2 재시작·LIVE 시작 차단을 확인했습니다. 기기 실행과 실제 예약은 검증하지 않았습니다.

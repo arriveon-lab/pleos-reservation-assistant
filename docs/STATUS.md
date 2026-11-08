@@ -1,5 +1,7 @@
 # 구현·검증 현황
 
+**최신 #17 독립 구현 (2026-11-08):** `feat/17-preview-lifecycle`은 main `9518b6a` 기준입니다. [자동 정리·실행 관리](REC06_LIFECYCLE.md)에 Registry의 주기적 유휴 정리·Spring 종료 시 scheduler 해제·정리 장애 시 신규 실행 차단을 구현했습니다. 서버 **211개 실행, 실패/오류/skip 0**, JAR MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단 통과. 자동 만료 후에도 미종료 작업의 슬롯과 누적 승인 예산을 보존합니다. 재시작/다중 서버 원장·보존 정책은 #4/#11 검토용 설계만 준비했으며 #17 전체 완료는 아닙니다. #19/#21/main 수정 없음, 실제 장소/전화/AI/유료 실행 추가 0회입니다.
+
 **통합 범위와 검증 기준 (2026-11-07):** [PR #14](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/14)를 `8cbe890`으로 squash merge했고 #12는 CLOSED입니다. #15는 이 main을 반영한 상태에서 통합 검증했습니다. #13의 종료 범위는 독립 미저장 시연·최초 실제 검색 검증입니다. 미완료 제품 인증/API/화면·navigation 계약은 #16, 자동 정리·재시작/다중 서버 실행 관리는 #17, 지역 품질·실제 IP 제한 검증은 #18로 이관했고 #11 정책 검토는 OPEN입니다. [통합 범위와 후속 조건](REC_FOLLOWUPS.md)을 우선합니다.
 
 **통합 검증:** `./gradlew -PincludeAndroid=true verifyAll` 성공. 서버 200개 실행·실패/오류/skip 0, Android Lint/APK 검사 통과(일부 UP-TO-DATE, 단위 테스트 NO-SOURCE). `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`로 JAR MOCK HTTP·OpenAPI·H2 재시작·LIVE 시작 차단을 확인했습니다. 기기 실행과 실제 예약은 검증하지 않았습니다.

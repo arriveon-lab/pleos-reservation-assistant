@@ -8,7 +8,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 
@@ -68,20 +70,67 @@ final class PlacePreviewRegistry implements AutoCloseable {
   private final Limits limits;
   private final LongSupplier ticker;
   private final Semaphore permits;
+  private final ScheduledThreadPoolExecutor cleanup;
   private final Map<UUID, Entry> entries = new HashMap<>();
   private int dispatched;
   private boolean closed;
+  private volatile boolean cleanupFailed;
 
   PlacePreviewRegistry(PlaceSearchAdapter adapter, Limits limits) {
-    this(adapter, limits, System::nanoTime);
+    this(adapter, limits, System::nanoTime, cleanupInterval(limits));
   }
 
-  // Monotonic test time; wall-clock corrections must not extend an idle lease.
+  // Deterministic test harness: a synthetic ticker is advanced/reaped explicitly, without a timer.
   PlacePreviewRegistry(PlaceSearchAdapter adapter, Limits limits, LongSupplier ticker) {
+    this(adapter, limits, ticker, null);
+  }
+
+  // Injectable monotonic time and interval for real scheduler boundary/failure tests.
+  PlacePreviewRegistry(
+      PlaceSearchAdapter adapter, Limits limits, LongSupplier ticker, Duration interval) {
     this.adapter = Objects.requireNonNull(adapter);
     this.limits = Objects.requireNonNull(limits);
     this.ticker = Objects.requireNonNull(ticker);
     permits = new Semaphore(limits.concurrentCalls());
+    if (interval == null) {
+      cleanup = null;
+    } else {
+      requireDuration(interval, Duration.ofSeconds(1));
+      cleanup =
+          new ScheduledThreadPoolExecutor(
+              1, Thread.ofPlatform().daemon().name("place-preview-cleanup-", 0).factory());
+      cleanup.setRemoveOnCancelPolicy(true);
+      cleanup.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+      cleanup.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+      cleanup.scheduleWithFixedDelay(
+          this::cleanupSafely, interval.toNanos(), interval.toNanos(), TimeUnit.NANOSECONDS);
+    }
+  }
+
+  private static Duration cleanupInterval(Limits limits) {
+    Objects.requireNonNull(limits);
+    // A bounded delay between sweeps, not a real-time expiry guarantee.
+    return Duration.ofNanos(
+        Math.max(1_000_000, Math.min(1_000_000_000, limits.idleTimeout().toNanos() / 4)));
+  }
+
+  private void cleanupSafely() {
+    try {
+      reapExpired();
+    } catch (RuntimeException failure) {
+      // A periodic task exception must not silently disable expiry while admission stays open.
+      // No upstream/request/owner information is logged. Fail closed and release owned executors.
+      cleanupFailed = true;
+      close();
+    }
+  }
+
+  boolean hasCleanupFailed() {
+    return cleanupFailed;
+  }
+
+  boolean isCleanupTerminated() {
+    return cleanup == null || cleanup.isTerminated();
   }
 
   UUID open(Owner owner) {
@@ -217,6 +266,7 @@ final class PlacePreviewRegistry implements AutoCloseable {
       pending.forEach(entry -> entry.active = false);
       entries.clear();
     }
+    if (cleanup != null) cleanup.shutdownNow();
     pending.forEach(entry -> entry.session.close());
   }
 
