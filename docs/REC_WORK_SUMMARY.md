@@ -8,7 +8,11 @@
 | #16 REC-05 / [PR #19](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/19) | 기본 비활성·MOCK 전용 실험 HTTP 4개 계약, Principal 소유자 경계, OpenAPI 초안·예제·토큰 시연 도구 | 독립 Java 244개·Python 7개, 과거 임시 인증 조합 271개·토큰 HTTP 점검. 담당 코드 CI 3개 통과. 인증 main 통합 및 UI #5/차량 #1 인수 남음; Draft |
 | #17 REC-06 / [PR #22](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/22) | 무요청 상태에서도 자동 유휴 정리, 실패 시 차단, 종료/취소 보호, 재시작 실행 원장 설계 | 독립 Java 211개·JAR 계약 통과·CI 3개 통과. 다중 서버/재시작 원장·메타데이터 보관 기간은 #4/#11 합의와 구현 필요; Draft |
 | #11 REC-02 / [PR #23](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/23) | 목적별 저장/재사용/공급자 전달 표, Kakao·Naver·Google·직접 허가 데이터 비교, 출처/권한 인수안 | 공식 자료와 공개 문의 재확인·정적 검사·CI 3개 통과. 운영자 답변·사용 목적별 권리·최종 공급자 팀 결정 남음; Draft |
-| #18 REC-07 | [6개 공개 입력 계획](quality/rec07-plan.json), [dry-run/MOCK 품질 검사와 실행 보호](REC07_QUALITY.md), #5 인수 기준 | 독립 Java 244개·JAR 계약 통과, dry-run 외부 0회·MOCK 6회. 추가 실제 조회 승인/무료 설정 확인·쿼터 대조·#4 실제 IP 테스트 남음; Draft로 공유 |
+| #18 REC-07 / [PR #24](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/24) | [6개 공개 입력 계획](quality/rec07-plan.json), [dry-run/MOCK 품질 검사와 실행 보호](REC07_QUALITY.md), #5 인수 기준 | 독립 Java 244개·JAR 계약 통과, dry-run 외부 0회·MOCK 6회. 추가 실제 조회 승인/무료 설정 확인·쿼터 대조·#4 실제 IP 테스트 남음; Draft로 공유 |
+
+## 담당 코드 조합 검증
+
+#19 `9b90c97` + #22 `361b3c2` + #24 구현 `1cd80ae`를 main `9518b6a`에서 별도 임시 worktree로 결합했습니다. 문서 충돌은 양쪽 기록을 보존해 해소했고 소스 충돌은 없었습니다. #21 인증 코드는 포함하지 않았고 v1 계약 1.0.0을 유지했습니다. Java **299개**(main 200 + HTTP 44 + 자동 정리 11 + 품질 도구 44), Python **7개**, 가상 HTTP **96건**의 계약 대조, JAR MOCK·H2 재시작·기본 미리보기 404/opt-in 무인증·위조 401·LIVE 시작 차단, 품질 dry-run 0회/MOCK 6회를 모두 통과했습니다. 실제 추가 공급자 호출은 없습니다. 임시 조합은 main/원격 브랜치로 병합하거나 push하지 않았습니다. 독립 PR별 테스트와 다른 검증 결과이며 새 인증 통합·기기·실제 지역 품질 검증을 뜻하지 않습니다.
 
 ## 지금 완료한 일과 다음 담당자가 결정할 일
 
