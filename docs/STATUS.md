@@ -3,7 +3,7 @@
 ## 2026-11-08 UX-01 MOCK 앱 첫 구현 (진행 중)
 
 - #5 / `feat/5-mock-vehicle-ui`: 독립 Android 앱과 SDK 없는 `ux/core` API·복구 계층을 추가했습니다. 조건·후보·명시적 승인·예약 결과·0원 변경·미확인 변경 표시를 구현했습니다. 기본 main의 계약 1.0.0과 MOCK/loopback만 허용합니다.
-- 로컬 `format verify` 성공: 기존 서버 200개는 UP-TO-DATE, 새 UX 실제 JAR HTTP 테스트 12개 실행·실패/오류/skip 0. 예약 응답 유실·동일 키 재전송·복구 GET·중복 클릭·승인/주행 정책·UNKNOWN/거절을 검증했습니다.
+- 로컬 `format verify` 성공: 기존 서버 200개는 UP-TO-DATE, 새 UX 실제 JAR HTTP 테스트 13개 실행·실패/오류/skip 0. 예약 응답 유실·동일 키 재전송·복구 GET·중복 클릭·승인/주행 정책·UNKNOWN/거절을 검증했습니다.
 - Android SDK 점검은 Platform 35/build-tools/platform-tools/CLI/emulator 부재입니다. 로컬 Android 빌드·기기 실행·영상/release는 미검증이며 원격 CI 결과는 별도 기록합니다.
 - #25 실제 주행 제한·기기/시연 산출물, #26 인증 보관/갱신·미리보기/비용 승인 후속 이슈를 생성했습니다. #5 원래 조건과 OPEN 상태를 유지하며 다른 담당자의 #1/#4/#16/#20 범위는 바꾸지 않았습니다.
 - `docs/UX01_MOCK_APP.md`에 실행·복구·후속 범위를 기록했습니다. 개발용 모의 정차는 실제 CarUxRestrictions 검증이 아닙니다. 실제 외부 호출·전화·비용 0회, 병합 없음.
@@ -151,7 +151,7 @@ GitHub 업로드 직전 로컬 `verifyAll` 및 `smoke-test.py --check-contract`�
 - 무료 대상/카카오맵 ON·유료 꺼짐·조회 전 사용량·기존 REST 키/IP 설정을 확인했습니다. 기존 REST 키 값을 출력하지 않고 Git 제외 로컬 파일(0600/부모0700)에 설정했습니다. 새 키 생성/재발급·IP/유료/월렛 설정 변경은 없습니다.
 - 실제 HTTPS/키 인증 조회 1회 성공, 실제 식당 3곳을 브라우저에 일시 표시했습니다. 공급자 콘솔 카테고리 검색이 호출 없음 → 1 / 100,000으로 바뀐 것을 확인했습니다. 비용 0원, 전화/예약/AI 호출 0회. 응답 원문·장소 ID/주소/연락처·결과 캡처를 파일/DB/로그/fixture에 저장하지 않았습니다. 검증 상태/개수/실행 수 메타데이터만 기록했습니다.
 - no-store/no-referrer/CSP·문자열 escape, 출처/오류/정상0건과 미확인 조건 구분, 5분 표시 종료를 적용했습니다. 첫 응답 후 프로세스가 종료되며 API 결과 캐시나 제품 검색/예약 연결은 없습니다. 제품 app.mode=LIVE 시작 차단과 기존 H2 명령 snapshot은 유지합니다.
-- main의 기존 144개 + 도구 HTTP/키 검증 12개 = 156개 실패/오류/skip 0, format/verify와 패키징 JAR MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단 통과. 별도 PR #14의 미병합 188개 테스트를 줄이거나 덮어쓴 것이 아닙니다. 새 의존성·migration·공개 API/Model 변경 없음.
+- main의 기존 144개 + 도구 HTTP/키 검증 13개 = 156개 실패/오류/skip 0, format/verify와 패키징 JAR MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단 통과. 별도 PR #14의 미병합 188개 테스트를 줄이거나 덮어쓴 것이 아닙니다. 새 의존성·migration·공개 API/Model 변경 없음.
 - 다음: 다른 시범 입력/실데이터 품질·IP 제한 사례의 실행 범위 정리, #5 화면/#12 API 계약 연결, #11 예약 보관/전화 제공 조건. 최초 1회 성공을 전체 지역 품질·실예약 완료로 세지 않고 #13은 OPEN/Draft PR로 관리합니다. 실행 메타데이터는 Git 제외 work/rec04-first-live-result.json, 검증은 work/rec04-preview-*에 있습니다.
 
 ## 2026-11-07 PR #10 통합과 REC-03 첫 구현

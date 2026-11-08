@@ -136,7 +136,13 @@ public final class MockRepository {
     String target = pending.getString("target");
     if (!target.isEmpty()) state.put(target, result.getString("id"));
     state.remove("pending");
-    persist();
+    try {
+      persist();
+    } catch (Exception failure) {
+      // Keep memory and durable intent aligned if saving the acknowledgement fails.
+      state.put("pending", pending);
+      throw failure;
+    }
     refresh();
   }
 

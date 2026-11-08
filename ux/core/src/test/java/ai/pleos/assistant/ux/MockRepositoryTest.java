@@ -255,6 +255,31 @@ class MockRepositoryTest {
   }
 
   @Test
+  void acknowledgementDiskFailureKeepsOriginalIntentBlockedUntilSaved() throws Exception {
+    Journal journal = new Journal();
+    Recording transport = new Recording(journal);
+    MockRepository repository =
+        new MockRepository(
+            (path, body, key) -> {
+              JSONObject result = transport.exchange(path, body, key);
+              if (body != null) journal.fail = true;
+              return result;
+            },
+            journal);
+    repository.connect();
+    repository.restrict(MockRepository.Restriction.SIMULATED_PARKED);
+    assertThrows(IllegalStateException.class, () -> repository.search(2, 1, true));
+    assertTrue(repository.snapshot().has("pending"));
+    assertThrows(IllegalStateException.class, () -> repository.search(3, 0, false));
+    String intent = transport.writes.get(0);
+    journal.fail = false;
+    MockRepository restored = ready(journal, transport);
+    restored.retry();
+    assertEquals(intent, transport.writes.get(1));
+    assertFalse(restored.snapshot().has("pending"));
+  }
+
+  @Test
   void unknownInquiryCannotBeRedialed() throws Exception {
     MockRepository repository = searchable();
     repository.inquire("mock-1");
