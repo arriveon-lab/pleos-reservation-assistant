@@ -29,7 +29,13 @@ class ApiAccessConfiguration {
                 response.setHeader("Referrer-Policy", "no-referrer");
                 response.setHeader("X-Content-Type-Options", "nosniff");
                 String path = request.getRequestURI().substring(request.getContextPath().length());
-                if (!(request.getMethod().equals("GET") && path.equals("/api/v1/status"))) {
+                boolean publicStatus =
+                    request.getMethod().equals("GET") && path.equals("/api/v1/status");
+                boolean publicAuth =
+                    request.getMethod().equals("POST")
+                        && (path.equals("/api/v1/anonymous-sessions")
+                            || path.equals("/api/v1/anonymous-sessions/refresh"));
+                if (!publicStatus && !publicAuth) {
                   try {
                     RequestActor actor = RequestActor.from(request);
                     if (path.startsWith("/api/v1/mock/")) actor.requireMockOperator();
