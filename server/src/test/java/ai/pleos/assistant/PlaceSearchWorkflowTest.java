@@ -114,6 +114,7 @@ class PlaceSearchWorkflowTest {
     var response =
         http.perform(
                 post("/api/v1/searches")
+                    .principal(() -> "test-owner")
                     .header("Idempotency-Key", UUID.randomUUID().toString())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(json.writeValueAsBytes(request())))

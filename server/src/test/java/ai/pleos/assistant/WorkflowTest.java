@@ -431,12 +431,13 @@ class WorkflowTest {
 
   @Test
   void httpValidationAndModeAreExplicit() throws Exception {
-    http.perform(get("/api/v1/status"))
+    http.perform(get("/api/v1/status").principal(() -> "test-owner"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.mode").value("MOCK"))
         .andExpect(jsonPath("$.externalCallsEnabled").value(false));
     http.perform(
             post("/api/v1/searches")
+                .principal(() -> "test-owner")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(request(key()))))
         .andExpect(status().isBadRequest())
@@ -451,6 +452,7 @@ class WorkflowTest {
             valid.replace("\"adults\":2", "\"adults\":\"2\""))) {
       http.perform(
               post("/api/v1/searches")
+                  .principal(() -> "test-owner")
                   .header("Idempotency-Key", key())
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(invalid))
@@ -458,12 +460,14 @@ class WorkflowTest {
     }
     http.perform(
             post("/api/v1/searches")
+                .principal(() -> "test-owner")
                 .header("Idempotency-Key", key())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(valid.replace("\"MOCK\"", "\"PLEOS\"")))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("PLEOS_ETA_UNVERIFIED"));
-    http.perform(get("/api/v1/reservations/missing")).andExpect(status().isNotFound());
+    http.perform(get("/api/v1/reservations/missing").principal(() -> "test-owner"))
+        .andExpect(status().isNotFound());
   }
 
   @Test
@@ -576,6 +580,7 @@ class WorkflowTest {
                 "mock-1", s.request.navigation().eta(), false, new ChangePolicy(false, null, 0)));
     http.perform(
             post("/api/v1/searches/" + s.id + "/reservations")
+                .principal(() -> "test-owner")
                 .header("Idempotency-Key", key())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
