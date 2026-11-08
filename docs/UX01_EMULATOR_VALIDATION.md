@@ -55,6 +55,12 @@
 - `python3 scripts/smoke-test.py` 성공: 패키징 JAR MOCK HTTP·Flyway·H2 재시작 영속화·LIVE 시작 차단. 선택적 `--check-contract`는 이번 실행에 포함하지 않았습니다. 공개 API/서버 변경 없음.
 - 로컬 Lint: 앱 오류 0/AndroidX 갱신 경고 2, probe 오류 0/경고 0. 이전 원격 Lint는 앱 경고 3/probe 경고 1(targetSdk 포함)이었으며 환경별 결과를 구분합니다. 버전/억제/baseline 변경 없음. 최신 원격 결과는 PR에 기록합니다.
 
+### 최신 main과 원격 CI 차단 (2026-11-09)
+
+원격 main은 `1b37bc2`이며 [인증 PR #21](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/21)이 병합돼 계약 1.1.0이 됐습니다. 이 실행 검증은 **작업 브랜치의 기존 1.0.0 서버/APK 조합**에 한정하며 최신 main 통합 검증이 아닙니다. 앱은 1.1.0을 의도적으로 거절합니다. #26의 인증 호출자 통합 선행 조건은 충족됐지만 앱 통합 자체는 미완료입니다.
+
+PR #27은 `CONFLICTING`/`DIRTY`이고 `git merge-tree`로 `docs/STATUS.md`, `outputs/CODEX_HANDOFF.md` 충돌을 확인했습니다. 새 커밋의 check/run은 생성되지 않았습니다. **원격 CI 통과나 실패 결과가 아니라 미실행/차단**이며 이전 커밋의 성공을 재사용하지 않습니다. CONTRIBUTING의 공유 브랜치 force push 금지·rebase 조율 규칙을 유지했고 main/다른 담당자 코드를 덮어쓰거나 인증을 우회하지 않았습니다. #26에 양쪽 문서 이력 보존·브랜치 통합 방식 조율·1.1.0 호출자/복구 통합 후 최신 main CI와 에뮬레이터 재검증을 연결합니다. 충돌 해소만으로 인증 호환 완료가 되지는 않습니다.
+
 ## 미검증과 후속
 
 - #25: **실제 CarUxRestrictions 미연동**. 위 UNKNOWN/RESTRICTED는 앱 개발용 모의 정책 검증입니다. 실제 차량 상태 초기값/콜백/서비스 단절·listener 해제·회전/늦은 callback·실차/다른 해상도·release 서명/설치·영상은 미검증입니다. 화면 캡처를 영상으로 세지 않습니다.

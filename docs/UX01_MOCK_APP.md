@@ -1,6 +1,6 @@
 # UX-01 MOCK 차량 화면
 
-#5의 첫 구현입니다. `android/app`은 probe와 분리한 Android 화면이며 `ux/core`는 SDK 없이 실행할 수 있는 API/복구 계층입니다. Activity → AndroidViewModel → MockRepository → loopback HTTP 구조입니다. 기본 main의 OpenAPI 1.0.0만 사용하고, 1.1.0 인증 서버는 명시적으로 거절합니다. 미병합 #20/PR #21 또는 #16/PR #19를 현행 계약으로 간주하지 않습니다.
+#5의 첫 구현입니다. `android/app`은 probe와 분리한 Android 화면이며 `ux/core`는 SDK 없이 실행할 수 있는 API/복구 계층입니다. Activity → AndroidViewModel → MockRepository → loopback HTTP 구조입니다. 이 브랜치가 분기한 기존 OpenAPI 1.0.0만 사용하고, 1.1.0 인증 서버는 명시적으로 거절합니다. 최신 main에는 #20/PR #21의 인증 1.1.0이 병합됐으나 이 앱과의 통합은 #26에서 진행해야 합니다. 이 브랜치의 실제 검증을 최신 main 통합 성공으로 간주하지 않습니다. #16/PR #19 미리보기 통합도 별도입니다.
 
 ## 구현한 범위
 

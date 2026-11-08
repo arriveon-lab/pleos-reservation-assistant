@@ -9,6 +9,12 @@
 - 상세 절차·기대/실제 결과·APK hash·증거 목록: [실행 검증](../docs/UX01_EMULATOR_VALIDATION.md). 원본은 로컬 Git 제외 `captures/ux01-emulator/`, 로그는 `work/ux01-emulator/`입니다. 기존 SDK 부재 기록은 아래 당시 이력입니다.
 - 실제 CarUxRestrictions·회전·release/영상은 #25, 인증/토큰·미리보기·유료 변경·손상 복구는 #26. 변경 수락 후 시각 확정/별도 거절 분기는 이번 기기에서 미검증입니다. MOCK만 사용했고 실제 외부 호출·전화·비용 0회. #5 OPEN / #27 Draft / 미병합 유지.
 
+### 최신 main과 원격 CI 차단 (2026-11-09)
+
+원격 main은 `1b37bc2`이며 [인증 PR #21](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/21)이 병합돼 계약 1.1.0이 됐습니다. 이 실행 검증은 **작업 브랜치의 기존 1.0.0 서버/APK 조합**에 한정하며 최신 main 통합 검증이 아닙니다. 앱은 1.1.0을 의도적으로 거절합니다. #26의 인증 호출자 통합 선행 조건은 충족됐지만 앱 통합 자체는 미완료입니다.
+
+PR #27은 `CONFLICTING`/`DIRTY`이고 `git merge-tree`로 `docs/STATUS.md`, `outputs/CODEX_HANDOFF.md` 충돌을 확인했습니다. 새 커밋의 check/run은 생성되지 않았습니다. **원격 CI 통과나 실패 결과가 아니라 미실행/차단**이며 이전 커밋의 성공을 재사용하지 않습니다. CONTRIBUTING의 공유 브랜치 force push 금지·rebase 조율 규칙을 유지했고 main/다른 담당자 코드를 덮어쓰거나 인증을 우회하지 않았습니다. #26에 양쪽 문서 이력 보존·브랜치 통합 방식 조율·1.1.0 호출자/복구 통합 후 최신 main CI와 에뮬레이터 재검증을 연결합니다. 충돌 해소만으로 인증 호환 완료가 되지는 않습니다.
+
 ## 2026-11-08 UX-01 MOCK 앱 첫 구현 (진행 중)
 
 - #5 / `feat/5-mock-vehicle-ui`: 독립 Android 앱과 SDK 없는 `ux/core` API·복구 계층을 추가했습니다. 조건·후보·명시적 승인·예약 결과·0원 변경·미확인 변경 표시를 구현했습니다. 기본 main의 계약 1.0.0과 MOCK/loopback만 허용합니다.
