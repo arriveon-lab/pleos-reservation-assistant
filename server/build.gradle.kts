@@ -56,4 +56,23 @@ tasks.register<JavaExec>("placePreview") {
     providers.gradleProperty("placePreviewKeyFile").orNull?.let { args(it) }
 }
 
+tasks.register<JavaExec>("placeQuality") {
+    group = "verification"
+    description = "Validate the bounded pilot plan; default is dry-run without credentials/network."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "ai.pleos.assistant.PlaceQualityProbe"
+    workingDir = rootProject.projectDir
+    jvmArgs("-Djdk.httpclient.disableRetryConnect=true", "-Djdk.httpclient.redirects.retrylimit=1")
+    jvmArgs("-Djdk.httpclient.HttpClient.log=")
+    val mode = providers.gradleProperty("placeQualityMode").getOrElse("dry-run")
+    args(
+        mode,
+        providers.gradleProperty("placeQualityPlan").getOrElse("docs/quality/rec07-plan.json"),
+    )
+    if (mode == "live") {
+        args(providers.gradleProperty("placeQualityApproval").getOrElse(""))
+        args(providers.gradleProperty("placeQualityKeyFile").getOrElse(""))
+    }
+}
+
 spotless { java { googleJavaFormat("1.28.0") } }

@@ -1,0 +1,65 @@
+{
+  "planId": "rec07-seongsu-grid-v1",
+  "provider": "KAKAO",
+  "category": "FD6",
+  "page": 1,
+  "sort": "distance",
+  "maxRequests": 6,
+  "maxCostKRW": 0,
+  "cases": [
+    {
+      "id": "center",
+      "query": {
+        "latitude": 37.544,
+        "longitude": 127.055,
+        "radiusMeters": 1000,
+        "limit": 3
+      }
+    },
+    {
+      "id": "west",
+      "query": {
+        "latitude": 37.544,
+        "longitude": 127.047,
+        "radiusMeters": 1000,
+        "limit": 3
+      }
+    },
+    {
+      "id": "east",
+      "query": {
+        "latitude": 37.544,
+        "longitude": 127.063,
+        "radiusMeters": 1000,
+        "limit": 3
+      }
+    },
+    {
+      "id": "north",
+      "query": {
+        "latitude": 37.551,
+        "longitude": 127.055,
+        "radiusMeters": 1000,
+        "limit": 3
+      }
+    },
+    {
+      "id": "south",
+      "query": {
+        "latitude": 37.537,
+        "longitude": 127.055,
+        "radiusMeters": 1000,
+        "limit": 3
+      }
+    },
+    {
+      "id": "narrow",
+      "query": {
+        "latitude": 37.544,
+        "longitude": 127.055,
+        "radiusMeters": 100,
+        "limit": 3
+      }
+    }
+  ]
+}
