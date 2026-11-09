@@ -1,5 +1,13 @@
 # 구현·검증 현황
 
+## 2026-11-09 수정 음성 재시험·미디어 수신 실패 (#43)
+
+- 사용자의 재시험 요청으로 같은 승인 대상에 1회 추가 발신했습니다. 최대 60초·Telkit 72원(VAT 별도)·무료 LiveKit 범위를 유지했습니다. 실제 연결 31초·48원, 잔액 2,892원이며 예약은 UNKNOWN입니다. 누적 발신 2회·통신비 108원, 자동 재발신은 없습니다.
+- 사용자는 첫인사는 들렸지만 자기 말에 응답하지 않았다고 확인했습니다. LIVE 기록에는 AI 인사 1개·상대 발화 0개가 남았습니다. LiveKit SIP 상세는 FAILED / `media-timeout`이므로 worker의 일반 참가자 disconnect만 보고 수신자가 끊었다고 판단할 수 없습니다. Telkit SIP 상태는 ready/active, PCMA/8000·TLS였습니다. 상대 RTP 미도착의 구체 원인과 복구는 **미해결**이며 암호화나 timeout을 바꿔 해결된 것으로 처리하지 않았습니다.
+- 추가 전화 없이 짧은 가상 음성의 TTS→STT 직접 시험 1회를 무료 범위에서 수행했습니다. Jiwoo 한국어 음성 2.61초가 생성됐고 예약자 이름을 포함한 최종 문장을 정확히 인식했습니다. 전화망·SIP 미디어 복구의 증거는 아닙니다. 원본 통화 녹음은 없으며 생성 음성·로컬 진단은 Git 제외입니다.
+- 다음 시험에서 무입력·무음 프레임·STT 무결과를 구분하도록 원본 음성·발화 없는 입력 프레임 수/음량·STT 중간/최종 수·오류/timeout·RTC 종료 코드 진단을 추가했습니다. 첫인사 뒤 인식이 없으면 안내 1회를 하며, 새 발신이나 예약 수락을 생성하지 않습니다. 가짜 SDK 24개·MOCK/HTTP 36개 통과, 이 보강 후 실통화는 하지 않았습니다.
+- 두 번째 승인도 소비했고 실행은 다시 비활성화·worker 종료·활성 prototype room 0개입니다. 실제 수신/변경 재확인·통신 구간 복구는 남아 있습니다. [공식 media timeout 설명](https://docs.livekit.io/reference/telephony/troubleshooting/)을 근거로 SIP 미디어와 agent/STT 문제를 구분합니다.
+
 ## 2026-11-09 선택형 Telkit·LiveKit 실전화 시험 (#43)
 
 - 독립 [음성 adapter](../prototypes/phone_agent/voice/README.md)에 SIP provisioning·비공개 설정·named agent·한국어 STT/LLM/TTS·실발신 경로를 연결했습니다. Telkit/LiveKit 계정·070 번호 1개·전용 키·inbound/outbound trunk·dispatch 연결을 준비하고 API로 설정을 조회했습니다. 실제 번호·개인 연락처·키는 Git 제외 로컬 설정에만 보관합니다.

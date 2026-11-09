@@ -1,5 +1,13 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-09 재시험 실패와 다음 진단 (#43)
+
+- 사용자 “다시 테스트” 요청으로 기존 대상·목적·60초/72원/무료 LiveKit 범위에서 1회 추가 발신했습니다. Telkit 31초·48원, 잔액 2,892원입니다. 누적 2회·통신비 108원. 추가 발신 승인 소비 후 다시 LIVE=false·worker 종료·활성 room 0개를 확인했습니다.
+- 첫인사는 들렸으나 상대 말에 응답하지 않았다는 피드백입니다. LIVE event는 agent 1개·restaurant 0개. Cloud SIP 상세는 FAILED / media-timeout이며 단순 SDK disconnect는 수신자 종료 증거가 아닙니다. 두 번째 로컬 통화 기록에 providerReview를 붙이고 sip_media_timeout으로 정정했으며 예약 UNKNOWN을 유지했습니다. 실제 상대 RTP 미도착 원인은 아직 해결하지 못했습니다.
+- 전화 없이 무료 범위의 가상 한국어 TTS→STT 1회는 정상: 음성 2.61초, 김예약을 포함한 최종 문장 일치. 새 Jiwoo와 STT 자체 경로가 동작함을 확인했으며 실제 전화망 복구나 전체 음질 통과로 확대하지 않습니다. 이 진단은 모델 호출 0회가 아닙니다. 실제 통화 녹음은 하지 않았습니다.
+- 입력 프레임/음량·STT 이벤트 수·timeout/오류·RTC 종료 코드만 저장하는 진단과 인식 없음 안내 1회를 추가했습니다. 원본 음성·중간 발화는 진단 저장 대상이 아닙니다. 가짜 SDK 24개·기본 36개 통과. 이 보강의 실제 전화 검증은 미실행입니다.
+- 다음은 새 승인 범위를 준비한 뒤 SIP 미디어 경로 확인입니다. provider RTP/SDP 관측 없이 무조건 시간 제한을 늘리거나 SRTP를 끄지 않습니다. allowed_addresses IP 제한은 Telkit 공식 안내상 LiveKit 프로젝트에서 지원팀 활성화 전에는 저장만 되므로 강제 적용됐다고 가정하지 않습니다. 기존 수신 caller allowlist·trunk ID·예약 식별 검사를 유지합니다. 외부 지원 문의는 보내지 않았습니다.
+
 ## 2026-11-09 Telkit·LiveKit 선택형 연결 인계 (#43)
 
 - 같은 `feat/43-phone-agent-prototype` / Draft PR #45에 선택형 음성 adapter를 추가했습니다. [실행/중단·비공개 설정](../prototypes/phone_agent/voice/README.md)을 따릅니다. SDK는 Git 제외 `work/voice-venv`, 설정은 권한 600 `work/phone-live.env`·`work/telkit-private/`, 로컬 DB는 `data/`입니다. 비밀값·번호를 공개 문서나 테스트로 옮기지 않습니다.

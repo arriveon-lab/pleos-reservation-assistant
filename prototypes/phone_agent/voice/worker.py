@@ -10,6 +10,7 @@ from livekit.plugins import silero
 
 from ..service import DomainError, ReservationService
 from .config import VoiceConfig, load_env_file
+from .diagnostics import AudioDiagnostics, reprompt_if_unheard
 from .workflow import LiveWorkflow
 
 load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
@@ -50,9 +51,19 @@ def store_conversation_item(workflow, call_id, item):
 
 
 class BookingVoiceAgent(Agent):
-    def __init__(self, workflow, call_id, context, close_call):
+    def __init__(self, workflow, call_id, context, close_call, diagnostics=None):
         self.workflow, self.call_id, self.close_call = workflow, call_id, close_call
+        self.diagnostics = diagnostics or AudioDiagnostics()
         super().__init__(instructions=INSTRUCTIONS + "\n이번 통화의 서버 확인 정보(JSON):\n" + json.dumps(context, ensure_ascii=False))
+
+    async def stt_node(self, audio, model_settings):
+        async def observed_audio():
+            async for frame in audio:
+                self.diagnostics.audio(frame)
+                yield frame
+        async for event in Agent.default.stt_node(self, observed_audio(), model_settings):
+            self.diagnostics.speech_event(event)
+            yield event
 
     def _tool(self, operation):
         try:
@@ -102,6 +113,8 @@ async def reservation_agent(ctx: agents.JobContext):
     call_id = None
     room_name = ctx.job.room.name
     deadline = None
+    reminder = None
+    diagnostics = AudioDiagnostics()
     ended = False
 
     async def close_call(reason):
@@ -109,12 +122,15 @@ async def reservation_agent(ctx: agents.JobContext):
         if ended:
             return
         ended = True
-        if call_id:
-            workflow.finish(call_id, reason)
         try:
-            await ctx.api.room.delete_room(api.DeleteRoomRequest(room=room_name))
+            if call_id:
+                workflow.record_diagnostics(call_id, diagnostics.snapshot())
+                workflow.finish(call_id, reason)
         finally:
-            ctx.shutdown(reason)
+            try:
+                await ctx.api.room.delete_room(api.DeleteRoomRequest(room=room_name))
+            finally:
+                ctx.shutdown(reason)
 
     async def expire():
         await asyncio.sleep(config.max_seconds)
@@ -123,7 +139,10 @@ async def reservation_agent(ctx: agents.JobContext):
     async def shutdown(reason="worker_shutdown"):
         if deadline:
             deadline.cancel()
+        if reminder:
+            reminder.cancel()
         if call_id and not ended:
+            workflow.record_diagnostics(call_id, diagnostics.snapshot())
             workflow.finish(call_id, reason)
         service.close()
 
@@ -150,7 +169,7 @@ async def reservation_agent(ctx: agents.JobContext):
             if participant.attributes.get("sip.callStatus") == "active":
                 break
             if participant.attributes.get("sip.callStatus") == "hangup":
-                await close_call("callee_disconnected")
+                await close_call("sip_disconnected")
                 return
             await asyncio.sleep(0.1)
         else:
@@ -163,6 +182,14 @@ async def reservation_agent(ctx: agents.JobContext):
             vad=silero.VAD.load(activation_threshold=0.3))
 
         assistant_turns = 0
+
+        @session.on("user_transcription_timeout")
+        def transcription_timeout(event):
+            diagnostics.timeouts += 1
+
+        @session.on("error")
+        def model_error(event):
+            diagnostics.errors += 1
 
         @session.on("conversation_item_added")
         def store_conversation(event):
@@ -177,11 +204,13 @@ async def reservation_agent(ctx: agents.JobContext):
         @ctx.room.on("participant_disconnected")
         def disconnected(participant_left):
             if participant_left.identity == participant.identity:
-                asyncio.create_task(close_call("callee_disconnected"))
+                diagnostics.disconnect_reason = participant_left.disconnect_reason
+                asyncio.create_task(close_call("sip_disconnected"))
 
-        agent = BookingVoiceAgent(workflow, call_id, workflow.context(call_id), close_call)
+        agent = BookingVoiceAgent(workflow, call_id, workflow.context(call_id), close_call, diagnostics)
         await session.start(room=ctx.room, agent=agent)
         await session.generate_reply(instructions="AI 예약 비서라고 소개하고 이번 통화 목적에 맞는 첫 질문을 한다.")
+        reminder = asyncio.create_task(reprompt_if_unheard(session, diagnostics, lambda: ended))
     except Exception:
         await close_call("worker_error")
 

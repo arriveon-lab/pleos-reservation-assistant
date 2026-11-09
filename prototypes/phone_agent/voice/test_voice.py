@@ -8,7 +8,7 @@ from dataclasses import replace
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from ..service import DomainError, ReservationService, identifier, required_conditions
 from .config import ConfigurationError, VoiceConfig, normalize_number
@@ -197,6 +197,56 @@ class LiveWorkflowTest(unittest.TestCase):
 
 
 class ConfigurationAndSDKTest(unittest.TestCase):
+    def test_audio_and_stt_diagnostics_distinguish_silence_without_saving_content(self):
+        from livekit import rtc
+        from livekit.agents import stt
+        from .diagnostics import AudioDiagnostics
+        import array
+        diagnostics = AudioDiagnostics()
+        diagnostics.audio(rtc.AudioFrame(bytes(320), 8000, 1, 160))
+        self.assertEqual(0, diagnostics.snapshot()["peakAmplitude"])
+        pcm = array.array("h", [4096] * 160).tobytes()
+        diagnostics.audio(rtc.AudioFrame(pcm, 8000, 1, 160))
+        diagnostics.speech_event(stt.SpeechEvent(type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+            alternatives=[stt.SpeechData(language="ko", text="가상 발화는 진단에 저장하지 않음")]))
+        snapshot = diagnostics.snapshot()
+        self.assertEqual(2, snapshot["audioFrames"])
+        self.assertEqual(0.04, snapshot["audioSeconds"])
+        self.assertEqual(0.125, snapshot["peakAmplitude"])
+        self.assertEqual(1, snapshot["sttFinal"])
+        self.assertNotIn("가상", json.dumps(snapshot, ensure_ascii=False))
+
+    def test_audio_observation_preserves_frames_and_provider_events(self):
+        from livekit import rtc
+        from livekit.agents import Agent, stt
+        from .worker import BookingVoiceAgent
+        frame = rtc.AudioFrame(bytes(320), 8000, 1, 160)
+        event = stt.SpeechEvent(type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+                                alternatives=[stt.SpeechData(language="ko", text="가상 응답")])
+        async def source():yield frame
+        async def provider(agent, audio, settings):
+            async for actual in audio:self.assertIs(frame, actual)
+            yield event
+        async def run():
+            agent = BookingVoiceAgent(None, "test-call", {}, AsyncMock())
+            with patch.object(Agent.default, "stt_node", provider):
+                output = [item async for item in agent.stt_node(source(), {})]
+            self.assertIs(event, output[0])
+            self.assertEqual(1, agent.diagnostics.snapshot()["audioFrames"])
+            self.assertEqual(1, agent.diagnostics.snapshot()["sttFinal"])
+        asyncio.run(run())
+
+    def test_unheard_reminder_runs_once_and_never_after_reply_or_end(self):
+        from .diagnostics import AudioDiagnostics, reprompt_if_unheard
+        for final, ended, state, expected in [(0,False,"listening",1),(1,False,"listening",0),
+                                             (0,True,"listening",0),(0,False,"speaking",0)]:
+            with self.subTest(final=final, ended=ended, state=state):
+                diagnostics = AudioDiagnostics();diagnostics.final = final
+                session = SimpleNamespace(user_state=state, say=AsyncMock())
+                sleep = AsyncMock()
+                asyncio.run(reprompt_if_unheard(session, diagnostics, lambda: ended, sleep=sleep))
+                self.assertEqual(expected, session.say.await_count)
+
     def test_handoff_event_is_not_speech_and_does_not_break_transcripts(self):
         from livekit.agents.llm import AgentHandoff, ChatMessage
         from .worker import store_conversation_item

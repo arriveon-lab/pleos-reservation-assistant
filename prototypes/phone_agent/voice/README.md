@@ -37,7 +37,7 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice setup --apply
 
 `doctor`는 키·번호 없이 준비 상태만, `plan`은 SIP 설정안과 선택한 번호를 표시합니다. 설정안은 공개 공유하지 않습니다. `setup --apply`만 외부 설정을 변경합니다. 이름으로 기존 자원을 대조해 inbound/outbound trunk·dispatch rule을 만들고 각 ID를 즉시 비공개 journal에 기록한 후 선택한 Telkit 번호의 연결을 갱신합니다. 기존 자원이 다르면 자동 덮어쓰지 않습니다. 중단 후 journal과 콘솔을 대조하고 재실행합니다. 동시 setup 프로세스는 지원하지 않습니다.
 
-TLS·SRTP 필수, Telkit 공식 IP와 승인된 수신 번호를 제한합니다. setup 후 실제 번호 연결 상태를 조회해 반영을 확인해야 합니다. trunk 생성이나 SIP 설정 성공만으로 수신 통화 성공으로 판단하지 않습니다.
+TLS·SRTP 필수, Telkit 공식 IP와 승인된 수신 번호를 설정합니다. 다만 Telkit 공식 안내상 LiveKit의 IP 제한은 지원팀이 프로젝트에서 활성화하기 전에는 저장만 되므로 강제 적용을 가정하지 않습니다. 승인된 caller allowlist·worker의 trunk/예약 식별 검사는 별도로 유지합니다. setup 후 실제 번호 연결 상태를 조회해 반영을 확인해야 합니다. trunk 생성이나 SIP 설정 성공만으로 수신 통화 성공으로 판단하지 않습니다.
 
 ## 실제 시험 실행과 중단
 
@@ -69,7 +69,13 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 
 2026-11-09 실제 발신 1회: Telkit 연결 46초·60원 차감, 잔액 2,940원·추가 카드 결제 0원. 번호 1개 구매에는 기존 크레딧 7,000원이 사용됐으며 30일마다 갱신됩니다. LiveKit은 무료 Build 프로젝트로 시험했고 유료 플랜 전환은 하지 않았습니다. 시험 후 LiveKit 콘솔의 Build 플랜·다음 청구액 $0.00을 확인했습니다. 사용량 집계는 지연될 수 있습니다.
 
-한국어 음성 왕복과 도구 결과 저장을 확인했지만 사용자 청취 피드백은 어색함·발음 개선 필요였습니다. 실제 기록에 예약자 이름 인식 불일치·식당 직원 호칭 오류·임의 회신 번호가 있어 최초 CONFIRMED 시험 결과를 UNKNOWN으로 정정했습니다. 이름 대조·통화별 근거를 보강하고 날짜/시간 읽기·짧은 응답·회신 번호 생성 금지 지침을 수정했습니다. 기본 목소리는 한국어 원어민 Jiwoo로 조정했으며 **변경 후 실제 청취·모델 호환은 아직 미검증**입니다. 추가 전화나 합성 요청을 실행하지 않았습니다.
+한국어 음성 왕복과 도구 결과 저장을 확인했지만 사용자 청취 피드백은 어색함·발음 개선 필요였습니다. 실제 기록에 예약자 이름 인식 불일치·식당 직원 호칭 오류·임의 회신 번호가 있어 최초 CONFIRMED 시험 결과를 UNKNOWN으로 정정했습니다. 이름 대조·통화별 근거를 보강하고 날짜/시간 읽기·짧은 응답·회신 번호 생성 금지 지침을 수정했습니다. 기본 목소리는 한국어 원어민 Jiwoo로 조정했으며 **당시 변경 후 실제 청취·모델 호환은 미검증**입니다. 추가 전화나 합성 요청을 실행하지 않았습니다.
+
+이후 재시험 1회를 실행했지만 첫인사 뒤 사용자 발화가 인식되지 않았고 LiveKit SIP 상세가 `media-timeout`으로 종료됐습니다. Telkit 31초·48원, 잔액 2,892원, 누적 통신비 108원입니다. 실제 예약은 UNKNOWN을 유지합니다. 상대 RTP 미수신의 구체 원인과 복구는 아직 해결하지 못했습니다.
+
+추가 전화 없이 가상 한국어 음성을 직접 TTS→STT로 1회 처리한 결과, 새 목소리 2.61초가 생성되고 김예약을 포함한 문장이 정확히 인식됐습니다. 모델 자체 경로의 확인이며 SIP 전화 복구 증거가 아닙니다. 무료 Build 범위에서 실행했고 추가 결제·유료 전환은 없습니다.
+
+입력 프레임 수·음량 최대값·STT 중간/최종 이벤트 수·timeout/오류·RTC 종료 코드를 통화 작업의 로컬 진단에 기록합니다. 진단에는 원본 음성·발화·개인 연락처를 넣지 않습니다. 첫인사 뒤 12초 동안 최종 인식이 없고 상대가 말하는 중이 아니면 재발화 안내 1회를 합니다. 이 진단/안내 추가 후 실제 전화는 하지 않았습니다. [media timeout 공식 진단](https://docs.livekit.io/reference/telephony/troubleshooting/)에 따라 RTP·SIP와 모델 오류를 구분하며 단순 참가자 disconnect를 상대방의 종료로 단정하지 않습니다.
 
 실제 수신·변경 재확인과 전체 계획 인수는 미검증입니다. 제품 연동·운영 배포·Pleos 기기 검증과 분리합니다. 모델 품질을 가상 SDK 테스트 통과로 대체하지 않습니다.
 
@@ -77,6 +83,6 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 work/voice-venv/bin/python -m unittest prototypes.phone_agent.voice.test_voice -v
 ```
 
-CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 21개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
+CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 24개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
 
 공식 근거: [Telkit LiveKit 연결](https://telkit.io/docs/connect/livekit.md), [번호·요금](https://telkit.io/docs/numbers/pricing.md), [LiveKit 음성 에이전트](https://docs.livekit.io/agents/start/voice-ai/), [SIP 참가자](https://docs.livekit.io/reference/telephony/sip-participant/), [Cartesia 한국어 Jiwoo](https://www.cartesia.ai/voices/library/jiwoo-service-specialist-15628352-2ede-4f1b-89e6-ceda0c983fbc).

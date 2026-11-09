@@ -170,6 +170,13 @@ class LiveWorkflow:
             if call.get("bookingId"):
                 self.service._event(owner, call["bookingId"], speaker, message[:2000], mode="LIVE", call_id=call_id)
 
+    def record_diagnostics(self, call_id, diagnostics):
+        def operation():
+            owner, call = self._find(call_id)
+            call["audioDiagnostics"] = dict(diagnostics)
+            self.service._put(owner, "live_call", call)
+        self._atomic(operation)
+
     def record_outcome(self, call_id, *, accepted, day, time, reservation_name, people, additional_cost,
                        confirmed_requirements, evidence):
         def operation():
