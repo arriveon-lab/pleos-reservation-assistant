@@ -14,6 +14,15 @@
 
 **최신 #16 첫 단계 (2026-11-07):** 브랜치 `feat/16-place-preview-integration`은 main `9518b6a` 기준입니다. [HTTP 계약 초안·MOCK 통합](../docs/REC05_PREVIEW_API.md)을 먼저 읽습니다. 기본 비활성 실험 API 4개 연산, 가상 Principal 기반 owner 대조, 서버 244개·가상 HTTP 교환 96건의 초안 대조·JAR 404/401 및 기존 smoke/계약/LIVE 차단을 확인했습니다. 실제 인증은 #4, 화면은 #5, navigation freshness/ETA는 #1과 합의 전이며 #16은 OPEN·PR Draft입니다. 기본 v1/제품 MOCK 유지, 실제 장소/전화/AI/유료 작업 추가 0회입니다. `verify` 후 `check-contract.py --preview-exchanges`, `smoke-test.py --check-contract`로 재현합니다. Android는 이번 로컬 검증 대상이 아닙니다.
 
+## 2026-11-09 REC-09 #32 성동구 데이터 명세·품질 확인
+
+- 최신 main35e22a8에서 feat/32-seoul-place-quality로 분리했습니다. #11의 검증 후보를 실제 제품으로 채택하지 않고 [독립 품질 도구/인수 기록](../docs/REC09_SEOUL_DATA_VALIDATION.md)을 준비했습니다. #23/#19의 미병합 코드를 가져오지 않았고 다른 담당 코드는 변경하지 않았습니다.
+- 공식 Open API 탭의 srvType=A 명세에서 LOCALDATA_072404_SD·39개 필드·SITETEL/X/Y/LASTMODTS/UPDATEDT·공개 sample최대5건을 확인했습니다. 필드/요청 메타데이터는 docs/quality/rec09-source-contract.json입니다.
+- pyproj3.7.2 기반 로컬 XML 품질 도구·가상 테스트15개·CI 가상 실행을 추가했습니다. 투영/축·누락·중복 충돌·시각 경계·정상0건/실패·XML 한도·비노출을 확인합니다. 행 수정일·조회 시각을 snapshot 기준일로 바꾸지 않으며 없으면 UNKNOWN입니다. Python품질 환경은3.11+이고 Java/Android 런타임·API/DB/실제 공급자 설정은 변경하지 않았습니다.
+- 공개 sample경로를 개인키·결제 없이1회/5건 읽고 원문을 저장하지 않았습니다. 전화 형식5/5, 좌표 누락2/5, 주소 누락3/5, 행정상 영업/정상1/5·폐업4/5입니다. 첫5건의 제한 표본이며 모집단 품질·번호 유효·예약 가능을 뜻하지 않습니다. 집계는 docs/quality/rec09-public-sample-2026-11-09.json, 가상 테스트와 구분합니다. 추가 실제 요청은 하지 않았고 이1회 상한은 소비했습니다.
+- 남은 제품 인수: 일반키/접근·batch/version/TZ, 현행 영업·해당 지역·전화/좌표의 추가 품질, 출처표시/저장/삭제/전달, #3 발신 승인·번호allowlist·비용, #26 표시·기기 확인. #11 OPEN과 #16–18/다른 담당 범위를 유지합니다. 전화/유료·Kakao/AI 실행·계정/키/IP 설정 변경은 없습니다.
+- 가상 Python15개와 문서5개/링크78개·명세/집계JSON·diff/명명 검사를 통과했습니다. CI는 가상 검사만 수행하고 실제 sample을 재호출하지 않습니다. 로컬 Java/기기 검증은 이번에 재실행하지 않았습니다. 증거는 Git 제외 work/rec09-tests.log·mock-profile.json·public-sample-results.json이며 공개 집계와 원문을 혼동하지 않습니다.
+
 ## 2026-11-09 SDK 준비 중 기능의 개발 경로 (#30)
 
 - [SDK 대체·단계별 연동 계획](../docs/SDK_FALLBACK_PLAN.md)을 우선합니다. 사용자 결정: 표준 API 우선 → Pleos 환경 검증 → 미지원 기능은 명시적 모의 실행 → 필요 시 Pleos adapter 추가. 기능별 상태·출처/시각·수명주기·주행 제한·SDK-01–10 인수 조건을 문서화했습니다. 새 adapter 구현이나 기기 검증 완료가 아닙니다.

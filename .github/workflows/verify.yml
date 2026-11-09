@@ -24,7 +24,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: ./gradlew --no-daemon -PincludeAndroid=false verify
-      - run: python -m pip install -r scripts/requirements-dev.txt
+      - run: python -m pip install -r scripts/requirements-quality.txt
+      - run: python -m unittest discover -s scripts/tests -p 'test_seoul_place_quality.py'
+      - run: python scripts/seoul-place-quality.py
       - run: python -m unittest discover -s scripts/tests -p 'test_preview_session_demo.py'
       - run: python scripts/check-recommendation-plan.py
       - run: python scripts/smoke-test.py --check-contract
