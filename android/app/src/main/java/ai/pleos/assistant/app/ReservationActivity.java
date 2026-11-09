@@ -1,9 +1,9 @@
 package ai.pleos.assistant.app;
 
+import ai.pleos.assistant.ux.CandidateSummary;
 import ai.pleos.assistant.ux.DrivingRestrictionController;
 import ai.pleos.assistant.ux.MockRepository;
 import android.app.AlertDialog;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
@@ -29,6 +29,7 @@ public final class ReservationActivity extends ComponentActivity {
   private ReservationViewModel model;
   private DrivingRestrictionController driving;
   private PreviewPanel previewPanel;
+  private Bundle previewDraft;
   private LinearLayout content;
   private ScrollView scroll;
   private boolean showConditions;
@@ -45,6 +46,13 @@ public final class ReservationActivity extends ComponentActivity {
   @Override
   public void onCreate(Bundle saved) {
     super.onCreate(saved);
+    previewDraft = saved;
+    if (saved != null) {
+      adultsInput = saved.getString("adultsInput", "2");
+      childrenInput = saved.getString("childrenInput", "1");
+      parkingInput = saved.getBoolean("parkingInput", true);
+      showConditions = saved.getBoolean("showConditions", false);
+    }
     model = new ViewModelProvider(this).get(ReservationViewModel.class);
     driving = new DrivingRestrictionController(CarRestrictionSource.create(this), model::driving);
     getOnBackPressedDispatcher()
@@ -118,6 +126,17 @@ public final class ReservationActivity extends ComponentActivity {
     return getString(resource);
   }
 
+  @Override
+  protected void onSaveInstanceState(Bundle out) {
+    out.putString("adultsInput", adults == null ? adultsInput : adults.getText().toString());
+    out.putString(
+        "childrenInput", children == null ? childrenInput : children.getText().toString());
+    out.putBoolean("parkingInput", parking == null ? parkingInput : parking.isChecked());
+    out.putBoolean("showConditions", showConditions);
+    if (previewPanel != null) previewPanel.save(out);
+    super.onSaveInstanceState(out);
+  }
+
   private int dp(int value) {
     return Math.round(value * getResources().getDisplayMetrics().density);
   }
@@ -125,9 +144,7 @@ public final class ReservationActivity extends ComponentActivity {
   private void text(String value, int size) {
     TextView view = new TextView(this);
     view.setText(value);
-    view.setTextSize(size);
-    view.setTextColor(Color.rgb(24, 36, 52));
-    view.setPadding(0, dp(8), 0, dp(8));
+    VehicleUi.text(view, size);
     content.addView(view);
   }
 
@@ -138,12 +155,18 @@ public final class ReservationActivity extends ComponentActivity {
   private void button(int resource, boolean enabled, View.OnClickListener action) {
     Button button = new Button(this);
     button.setText(resource);
-    button.setMinHeight(dp(72));
-    button.setTextSize(22);
-    button.setAllCaps(false);
+    VehicleUi.button(
+        button,
+        resource == R.string.search
+            || resource == R.string.auth_create
+            || resource == R.string.book
+            || resource == R.string.change
+            || resource == R.string.inquire);
     button.setEnabled(enabled);
     button.setOnClickListener(action);
-    content.addView(button);
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+    params.setMargins(0, dp(4), 0, dp(4));
+    content.addView(button, params);
   }
 
   private EditText number(int label, String initial) {
@@ -153,7 +176,7 @@ public final class ReservationActivity extends ComponentActivity {
     field.setInputType(InputType.TYPE_CLASS_NUMBER);
     field.setText(initial);
     field.setMinHeight(dp(72));
-    field.setTextSize(24);
+    VehicleUi.input(field);
     field.setEnabled(model.canWrite());
     content.addView(field);
     return field;
@@ -161,7 +184,10 @@ public final class ReservationActivity extends ComponentActivity {
 
   private void render() {
     if (model.previewOpen()) {
-      if (previewPanel == null) previewPanel = new PreviewPanel(this, model);
+      if (previewPanel == null) {
+        previewPanel = new PreviewPanel(this, model, previewDraft);
+        previewDraft = null;
+      }
       if (previewPanel.view.getParent() == null) setContentView(previewPanel.view);
       previewPanel.update();
       return;
@@ -178,22 +204,39 @@ public final class ReservationActivity extends ComponentActivity {
     scroll = new ScrollView(this);
     content = new LinearLayout(this);
     content.setOrientation(LinearLayout.VERTICAL);
-    content.setPadding(dp(32), dp(24), dp(32), dp(32));
-    content.setBackgroundColor(Color.rgb(247, 249, 252));
+    content.setPadding(dp(24), dp(16), dp(24), dp(24));
+    content.setBackgroundColor(getColor(R.color.ui_background));
     scroll.addView(content);
     setContentView(scroll);
-    text(getString(R.string.title), 32);
-    text(R.string.disclosure);
-    text(drivingLabel(), 24);
-    button(R.string.driving_retry, true, v -> retryDriving());
-    if (BuildConfig.DEBUG) {
-      button(R.string.driving_test_restricted, true, v -> debugRestriction());
-      button(R.string.driving_test_failed, true, v -> debugFailure());
+    JSONObject state = model.snapshot();
+    text(getString(R.string.ui_brand), 32);
+    text(R.string.ui_mock);
+    text(R.string.ui_trip);
+    JSONObject searchState = state.optJSONObject("search");
+    JSONObject request = searchState == null ? null : searchState.optJSONObject("request");
+    String eta = request == null ? "" : request.optJSONObject("navigation").optString("eta");
+    text(
+        eta.isEmpty()
+            ? getString(R.string.ui_trip_pending)
+            : getString(R.string.ui_trip_time, time(eta)),
+        22);
+    text(
+        getString(
+            R.string.ui_party,
+            request == null ? adultsInput : request.optJSONObject("party").optString("adults"),
+            request == null ? childrenInput : request.optJSONObject("party").optString("children")),
+        22);
+    text(stageLabel(state));
+    if (!model.restriction().allowsInput()) {
+      text(drivingLabel(), 22);
+      button(R.string.driving_retry, true, v -> retryDriving());
     }
-    button(R.string.connect, !model.busy(), v -> model.run(MockRepository::connect));
-    button(R.string.refresh, !model.busy(), v -> model.run(MockRepository::refresh));
-    text(model.connected() ? R.string.connected : R.string.disconnected);
-    if (model.busy()) text(R.string.busy);
+    if (model.busy()) {
+      android.widget.ProgressBar progress = new android.widget.ProgressBar(this);
+      progress.setContentDescription(getString(R.string.busy));
+      content.addView(progress, new LinearLayout.LayoutParams(dp(40), dp(40)));
+      text(R.string.busy);
+    }
     if (model.failed())
       text(
           "AUTH_CREATE_REQUIRED".equals(model.failureCode())
@@ -204,13 +247,16 @@ public final class ReservationActivity extends ComponentActivity {
           R.string.auth_create,
           !model.busy() && model.restriction().allowsInput(),
           v -> model.run(MockRepository::createIdentity));
-    button(R.string.auth_refresh, model.canWrite(), v -> model.run(MockRepository::renewIdentity));
-    text(R.string.auth_operator_notice);
-    button(R.string.preview_open, model.canWrite(), v -> model.openPreview());
-    JSONObject state = model.snapshot();
+    else if (!model.connected() || model.failed()) {
+      button(R.string.connect, !model.busy(), v -> model.run(MockRepository::connect));
+      button(
+          R.string.auth_refresh, model.canWrite(), v -> model.run(MockRepository::renewIdentity));
+    }
     JSONObject activeCall = state.optJSONObject("call");
+    JSONObject reservationState = state.optJSONObject("reservation");
     String stage =
-        state.optString("searchId")
+        (reservationState == null ? "" : reservationState.toString())
+            + state.optString("searchId")
             + state.optString("reservationId")
             + (activeCall == null
                 ? ""
@@ -250,7 +296,7 @@ public final class ReservationActivity extends ComponentActivity {
         parking.setChecked(parkingInput);
         parking.setEnabled(model.canWrite());
         parking.setMinHeight(dp(72));
-        parking.setTextSize(24);
+        VehicleUi.text(parking, 24);
         content.addView(parking);
         button(
             R.string.search,
@@ -267,12 +313,65 @@ public final class ReservationActivity extends ComponentActivity {
               }
             });
       }
-      if (state.has("search")) candidates(state);
+      if (activeCall != null || state.has("reservation") || state.has("pending"))
+        button(R.string.refresh, !model.busy(), v -> model.run(MockRepository::refresh));
+      if (state.has("search") && !state.has("reservationId")) candidates(state);
+      button(R.string.preview_open, model.canWrite(), v -> model.openPreview());
+      diagnostics();
 
     } catch (Exception malformed) {
       text(R.string.failure);
     }
     scroll.post(() -> scroll.scrollTo(0, restoredY));
+  }
+
+  private int stageLabel(JSONObject state) {
+    if (state.has("pending")) return R.string.ui_stage_unknown;
+    if (state.has("reservation")) return R.string.ui_stage_result;
+    JSONObject call = state.optJSONObject("call");
+    if (call != null) {
+      if ("UNKNOWN".equals(call.optString("status"))) return R.string.ui_stage_unknown;
+      if ("PENDING".equals(call.optString("status"))) return R.string.ui_stage_wait;
+      if ("ANSWERED".equals(call.optString("status"))) return R.string.ui_stage_approval;
+    }
+    return state.has("search") ? R.string.ui_stage_candidates : R.string.ui_stage_conditions;
+  }
+
+  private void diagnostics() {
+    if (!BuildConfig.DEBUG) return;
+    Button toggle = new Button(this);
+    VehicleUi.button(toggle, false);
+    content.addView(toggle);
+    LinearLayout root = content;
+    LinearLayout details = VehicleUi.card(this);
+    root.addView(details);
+    content = details;
+    text(R.string.ui_diagnostics_notice);
+    text(drivingLabel(), 22);
+    button(R.string.driving_retry, true, v -> retryDriving());
+    button(R.string.driving_test_restricted, true, v -> debugRestriction());
+    button(R.string.driving_test_failed, true, v -> debugFailure());
+    button(R.string.connect, !model.busy(), v -> model.run(MockRepository::connect));
+    button(R.string.auth_refresh, model.canWrite(), v -> model.run(MockRepository::renewIdentity));
+    text(model.connected() ? R.string.connected : R.string.disconnected);
+    text(R.string.auth_operator_notice);
+    content = root;
+    VehicleUi.disclosure(toggle, details, R.string.ui_diagnostics, R.string.ui_diagnostics_close);
+  }
+
+  private String factSummary(JSONObject facts, String key, String eta) {
+    String value = CandidateSummary.fact(facts, key, Instant.now(), Instant.parse(eta));
+    boolean estimated = value.startsWith("ESTIMATED:");
+    if (estimated) value = value.substring("ESTIMATED:".length());
+    String label =
+        switch (value) {
+          case "UNKNOWN" -> getString(R.string.ui_fact_unknown);
+          case "EXPIRED" -> getString(R.string.ui_fact_expired);
+          case "true" -> getString(R.string.ui_fact_yes);
+          case "false" -> getString(R.string.ui_fact_no);
+          default -> getString(R.string.ui_minutes, value);
+        };
+    return estimated ? getString(R.string.ui_estimated, label) : label;
   }
 
   private String list(JSONArray array) throws Exception {
@@ -325,20 +424,43 @@ public final class ReservationActivity extends ComponentActivity {
     JSONObject search = state.getJSONObject("search");
     JSONArray candidates = search.getJSONArray("candidates");
     if (candidates.length() == 0) text(R.string.empty);
-    for (int i = 0; i < candidates.length(); i++) {
+    LinearLayout listRoot = content;
+    LinearLayout row = new LinearLayout(this);
+    boolean wide = getResources().getConfiguration().screenWidthDp >= 1100;
+    row.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+    listRoot.addView(row);
+    for (int i = 0; i < Math.min(3, candidates.length()); i++) {
       JSONObject candidate = candidates.getJSONObject(i);
       String id = candidate.getString("id");
+      LinearLayout root = content;
+      LinearLayout card = VehicleUi.card(this);
+      row.addView(card);
+      if (wide) {
+        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(0, -2, 1);
+        layout.setMargins(dp(4), dp(8), dp(4), dp(8));
+        card.setLayoutParams(layout);
+      }
+      content = card;
+      text(candidate.getString("name"), 28);
+      text(candidate.getString("cuisine"), 22);
       text(
-          getString(
-              R.string.candidate,
-              candidate.getString("name"),
-              candidate.getString("cuisine"),
-              getString(candidate.getBoolean("eligible") ? R.string.yes : R.string.no),
-              getString(candidate.getBoolean("bookable") ? R.string.yes : R.string.no),
-              list(candidate.getJSONArray("missing")),
-              list(candidate.getJSONArray("exclusionReasons"))),
-          24);
+          switch (CandidateSummary.state(candidate)) {
+            case EXCLUDED -> R.string.ui_excluded;
+            case REVIEW_REQUIRED -> R.string.ui_review;
+            case REQUEST_AVAILABLE -> R.string.ui_request_available;
+          });
       JSONObject facts = candidate.getJSONObject("facts");
+      for (String key :
+          new String[] {"parking", "childFriendly", "arrivalWaitMinutes", "reservationAvailable"})
+        text(
+            getString(
+                R.string.ui_fact_row,
+                label(key),
+                factSummary(
+                    facts,
+                    key,
+                    search.getJSONObject("request").getJSONObject("navigation").getString("eta"))),
+            24);
       button(
           expandedFacts.contains(id) ? R.string.hide_facts : R.string.show_facts,
           true,
@@ -346,6 +468,12 @@ public final class ReservationActivity extends ComponentActivity {
             if (!expandedFacts.remove(id)) expandedFacts.add(id);
             render();
           });
+      if (expandedFacts.contains(id)) {
+        text(getString(R.string.ui_missing, list(candidate.getJSONArray("missing"))), 22);
+        text(
+            getString(R.string.ui_exclusions, list(candidate.getJSONArray("exclusionReasons"))),
+            22);
+      }
       Iterator<String> keys = expandedFacts.contains(id) ? facts.keys() : new JSONObject().keys();
       while (keys.hasNext()) {
         String key = keys.next();
@@ -386,6 +514,7 @@ public final class ReservationActivity extends ComponentActivity {
           R.string.book,
           available && candidate.getBoolean("bookable"),
           v -> confirm(R.string.approve_title, message, r -> r.book(id, true)));
+      content = root;
     }
   }
 
@@ -394,7 +523,7 @@ public final class ReservationActivity extends ComponentActivity {
     TextView dialogTitle = new TextView(this);
     dialogTitle.setText(title);
     dialogTitle.setTextSize(28);
-    dialogTitle.setTextColor(Color.rgb(24, 36, 52));
+    dialogTitle.setTextColor(getColor(R.color.ui_text));
     dialogTitle.setPadding(dp(24), dp(24), dp(24), dp(12));
     approval =
         new AlertDialog.Builder(this)
@@ -408,19 +537,21 @@ public final class ReservationActivity extends ComponentActivity {
                 })
             .create();
     approval.show();
+    if (approval.getWindow() != null)
+      approval
+          .getWindow()
+          .setBackgroundDrawable(
+              new android.graphics.drawable.ColorDrawable(getColor(R.color.ui_surface)));
     TextView messageView = approval.findViewById(android.R.id.message);
     if (messageView != null) messageView.setTextSize(24);
     for (int which : new int[] {AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE}) {
       Button actionButton = approval.getButton(which);
-      actionButton.setTextSize(22);
-      actionButton.setMinHeight(dp(72));
-      actionButton.setAllCaps(false);
+      VehicleUi.button(actionButton, which == AlertDialog.BUTTON_POSITIVE);
     }
     if (approval.getWindow() != null)
       approval
           .getWindow()
-          .setLayout(
-              Math.min(dp(1200), (int) (getResources().getDisplayMetrics().widthPixels * 0.9)), -2);
+          .setLayout(Math.min(dp(1200), (int) (getWindow().getDecorView().getWidth() * 0.94)), -2);
   }
 
   private void reservation(JSONObject value) throws Exception {

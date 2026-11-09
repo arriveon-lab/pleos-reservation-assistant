@@ -1,7 +1,7 @@
 package ai.pleos.assistant.app;
 
 import ai.pleos.assistant.ux.PreviewController;
-import android.graphics.Color;
+import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -17,35 +17,36 @@ final class PreviewPanel {
   final ScrollView view;
   private final ReservationActivity activity;
   private final ReservationViewModel model;
-  private final LinearLayout form, results;
+  private final LinearLayout form, results, conditions;
   private final List<View> inputs = new ArrayList<>();
   private final EditText adults, children, wait, radius, cuisines;
   private final CheckBox parking, childFriendly;
   private final Spinner destination;
-  private final Button search, cancel;
+  private final Button search, cancel, conditionsToggle, retryDriving;
   private final TextView restriction;
   private String rendered = "";
   private String lastState = "";
 
-  PreviewPanel(ReservationActivity activity, ReservationViewModel model) {
+  PreviewPanel(ReservationActivity activity, ReservationViewModel model, Bundle draft) {
     this.activity = activity;
     this.model = model;
     view = new ScrollView(activity);
     form = new LinearLayout(activity);
     form.setOrientation(LinearLayout.VERTICAL);
-    form.setPadding(dp(32), dp(24), dp(32), dp(32));
-    form.setBackgroundColor(Color.rgb(247, 249, 252));
+    form.setPadding(dp(24), dp(16), dp(24), dp(24));
+    form.setBackgroundColor(activity.getColor(R.color.ui_background));
     view.addView(form);
     text(form, activity.getString(R.string.preview_title), 32);
-    text(form, activity.getString(R.string.preview_disclosure), 24);
-    restriction = text(form, "", 24);
-    button(form, R.string.driving_retry, activity::retryDriving);
-    if (BuildConfig.DEBUG) {
-      button(form, R.string.driving_test_restricted, activity::debugRestriction);
-      button(form, R.string.driving_test_failed, activity::debugFailure);
-    }
+    text(form, activity.getString(R.string.ui_mock), 22);
+    text(form, activity.getString(R.string.ui_preview_hint), 22);
+    text(form, activity.getString(R.string.ui_preview_eta), 22);
     button(form, R.string.preview_back, () -> model.closePreview());
-    text(form, activity.getString(R.string.preview_destination), 24);
+    restriction = text(form, "", 22);
+    retryDriving = button(form, R.string.driving_retry, activity::retryDriving);
+    conditionsToggle = button(form, R.string.ui_preview_conditions_close, () -> toggleConditions());
+    conditions = VehicleUi.card(activity);
+    form.addView(conditions);
+    text(conditions, activity.getString(R.string.preview_destination), 24);
     destination = new Spinner(activity);
     destination.setMinimumHeight(dp(72));
     destination.setContentDescription(activity.getString(R.string.preview_destination));
@@ -65,7 +66,7 @@ final class PreviewPanel {
         };
     choices.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
     destination.setAdapter(choices);
-    form.addView(destination);
+    conditions.addView(destination);
     inputs.add(destination);
     adults = field(R.string.preview_adults, "2", true);
     children = field(R.string.preview_children, "1", true);
@@ -109,7 +110,45 @@ final class PreviewPanel {
             model.invalidatePreview("EDITING");
           }
         });
+    if (draft != null) {
+      adults.setText(draft.getString("previewAdults", "2"));
+      children.setText(draft.getString("previewChildren", "1"));
+      wait.setText(draft.getString("previewWait", "15"));
+      radius.setText(draft.getString("previewRadius", "1000"));
+      cuisines.setText(draft.getString("previewCuisines", "한식"));
+      parking.setChecked(draft.getBoolean("previewParking", true));
+      childFriendly.setChecked(draft.getBoolean("previewChildFriendly", true));
+      destination.setSelection(draft.getInt("previewDestination", 0));
+    }
+    if (BuildConfig.DEBUG) {
+      Button toggle = button(form, R.string.ui_diagnostics, () -> {});
+      LinearLayout diagnostics = VehicleUi.card(activity);
+      form.addView(diagnostics);
+      text(diagnostics, activity.getString(R.string.preview_disclosure), 22);
+      button(diagnostics, R.string.driving_test_restricted, activity::debugRestriction);
+      button(diagnostics, R.string.driving_test_failed, activity::debugFailure);
+      VehicleUi.disclosure(
+          toggle, diagnostics, R.string.ui_diagnostics, R.string.ui_diagnostics_close);
+    }
     update();
+  }
+
+  void save(Bundle out) {
+    out.putString("previewAdults", adults.getText().toString());
+    out.putString("previewChildren", children.getText().toString());
+    out.putString("previewWait", wait.getText().toString());
+    out.putString("previewRadius", radius.getText().toString());
+    out.putString("previewCuisines", cuisines.getText().toString());
+    out.putBoolean("previewParking", parking.isChecked());
+    out.putBoolean("previewChildFriendly", childFriendly.isChecked());
+    out.putInt("previewDestination", destination.getSelectedItemPosition());
+  }
+
+  private void toggleConditions() {
+    boolean show = conditions.getVisibility() != View.VISIBLE;
+    conditions.setVisibility(show ? View.VISIBLE : View.GONE);
+    conditionsToggle.setText(
+        show ? R.string.ui_preview_conditions_close : R.string.ui_preview_conditions);
   }
 
   private int dp(int n) {
@@ -119,9 +158,7 @@ final class PreviewPanel {
   private TextView text(LinearLayout parent, String value, int size) {
     TextView label = new TextView(activity);
     label.setText(value);
-    label.setTextSize(size);
-    label.setTextColor(Color.rgb(24, 36, 52));
-    label.setPadding(0, dp(8), 0, dp(8));
+    VehicleUi.text(label, size);
     parent.addView(label);
     return label;
   }
@@ -129,24 +166,24 @@ final class PreviewPanel {
   private Button button(LinearLayout parent, int resource, Runnable action) {
     Button b = new Button(activity);
     b.setText(resource);
-    b.setTextSize(22);
-    b.setAllCaps(false);
-    b.setMinHeight(dp(72));
+    VehicleUi.button(b, resource == R.string.preview_search);
     b.setOnClickListener(v -> action.run());
-    parent.addView(b);
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+    params.setMargins(0, dp(4), 0, dp(4));
+    parent.addView(b, params);
     return b;
   }
 
   private EditText field(int label, String initial, boolean numeric) {
-    text(form, activity.getString(label), 24);
+    text(conditions, activity.getString(label), 24);
     EditText input = new EditText(activity);
-    input.setTextSize(24);
+    VehicleUi.input(input);
     input.setMinHeight(dp(72));
     input.setContentDescription(activity.getString(label));
     input.setInputType(numeric ? InputType.TYPE_CLASS_NUMBER : InputType.TYPE_CLASS_TEXT);
     input.setText(initial);
     input.setMinimumHeight(dp(72));
-    form.addView(input);
+    conditions.addView(input);
     inputs.add(input);
     return input;
   }
@@ -154,10 +191,10 @@ final class PreviewPanel {
   private CheckBox check(int label, boolean checked) {
     CheckBox input = new CheckBox(activity);
     input.setText(label);
-    input.setTextSize(24);
+    VehicleUi.text(input, 24);
     input.setMinHeight(dp(72));
     input.setChecked(checked);
-    form.addView(input);
+    conditions.addView(input);
     inputs.add(input);
     return input;
   }
@@ -190,14 +227,25 @@ final class PreviewPanel {
     search.setEnabled(allowed && !"LOADING".equals(state.state()));
     cancel.setEnabled("LOADING".equals(state.state()) || state.result() != null);
     restriction.setText(activity.drivingLabel());
+    restriction.setVisibility(model.restriction().allowsInput() ? View.GONE : View.VISIBLE);
+    retryDriving.setVisibility(model.restriction().allowsInput() ? View.GONE : View.VISIBLE);
     String signature = state.toString();
     if (signature.equals(rendered)) return;
     rendered = signature;
     boolean completed = "LOADING".equals(lastState) && !"LOADING".equals(state.state());
     lastState = state.state();
     results.removeAllViews();
+    if (completed && state.result() != null) {
+      conditions.setVisibility(View.GONE);
+      conditionsToggle.setText(R.string.ui_preview_conditions);
+    }
     if (completed) view.post(() -> view.smoothScrollTo(0, results.getTop()));
     text(results, activity.getString(stateLabel(state.state())), 28);
+    if ("LOADING".equals(state.state())) {
+      ProgressBar progress = new ProgressBar(activity);
+      progress.setContentDescription(activity.getString(R.string.preview_loading));
+      results.addView(progress, new LinearLayout.LayoutParams(dp(40), dp(40)));
+    }
     if (state.cleanupPending())
       text(results, activity.getString(R.string.preview_cleanup_pending), 24);
     if (state.cleanupFailed())
@@ -205,42 +253,47 @@ final class PreviewPanel {
     JSONObject value = state.result();
     if (value == null) return;
     try {
-      text(
-          results,
-          activity.getString(
-              R.string.preview_times,
-              displayTime(value.getString("fetchedAt")),
-              displayTime(value.getString("expiresAt"))),
-          24);
       JSONObject plan = value.optJSONObject("recommendationPlan");
       if (plan == null) {
         text(results, activity.getString(R.string.preview_no_plan), 24);
         return;
       }
       JSONArray candidates = plan.getJSONArray("candidates");
-      for (int i = 0; i < candidates.length(); i++) {
-        JSONObject candidate = candidates.getJSONObject(i);
-        text(
-            results,
-            activity.getString(
-                R.string.preview_overview,
-                candidate.getInt("ordinal"),
-                candidate.getString("name"),
-                nullable(candidate, "cuisine"),
-                candidate.getDouble("straightLineDistanceMeters")),
-            24);
-      }
+      LinearLayout row = new LinearLayout(activity);
+      boolean wide = activity.getResources().getConfiguration().screenWidthDp >= 1100;
+      row.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+      results.addView(row);
       for (int i = 0; i < candidates.length(); i++) {
         JSONObject c = candidates.getJSONObject(i);
-        LinearLayout card = new LinearLayout(activity);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(16), dp(16), dp(24));
-        results.addView(card);
+        LinearLayout card = VehicleUi.card(activity);
+        row.addView(card);
+        if (wide) {
+          LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(0, -2, 1);
+          layout.setMargins(dp(4), dp(8), dp(4), dp(8));
+          card.setLayoutParams(layout);
+        }
         text(
             card,
             activity.getString(
                 R.string.preview_candidate, c.getInt("ordinal"), c.getString("name")),
             28);
+        text(card, activity.getString(R.string.ui_review), 24);
+        for (String summary : activity.getString(R.string.ui_preview_summary).split("\n"))
+          text(card, summary, 24);
+        Button expand = button(card, R.string.ui_preview_details, () -> {});
+        LinearLayout details = new LinearLayout(activity);
+        details.setOrientation(LinearLayout.VERTICAL);
+        card.addView(details);
+        VehicleUi.disclosure(
+            expand, details, R.string.ui_preview_details, R.string.ui_preview_details_close);
+        card = details;
+        text(
+            card,
+            activity.getString(
+                R.string.preview_times,
+                displayTime(value.getString("fetchedAt")),
+                displayTime(value.getString("expiresAt"))),
+            22);
         text(
             card,
             activity.getString(

@@ -1,0 +1,11 @@
+<resources>
+  <color name="ui_background">#101820</color>
+  <color name="ui_surface">#1C2834</color>
+  <color name="ui_text">#F4F7FB</color>
+  <color name="ui_secondary">#BAC8D9</color>
+  <color name="ui_accent">#A8D5FF</color>
+  <color name="ui_on_accent">#11273C</color>
+  <color name="ui_disabled">#344454</color>
+  <color name="ui_on_disabled">#D0DCE9</color>
+  <color name="ui_outline">#A4B8CC</color>
+</resources>

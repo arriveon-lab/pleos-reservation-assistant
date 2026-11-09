@@ -32,6 +32,12 @@ tasks.register("verify") {
     dependsOn("spotlessCheck", ":server:check", ":server:bootJar", ":ux:core:check")
 }
 
+tasks.register<Exec>("checkVehicleUiContrast") {
+    group = "verification"
+    description = "Check vehicle UI day/night and pressed-state color contrast."
+    commandLine("python3", "scripts/check-ui-contrast.py")
+}
+
 tasks.register("verifyAndroid") {
     group = "verification"
     description =
@@ -42,6 +48,7 @@ tasks.register("verifyAndroid") {
             ":android:probe:lintDebug",
             ":android:probe:testDebugUnitTest",
             ":android:probe:assembleDebug",
+            "checkVehicleUiContrast",
             ":android:app:lintDebug",
             ":android:app:assembleDebug",
             ":ux:core:check",
