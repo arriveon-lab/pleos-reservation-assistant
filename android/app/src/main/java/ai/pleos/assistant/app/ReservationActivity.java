@@ -26,6 +26,7 @@ import org.json.JSONObject;
 
 public final class ReservationActivity extends ComponentActivity {
   private ReservationViewModel model;
+  private PreviewPanel previewPanel;
   private LinearLayout content;
   private ScrollView scroll;
   private boolean showConditions;
@@ -43,6 +44,22 @@ public final class ReservationActivity extends ComponentActivity {
   public void onCreate(Bundle saved) {
     super.onCreate(saved);
     model = new ViewModelProvider(this).get(ReservationViewModel.class);
+    getOnBackPressedDispatcher()
+        .addCallback(
+            this,
+            new androidx.activity.OnBackPressedCallback(true) {
+              @Override
+              public void handleOnBackPressed() {
+                if (model.previewOpen()) {
+                  model.closePreview();
+                  previewPanel = null;
+                } else {
+                  setEnabled(false);
+                  getOnBackPressedDispatcher().onBackPressed();
+                  setEnabled(true);
+                }
+              }
+            });
     model.observe(this::render);
     render();
   }
@@ -59,6 +76,7 @@ public final class ReservationActivity extends ComponentActivity {
   protected void onStop() {
     if (approval != null) approval.dismiss();
     model.observe(null);
+    model.invalidatePreview("CLOSED");
     model.restrict(MockRepository.Restriction.UNKNOWN);
     super.onStop();
   }
@@ -105,6 +123,13 @@ public final class ReservationActivity extends ComponentActivity {
   }
 
   private void render() {
+    if (model.previewOpen()) {
+      if (previewPanel == null) previewPanel = new PreviewPanel(this, model);
+      if (previewPanel.view.getParent() == null) setContentView(previewPanel.view);
+      previewPanel.update();
+      return;
+    }
+    previewPanel = null;
     if (adults != null) adultsInput = adults.getText().toString();
     if (children != null) childrenInput = children.getText().toString();
     if (parking != null) parkingInput = parking.isChecked();
@@ -164,6 +189,7 @@ public final class ReservationActivity extends ComponentActivity {
           v -> model.run(MockRepository::createIdentity));
     button(R.string.auth_refresh, model.canWrite(), v -> model.run(MockRepository::renewIdentity));
     text(R.string.auth_operator_notice);
+    button(R.string.preview_open, model.canWrite(), v -> model.openPreview());
     JSONObject state = model.snapshot();
     JSONObject activeCall = state.optJSONObject("call");
     String stage =
