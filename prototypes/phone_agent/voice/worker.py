@@ -4,7 +4,7 @@ import json
 import os
 
 from livekit import agents, api, rtc
-from livekit.agents import Agent, AgentServer, AgentSession, RunContext, function_tool, inference
+from livekit.agents import Agent, AgentServer, AgentSession, RunContext, StopResponse, function_tool, inference
 from livekit.agents.llm import ChatMessage
 from livekit.plugins import silero
 
@@ -25,7 +25,11 @@ INSTRUCTIONS = """너는 한국어 식당 예약 비서다. 짧고 자연스러�
 회신 번호를 만들어 말하거나 예시 전화번호를 읽지 않는다. 현재 수신 시험은 끝나지 않았으므로 회신 안내는 하지 않는다.
 전화 상대에게 말하듯 기본 한 문장만 말하고 답을 기다린다. 한 번에 질문은 반드시 하나만 한다.
 일시·이름·비용을 한 번에 다시 묻지 않는다. 한 가지가 틀렸으면 그 항목만 짧게 재확인한다.
-이미 확인한 날짜·시간·인원은 매 응답마다 반복하지 않는다. 마지막 요약에서만 한 번 묶는다.
+이미 확인한 날짜·시간·인원은 정정이나 청취 실패가 없으면 다시 반복하지 않는다.
+질문 목록을 처음부터 끝까지 읽지 말고 상대가 이미 답한 항목은 건너뛴다.
+이름을 전달하며 예약을 부탁한 직후 '네, 알겠습니다'라고 수락하면 같은 이름이나 전체 예약을 다시 묻지 않는다.
+추가 비용이나 필수 조건처럼 아직 확인하지 못한 항목만 묻고 결과 도구를 호출한다.
+다른 조건 제안·부정·정정이 섞인 답은 단순 수락으로 해석하지 않는다.
 이름을 잘못 받아 적었을 때만 '이름은 김예약입니다. 이 이름으로 예약 부탁드립니다'처럼 정정한다.
 상대가 처음 예약 요청을 못 들었다고 하면 날짜·시간·인원을 포함한 질문을 짧게 다시 말한다.
 다시 잘못 들리면 실제 제공된 이름을 한글 음절별로 천천히 한 번 말한다. 예시는 실제 이름 대신 사용하지 않는다.
@@ -35,17 +39,18 @@ INSTRUCTIONS = """너는 한국어 식당 예약 비서다. 짧고 자연스러�
 예약자 이름은 제공된 이름 그대로 또렷하게 말한다. 영문 상태명·JSON·도구 이름을 소리 내지 않는다.
 도구에 제출하는 날짜와 시간은 말하는 표현과 구분하여 YYYY-MM-DD와 HH:MM 형식을 유지한다.
 제공된 예약 조건과 필수 동승자 조건만 전달한다. 사람의 건강 상태나 동승자 신원을 추론하지 않는다.
-새 예약은 날짜·시간·인원·이름과 모든 필수 조건, 추가 비용 없음을 명확히 재확인한다.
+새 예약은 날짜·시간·인원·이름과 모든 필수 조건, 추가 비용 없음을 대화에서 확인한다.
 식당이 말한 이름이 다르게 들리면 정확한 이름을 다시 말하고 재확인한다. 다른 이름을 임의로 같은 사람으로 간주하지 않는다.
 '잠시만요', '확인해볼게요', 예약 가능 여부만으로는 확정하지 않는다.
 식당의 명확한 예약 수락을 확인하고 실제 발화 근거를 도구에 제출한다. 정해진 문장을 따라 말하도록 요구하지 않는다.
-도구가 저장 성공과 CONFIRMED를 반환한 뒤에만 예약 확정이라고 말한다.
+예약 요청 직후의 수락을 결과 도구 근거로 인용한다. 추가 비용이 없다는 답만 예약 수락 근거로 제출하지 않는다.
+확정/완료 안내나 마지막 재확인 질문을 만들기 전에 결과 도구를 호출한다. 저장 뒤 안내와 종료는 도구가 처리한다.
 다른 시간이나 추가 비용, 불확실한 조건을 임의로 수락하지 않는다.
 회신 전화는 상대가 예약자 이름·YYYY-MM-DD 날짜·HH:MM 시간을 먼저 말하게 하고 identify_booking으로 확인한다.
 조회 실패 시 다른 예약 목록이나 개인정보를 읽어주지 않는다. 확인한 예약만 변경 요청을 받는다.
 변경 요청을 저장한 뒤에는 사용자에게 확인하고 다시 연락하겠다고 말한다. 현 통화에서 임의 확정하지 않는다.
 CHANGE_CONFIRMATION은 이미 사용자가 승인한 변경을 식당에 재확인하는 목적이다. 원 시간을 먼저 밝힌다.
-마지막에 확인한 조건을 짧게 반복하고 finish_call로 마친다.
+결과 도구로 저장한 뒤 추가 요약·질문을 하지 않는다. 결과를 저장하지 못한 통화만 finish_call로 마친다.
 """
 
 
@@ -103,10 +108,21 @@ class BookingVoiceAgent(Agent):
         confirmed_requirements에는 서버가 제공한 requiredConditions 중 실제 확인한 항목만 넣는다.
         불명확한 답변이나 추가 비용을 수락으로 제출하지 않는다.
         """
-        return self._tool(lambda: self.workflow.record_outcome(
+        result = self._tool(lambda: self.workflow.record_outcome(
             self.call_id, accepted=explicitly_accepted, day=confirmed_date, time=confirmed_time,
             reservation_name=confirmed_reservation_name, people=people, additional_cost=additional_cost_krw,
             confirmed_requirements=confirmed_requirements, evidence=restaurant_evidence))
+        if not result.get("saved"):
+            return result
+        # Speak the stored outcome directly; do not let a model reinterpret UNKNOWN as success.
+        closing = {
+            "CONFIRMED": "예약 확인 감사합니다. 통화를 마치겠습니다.",
+            "DECLINED": "예약이 어렵다는 말씀 확인했습니다. 안내 감사합니다.",
+        }.get(result["status"], "예약 확정 여부는 아직 확인하지 못했습니다. 안내 감사합니다.")
+        await context.wait_for_playout()
+        await context.session.say(closing, allow_interruptions=False)
+        await self.close_call("agent_finished")
+        raise StopResponse()
 
     @function_tool()
     async def save_change_request(self, context: RunContext, proposed_time: str, reason: str) -> dict:

@@ -122,6 +122,46 @@ class LiveWorkflowTest(unittest.TestCase):
         self.assertEqual("LIVE", self.get_booking(booking)["mode"])
         self.assertEqual(1, self.service.state(self.owner)["externalCalls"])
 
+    def test_named_request_acknowledgement_confirms_without_repeating_every_field(self):
+        booking, call = self.reserve()
+        self.workflow.transcript(call["id"], "agent", "예약자 이름은 김예약입니다. 이 이름으로 예약 부탁드립니다.")
+        evidence = "네, 알겠습니다. 좀 이따 뵐게요."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        self.workflow.transcript(call["id"], "agent", "추가 비용이나 필수 조건에 문제가 있을까요?")
+        self.workflow.transcript(call["id"], "restaurant", "추가 비용 없고 요청하신 조건 모두 가능합니다.")
+        result = self.workflow.record_outcome(call["id"], accepted=True, day=DAY, time="19:00",
+            reservation_name="김예약", people=4, additional_cost=0,
+            confirmed_requirements=required_conditions(CONDITIONS), evidence=evidence)
+        self.assertEqual("CONFIRMED", result["status"])
+        self.assertEqual("19:00", self.get_booking(booking)["confirmedTime"])
+        self.assertEqual("contextual_acknowledgement", self.workflow._find(call["id"])[1]["confirmationBasis"])
+
+    def test_acknowledgement_cannot_confirm_an_unrelated_or_conditional_request(self):
+        from .workflow import acknowledged_booking_name
+        named = "김예약 이름으로 예약 부탁드립니다."
+        for request, reply, later in [
+            ("김예약 이름으로 예약 가능할까요?", "네, 알겠습니다.", ""),
+            ("다른이름으로 예약 부탁드립니다.", "네, 알겠습니다.", ""),
+            ("김예약 이름 말고 다른이름으로 예약 부탁드립니다.", "네, 알겠습니다.", ""),
+            ("예약자 이름은 김예", "네, 알겠습니다.", ""),
+            (named, "네, 알겠습니다. 다만 다른 시간으로 가능합니다.", ""),
+            (named, "네, 알겠습니다.", "그런데 예약은 취소해야 합니다."),
+            (named, "네, 알겠습니다.", "이름은 김예약이 아니에요."),
+        ]:
+            with self.subTest(request=request, reply=reply, later=later):
+                events = [{"speaker":"agent", "message":request}, {"speaker":"restaurant", "message":reply}]
+                if later:events.append({"speaker":"restaurant", "message":later})
+                self.assertFalse(acknowledged_booking_name(events, reply, "김예약"))
+
+    def test_acknowledged_name_cannot_be_reused_from_a_previous_call(self):
+        _, previous = self.reserve()
+        self.workflow.transcript(previous["id"], "agent", "김예약 이름으로 예약 부탁드립니다.")
+        self.workflow.finish(previous["id"])
+        booking = self.prepare()
+        call, _ = self.workflow.reserve(self.owner, booking, 2, "new-call")
+        self.workflow.mark_dispatching(call["id"])
+        self.assertEqual("UNKNOWN", self.result(call, evidence="네, 알겠습니다.")["status"])
+
     def test_recognized_name_mismatch_cannot_be_hidden_by_tool_argument(self):
         booking, call = self.reserve()
         self.assertEqual("UNKNOWN", self.result(call, evidence="다른이름으로 예약 확정됐습니다.")["status"])
@@ -197,6 +237,35 @@ class LiveWorkflowTest(unittest.TestCase):
 
 
 class ConfigurationAndSDKTest(unittest.TestCase):
+    def test_saved_outcome_controls_closing_and_prevents_model_success_rewrite(self):
+        from livekit.agents import StopResponse
+        from .worker import BookingVoiceAgent
+        for status in ("CONFIRMED", "DECLINED", "UNKNOWN"):
+            with self.subTest(status=status):
+                order = []
+                workflow = SimpleNamespace(record_outcome=Mock(return_value={"saved":True, "status":status}))
+                async def prior():order.append("prior")
+                async def say(text, **kwargs):order.append(text)
+                async def close(reason):order.append("closed")
+                agent = BookingVoiceAgent(workflow, "call", {}, close)
+                context = SimpleNamespace(wait_for_playout=prior, session=SimpleNamespace(say=say))
+                with self.assertRaises(StopResponse):
+                    asyncio.run(agent.save_reservation_result(context, True, DAY, "19:00", "김예약", 4, 0, [], "가상 근거"))
+                self.assertEqual("prior", order[0]);self.assertEqual("closed", order[-1])
+                if status == "UNKNOWN":self.assertIn("확인하지 못했습니다", order[1])
+                if status == "CONFIRMED":self.assertIn("예약 확인 감사합니다", order[1])
+                if status == "DECLINED":self.assertIn("예약이 어렵다", order[1])
+
+    def test_invalid_result_does_not_announce_success_or_close_before_clarification(self):
+        from .worker import BookingVoiceAgent
+        workflow = SimpleNamespace(record_outcome=Mock(side_effect=DomainError("EVIDENCE_REQUIRED", "실제 발화 필요")))
+        close = AsyncMock();say = AsyncMock();prior = AsyncMock()
+        agent = BookingVoiceAgent(workflow, "call", {}, close)
+        context = SimpleNamespace(wait_for_playout=prior, session=SimpleNamespace(say=say))
+        result = asyncio.run(agent.save_reservation_result(context, True, DAY, "19:00", "김예약", 4, 0, [], "없는 근거"))
+        self.assertFalse(result["saved"])
+        say.assert_not_awaited();close.assert_not_awaited();prior.assert_not_awaited()
+
     def test_stt_keyterm_is_limited_to_the_identified_call_name(self):
         from .worker import create_stt
         with patch("prototypes.phone_agent.voice.worker.inference.STT") as factory:

@@ -82,13 +82,15 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 
 네 번째 실전화에서는 사용자 발화의 이름을 정확히 인식했고, 전반적으로 괜찮지만 첫 소개 뒤 예약 요청이 끊겨 잘 들리지 않았다는 피드백을 받았습니다. 입력 1,094프레임/54.7초·STT 최종 7개·오류/timeout 0개·중단된 AI 메시지 1개를 기록했습니다. 조건 확인 전 시간 상한으로 종료돼 UNKNOWN입니다. Telkit 56초·72원, 잔액 2,760원, 누적 4회·통신비 240원이며 실행은 다시 비활성화하고 worker를 종료했습니다. 첫 소개·예약 질문만 중단되지 않도록 하고 이름 전달/잘 못 들었을 때의 재안내 지침을 보강했습니다. 이 후속 보강은 자동 검사까지이며 실제 전화로 재검증하지 않았습니다. OpenAI 연결/A/B 비교는 아직 실행하지 않았습니다.
 
+다섯 번째 실전화는 첫 안내가 잘 들렸다는 피드백을 받았지만 약한 끊김과 반복 질문이 남았습니다. 입력 1,030프레임/51.5초·STT 최종 6개·오류/timeout 0개·중단 메시지 1개, Telkit 53초·72원, 잔액 2,688원·누적 5회/312원입니다. 도구의 UNKNOWN과 음성의 예약 완료 안내가 달라 실제 결과는 UNKNOWN을 유지했습니다. 같은 통화의 이름 포함 예약 요청 직후 명시적 수락을 제한적으로 인정하고, 결과 저장 뒤 고정 종료 음성과 StopResponse로 후속 모델 안내를 대신하도록 수정했습니다. 로컬 67개 테스트를 통과했으며 후속 수정의 실전화 효과는 미검증입니다. LIVE 비활성화·worker 종료 상태이며 자동 재발신하지 않았습니다.
+
 실제 수신·변경 재확인과 전체 계획 인수는 미검증입니다. 제품 연동·운영 배포·Pleos 기기 검증과 분리합니다. 모델 품질을 가상 SDK 테스트 통과로 대체하지 않습니다.
 
 ```bash
 work/voice-venv/bin/python -m unittest prototypes.phone_agent.voice.test_voice -v
 ```
 
-CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 26개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
+CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 31개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
 
 공식 근거: [Telkit LiveKit 연결](https://telkit.io/docs/connect/livekit.md), [번호·요금](https://telkit.io/docs/numbers/pricing.md), [LiveKit 음성 에이전트](https://docs.livekit.io/agents/start/voice-ai/), [SIP 참가자](https://docs.livekit.io/reference/telephony/sip-participant/), [Cartesia 한국어 Jiwoo](https://www.cartesia.ai/voices/library/jiwoo-service-specialist-15628352-2ede-4f1b-89e6-ceda0c983fbc).
 
@@ -105,3 +107,10 @@ CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 26개 테스트를 실�
 | AI 이름 발음 | [Cartesia 사전](https://docs.cartesia.ai/build-with-cartesia/capability-guides/custom-pronunciations), [IPA 범위](https://docs.cartesia.ai/build-with-cartesia/capability-guides/phonemes) | 요청 시 실제 이름의 한글 음절 재확인. 한국어 IPA/사전 효과는 미검증, 사전 생성·추가 합성 없음 |
 
 원본 통화 음성을 보관하지 않아 실제 발음과 STT 오류를 녹음으로 비교할 수는 없습니다. 진단/인식 텍스트만으로 모든 중간 끊김의 원인을 단정하지 않습니다. 테스트 상한은 다음 실전화 승인 시에도 별도로 유지합니다.
+
+
+## 문맥 수락과 종료 음성
+
+반복 확인을 줄이기 위해 새 예약에서 직전의 이름 포함 예약 요청과 식당의 제한된 명시적 수락을 함께 대조합니다. 맥락 없는 '네', 가능 여부만 확인한 답, 조건부/정정/다른 이름, 이전 통화 근거는 확정하지 않습니다. 변경 재확인은 기존 명시적 발화 기준을 유지합니다. 날짜·시간·인원·비용·필수 조건의 최종 해석은 여전히 STT/LLM의 영향을 받습니다.
+
+결과 도구가 저장을 마치면 저장 상태에 맞는 짧은 고정 음성→재생 완료→종료 순서를 사용합니다. [LiveKit StopResponse](https://docs.livekit.io/reference/python/livekit/agents/llm/)로 도구 뒤 모델이 UNKNOWN을 성공으로 바꾸어 안내하는 경로를 차단합니다. 저장 실패는 재확인할 수 있게 반환하고 자동 종료하지 않습니다. 다섯 번째 통화 후 코드/가짜 SDK 검증까지이며 실제 효과는 다음 승인된 시험에서 확인해야 합니다.
