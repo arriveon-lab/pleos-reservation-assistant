@@ -31,6 +31,10 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.test {
+    // The following schema check consumes this fixture even when tests are restored from cache.
+    outputs
+        .file(layout.buildDirectory.file("rec08/mock-recommendation-plan.json"))
+        .withPropertyName("recommendationPlanEvidence")
     useJUnitPlatform()
     // These apply to the isolated test JVM, not the Gradle daemon or developer's global settings.
     jvmArgs("-Djdk.httpclient.disableRetryConnect=true", "-Djdk.httpclient.redirects.retrylimit=1")

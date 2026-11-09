@@ -30,7 +30,7 @@ EMPTY/FILTERED/FAILED와 만료/취소/늦은 응답 처리가 필요합니다. 
 - `./gradlew -PincludeAndroid=true format verifyAll`: 서버 268개 결과(최초 기반 반영 때 실행, 후속 UP-TO-DATE), UX 26개 실행·실패/오류/skip 0. 인증 12개는 **각각 독립된 실제 배포 JAR/임시 H2**에서 검사합니다. 기존 업무 14개는 `src/test`의 기존 운영자 Principal 하네스를 사용하며 일반 앱 권한이나 배포 JAR의 모의 수락 성공으로 세지 않습니다.
 - 인증 검사: 발급 승인/UNKNOWN, 검색 소유권·재생성 GET, 갱신 응답 유실·동일 키, 401 원 명령 동일 키 재전송, 403 비재시도, 동시 갱신, 발급/갱신 저장 실패, 갱신 ACK 저장 실패, 폐기, 레거시/binding 충돌, 저장 손상. 409 재전송 창 종료는 가상 오류 주입으로 검사하고 실제 120초 경과 시험과 구분합니다.
 - 처음 12개 인증 검사를 한 서버에서 연속 실행하자 정상 분당 발급 제한(10회)으로 HTTP429가 발생했습니다. 서버 제한을 끄지 않고 각 테스트를 별도 서버/DB로 격리해 해결했습니다.
-- `python3 scripts/smoke-test.py`: 실제 발급 토큰·소유권/역할 거절·갱신 재전송·폐기·H2 재시작, 별도 test-only 운영자 업무 흐름, LIVE 시작 차단 성공. 이번 로컬 실행의 선택적 `--check-contract`는 미실행입니다.
+- `python3 scripts/smoke-test.py`: 실제 발급 토큰·소유권/역할 거절·갱신 재전송·폐기·H2 재시작, 별도 test-only 운영자 업무 흐름, LIVE 시작 차단 성공. 초기 smoke 뒤 별도 저장소 내부 가상환경에서 `smoke-test.py --check-contract`까지 성공했습니다.
 - 앱 Lint 오류 0, 고정 AndroidX 갱신 경고 2; probe 오류/경고 0. 억제/baseline/SDK 의존성 변경 없음. 원격 Lint와 검사 결과는 해당 PR 실행을 기준으로 별도 기록합니다.
 
 Pleos Connect v2.1.0/API34/4GB에서 직접 adb UI 조작·PNG/XML로 검증했습니다. 기존 `ai.pleos.assistant.mock`의 데이터는 삭제하지 않았습니다. 새 인증 흐름은 **applicationId만 `ai.pleos.assistant.mock.authvalidation`으로 바꾼 별도 debug 설치**를 사용했습니다(로컬 init script, 소스 기능 동일). 기본 APK와 분리 APK 실행 증거를 구분합니다. 테스트 서버는 별도 작업 폴더의 MOCK 1.1.0 JAR, 호스트 18080/adb reverse8080→18080입니다.
@@ -55,3 +55,7 @@ Pleos Connect v2.1.0/API34/4GB에서 직접 adb UI 조작·PNG/XML로 검증했�
 미리보기 화면·generation/취소/만료/늦은 결과·공동 기기 인수, 유료 변경 별도 승인, 확정 거절 명령 종료 UX와 사용자가 안전하게 복구할 수 있는 대조 절차는 남아 있습니다. 이번 저장 유실 처리는 차단/안내까지이며 완전한 복구 구현이 아닙니다. 실제 Keystore 키 무효화·OS 백업/기기 이전·회전·실제 시간 만료 후 자동 갱신·기기 네트워크 응답 유실은 미검증입니다. 에뮬레이터 검색 복구를 인증된 예약 전체 흐름 검증으로 확대하지 않습니다. #25의 실제 차량 제한/release·영상과 #1 ETA/#11 데이터 조건도 그대로 남습니다.
 
 #26 및 #5 OPEN, 관련 PR Draft를 유지합니다. 다른 담당자의 서버/계약·이슈 완료 조건을 변경하지 않았고 병합/자동 병합하지 않습니다. 실제 장소·전화·AI·유료 API 호출 0회입니다.
+
+## 원격 CI에서 발견한 캐시 산출물 누락 수정
+
+`2b0b08d`의 Android checks/PR naming은 성공했으나 Server and contract는 추천 계약 검사가 소비하는 `server/build/rec08/mock-recommendation-plan.json` 누락으로 실패했습니다. 서버 테스트가 FROM-CACHE였고 해당 파일이 Test output에 선언되지 않은 것이 원인입니다. 서버 기능/계약은 바꾸지 않고 `server:test` 산출물로 등록했습니다. 로컬 verify 후 JSON을 삭제해 테스트를 FROM-CACHE로 복원했고 추천 스키마 검사와 JAR `--check-contract` smoke를 통과했습니다. 새 커밋의 CI는 별도 실행으로 확인합니다. 사용하지 않는 결과 주입 문자열4개도 제거해 로컬 앱 Lint는 기존 갱신 경고2개만 남습니다.
