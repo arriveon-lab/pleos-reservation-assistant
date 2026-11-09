@@ -54,13 +54,20 @@ public class Store {
   }
 
   public <T> T command(
-      String scope, String key, Object request, Class<T> type, Supplier<T> action) {
+      RequestActor actor,
+      String scope,
+      String key,
+      Object request,
+      Class<T> type,
+      Supplier<T> action) {
     if (key == null || !key.matches("[A-Za-z0-9._:-]{1,100}"))
       throw ApiError.bad("INVALID_KEY", "Idempotency-Key가 필요합니다(영문/숫자/._:-, 100자 이하).");
     lock();
+    String userId = userId(actor);
     var cached =
         jdbc.queryForList(
-            "SELECT request_hash, response_json FROM commands WHERE scope=? AND idempotency_key=?",
+            "SELECT request_hash, response_json FROM commands WHERE user_id=? AND mode='MOCK' AND scope=? AND idempotency_key=?",
+            userId,
             scope,
             key);
     String fingerprint = hash(request);
@@ -70,14 +77,21 @@ public class Store {
         throw ApiError.conflict("KEY_REUSED", "같은 키에 다른 요청을 보낼 수 없습니다.");
       return decode(
           jdbc.queryForObject(
-              "SELECT response_json FROM commands WHERE scope=? AND idempotency_key=?",
+              "SELECT response_json FROM commands WHERE user_id=? AND mode='MOCK' AND scope=? AND idempotency_key=?",
               String.class,
+              userId,
               scope,
               key),
           type);
     }
     T result = action.get();
-    jdbc.update("INSERT INTO commands VALUES (?,?,?,?)", scope, key, fingerprint, encode(result));
+    jdbc.update(
+        "INSERT INTO commands (user_id,mode,scope,idempotency_key,request_hash,response_json) VALUES (?,'MOCK',?,?,?,?)",
+        userId,
+        scope,
+        key,
+        fingerprint,
+        encode(result));
     return result;
   }
 
@@ -97,8 +111,24 @@ public class Store {
         searchId);
   }
 
-  public void insertSearch(Model.Search s) {
-    jdbc.update("INSERT INTO searches VALUES (?,?)", s.id, encode(s));
+  public void insertSearch(RequestActor actor, Model.Search s) {
+    String user = userId(actor);
+    String trip = s.request.navigation().tripId();
+    var existing =
+        jdbc.queryForList(
+            "SELECT id FROM journeys WHERE user_id=? AND mode='MOCK' AND client_trip_id=?",
+            String.class,
+            user,
+            trip);
+    String journey = existing.isEmpty() ? UUID.randomUUID().toString() : existing.getFirst();
+    if (existing.isEmpty())
+      jdbc.update(
+          "INSERT INTO journeys (id,user_id,mode,client_trip_id) VALUES (?,?,'MOCK',?)",
+          journey,
+          user,
+          trip);
+    jdbc.update(
+        "INSERT INTO searches (id,payload,journey_id) VALUES (?,?,?)", s.id, encode(s), journey);
   }
 
   public void insertReservation(Model.Reservation r) {
@@ -110,10 +140,11 @@ public class Store {
         r.tripId);
   }
 
-  public List<Model.Reservation> byTrip(String tripId) {
+  public List<Model.Reservation> byTrip(RequestActor actor, String tripId) {
     return jdbc.query(
-        "SELECT payload FROM reservations WHERE trip_id=?",
+        "SELECT r.payload FROM reservations r JOIN searches s ON s.id=r.search_id JOIN journeys j ON j.id=s.journey_id JOIN app_users u ON u.id=j.user_id WHERE u.subject=? AND j.mode='MOCK' AND j.client_trip_id=?",
         (rs, n) -> decode(rs.getString(1), Model.Reservation.class),
+        actor.subject(),
         tripId);
   }
 
@@ -141,6 +172,35 @@ public class Store {
     jdbc.update(
         "INSERT INTO events VALUES (?,?,?,?)", event.eventId(), fingerprint, callId, encode(event));
     return true;
+  }
+
+  // Called under the command mutex inside the workflow transaction; read paths never create users.
+  private String userId(RequestActor actor) {
+    var existing =
+        jdbc.queryForList(
+            "SELECT id FROM app_users WHERE subject=?", String.class, actor.subject());
+    if (!existing.isEmpty()) return existing.getFirst();
+    String id = UUID.randomUUID().toString();
+    jdbc.update("INSERT INTO app_users (id,subject) VALUES (?,?)", id, actor.subject());
+    return id;
+  }
+
+  public void requireOwner(RequestActor actor, String table, String id) {
+    checkTable(table);
+    String target = table.equals("searches") ? "s.id" : "t.id";
+    String join = table.equals("searches") ? "" : " JOIN " + table + " t ON t.search_id=s.id";
+    Integer count =
+        jdbc.queryForObject(
+            "SELECT COUNT(*) FROM searches s JOIN journeys j ON j.id=s.journey_id JOIN app_users u ON u.id=j.user_id"
+                + join
+                + " WHERE "
+                + target
+                + "=? AND u.subject=? AND j.mode='MOCK'",
+            Integer.class,
+            id,
+            actor.subject());
+    if (count == null || count == 0)
+      throw new ApiError(HttpStatus.NOT_FOUND, "NOT_FOUND", "대상을 찾을 수 없습니다.");
   }
 
   private void checkTable(String table) {
