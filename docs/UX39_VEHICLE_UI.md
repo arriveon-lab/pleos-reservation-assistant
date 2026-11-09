@@ -62,3 +62,27 @@
 - #40: 일반 앱과 별도 운영자 응답 환경의 문의→승인→예약 결과 전체 공동 시연. 이번 결과 화면 주입을 공동 시연 완료로 세지 않는다.
 - #1: 실제 목적지/ETA 의미·가용성 인수. #16/#26: 최신 초안 기반 공동 기기 인수.
 - PR #36 → #44 → #39 순서의 선행 이력을 포함한다. 공유 브랜치를 덮어쓰거나 병합하지 않았다. 최신 main 반영/통합 순서는 별도 검토한다. #39와 #25는 OPEN, PR은 Draft 유지.
+
+## 2026-11-09 추가 기기 검사와 공동 인수 준비
+
+#39 UI 인수를 위한 #25 추가 검사이며 기존 `feat/39-vehicle-ui` / Draft #46에서 기록한다. 제품 APK는 위 `d9ce757d…` 그대로이고 테스트 APK만 교체했다. 기존 일반 앱/인증 DB/PENDING 문의를 보존했으며 운영자 수락이나 새 예약을 실행하지 않았다.
+
+| 절차 | 기대 결과 | 실제 결과 |
+| --- | --- | --- |
+| user10 font_scale=1.5, 주간, shell resize840dp | 실제 Activity 배율1.5, 긴 승인창/버튼 표시 | 배율 assertion·측정 layout·버튼72dp 검사 PASS. 최종 PNG 직접 확인 |
+| user10 font_scale=1.3, 야간, shell resize840dp | 실제 Activity 배율1.3, 야간 승인창 표시 | 동일 검사 PASS. 최종 PNG 직접 확인 |
+| 두 설정에서 종료/재진입/Activity 재생성 | CarUx 초기값 재조회, 입력3 보존 | instrumentation PASS. 물리 회전이나 주행 전환 아님 |
+| 두 설정에서 주입 제한/실패·오래된 승인 | 승인창 닫힘, 이전 클릭 무효, POST 차단 | PASS. 제한/실패는 개발 주입, 결과 상태는 화면 fixture |
+
+재현: 설정 변경을 마친 후 `adb shell am instrument -w -e narrow true -e fontScale 1.5 ai.pleos.assistant.mock.uxvalidation.test/ai.pleos.assistant.app.DrivingDeviceChecks` (야간은1.3). 새 선택 인자는 Activity Configuration의 실제 배율을 검사한다. 캡처 전500ms 렌더 대기·창 표시 재검사를 추가했다. main queue idle만으로 compositor 표시가 끝났다고 가정하지 않는다. 캡처는 반드시 열어 승인창 유무를 확인한다.
+
+초기150% 실행은 화면 fixture의 PENDING 문구 assertion으로 instrumentation 프로세스가 종료됐다. 설정 전환 후 재실행에서는 같은 제품 APK로 통과했고 제품 결함으로 재현되지 않았다. 설정 전환/Activity 수명 타이밍 가능성이 있으나 정확한 원인을 확정하지 않았다. 최초130% 캡처에는 승인창이 없어 최종 증거에서 제외했다. 이 실패와 한계를 숨기지 않고 `work/ux25-extra/font150-day.log`, `font150-day-retry.log`에 보존했다. 최종 성공은 배율 검사를 추가한 `final-font150-day.log`, `final-font130-night.log`와 직접 확인한 PNG 두 장만 기준으로 한다.
+
+증거: 로컬 Git 제외 `captures/ux25-extra/final-manifest.json`, `final-font150-day.png`, `final-font130-night.png`; 실행 로그 `work/ux25-extra/`. 이미지 원본은 GitHub에 업로드하지 않았다. format·verifyAll·smoke-test.py PASS. verifyAll의 기존 JVM 테스트는 UP-TO-DATE/캐시를 포함하며 이번 새 실행 건수로 세지 않는다. 제품/API 변경 없음, Lint 기존 경고4개 유지. 테스트 코드는 별도 APK이며 원격 CI가 실제 기기 검사를 실행하는 것은 아니다.
+
+글자 설정은 원래 user10 키 없음(null)으로 삭제 복원, night=no·8080→18080 복원, 테스트 앱 종료·이번18082 서버만 종료했다. 기존18080 서버와 원래 앱 데이터는 유지했다. 실제 차량 신호/물리 거리·전체 Connect-S/W 조합·release/서명/영상은 여전히 미검증이다.
+
+공동 인수 선행 자료를 다음 이슈에 게시했다. 완료 체크나 담당 배정은 변경하지 않았다.
+
+- [#40 시연 환경 준비](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/40#issuecomment-6741207611): 기존 OwnershipSmokeApplication은 모든 요청에 같은 운영자 주체를 주입하므로 일반 앱 인증과 운영자 분리를 그대로 검증할 수 없다. 서버 담당의 별도 테스트 운영자 연결·callId/eventId 대조·outcome 예제·시작/종료 명령이 선행한다. 문의→명시 승인→PENDING→수락→GET·UNKNOWN/중복/백그라운드/0원 변경 공동 표를 전달했다.
+- [#16 공동 인수 항목](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185): 인원 범위 문서 정합성·집합 비교·UNKNOWN/ordinal·상태별 MOCK fixture·취소/늦은 응답·동일 주체 갱신을 함께 확인한다. 서버 담당의 계약/fixture 확인과 양측 동일 버전 실행이 선행한다. 로컬 초안 검증을 공동 인수 완료로 세지 않는다.

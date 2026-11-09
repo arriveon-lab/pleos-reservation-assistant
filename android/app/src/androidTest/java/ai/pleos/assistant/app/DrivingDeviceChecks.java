@@ -13,11 +13,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Explicit device check: requires automotive baseline and a connected MOCK test installation. */
 public final class DrivingDeviceChecks extends Instrumentation {
   private boolean narrow;
+  private float expectedFontScale;
 
   @Override
   public void onCreate(Bundle arguments) {
     super.onCreate(arguments);
     narrow = "true".equals(arguments.getString("narrow"));
+    expectedFontScale = Float.parseFloat(arguments.getString("fontScale", "0"));
     start();
   }
 
@@ -46,6 +48,12 @@ public final class DrivingDeviceChecks extends Instrumentation {
             activity != null && activity.getResources().getConfiguration().screenWidthDp == 840,
             "narrow window not applied");
       } else activity = initial;
+      if (expectedFontScale > 0) {
+        check(
+            Math.abs(activity.getResources().getConfiguration().fontScale - expectedFontScale)
+                < 0.01f,
+            "requested font scale not applied to Activity");
+      }
       ReservationViewModel model = (ReservationViewModel) field(activity, "model");
       await(() -> model.canWrite());
       waitForIdleSync();
@@ -75,6 +83,10 @@ public final class DrivingDeviceChecks extends Instrumentation {
       waitForIdleSync();
       AlertDialog shown = (AlertDialog) field(activity, "approval");
       runOnMainSync(() -> VehicleUiChecks.layout(shown.getWindow().getDecorView()));
+      // Idle main queue does not imply that the window opening animation has drawn.
+      Thread.sleep(500);
+      waitForIdleSync();
+      runOnMainSync(() -> check(shown.isShowing(), "approval disappeared before capture"));
       VehicleUiChecks.capture(this, "approval-layout");
       runOnMainSync(
           () -> {
@@ -118,7 +130,9 @@ public final class DrivingDeviceChecks extends Instrumentation {
       }
       result.putString(
           "stream",
-          "PASS: actual baseline read/reopen/recreate; measured UI/dialog layout; injected result-state display; transport gate; injected restriction/failure; "
+          "PASS: fontScale="
+              + activity.getResources().getConfiguration().fontScale
+              + "; actual baseline read/reopen/recreate; measured UI/dialog layout; injected result-state display; transport gate; injected restriction/failure; "
               + "approval dismissed and stale click blocked; stop invalidates permission. "
               + "Real moving callback and real service failure NOT tested.\n");
       finish(Activity.RESULT_OK, result);
