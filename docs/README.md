@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
 | [PLAN](PLAN.md) | 전체 범위·일정·5명 역할·통합 순서 | 기존 개발 계획 |
-| [전화예약 로컬 프로토타입](../prototypes/phone_agent/README.md) | 사용자·동승자 조건, 가상 예약·회신·변경 승인, 독립 실행·테스트 | MOCK 기본 + 선택형 Telkit·LiveKit, 실제 발신 2회·재시험 미디어 수신 실패, 복구 필요, 제품 미통합 |
+| [전화예약 로컬 프로토타입](../prototypes/phone_agent/README.md) | 사용자·동승자 조건, 가상 예약·회신·변경 승인, 독립 실행·테스트 | MOCK 기본 + 선택형 Telkit·LiveKit, 실제 발신 3회·최근 양방향 대화 확인, 예약 UNKNOWN·통신 안정성 후속, 제품 미통합 |
 | [ISSUE_GUIDE](ISSUE_GUIDE.md) | 각 이슈의 입력/출력·파일 경계·완료 조건 | 작업 해설, 이슈 상태는 GitHub가 기준 |
 | [REC-01 상세 계획](REC01_PLAN.md) | #2 기반 PR과 후속 #11–13의 범위·브랜치·계약·검증 | PR #10 통합·#2 CLOSED, 실연동 미완료 |
 | [REC-01 실제 연동 검토](REC01_INTEGRATION.md) | 공식 저장 제한·앱 설정 결과·HTTP 경계·재전송 제어 | 무료 쿼터 설정·HTTP loopback 검증, 실제 API 미실행 |

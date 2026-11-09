@@ -22,7 +22,12 @@ INSTRUCTIONS = """너는 한국어 식당 예약 비서다. 짧고 자연스러�
 전화 상대는 식당 직원이다. 예약자 본인에게 전화한 것이 아니므로 상대를 예약자 이름으로 부르지 않는다.
 예약자 이름은 '김예약 이름으로 예약 부탁드립니다'처럼 예약의 명의로만 전달한다.
 회신 번호를 만들어 말하거나 예시 전화번호를 읽지 않는다. 현재 수신 시험은 끝나지 않았으므로 회신 안내는 하지 않는다.
-전화 상대에게 말하듯 한 번에 한두 문장만 말하고 답을 기다린다. 이미 답한 조건을 반복 질문하지 않는다.
+전화 상대에게 말하듯 기본 한 문장만 말하고 답을 기다린다. 한 번에 질문은 반드시 하나만 한다.
+일시·이름·비용을 한 번에 다시 묻지 않는다. 한 가지가 틀렸으면 그 항목만 짧게 재확인한다.
+이미 확인한 날짜·시간·인원은 매 응답마다 반복하지 않는다. 마지막 요약에서만 한 번 묶는다.
+이름 재확인 예: '예약자 이름은 김예약입니다. 맞으실까요?'처럼 이름만 묻는다.
+다시 잘못 들리면 실제 제공된 이름을 한글 음절별로 천천히 한 번 말한다. 예시는 실제 이름 대신 사용하지 않는다.
+날짜·시간·인원 확인과 추가 비용 질문을 서로 다른 차례에 한다. 길게 설명하거나 사과를 덧붙이지 않는다.
 말로 날짜를 읽을 때 연도·하이픈을 나열하지 않고 '십일월 십육일'처럼 읽는다.
 시간은 '십구 시 영 분' 대신 '저녁 일곱 시'처럼, 인원은 '두 명'처럼 자연스럽게 읽는다.
 예약자 이름은 제공된 이름 그대로 또렷하게 말한다. 영문 상태명·JSON·도구 이름을 소리 내지 않는다.
@@ -48,6 +53,15 @@ def store_conversation_item(workflow, call_id, item):
         return False
     workflow.transcript(call_id, "restaurant" if item.role == "user" else "agent", item.text_content)
     return item.role == "assistant"
+
+
+def create_stt(config, context):
+    # A single approved call-specific name, never a global list of user names.
+    options = {}
+    name = context.get("reservationName")
+    if config.stt_model.startswith("assemblyai/") and isinstance(name, str) and name:
+        options["keyterms_prompt"] = [name]
+    return inference.STT(model=config.stt_model, language="ko", extra_kwargs=options)
 
 
 class BookingVoiceAgent(Agent):
@@ -100,6 +114,7 @@ class BookingVoiceAgent(Agent):
     @function_tool()
     async def finish_call(self, context: RunContext) -> dict:
         """마무리 안내 후 통화를 종료한다. 결과를 저장하지 못하면 UNKNOWN으로 보존한다."""
+        await context.wait_for_playout()
         await context.session.say("안내 감사합니다. 통화를 마치겠습니다.", allow_interruptions=False)
         await self.close_call("agent_finished")
         return {"ended": True}
@@ -175,8 +190,9 @@ async def reservation_agent(ctx: agents.JobContext):
         else:
             await close_call("answer_timeout")
             return
+        booking_context = workflow.context(call_id)
         session = AgentSession(
-            stt=inference.STT(model=config.stt_model, language="ko"),
+            stt=create_stt(config, booking_context),
             llm=inference.LLM(model=config.llm_model, extra_kwargs={"max_completion_tokens": 250}),
             tts=inference.TTS(model=config.tts_model, voice=config.tts_voice, language="ko"),
             vad=silero.VAD.load(activation_threshold=0.3))
@@ -196,6 +212,8 @@ async def reservation_agent(ctx: agents.JobContext):
             nonlocal assistant_turns
             if ended:
                 return
+            if isinstance(event.item, ChatMessage) and event.item.role == "assistant" and event.item.interrupted:
+                diagnostics.interrupted_messages += 1
             if store_conversation_item(workflow, call_id, event.item):
                 assistant_turns += 1
                 if assistant_turns >= 8:
@@ -207,7 +225,7 @@ async def reservation_agent(ctx: agents.JobContext):
                 diagnostics.disconnect_reason = participant_left.disconnect_reason
                 asyncio.create_task(close_call("sip_disconnected"))
 
-        agent = BookingVoiceAgent(workflow, call_id, workflow.context(call_id), close_call, diagnostics)
+        agent = BookingVoiceAgent(workflow, call_id, booking_context, close_call, diagnostics)
         await session.start(room=ctx.room, agent=agent)
         await session.generate_reply(instructions="AI 예약 비서라고 소개하고 이번 통화 목적에 맞는 첫 질문을 한다.")
         reminder = asyncio.create_task(reprompt_if_unheard(session, diagnostics, lambda: ended))

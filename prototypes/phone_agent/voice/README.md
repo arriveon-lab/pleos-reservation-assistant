@@ -77,12 +77,29 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 
 입력 프레임 수·음량 최대값·STT 중간/최종 이벤트 수·timeout/오류·RTC 종료 코드를 통화 작업의 로컬 진단에 기록합니다. 진단에는 원본 음성·발화·개인 연락처를 넣지 않습니다. 첫인사 뒤 12초 동안 최종 인식이 없고 상대가 말하는 중이 아니면 재발화 안내 1회를 합니다. 이 진단/안내 추가 후 실제 전화는 하지 않았습니다. [media timeout 공식 진단](https://docs.livekit.io/reference/telephony/troubleshooting/)에 따라 RTP·SIP와 모델 오류를 구분하며 단순 참가자 disconnect를 상대방의 종료로 단정하지 않습니다.
 
+
+최근 세 번째 실전화에서는 양방향 대화와 이름 재확인을 확인했습니다. 입력 966프레임/48.3초, STT 최종 5개·모델 오류 0개, 통화 50초·60원, 잔액 2,832원입니다. 상대의 명시적 예약 확정 발화가 없어 UNKNOWN을 유지했습니다. 중간 media-timeout은 이번에 재현되지 않았으나 통신 설정을 수정해 근본 원인을 해결한 상태는 아닙니다. 누적 발신 3회·통신비 168원, 실제 실행은 다시 비활성화·worker 종료 상태입니다.
+
 실제 수신·변경 재확인과 전체 계획 인수는 미검증입니다. 제품 연동·운영 배포·Pleos 기기 검증과 분리합니다. 모델 품질을 가상 SDK 테스트 통과로 대체하지 않습니다.
 
 ```bash
 work/voice-venv/bin/python -m unittest prototypes.phone_agent.voice.test_voice -v
 ```
 
-CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 24개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
+CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 26개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
 
 공식 근거: [Telkit LiveKit 연결](https://telkit.io/docs/connect/livekit.md), [번호·요금](https://telkit.io/docs/numbers/pricing.md), [LiveKit 음성 에이전트](https://docs.livekit.io/agents/start/voice-ai/), [SIP 참가자](https://docs.livekit.io/reference/telephony/sip-participant/), [Cartesia 한국어 Jiwoo](https://www.cartesia.ai/voices/library/jiwoo-service-specialist-15628352-2ede-4f1b-89e6-ceda0c983fbc).
+
+## 자연스러움·이름·끊김 보강 근거
+
+세 번째 통화에서도 사용자는 긴 응답·중간 끊김·발음 어색함을 보고했습니다. 아래 변경은 문서/SDK 확인과 자동 검사까지이며 실제 개선 효과는 다음 청취 시험 전까지 미검증입니다.
+
+| 항목 | 공식 근거 | 반영/검증 상태 |
+| --- | --- | --- |
+| 답변 길이 | [LiveKit prompting](https://docs.livekit.io/agents/start/prompting/) | 기본 한 문장·질문 하나, 틀린 항목만 재확인·반복 축소 지침 |
+| 이름 인식 | [AssemblyAI keyterms](https://docs.livekit.io/agents/models/stt/assemblyai/), [편향 주의](https://www.assemblyai.com/blog/when-keyterm-prompting-backfires) | 현재 통화의 승인된 이름 1개만 STT 힌트. 이름 강제 치환·전역 목록 없음 |
+| 종료 시 끊김 | [Speech playout](https://docs.livekit.io/agents/multimodality/audio/) | 도구 이전 발화 재생 완료→종료 안내 완료→room 삭제 순서, 가짜 SDK 순서 검사 |
+| 중간 끊김 | [Turn tuning](https://docs.livekit.io/agents/logic/turns/tuning/) | interrupted 메시지 수 추가. 실제 바지인/전송 손실 구분 후 조정, 유료 adaptive 미활성화 |
+| AI 이름 발음 | [Cartesia 사전](https://docs.cartesia.ai/build-with-cartesia/capability-guides/custom-pronunciations), [IPA 범위](https://docs.cartesia.ai/build-with-cartesia/capability-guides/phonemes) | 요청 시 실제 이름의 한글 음절 재확인. 한국어 IPA/사전 효과는 미검증, 사전 생성·추가 합성 없음 |
+
+원본 통화 음성을 보관하지 않아 실제 발음과 STT 오류를 녹음으로 비교할 수는 없습니다. 진단/인식 텍스트만으로 모든 중간 끊김의 원인을 단정하지 않습니다. 테스트 상한은 다음 실전화 승인 시에도 별도로 유지합니다.

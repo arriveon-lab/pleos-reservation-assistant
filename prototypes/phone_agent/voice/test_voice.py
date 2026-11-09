@@ -197,6 +197,27 @@ class LiveWorkflowTest(unittest.TestCase):
 
 
 class ConfigurationAndSDKTest(unittest.TestCase):
+    def test_stt_keyterm_is_limited_to_the_identified_call_name(self):
+        from .worker import create_stt
+        with patch("prototypes.phone_agent.voice.worker.inference.STT") as factory:
+            create_stt(fake_config(), {"reservationName": "가상이름", "unrelated": "다른사람"})
+            self.assertEqual({"keyterms_prompt": ["가상이름"]}, factory.call_args.kwargs["extra_kwargs"])
+            create_stt(fake_config(), {"found": False})
+            self.assertEqual({}, factory.call_args.kwargs["extra_kwargs"])
+            create_stt(replace(fake_config(), stt_model="other/example"), {"reservationName": "가상이름"})
+            self.assertEqual({}, factory.call_args.kwargs["extra_kwargs"])
+
+    def test_hangup_waits_for_prior_speech_and_closing_before_deleting_room(self):
+        from .worker import BookingVoiceAgent
+        order = []
+        async def prior():order.append("prior_speech_played")
+        async def closing(*args, **kwargs):order.append("closing_played")
+        async def close(reason):order.append("room_deleted")
+        agent = BookingVoiceAgent(None, "test-call", {}, close)
+        context = SimpleNamespace(wait_for_playout=prior, session=SimpleNamespace(say=closing))
+        asyncio.run(agent.finish_call(context))
+        self.assertEqual(["prior_speech_played", "closing_played", "room_deleted"], order)
+
     def test_audio_and_stt_diagnostics_distinguish_silence_without_saving_content(self):
         from livekit import rtc
         from livekit.agents import stt

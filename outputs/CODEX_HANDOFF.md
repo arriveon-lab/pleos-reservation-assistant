@@ -1,5 +1,20 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-09 통화 품질 피드백과 공식 레퍼런스 반영 (#43)
+
+- 세 번째 시험의 사용자 피드백은 중간 끊김·긴 응답·부자연스러운 발음과 이름 재확인 보정 필요입니다. 왕복 대화가 됐다는 관측과 청취 품질 통과는 구분합니다. 통화 녹음이 없으므로 원래 발음의 객관적 비교는 할 수 없습니다. STT 텍스트에서는 김미학→김예약 재확인을 관측했습니다.
+- [LiveKit 음성 프롬프트](https://docs.livekit.io/agents/start/prompting/)에 따라 기본 한 문장·질문 하나, 틀린 항목만 재질문, 일시/인원 반복과 복합 질문 축소를 반영했습니다. [AssemblyAI 파라미터](https://docs.livekit.io/agents/models/stt/assemblyai/)의 keyterms_prompt에 해당 통화에서 승인·식별된 이름 한 개만 전달합니다. 등록 이름으로 텍스트를 강제 치환하지 않으며 명시적 수락/근거 검사를 유지합니다. [과도한 keyterms의 편향 위험](https://www.assemblyai.com/blog/when-keyterm-prompting-backfires) 때문에 전역 이름 목록을 만들지 않습니다.
+- [LiveKit 재생 완료 대기](https://docs.livekit.io/agents/multimodality/audio/)에 따라 종료 도구가 직전 발화를 기다린 뒤 종료 안내·room 삭제를 수행하게 했습니다. 중간 끊김의 원인을 모두 설명하는 증거는 아니며 interrupted 메시지 계수를 추가했습니다. [대화 턴 조정](https://docs.livekit.io/agents/logic/turns/tuning/)의 VAD·interrupt·endpointing은 단계별 비교 후보입니다. 새 유료 모델이나 adaptive 옵션은 켜지 않았습니다.
+- [Cartesia 발음 사전](https://docs.cartesia.ai/build-with-cartesia/capability-guides/custom-pronunciations)은 IPA/sounds-like를 지원하지만 [phoneme 안내](https://docs.cartesia.ai/build-with-cartesia/capability-guides/phonemes)의 표는 영어 예시 중심입니다. 한국어 이름 IPA를 임의로 넣지 않았습니다. 재확인 때 실제 이름의 한글 음절을 짧게 읽는 지침만 추가했고 발음 사전/후보 음성 A/B는 별도 청취 검증 항목입니다.
+- 로컬 SDK/가짜 client 26개·MOCK/HTTP 36개 통과. 추가 실제 전화·음성 합성·인식 호출 없이 코드와 문서만 보강했습니다. 이 변경 후 품질은 미검증이고 실전화 실행은 꺼 둔 상태입니다.
+
+## 2026-11-09 진단 포함 세 번째 실전화 (#43)
+
+- 사용자 재시험 요청으로 같은 승인 대상에 1회 추가 발신했습니다. 최대 60초·Telkit 72원(VAT 별도)·LiveKit 무료 범위를 유지했습니다. 실제 연결 50초·60원 차감, 잔액 2,832원, 누적 3회·통신비 168원입니다. agent_finished로 종료했고 활성 prototype room 0개·실제 실행 비활성화·worker 종료를 확인했습니다.
+- 이번에는 양쪽 SIP/agent 음성 트랙과 입력 966프레임(48.3초), STT 중간 6개·최종 5개, 모델 오류/전사 timeout 0개를 확인했습니다. 첫인사 후 대화가 이어지고 잘못 인식한 예약자 이름을 다시 물어 정확한 이름을 받았습니다. 실제 입력 진단이 동작했으며 원본 통화 음성은 녹음하지 않았습니다.
+- 상대의 명시적인 예약 확정 발화가 없어 결과는 UNKNOWN입니다. 대화 왕복을 예약 성공으로 세지 않습니다. 두 번째 통화의 media-timeout은 이번에 재현되지 않았지만 별도 통신 설정을 수정한 것은 아니므로 근본 원인 해결·재발 방지·전체 품질 통과로 판단하지 않습니다.
+- 제품 코드 변경은 없고 기존 로컬 MOCK 36개·음성 SDK 24개 통과 증거를 유지합니다. 이번에는 실전화 관측·잔액·실행 중단과 문서 일치만 확인했습니다. 실제 수신/변경 재확인은 미검증이며 추가 발신 승인은 남아 있지 않습니다.
+
 ## 2026-11-09 재시험 실패와 다음 진단 (#43)
 
 - 사용자 “다시 테스트” 요청으로 기존 대상·목적·60초/72원/무료 LiveKit 범위에서 1회 추가 발신했습니다. Telkit 31초·48원, 잔액 2,892원입니다. 누적 2회·통신비 108원. 추가 발신 승인 소비 후 다시 LIVE=false·worker 종료·활성 room 0개를 확인했습니다.

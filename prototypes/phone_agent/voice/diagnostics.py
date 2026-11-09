@@ -12,6 +12,7 @@ class AudioDiagnostics:
         self.timeouts = 0
         self.errors = 0
         self.disconnect_reason = None
+        self.interrupted_messages = 0
 
     def audio(self, frame):
         self.frames += 1
@@ -27,7 +28,8 @@ class AudioDiagnostics:
         return {"audioFrames": self.frames, "audioSeconds": round(self.seconds, 3),
                 "peakAmplitude": round(self.peak / 32768, 4), "sttInterim": self.interim,
                 "sttFinal": self.final, "transcriptionTimeouts": self.timeouts,
-                "modelErrors": self.errors, "rtcDisconnectReason": self.disconnect_reason}
+                "modelErrors": self.errors, "rtcDisconnectReason": self.disconnect_reason,
+                "interruptedAgentMessages": self.interrupted_messages}
 
 
 async def reprompt_if_unheard(session, diagnostics, ended, sleep=asyncio.sleep):
