@@ -2,6 +2,8 @@
 
 2026-11-09, #26. 최신 main `abd9aa4`에서 `feat/26-app-auth-session`을 만들고 #5/PR #27의 앱·UX core 기반을 가져왔습니다. 기존 공유 브랜치/PR은 rebase·force push·병합하지 않았습니다. main의 서버·인증·추천·CI 품질 검사를 보존했습니다. 이 브랜치는 #5 기반을 포함하므로 향후 통합 시 #27과 중복 반영하지 않도록 PR 관계를 재검토해야 합니다.
 
+> 아래는 인증 연결 단계의 이력이다. 이후 미리보기 구현·초안 기반 기기 검증은 [UX26_PREVIEW_VALIDATION](UX26_PREVIEW_VALIDATION.md)을 우선한다. 공동 인수는 여전히 미완료다.
+
 ## #19 인수안 대조
 
 검토 대상은 미병합 PR #19 `285087b`의 `REC05_UI_HANDOFF.md`, 요청/응답 예제, `place-preview-draft.json`입니다. 인증은 1.1.0, 미리보기는 별도 0.2.0-draft입니다. [#16에 검토 결과 게시](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008). 서버 담당의 답변/공동 합의·기기 인수는 아직 완료가 아닙니다.
