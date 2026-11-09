@@ -24,9 +24,9 @@
     <string name="preview_failed">검색 실패 (FAILED) · 결과를 표시하지 않습니다. 연결을 확인한 뒤 직접 다시 검색하세요.</string>
     <string name="preview_timeout">응답 시간 초과 · 결과를 표시하지 않습니다. 필요하면 직접 다시 검색하세요.</string>
     <string name="preview_cancelled">취소됨 · 이전 결과를 지웠습니다. 자동 재검색하지 않습니다.</string>
-    <string name="preview_closed">화면 종료로 결과를 지웠습니다. 모의 정차 확인 후 직접 다시 검색하세요.</string>
+    <string name="preview_closed">화면 종료로 결과를 지웠습니다. 플랫폼 제한 없음 확인 후 직접 다시 검색하세요.</string>
     <string name="preview_expired">유효기간 만료 또는 시각 불확실 · 결과를 숨겼습니다. 직접 다시 검색하세요.</string>
-    <string name="preview_restricted">주행 상태 제한 · 입력과 검색을 차단하고 이전 결과를 지웠습니다. 모의 정차를 확인하세요.</string>
+    <string name="preview_restricted">주행 상태 제한 · 입력과 검색을 차단하고 이전 결과를 지웠습니다. 차량 플랫폼 제한을 다시 확인하세요.</string>
     <string name="preview_invalid_input">입력 범위를 확인하세요. 음식은 중복 없이 1~30자로 입력하세요.</string>
     <string name="preview_invalid_response">미리보기 계약과 맞지 않는 응답입니다. 결과를 표시하지 않습니다.</string>
     <string name="preview_auth">인증 확인 필요 · 이전 화면으로 돌아가 같은 인증 주체의 복구 상태를 확인하세요.</string>

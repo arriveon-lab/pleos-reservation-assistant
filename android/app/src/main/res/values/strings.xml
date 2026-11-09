@@ -1,13 +1,7 @@
 <resources>
   <string name="app_name">Pleos 예약 비서 · MOCK</string>
   <string name="title">가상 예약 연습</string>
-  <string name="disclosure">MOCK · 가상 식당 · 실제 전화/예약 없음\n개발용 모의 정책 · 실제 CarUxRestrictions·실통화 미연동.</string>
-  <string name="restriction_unknown">주행 상태 미확인 · 입력/승인 보류</string>
-  <string name="restriction_blocked">모의 주행 제한 · 입력/승인 보류</string>
-  <string name="restriction_parked">모의 정차 · 실제 차량 상태가 아닙니다</string>
-  <string name="simulate_parked">개발용: 모의 정차</string>
-  <string name="simulate_restricted">개발용: 모의 주행 제한</string>
-  <string name="simulate_unknown">개발용: 상태 조회 실패</string>
+  <string name="disclosure">MOCK · 가상 식당 · 실제 전화/예약 없음\n플랫폼 주행 제한 확인 후 입력 허용 · 실통화 미연동.</string>
   <string name="connect">로컬 MOCK 서버 연결 / 복구 조회</string>
   <string name="refresh">최신 상태 조회 · 새 예약 없음</string>
   <string name="pending">요청 결과 미확인 · 새 명령 차단. 같은 요청 재전송 또는 GET 조회로 확인하세요.</string>
@@ -69,7 +63,7 @@
   <string name="call_unknown">결과 미확인</string>
   <string name="auth_create">이 설치의 새 MOCK 인증 시작</string>
   <string name="auth_refresh">같은 사용자 인증 갱신 / 복구</string>
-  <string name="auth_create_notice">인증 1.1.0 연결 준비 · 모의 정차 후 새 설치 인증을 명시적으로 시작하세요.</string>
+  <string name="auth_create_notice">인증 1.1.0 연결 준비 · 플랫폼 제한 없음 확인 후 새 설치 인증을 명시적으로 시작하세요.</string>
   <string name="auth_recovery_notice">연결·인증·기존 기록 대조가 필요합니다. 새 사용자나 예약을 자동 생성하지 않습니다. 이전 1.0.0 기록은 자동 이전되지 않습니다.</string>
   <string name="auth_operator_notice">일반 앱 인증 · 매장 응답 대기. 모의 수락 주입 권한은 없습니다.</string>
 </resources>

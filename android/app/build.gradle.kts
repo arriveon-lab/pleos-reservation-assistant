@@ -3,10 +3,12 @@ plugins { id("com.android.application") }
 android {
     namespace = "ai.pleos.assistant.app"
     compileSdk = 35
+    useLibrary("android.car", false)
     defaultConfig {
         applicationId = "ai.pleos.assistant.mock"
         minSdk = 28
         targetSdk = 35
+        testInstrumentationRunner = "ai.pleos.assistant.app.DrivingDeviceChecks"
         versionCode = 1
         versionName = "0.1.0-mock"
     }

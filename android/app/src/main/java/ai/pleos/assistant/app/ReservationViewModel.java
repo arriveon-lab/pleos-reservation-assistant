@@ -1,6 +1,7 @@
 package ai.pleos.assistant.app;
 
 import ai.pleos.assistant.ux.AuthSession;
+import ai.pleos.assistant.ux.DrivingRestrictionController;
 import ai.pleos.assistant.ux.MockRepository;
 import ai.pleos.assistant.ux.PreviewController;
 import android.app.Application;
@@ -39,14 +40,23 @@ public final class ReservationViewModel extends AndroidViewModel {
   private String failureCode = "";
   private boolean failed;
   private boolean closed;
-  private MockRepository.Restriction restriction = MockRepository.Restriction.UNKNOWN;
+  private DrivingRestrictionController.State driving =
+      new DrivingRestrictionController.State(
+          MockRepository.Restriction.UNKNOWN,
+          DrivingRestrictionController.Reason.STOPPED,
+          false,
+          -1);
+  private volatile MockRepository.Restriction restriction = MockRepository.Restriction.UNKNOWN;
 
   public ReservationViewModel(Application application) {
     super(application);
     SharedPreferences preferences =
         application.getSharedPreferences("mock-recovery", Context.MODE_PRIVATE);
     try {
-      AuthSession auth = new AuthSession(new LoopbackTransport(), new KeystoreVault(application));
+      AuthSession auth =
+          new AuthSession(
+              new LoopbackTransport(() -> restriction.allowsInput()),
+              new KeystoreVault(application));
       if (!auth.canCreate() && preferences.getString("journal", null) == null)
         throw new IllegalStateException("RECOVERY_STORAGE_MISSING");
       preview =
@@ -146,11 +156,20 @@ public final class ReservationViewModel extends AndroidViewModel {
         && connected
         && repository != null
         && !busy
-        && restriction == MockRepository.Restriction.SIMULATED_PARKED
+        && restriction.allowsInput()
         && !snapshot.has("pending");
   }
 
-  void restrict(MockRepository.Restriction value) {
+  DrivingRestrictionController.State driving() {
+    return driving;
+  }
+
+  void driving(DrivingRestrictionController.State value) {
+    driving = value;
+    restrict(value.restriction());
+  }
+
+  private void restrict(MockRepository.Restriction value) {
     restriction = value;
     if (preview != null) preview.allow(canWrite());
     if (repository != null) repository.restrict(value);

@@ -1,5 +1,6 @@
 package ai.pleos.assistant.app;
 
+import ai.pleos.assistant.ux.DrivingRestrictionController;
 import ai.pleos.assistant.ux.MockRepository;
 import android.app.AlertDialog;
 import android.graphics.Color;
@@ -26,6 +27,7 @@ import org.json.JSONObject;
 
 public final class ReservationActivity extends ComponentActivity {
   private ReservationViewModel model;
+  private DrivingRestrictionController driving;
   private PreviewPanel previewPanel;
   private LinearLayout content;
   private ScrollView scroll;
@@ -44,6 +46,7 @@ public final class ReservationActivity extends ComponentActivity {
   public void onCreate(Bundle saved) {
     super.onCreate(saved);
     model = new ViewModelProvider(this).get(ReservationViewModel.class);
+    driving = new DrivingRestrictionController(CarRestrictionSource.create(this), model::driving);
     getOnBackPressedDispatcher()
         .addCallback(
             this,
@@ -68,6 +71,7 @@ public final class ReservationActivity extends ComponentActivity {
   protected void onStart() {
     super.onStart();
     model.observe(this::render);
+    driving.start();
     render();
     model.run(MockRepository::connect);
   }
@@ -77,8 +81,41 @@ public final class ReservationActivity extends ComponentActivity {
     if (approval != null) approval.dismiss();
     model.observe(null);
     model.invalidatePreview("CLOSED");
-    model.restrict(MockRepository.Restriction.UNKNOWN);
+    driving.stop();
     super.onStop();
+  }
+
+  void retryDriving() {
+    driving.start();
+  }
+
+  void debugRestriction() {
+    if (BuildConfig.DEBUG) driving.addDebugRestriction();
+  }
+
+  void debugFailure() {
+    if (BuildConfig.DEBUG) driving.fail(DrivingRestrictionController.Reason.DEBUG_FAILURE);
+  }
+
+  String drivingLabel() {
+    var value = model.driving();
+    int resource =
+        switch (value.reason()) {
+          case PLATFORM ->
+              value.restriction().allowsInput()
+                  ? R.string.driving_allowed
+                  : R.string.driving_restricted;
+          case CONNECTING -> R.string.driving_connecting;
+          case UNSUPPORTED, MISSING_LIBRARY -> R.string.driving_unsupported;
+          case PERMISSION_DENIED -> R.string.driving_permission;
+          case SERVICE_DISCONNECTED -> R.string.driving_disconnected;
+          case CONNECT_TIMEOUT -> R.string.driving_timeout;
+          case DEBUG_RESTRICTED -> R.string.driving_debug_restricted;
+          case DEBUG_FAILURE -> R.string.driving_debug_failed;
+          case STOPPED -> R.string.driving_stopped;
+          default -> R.string.driving_failed;
+        };
+    return getString(resource);
   }
 
   private int dp(int value) {
@@ -147,31 +184,11 @@ public final class ReservationActivity extends ComponentActivity {
     setContentView(scroll);
     text(getString(R.string.title), 32);
     text(R.string.disclosure);
-    int restriction =
-        switch (model.restriction()) {
-          case UNKNOWN -> R.string.restriction_unknown;
-          case RESTRICTED -> R.string.restriction_blocked;
-          case SIMULATED_PARKED -> R.string.restriction_parked;
-        };
-    text(restriction);
+    text(drivingLabel(), 24);
+    button(R.string.driving_retry, true, v -> retryDriving());
     if (BuildConfig.DEBUG) {
-      LinearLayout parent = content;
-      content = new LinearLayout(this);
-      content.setOrientation(LinearLayout.HORIZONTAL);
-      parent.addView(content);
-      button(
-          R.string.simulate_parked,
-          true,
-          v -> model.restrict(MockRepository.Restriction.SIMULATED_PARKED));
-      button(
-          R.string.simulate_restricted,
-          true,
-          v -> model.restrict(MockRepository.Restriction.RESTRICTED));
-      button(
-          R.string.simulate_unknown, true, v -> model.restrict(MockRepository.Restriction.UNKNOWN));
-      for (int i = 0; i < content.getChildCount(); i++)
-        content.getChildAt(i).setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
-      content = parent;
+      button(R.string.driving_test_restricted, true, v -> debugRestriction());
+      button(R.string.driving_test_failed, true, v -> debugFailure());
     }
     button(R.string.connect, !model.busy(), v -> model.run(MockRepository::connect));
     button(R.string.refresh, !model.busy(), v -> model.run(MockRepository::refresh));
@@ -185,7 +202,7 @@ public final class ReservationActivity extends ComponentActivity {
     if (model.canCreateIdentity())
       button(
           R.string.auth_create,
-          !model.busy() && model.restriction() == MockRepository.Restriction.SIMULATED_PARKED,
+          !model.busy() && model.restriction().allowsInput(),
           v -> model.run(MockRepository::createIdentity));
     button(R.string.auth_refresh, model.canWrite(), v -> model.run(MockRepository::renewIdentity));
     text(R.string.auth_operator_notice);
@@ -208,7 +225,7 @@ public final class ReservationActivity extends ComponentActivity {
       text(R.string.pending);
       button(
           R.string.retry,
-          !model.busy() && model.restriction() == MockRepository.Restriction.SIMULATED_PARKED,
+          !model.busy() && model.restriction().allowsInput(),
           v -> model.run(MockRepository::retry));
     }
     try {

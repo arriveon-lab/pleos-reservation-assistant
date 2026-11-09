@@ -10,6 +10,12 @@ import java.nio.charset.StandardCharsets;
 import org.json.JSONObject;
 
 final class LoopbackTransport implements AuthSession.Wire {
+  private final java.util.function.BooleanSupplier inputAllowed;
+
+  LoopbackTransport(java.util.function.BooleanSupplier inputAllowed) {
+    this.inputAllowed = inputAllowed;
+  }
+
   @Override
   public JSONObject exchange(String path, JSONObject body, String key, String bearer)
       throws Exception {
@@ -37,6 +43,13 @@ final class LoopbackTransport implements AuthSession.Wire {
         connection.setFixedLengthStreamingMode(bytes.length);
         connection.setRequestProperty("Content-Type", "application/json");
         if (key != null) connection.setRequestProperty("Idempotency-Key", key);
+        // Cancellation and same-subject token refresh are cleanup/recovery, not new consent.
+        boolean cleanup =
+            path.endsWith("/cancel")
+                || path.endsWith("/close")
+                || path.equals("/anonymous-sessions/refresh");
+        if (!cleanup && !inputAllowed.getAsBoolean())
+          throw new IllegalStateException("INPUT_BLOCKED");
         try (var output = connection.getOutputStream()) {
           output.write(bytes);
         }

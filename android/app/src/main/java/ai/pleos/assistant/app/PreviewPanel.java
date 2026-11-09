@@ -1,6 +1,5 @@
 package ai.pleos.assistant.app;
 
-import ai.pleos.assistant.ux.MockRepository;
 import ai.pleos.assistant.ux.PreviewController;
 import android.graphics.Color;
 import android.text.Editable;
@@ -40,20 +39,11 @@ final class PreviewPanel {
     text(form, activity.getString(R.string.preview_title), 32);
     text(form, activity.getString(R.string.preview_disclosure), 24);
     restriction = text(form, "", 24);
-    LinearLayout controls = new LinearLayout(activity);
-    form.addView(controls);
-    control(
-        controls,
-        R.string.simulate_parked,
-        () -> model.restrict(MockRepository.Restriction.SIMULATED_PARKED));
-    control(
-        controls,
-        R.string.simulate_restricted,
-        () -> model.restrict(MockRepository.Restriction.RESTRICTED));
-    control(
-        controls,
-        R.string.simulate_unknown,
-        () -> model.restrict(MockRepository.Restriction.UNKNOWN));
+    button(form, R.string.driving_retry, activity::retryDriving);
+    if (BuildConfig.DEBUG) {
+      button(form, R.string.driving_test_restricted, activity::debugRestriction);
+      button(form, R.string.driving_test_failed, activity::debugFailure);
+    }
     button(form, R.string.preview_back, () -> model.closePreview());
     text(form, activity.getString(R.string.preview_destination), 24);
     destination = new Spinner(activity);
@@ -147,10 +137,6 @@ final class PreviewPanel {
     return b;
   }
 
-  private void control(LinearLayout parent, int resource, Runnable action) {
-    button(parent, resource, action).setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
-  }
-
   private EditText field(int label, String initial, boolean numeric) {
     text(form, activity.getString(label), 24);
     EditText input = new EditText(activity);
@@ -203,12 +189,7 @@ final class PreviewPanel {
     inputs.forEach(v -> v.setEnabled(allowed));
     search.setEnabled(allowed && !"LOADING".equals(state.state()));
     cancel.setEnabled("LOADING".equals(state.state()) || state.result() != null);
-    restriction.setText(
-        switch (model.restriction()) {
-          case SIMULATED_PARKED -> R.string.restriction_parked;
-          case RESTRICTED -> R.string.restriction_blocked;
-          case UNKNOWN -> R.string.restriction_unknown;
-        });
+    restriction.setText(activity.drivingLabel());
     String signature = state.toString();
     if (signature.equals(rendered)) return;
     rendered = signature;
