@@ -117,6 +117,29 @@ public final class AuthSession implements MockRepository.Transport {
     Instant.parse(tokens.getString("refreshTokenExpiresAt"));
   }
 
+  /** Long preview IO must not hold the refresh lock and prevent independent cancellation. */
+  public JSONObject exchangeTransient(String path, JSONObject body, String key) throws Exception {
+    if (path.equals("/status")) return wire.exchange(path, null, null, null);
+    if (!path.equals(PreviewController.ROOT) && !path.startsWith(PreviewController.ROOT + "/"))
+      throw new IllegalArgumentException("INVALID_PATH");
+    String token;
+    synchronized (this) {
+      ensureSession();
+      token = state.getJSONObject("tokens").getString("accessToken");
+    }
+    try {
+      return wire.exchange(path, body, key, token);
+    } catch (HttpFailure error) {
+      if (error.status != 401) throw error;
+      synchronized (this) {
+        ensureSession();
+        if (token.equals(state.getJSONObject("tokens").getString("accessToken"))) renewIdentity();
+        token = state.getJSONObject("tokens").getString("accessToken");
+      }
+      return wire.exchange(path, body, key, token);
+    }
+  }
+
   @Override
   public synchronized JSONObject exchange(String path, JSONObject body, String key)
       throws Exception {
