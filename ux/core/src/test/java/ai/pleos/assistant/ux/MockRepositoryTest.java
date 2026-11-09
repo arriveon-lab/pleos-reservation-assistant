@@ -231,6 +231,58 @@ class MockRepositoryTest {
   }
 
   @Test
+  void restrictionDuringJournalWriteKeepsPendingWithoutDispatch() throws Exception {
+    MockRepository[] reference = new MockRepository[1];
+    Journal journal =
+        new Journal() {
+          @Override
+          public void save(String value) {
+            super.save(value);
+            if (reference[0] != null) reference[0].restrict(MockRepository.Restriction.RESTRICTED);
+          }
+        };
+    Recording transport = new Recording(journal);
+    MockRepository repository = ready(journal, transport);
+    reference[0] = repository;
+    repository.restrict(MockRepository.Restriction.PLATFORM_UNRESTRICTED);
+    assertThrows(IllegalStateException.class, () -> repository.search(2, 1, true));
+    assertTrue(transport.writes.isEmpty());
+    assertTrue(repository.snapshot().has("pending"));
+    assertThrows(IllegalStateException.class, repository::retry);
+    repository.refresh();
+    assertTrue(transport.writes.isEmpty());
+  }
+
+  @Test
+  void restrictionDuringStatusReadPreventsNewIdentity() throws Exception {
+    MockRepository[] reference = new MockRepository[1];
+    boolean[] created = {false};
+    AuthSession auth =
+        new AuthSession(
+            (path, body, key, bearer) -> {
+              if (body != null) created[0] = true;
+              reference[0].restrict(MockRepository.Restriction.UNKNOWN);
+              return new JSONObject()
+                  .put("mode", "MOCK")
+                  .put("contractVersion", "1.1.0")
+                  .put("externalCallsEnabled", false);
+            },
+            new AuthSession.Vault() {
+              public String read() {
+                return null;
+              }
+
+              public void save(String value) {}
+            });
+    MockRepository repository = new MockRepository(auth, new Journal());
+    assertTrue(repository.canCreateIdentity());
+    reference[0] = repository;
+    repository.restrict(MockRepository.Restriction.PLATFORM_UNRESTRICTED);
+    assertThrows(IllegalStateException.class, repository::createIdentity);
+    assertFalse(created[0]);
+  }
+
+  @Test
   void diskFailurePreventsSending() throws Exception {
     Journal journal = new Journal();
     Recording transport = new Recording(journal);

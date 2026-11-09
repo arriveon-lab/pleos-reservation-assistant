@@ -35,7 +35,12 @@ public final class MockRepository {
   public enum Restriction {
     UNKNOWN,
     RESTRICTED,
-    SIMULATED_PARKED
+    SIMULATED_PARKED,
+    PLATFORM_UNRESTRICTED;
+
+    public boolean allowsInput() {
+      return this == SIMULATED_PARKED || this == PLATFORM_UNRESTRICTED;
+    }
   }
 
   private final Transport transport;
@@ -107,27 +112,26 @@ public final class MockRepository {
   }
 
   public void createIdentity() throws Exception {
-    if (restriction != Restriction.SIMULATED_PARKED || !canCreateIdentity())
+    if (!restriction.allowsInput() || !canCreateIdentity())
       throw new IllegalStateException("AUTH_CREATE_BLOCKED");
     JSONObject status = transport.exchange("/status", null, null);
     if (!"1.1.0".equals(status.optString("contractVersion"))
         || !"MOCK".equals(status.optString("mode"))
         || status.getBoolean("externalCallsEnabled"))
       throw new IllegalStateException("INCOMPATIBLE_SERVER");
+    if (!restriction.allowsInput()) throw new IllegalStateException("INPUT_BLOCKED");
     transport.createIdentity();
     connect();
   }
 
   public void renewIdentity() throws Exception {
-    if (restriction != Restriction.SIMULATED_PARKED)
-      throw new IllegalStateException("INPUT_BLOCKED");
+    if (!restriction.allowsInput()) throw new IllegalStateException("INPUT_BLOCKED");
     transport.renewIdentity();
     connect();
   }
 
   private void requireWrite() {
-    if (!verified || restriction != Restriction.SIMULATED_PARKED)
-      throw new IllegalStateException("INPUT_BLOCKED");
+    if (!verified || !restriction.allowsInput()) throw new IllegalStateException("INPUT_BLOCKED");
     if (state.has("pending")) throw new IllegalStateException("PENDING_COMMAND");
   }
 
@@ -184,11 +188,11 @@ public final class MockRepository {
   }
 
   public void retry() throws Exception {
-    if (!verified || restriction != Restriction.SIMULATED_PARKED)
-      throw new IllegalStateException("INPUT_BLOCKED");
+    if (!verified || !restriction.allowsInput()) throw new IllegalStateException("INPUT_BLOCKED");
     JSONObject pending = state.getJSONObject("pending");
     // Also retry a previously failed disk write before contacting the server.
     persist();
+    if (!restriction.allowsInput()) throw new IllegalStateException("INPUT_BLOCKED");
     JSONObject result =
         transport.exchange(
             pending.getString("path"), pending.getJSONObject("body"), pending.getString("key"));
