@@ -1,0 +1,26 @@
+name: Phone prototype
+on:
+  pull_request:
+    paths:
+      - 'prototypes/phone_agent/**'
+      - '.github/workflows/phone-prototype.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'prototypes/phone_agent/**'
+      - '.github/workflows/phone-prototype.yml'
+permissions:
+  contents: read
+jobs:
+  offline-prototype:
+    name: Offline phone prototype
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest prototypes.phone_agent.test_service -v
+      - run: python -m py_compile prototypes/phone_agent/*.py
+      - run: node --check prototypes/phone_agent/static/app.js
