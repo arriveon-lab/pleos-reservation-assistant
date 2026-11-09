@@ -1,5 +1,13 @@
 # 구현·검증 현황
 
+## 2026-11-09 REC-11 #37 웹 상세정보·GPT 코드 준비
+
+- 사용자 선택에 따라 [GPT 출처 검색·웹 상세정보 모듈](REC11_PLACE_DETAILS.md)을 최신 mainabd9aa4 기반 `feat/37-place-detail-enrichment`에 분리했습니다. GPT 인용 URL 후보 → 별도 이용 조건/host 검토 → 이름+주소 일치 → 구조화 필드/출처·관측/표시 기한·충돌/UNKNOWN → 후보 최대3개의 남은 질문을 제공합니다. #19/#26 코드나 공개 v1/미리보기 계약은 변경하지 않았습니다.
+- Responses/web_search의 일회성 Permit·명시적 모델·도구1회/출력1024토큰·최대30초/1MiB·재시도/redirect 차단을 구현했습니다. Permit은 메모리상의 제한이며 운영 인증/전역 비용 원장이 아닙니다. 실제 실행 전 데이터·모델·횟수·비용 상한 승인이 별도로 필요합니다. HTTP/페이지 adapter는 Spring 미등록·제품 미연결입니다.
+- Java313개(기반268+신규45), 실패/오류/skip0. 가상 JSON-LD·GPT 응답·loopback HTTP로 지점/주소·출처 충돌·시각·취소/만료·중복 실행·응답 한도와 후보 결합을 검증했습니다. `:server:placeDetails`의 전체 예제도 MOCK입니다. 패키징 JAR 인증·기존 MOCK/UNKNOWN·OpenAPI·H2 재시작·LIVE 차단을 통과했습니다. jsoup1.24.1과 lockfile을 추가했습니다.
+- 웹 일반 보고는 GENERAL이며 도착 시각 빈자리·대기·예약 가능이나 권한으로 전환하지 않습니다. #11의 KAKAO/미검토 출처 GPT 전송을 차단하며 검토된 공공 출처의 제품 채택도 아직 아닙니다. 일반 문장/PDF/JS-only/다른 업종과 실제 TLS/모델/청구/매장 페이지·Android 기기는 미검증입니다. 이번 실제 GPT·웹 수집·Kakao·전화·유료 호출0회입니다. 원격 CI 결과는 PR에서 따로 확인합니다.
+- #16 별도 브랜치는 mainabd9aa4와의 충돌을 공유 이력 보존으로 해결하고 #26 담당의 [정적 검토](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)를 반영해 head5526f92로 push했습니다. Java329·Python7/15·가상HTTP137·토큰HTTP16·CI3개 통과. 계약 추가 차단 필드는 없었고 완료 preview 재사용 금지·app token의 MOCK_OPERATOR 미보유를 확인했습니다. 실제 #26 구현/공동 기기·#1 ETA·#11 인수는 남아 #16 OPEN/#19 Draft입니다. 이 #37 모듈은 이후 필드 합의 후 별도 연결합니다.
+
 ## 2026-11-09 REC-09 #32 공공데이터 독립 검증
 
 - [REC-09](REC09_SEOUL_DATA_VALIDATION.md)에 OA-18655의 공식 명세39필드·공개 sample1–5 제한·EPSG:5174·라이선스를 확인했습니다. 개인 인증키 발급/로그인/약관·결제·IP 설정 변경은 없습니다.

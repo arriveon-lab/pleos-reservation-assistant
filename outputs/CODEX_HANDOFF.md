@@ -1,5 +1,14 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-09 REC-11 #37과 #16 정적 합의 반영
+
+- 사용자가 GPT 웹검색 API 연동 코드 준비를 선택했습니다. mainabd9aa4 기반 `feat/37-place-detail-enrichment`에 [REC-11](../docs/REC11_PLACE_DETAILS.md)의 내부 모듈과 MOCK 실행 task를 추가했습니다. #19/#26 미병합 코드는 가져오지 않았으며 공개 v1/미리보기 계약·DB·Android는 변경하지 않았습니다.
+- GptPlaceSourceDiscovery/GptWebSearchHttpTransport는 명시적 모델과 대상/기한에 묶인 일회성 Permit으로 Responses/web_search 요청을 구성합니다. 키 Supplier만 있고 자동 키 로딩/LIVE 실행 명령/제품 bean은 없습니다. 실제 GPT·웹 수집·전화·Kakao·유료 호출0회. Permit은 전역 비용 승인 원장이 아니며 다음 실제 실행 전 모델/가격·출처·전송 데이터·횟수·비용 상한의 명시적 승인을 받아야 합니다.
+- PlaceDetailEnricher/JsonLdPlaceDetailParser는 schema.org 매장명+주소를 대조해 영업시간/메뉴 링크/가격/음식/일반 예약/명시적 주차·아동 보고와 출처/시각/기한/충돌·UNKNOWN을 보존합니다. 페이지는 독립 검토된 URL/host만 받습니다. KAKAO/UNVERIFIED 입력의 GPT 전송과 미검토 identity의 READ_ONLY_WEB을 차단합니다. 웹 정보는 GENERAL이며 ARRIVAL 질문·예약/발신 차단을 유지합니다.
+- PlaceDetailRecommendationService는 기존 최대3개 평가에 ordinal별 상세정보와 남은 질문을 결합하고 전체 generation/current/최단 표시 기한을 적용합니다. 기존 추천 질문은 기초 계획으로 유지합니다. 신규 필드가 #16/#26 합의된 API라는 뜻은 아니며 공개 스키마/화면 연결은 후속입니다. 페이지 HTTP adapter의 DNS pinning/전체 DNS 제한은 운영 전 보완해야 하며 실제 외부 수집은 미검증입니다.
+- `./gradlew -PincludeAndroid=false format verify :server:placeDetails`: Java313개(기반268+신규45), 실패/오류/skip0. GPT와 페이지는 가상, transport만 loopback HTTP로 검사했습니다. `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`: JAR 인증·기존 MOCK/UNKNOWN·OpenAPI·H2 재시작·LIVE 차단 통과. 의존성은 jsoup1.24.1 추가, lockfile 대조. 로그는 Git 제외 work/rec11-verify.log·rec11-smoke.log입니다. 원격 CI는 해당 PR에서 별도 확인합니다.
+- #16 브랜치는 mainabd9aa4를 merge해 충돌 해소했고, #26 담당의 정적 검토를 문서에 반영한 head5526f92를 push했습니다. 서버329·Python7/15·가상HTTP137·실제 로컬 서버 토큰HTTP16·CI3개 성공. [담당 검토](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)는 현행0.2.0-draft 필드 정적 합의이며 app 구현/기기 완료가 아닙니다. #26의 화면 수명/토큰 보관/UNKNOWN, #1 ETA·#11 데이터 인수가 남아 #16 OPEN/#19 Draft를 유지합니다. #35와 다른 PR을 임의 병합하지 않습니다.
+
 ## 2026-11-09 REC-09 #32 성동구 데이터 명세·품질 확인
 
 - 최신 main35e22a8에서 feat/32-seoul-place-quality로 분리했습니다. #11의 검증 후보를 실제 제품으로 채택하지 않고 [독립 품질 도구/인수 기록](../docs/REC09_SEOUL_DATA_VALIDATION.md)을 준비했습니다. #23/#19의 미병합 코드를 가져오지 않았고 다른 담당 코드는 변경하지 않았습니다.
