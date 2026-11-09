@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Offline phone reservation prototype",
-    "version": "0.1.0",
-    "description": "Loopback-only MOCK harness, separate from the product API. No real provider calls."
+    "title": "Local phone reservation prototype",
+    "version": "0.2.0",
+    "description": "Loopback-only MOCK harness with opt-in Telkit/LiveKit telephony, separate from the product API."
   },
   "servers": [
     {
@@ -16,7 +16,7 @@
         "summary": "Get owner-scoped state and bootstrap a session cookie",
         "responses": {
           "200": {
-            "description": "MOCK state; may set HttpOnly SameSite=Strict session cookie"
+            "description": "Owner-scoped bookings/events, MOCK or LIVE mode, externalCalls, and secret-free voice readiness; may set HttpOnly SameSite=Strict session cookie"
           }
         }
       }
@@ -99,6 +99,80 @@
           },
           "409": {
             "description": "State, version or idempotency conflict"
+          },
+          "413": {
+            "description": "Body over 24 KiB"
+          },
+          "415": {
+            "description": "JSON content type required"
+          }
+        }
+      }
+    },
+    "/api/live/dial": {
+      "post": {
+        "summary": "Dispatch one approved booking to an allowlisted test phone (opt-in LIVE only)",
+        "parameters": [
+          {
+            "name": "X-Prototype-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1",
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "localSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "bookingId",
+                  "version",
+                  "requestId"
+                ],
+                "properties": {
+                  "bookingId": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result identifiers and current state"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Host, Origin or session denied"
+          },
+          "404": {
+            "description": "Owner-scoped resource not found"
+          },
+          "409": {
+            "description": "LIVE disabled/not configured, unapproved/stale booking, blocked target, capacity or idempotency conflict; no automatic redial"
           },
           "413": {
             "description": "Body over 24 KiB"

@@ -129,14 +129,16 @@ class ReservationService:
         return [json.loads(row[0]) for row in self.db.execute(
             "SELECT body FROM objects WHERE owner=? AND kind=? ORDER BY rowid", (owner, kind))]
 
-    def _event(self, owner, booking_id, speaker, message):
+    def _event(self, owner, booking_id, speaker, message, mode="MOCK", call_id=None):
         self._put(owner, "event", {"id": identifier(), "bookingId": booking_id,
-                                  "speaker": speaker, "message": message, "at": timestamp()})
+                                  "speaker": speaker, "message": message, "mode": mode,
+                                  "callId": call_id, "at": timestamp()})
 
     def state(self, owner):
         with self.lock:
             profiles = self._list(owner, "profile")
-            return {"mode": "MOCK", "externalCalls": 0, "profile": profiles[0] if profiles else None,
+            calls = self._list(owner, "live_call")
+            return {"mode": "LIVE" if calls else "MOCK", "externalCalls": sum(bool(c.get("inviteRequested")) for c in calls), "profile": profiles[0] if profiles else None,
                     "trips": self._list(owner, "trip"), "bookings": self._list(owner, "booking"),
                     "callbacks": self._list(owner, "callback"),
                     "events": self._list(owner, "event")[-100:]}
@@ -226,7 +228,7 @@ class ReservationService:
         require(booking["snapshot"]["petAccompanied"] != "UNKNOWN", "CONDITIONS_UNCONFIRMED", "반려동물 동반 여부를 확인해 주세요.")
         booking.update(status="READY", approvedSnapshot=copy.deepcopy(booking["snapshot"]),
                        approvedAt=timestamp(), version=booking["version"] + 1,
-                       notice="승인 완료. 식당 응답 시나리오를 선택해 가상 통화를 시작하세요.")
+                       notice="승인 완료. 가상 통화 또는 별도로 준비한 실제 테스트 발신을 선택하세요.")
         self._put(owner, "booking", booking)
         return {"id": booking["id"]}
 
@@ -272,7 +274,7 @@ class ReservationService:
         self._put(owner, "booking", booking)
         return {"id": booking["id"]}
 
-    def _receive_callback(self, owner, payload):
+    def _receive_callback(self, owner, payload, live=False):
         restaurant = payload.get("restaurantId")
         require(restaurant in ("demo-garden", "demo-table"), "INVALID_INPUT", "가상 식당을 선택해 주세요.", 400)
         # These are the facts supplied by the simulated caller, not a list read to them.
@@ -280,7 +282,7 @@ class ReservationService:
         matches = [b for b in self._list(owner, "booking") if b["restaurantId"] == restaurant
                    and b["reservationName"] == name and b["date"] == day
                    and b["confirmedTime"] == payload.get("currentTime")
-                   and b["status"] == "CONFIRMED"]
+                   and b["status"] == "CONFIRMED" and (live or b.get("mode") != "LIVE")]
         callback = {"id": identifier(), "status": "UNMATCHED", "bookingId": None, "at": timestamp()}
         if len(matches) != 1:
             self._put(owner, "callback", callback)
@@ -314,6 +316,7 @@ class ReservationService:
 
     def _reconfirm_change(self, owner, payload):
         booking = self._get(owner, "booking", payload.get("bookingId"))
+        require(booking.get("mode") != "LIVE", "LIVE_RESULT_REQUIRED", "실제 변경은 음성 에이전트의 재확인 결과로만 반영해요.")
         self._version(booking, payload)
         change = booking.get("change")
         require(change is not None and change["status"] == "RECONFIRMING" and change["approved"],
@@ -337,6 +340,7 @@ class ReservationService:
 
     def _verify_booking(self, owner, payload):
         booking = self._get(owner, "booking", payload.get("bookingId"))
+        require(booking.get("mode") != "LIVE", "LIVE_RESULT_REQUIRED", "실전화 결과는 별도 대조가 필요해요.")
         self._version(booking, payload)
         require(booking["status"] == "UNKNOWN", "INVALID_STATE", "미확인 신규 예약만 대조할 수 있어요.")
         result = payload.get("result")
@@ -354,6 +358,8 @@ class ReservationService:
 
     def _delete_all(self, owner, payload):
         require(payload.get("confirm") is True, "CONFIRM_REQUIRED", "전체 삭제를 확인해 주세요.", 400)
+        require(not any(c["status"] != "ENDED" for c in self._list(owner, "live_call")),
+                "LIVE_CALL_ACTIVE", "진행 중인 실제 통화를 종료한 뒤 전체 삭제할 수 있어요.")
         self.db.execute("DELETE FROM objects WHERE owner=?", (owner,))
         self.db.execute("DELETE FROM commands WHERE owner=?", (owner,))
         self.db.execute("DELETE FROM sessions WHERE owner=?", (owner,))

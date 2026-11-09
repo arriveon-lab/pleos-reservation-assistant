@@ -1,0 +1,146 @@
+"""Secret-safe local configuration for optional real telephony."""
+import json
+import os
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from urllib.parse import urlsplit
+
+
+class ConfigurationError(ValueError):
+    pass
+
+
+def load_env_file(path):
+    """Read simple KEY=VALUE assignments; never evaluate shell expressions."""
+    path = Path(path)
+    if not path.exists():
+        return
+    if path.stat().st_mode & 0o077:
+        raise ConfigurationError("실전화 환경 파일의 권한을 600으로 설정해 주세요.")
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, separator, value = line.partition("=")
+        if not separator or not re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
+            raise ConfigurationError("환경 파일은 KEY=VALUE 형식이어야 해요.")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        os.environ[key] = value
+
+
+def normalize_number(value):
+    if not isinstance(value, str):
+        raise ConfigurationError("전화번호를 확인해 주세요.")
+    value = re.sub(r"[\s()-]", "", value)
+    if value.startswith("0"):
+        value = "+82" + value[1:]
+    if not re.fullmatch(r"\+82(?:10\d{8}|2\d{7,8}|(?:31|32|33|41|42|43|44|51|52|53|54|55|61|62|63|64)\d{7,8}|70\d{8})", value):
+        raise ConfigurationError("허용한 국내 휴대폰·유선·070 번호만 사용할 수 있어요.")
+    return value
+
+
+@dataclass(frozen=True)
+class VoiceConfig:
+    livekit_url: str = ""
+    api_key: str = field(default="", repr=False)
+    api_secret: str = field(default="", repr=False)
+    sip_uri: str = ""
+    telkit_number: str = field(default="", repr=False)
+    telkit_number_id: str = ""
+    telkit_key: str = field(default="", repr=False)
+    sip_username: str = field(default="", repr=False)
+    sip_password: str = field(default="", repr=False)
+    inbound_trunk_id: str = ""
+    outbound_trunk_id: str = ""
+    allowed_numbers: tuple = field(default=(), repr=False)
+    restaurant_numbers: dict = field(default_factory=dict, repr=False)
+    enabled: bool = False
+    max_seconds: int = 180
+    daily_calls: int = 1
+    agent_name: str = "arriveon-reservation"
+    stt_model: str = "assemblyai/universal-3-6-pro"
+    llm_model: str = "google/gemma-4-31b-it"
+    tts_model: str = "cartesia/sonic-3-2026-01-12"
+    tts_voice: str = "15628352-2ede-4f1b-89e6-ceda0c983fbc"
+    database: str = "data/phone-agent-prototype.sqlite3"
+    secrets_dir: str = field(default="work/telkit-private", repr=False)
+
+    @classmethod
+    def from_env(cls, env=None):
+        env = os.environ if env is None else env
+        folder = Path(env.get("PHONE_SECRETS_DIR", "work/telkit-private"))
+        def private(name):
+            path = folder / name
+            if not path.exists():
+                return {}
+            if path.stat().st_mode & 0o077:
+                raise ConfigurationError("비밀값 파일의 권한을 600으로 설정해 주세요.")
+            return json.loads(path.read_text())
+        key, sip, setup = private("workspace-key.json"), private("sip-credential.json"), private("livekit-setup.json")
+        try:
+            mapping = json.loads(env.get("PHONE_RESTAURANT_NUMBERS", "{}"))
+            if not isinstance(mapping, dict):
+                raise ValueError
+            mapping = {str(k): normalize_number(v) for k, v in mapping.items()}
+            allowed = tuple(normalize_number(v) for v in env.get("PHONE_ALLOWED_NUMBERS", "").split(",") if v.strip())
+            seconds, daily = int(env.get("PHONE_MAX_SECONDS", "180")), int(env.get("PHONE_DAILY_CALLS", "1"))
+            if not 30 <= seconds <= 600 or not 1 <= daily <= 10:
+                raise ValueError
+        except (ValueError, TypeError, json.JSONDecodeError):
+            raise ConfigurationError("번호 매핑·허용 번호·통화 제한 설정을 확인해 주세요.") from None
+        return cls(
+            livekit_url=env.get("LIVEKIT_URL", ""), api_key=env.get("LIVEKIT_API_KEY", ""),
+            api_secret=env.get("LIVEKIT_API_SECRET", ""), sip_uri=env.get("LIVEKIT_SIP_URI", ""),
+            telkit_number=env.get("TELKIT_NUMBER", ""), telkit_number_id=env.get("TELKIT_NUMBER_ID", ""),
+            telkit_key=(env.get("TELKIT_API_KEY") or key.get("secret", "")),
+            sip_username=(env.get("TELKIT_SIP_USERNAME") or sip.get("username", "")),
+            sip_password=(env.get("TELKIT_SIP_PASSWORD") or sip.get("password", "")),
+            inbound_trunk_id=(env.get("LIVEKIT_INBOUND_TRUNK_ID") or setup.get("inbound_trunk_id", "")),
+            outbound_trunk_id=(env.get("LIVEKIT_OUTBOUND_TRUNK_ID") or setup.get("outbound_trunk_id", "")),
+            allowed_numbers=allowed, restaurant_numbers=mapping,
+            enabled=env.get("PHONE_LIVE_ENABLED", "false").lower() == "true",
+            max_seconds=seconds, daily_calls=daily, database=env.get("PHONE_DATABASE", cls.database),
+            agent_name=env.get("PHONE_AGENT_NAME", cls.agent_name), secrets_dir=str(folder),
+            stt_model=env.get("PHONE_STT_MODEL", cls.stt_model),
+            llm_model=env.get("PHONE_LLM_MODEL", cls.llm_model),
+            tts_model=env.get("PHONE_TTS_MODEL", cls.tts_model),
+            tts_voice=env.get("PHONE_TTS_VOICE", cls.tts_voice))
+
+    def missing(self, setup=False):
+        fields = [("LIVEKIT_URL", self.livekit_url), ("LIVEKIT_API_KEY", self.api_key),
+                  ("LIVEKIT_API_SECRET", self.api_secret), ("PHONE_ALLOWED_NUMBERS", self.allowed_numbers)]
+        if setup:
+            fields += [("LIVEKIT_SIP_URI", self.sip_uri), ("TELKIT_NUMBER", self.telkit_number),
+                       ("TELKIT_NUMBER_ID", self.telkit_number_id), ("TELKIT_API_KEY", self.telkit_key),
+                       ("TELKIT_SIP_USERNAME", self.sip_username), ("TELKIT_SIP_PASSWORD", self.sip_password)]
+        else:
+            fields += [("LIVEKIT_OUTBOUND_TRUNK_ID", self.outbound_trunk_id)]
+        return [name for name, value in fields if not value]
+
+    def validate(self, setup=False):
+        missing = self.missing(setup)
+        if missing:
+            raise ConfigurationError("필요한 설정: " + ", ".join(missing))
+        url = urlsplit(self.livekit_url)
+        if url.scheme != "wss" or not url.hostname or url.username or url.password:
+            raise ConfigurationError("LIVEKIT_URL은 자격 증명 없는 wss:// 주소여야 해요.")
+        if setup:
+            if not re.fullmatch(r"sip:[a-zA-Z0-9-]+\.sip\.livekit\.cloud", self.sip_uri):
+                raise ConfigurationError("LiveKit 프로젝트의 SIP URI를 확인해 주세요.")
+            number = normalize_number(self.telkit_number)
+            if not number.startswith("+8270"):
+                raise ConfigurationError("Telkit의 070 번호를 설정해 주세요.")
+
+    def require_live(self):
+        self.validate()
+        if not self.enabled:
+            raise ConfigurationError("실전화 실행은 PHONE_LIVE_ENABLED=true와 허용 대상 설정 후 사용할 수 있어요.")
+
+    def report(self):
+        return {"liveEnabled": self.enabled, "missingRuntime": self.missing(),
+                "missingSetup": self.missing(True), "allowedNumberCount": len(self.allowed_numbers),
+                "restaurantCount": len(self.restaurant_numbers), "maxSeconds": self.max_seconds,
+                "dailyCalls": self.daily_calls, "models": {"stt": self.stt_model, "llm": self.llm_model, "tts": self.tts_model}}

@@ -1,6 +1,14 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
-## 2026-11-09 전화예약 프로토타입 인계 (#43)
+## 2026-11-09 Telkit·LiveKit 선택형 연결 인계 (#43)
+
+- 같은 `feat/43-phone-agent-prototype` / Draft PR #45에 선택형 음성 adapter를 추가했습니다. [실행/중단·비공개 설정](../prototypes/phone_agent/voice/README.md)을 따릅니다. SDK는 Git 제외 `work/voice-venv`, 설정은 권한 600 `work/phone-live.env`·`work/telkit-private/`, 로컬 DB는 `data/`입니다. 비밀값·번호를 공개 문서나 테스트로 옮기지 않습니다.
+- 사용자 승인 후 Telkit 본인인증/카드·070 번호 1개 구매·SIP credential, LiveKit 무료 Build 프로젝트·전용 key·SIP trunk/dispatch를 연결했습니다. 번호 구매 크레딧 7,000원·추가 카드 0원, 30일 갱신입니다. 사용자 승인 대상 1회·60초/72원 상한 시험에서 실제 연결 46초·60원, 잔액 2,940원입니다. 계정 재생성·번호 재구매·credential 회전은 하지 않습니다.
+- 한국어 통화와 결과 저장은 확인했으나 최초 CONFIRMED 결과는 이름 인식 불일치로 UNKNOWN 정정했습니다. 식당 직원 호칭·임의 회신 번호·음질 문제도 발견했습니다. 이름 대조·통화별 evidence·handoff 처리, 한국어 지침과 Jiwoo 음성 설정을 보강했습니다. 추가 합성/실전화 없이 자동 테스트 21개를 검증하며 변경 후 실제 청취는 미검증입니다.
+- 승인 1회는 소비했습니다. `PHONE_LIVE_ENABLED=false`, worker 종료 상태입니다. HTTP 화면은 SDK venv로 실행하며 DB의 실제 결과를 조회할 수 있습니다. 추가 실발신·수신 시험은 대상·비용·횟수·시간 승인을 준비해야 합니다. 자동 재발신이나 상시 서버 배포를 수행하지 않았습니다.
+- 실제 수신·사용자 변경 승인 후 재확인 통화는 미실행입니다. 호출자/trunk/예약 식별과 변경 도구는 가짜 client 테스트까지만 확인했습니다. 제품 인증/outbox·공급자 상태 대조·자동 보관 만료·알림·Pleos 통합은 후속이고 #3/#4/#26은 OPEN으로 유지합니다. 기본 MOCK 36개 테스트와 제품 LIVE 차단을 유지합니다.
+
+## 2026-11-09 전화예약 프로토타입 최초 단계 인계 (#43)
 
 - `feat/43-phone-agent-prototype`는 main abd9aa4에서 분리했습니다. [전화예약 프로토타입](../prototypes/phone_agent/README.md)을 `python3 -m prototypes.phone_agent --port 8765`로 실행합니다. 외부 패키지 없이 가상 데이터와 로컬 DB를 사용하며 제품 서버·타 담당 코드를 가져오지 않았습니다.
 - 사용자 요청은 빠르게 계획을 테스트할 수 있는 버전을 만드는 것입니다. 계정·번호는 준비 전이며 Telkit llms/phone 안내를 확인했으나 실제 가입·구매·실전화는 수행하지 않았습니다. 번호 구매 전 LiveKit SIP 수신 환경과 구체적 비용/실행 범위를 준비해야 합니다.

@@ -1,5 +1,8 @@
-"""Loopback-only HTTP transport for the offline phone-agent test harness."""
+"""Loopback test UI: default MOCK, with explicitly enabled optional live telephony."""
 import argparse
+import asyncio
+import importlib.util
+import os
 import hashlib
 import json
 from http import cookies
@@ -13,6 +16,19 @@ STATIC = Path(__file__).with_name("static")
 
 
 def make_server(service, port=8765):
+    def current_state(owner):
+        value = service.state(owner)
+        try:
+            from .voice.config import VoiceConfig, load_env_file
+            load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
+            config = VoiceConfig.from_env()
+            value["voice"] = config.report()
+            value["voice"]["sdkInstalled"] = importlib.util.find_spec("livekit") is not None
+            value["voice"]["ready"] = not config.missing() and config.enabled and value["voice"]["sdkInstalled"]
+        except ValueError:
+            value["voice"] = {"ready": False, "configurationError": True}
+        return value
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format, *args):
             pass  # Do not copy user conditions or session cookies into access logs.
@@ -67,7 +83,7 @@ def make_server(service, port=8765):
                 path = urlsplit(self.path).path
                 if path == "/api/state":
                     owner, cookie = self._owner(create=True)
-                    self._json(200, service.state(owner), cookie)
+                    self._json(200, current_state(owner), cookie)
                     return
                 files = {"/": ("index.html", "text/html"), "/app.js": ("app.js", "text/javascript"),
                          "/style.css": ("style.css", "text/css")}
@@ -85,7 +101,7 @@ def make_server(service, port=8765):
                 origin = self._host()
                 if self.headers.get("Origin") not in (None, origin):
                     raise DomainError("ORIGIN_DENIED", "다른 사이트에서 보낸 요청은 받지 않아요.", 403)
-                if self.path != "/api/action":
+                if self.path not in ("/api/action", "/api/live/dial"):
                     raise DomainError("NOT_FOUND", "경로를 찾을 수 없어요.", 404)
                 if self.headers.get_content_type() != "application/json":
                     raise DomainError("INVALID_CONTENT_TYPE", "JSON 요청이 필요해요.", 415)
@@ -102,11 +118,25 @@ def make_server(service, port=8765):
                     raise DomainError("INVALID_JSON", "JSON을 확인해 주세요.", 400) from None
                 if not isinstance(body, dict):
                     raise DomainError("INVALID_INPUT", "요청은 JSON 객체여야 해요.", 400)
-                result = service.command(owner, body.get("action"), body.get("payload", {}), body.get("requestId"))
+                if self.path == "/api/live/dial":
+                    from .voice.config import ConfigurationError, VoiceConfig, load_env_file
+                    try:
+                        load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
+                        config = VoiceConfig.from_env()
+                        config.require_live()
+                    except ConfigurationError as error:
+                        raise DomainError("LIVE_NOT_READY", str(error), 409) from None
+                    if importlib.util.find_spec("livekit") is None:
+                        raise DomainError("LIVE_NOT_READY", "음성 SDK가 설치된 Python으로 실행해 주세요.", 409)
+                    from .voice.transport import dial_booking
+                    result = asyncio.run(dial_booking(service, config, owner, body.get("bookingId"),
+                                                      body.get("version"), body.get("requestId")))
+                else:
+                    result = service.command(owner, body.get("action"), body.get("payload", {}), body.get("requestId"))
                 cookie = None
                 if body.get("action") == "delete_all":
                     owner, cookie = service.session()
-                self._json(200, {"result": result, "state": service.state(owner)}, cookie)
+                self._json(200, {"result": result, "state": current_state(owner)}, cookie)
             except DomainError as error:
                 self._json(error.status, {"error": {"code": error.code, "message": error.message}})
             except Exception:
@@ -123,8 +153,8 @@ def main():
     args.database.parent.mkdir(parents=True, exist_ok=True)
     service = ReservationService(args.database)
     server = make_server(service, args.port)
-    print(f"MOCK phone agent: http://127.0.0.1:{server.server_port}", flush=True)
-    print("No model calls, SIP connection or real phone calls. Use fictional data only.", flush=True)
+    print(f"Phone agent test UI: http://127.0.0.1:{server.server_port}", flush=True)
+    print("MOCK by default. Optional LIVE requires explicit configuration and approval. Use fictional booking data.", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

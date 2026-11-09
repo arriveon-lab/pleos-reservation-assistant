@@ -3,7 +3,7 @@
 <body>
 <header><a class="brand" href="/">ArriveOn<span>CALL LAB</span></a><span class="mode">MOCK · 외부 통화 0회</span><button id="refresh" class="quiet">상태 새로고침</button></header>
 <main>
-<div class="intro"><div><p class="eyebrow">전화예약 에이전트 프로토타입</p><h1>예약부터 회신까지,<br>한 흐름으로 확인하세요.</h1><p>가상 식당 응답으로 예약과 변경 처리를 테스트합니다.<br>실제 전화·음성 인식·AI 모델은 연결되지 않습니다.</p></div><div class="intro-note"><b>처음이라면</b><p>① 조건 저장 → ② 예약 생성·승인 → ③ 가상 통화 → ④ 식당 회신 순서로 진행하세요.</p><button id="quick-demo">예약부터 변경까지 자동 시연 ↗</button></div></div>
+<div class="intro"><div><p class="eyebrow">전화예약 에이전트 프로토타입</p><h1>예약부터 회신까지,<br>한 흐름으로 확인하세요.</h1><p>가상 식당 응답으로 예약과 변경 처리를 테스트합니다.<br>Telkit·LiveKit 설정과 별도 승인 후 실제 음성 통화도 시험할 수 있어요.</p></div><div class="intro-note"><b>처음이라면</b><p>① 조건 저장 → ② 예약 생성·승인 → ③ 가상 통화 → ④ 식당 회신 순서로 진행하세요.</p><button id="quick-demo">예약부터 변경까지 자동 시연 ↗</button></div></div>
 <div id="message" role="status" aria-live="polite" hidden></div>
 <div class="workspace">
 <section class="panel setup"><div class="section-title"><span>01</span><h2>이번 예약의 조건</h2></div>
@@ -19,6 +19,7 @@
 <hr><form id="booking-form"><label>가상 식당<select name="restaurantId"><option value="demo-garden">가상 정원식당</option><option value="demo-table">가상 식탁</option></select></label><div class="pair"><label>예약 날짜<input name="date" type="date" required></label><label>예약 시간<input name="time" type="time" value="19:00" required></label></div><button type="submit" class="wide outline">예약 요청 만들기</button><p class="muted">예약 생성 후 오른쪽에서 조건을 확인하고 발신을 승인하세요.</p></form>
 </section>
 <div class="right-stack">
+<section class="panel"><div class="section-title"><span>SIP</span><h2>Telkit · LiveKit 연결</h2></div><p id="voice-status" class="muted">연결 설정 확인 중…</p><p class="muted">실제 통화는 별도 승인한 테스트 번호와 비용·시간 상한을 준비한 뒤 켤 수 있어요.</p></section>
 <section class="panel"><div class="section-title"><span>02</span><h2>예약과 가상 통화</h2><small id="booking-count"></small></div><div id="bookings" class="empty">아직 예약이 없어요. 왼쪽에서 여정 조건과 예약을 만들어 주세요.</div></section>
 <section class="panel"><div class="section-title"><span>03</span><h2>식당에서 다시 전화가 왔어요</h2></div><p class="muted">가상 식당 직원이 알려주는 이름·날짜·기존 시간으로 예약을 찾습니다. 식당 번호만으로 확정하지 않아요.</p>
 <form id="callback-form"><div class="pair"><label>가상 식당<select name="restaurantId"><option value="demo-garden">가상 정원식당</option><option value="demo-table">가상 식탁</option></select></label><label>식당이 말한 예약자<input name="reservationName" value="김예약" required></label></div><div class="triple"><label>예약 날짜<input name="date" type="date" required></label><label>기존 시간<input name="currentTime" type="time" value="19:00" required></label><label>제안 시간<input name="proposedTime" type="time" value="19:30" required></label></div><label>변경 사유<input name="reason" value="가상 식당의 영업 사정" maxlength="160" required></label><button type="submit" class="outline">회신 전화 시뮬레이션</button></form><p id="callback-status" class="muted"></p></section>
