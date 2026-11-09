@@ -1,5 +1,7 @@
 # NaviHelper SDK probe
 
+위치·사용자 음성의 제품 연결은 [SDK 대체·단계별 연동 계획](../docs/SDK_FALLBACK_PLAN.md)을 따릅니다. 이 probe의 진단 범위는 유지하며, 표준 위치/STT/TTS adapter 구현과 기기 가용성 검증은 별도 작업입니다. ArriveOn 콘솔에서 NaviHelper는 별도 신청 없이 사용 가능한 상태지만 기기 수신·ETA 시간 의미 확인은 여전히 필요합니다.
+
 예약 앱 UI를 만들기 전 **실제 SDK 수신값과 시간 의미**를 확인하는 정차 개발용 앱입니다. 서버/전화/모델과 연결하지 않습니다. `measurementMode=SDK_PROBE`, `source=PLEOS`는 관측 경로 표시이며, 예약 시스템의 LIVE 모드나 기기 검증 성공을 의미하지 않습니다.
 
 ## 구성
