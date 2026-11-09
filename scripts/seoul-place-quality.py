@@ -30,6 +30,9 @@ FIELDS = (
     "Y",
 )
 PILOT = (127.055, 37.544)
+PILOT_STATUS_FIELDS = ("TRDSTATEGBN", "TRDSTATENM", "DTLSTATEGBN", "DTLSTATENM", "DCBYMD")
+# Experimental tuple, not a verified OA-18655 code dictionary. Never grants product authority.
+PILOT_NORMAL_TUPLE = ("01", "영업/정상", "01", "영업")
 
 
 class QualityError(Exception):
@@ -185,7 +188,138 @@ def distance(lon, lat):
     return 6_371_000 * 2 * math.asin(math.sqrt(min(1, a)))
 
 
-def profile(rows, now, mode, snapshot_as_of=None):
+def radius_band(meters):
+    if isinstance(meters, bool) or not math.isfinite(meters) or meters < 0:
+        raise QualityError("INVALID_DISTANCE")
+    if meters <= 1000:
+        return "WITHIN_1000M"
+    return "BOUNDARY_1000_TO_1030M" if meters <= 1030 else "OUTSIDE_1030M"
+
+
+def pilot_status(row):
+    # Missing closure tag is different from an explicitly empty closure value.
+    if any(field not in row for field in PILOT_STATUS_FIELDS):
+        return "MISSING"
+    values = tuple(row[field].strip() for field in PILOT_STATUS_FIELDS[:-1])
+    if not all(values):
+        return "MISSING"
+    if values != PILOT_NORMAL_TUPLE:
+        return "OTHER_TUPLE_OR_UNVERIFIED"
+    return "CLOSURE_PRESENT" if row["DCBYMD"].strip() else "NORMAL_TUPLE_MATCH"
+
+
+def pilot_screening(rows, coordinates):
+    """Aggregate-only diagnostic on already validated rows; never selects or exports merchants."""
+    id_counts = Counter(row.get("MGTNO", "").strip() for row in rows)
+    signatures = {}
+    for row in rows:
+        record_id = row.get("MGTNO", "").strip()
+        if record_id:
+            signatures.setdefault(record_id, set()).add(
+                tuple(row.get(field, "").strip() for field in (*FIELDS, *PILOT_STATUS_FIELDS))
+            )
+    stages = dict.fromkeys(
+        (
+            "input",
+            "uniqueId",
+            "normalTuple",
+            "validCoordinates",
+            "within1000m",
+            "phoneSyntaxOnly",
+            "nameAndRoadAddress",
+        ),
+        0,
+    )
+    exclusions = dict.fromkeys(
+        (
+            "missingId",
+            "duplicateId",
+            "statusUnverifiedOrConflicting",
+            "missingCoordinates",
+            "invalidCoordinates",
+            "boundary1000To1030m",
+            "outside1030m",
+            "phoneNotSyntaxOnly",
+            "missingNameOrRoadAddress",
+        ),
+        0,
+    )
+    status_kinds = Counter(
+        dict.fromkeys(
+            ("MISSING", "OTHER_TUPLE_OR_UNVERIFIED", "CLOSURE_PRESENT", "NORMAL_TUPLE_MATCH"), 0
+        )
+    )
+    for row in rows:
+        stages["input"] += 1
+        status = pilot_status(row)
+        status_kinds[status] += 1
+        record_id = row.get("MGTNO", "").strip()
+        if not record_id:
+            exclusions["missingId"] += 1
+            continue
+        # Exclude every member, even identical duplicates, rather than choosing the first row.
+        if id_counts[record_id] != 1:
+            exclusions["duplicateId"] += 1
+            continue
+        stages["uniqueId"] += 1
+        if status != "NORMAL_TUPLE_MATCH":
+            exclusions["statusUnverifiedOrConflicting"] += 1
+            continue
+        stages["normalTuple"] += 1
+        x, y = row.get("X", "").strip(), row.get("Y", "").strip()
+        if not x or not y:
+            exclusions["missingCoordinates"] += 1
+            continue
+        try:
+            lon, lat = coordinates.convert(x, y)
+        except QualityError:
+            exclusions["invalidCoordinates"] += 1
+            continue
+        stages["validCoordinates"] += 1
+        band = radius_band(distance(lon, lat))
+        if band != "WITHIN_1000M":
+            exclusions[
+                "boundary1000To1030m" if band == "BOUNDARY_1000_TO_1030M" else "outside1030m"
+            ] += 1
+            continue
+        stages["within1000m"] += 1
+        if phone_kind(row.get("SITETEL", ""))[0] != "SYNTAX_ONLY":
+            exclusions["phoneNotSyntaxOnly"] += 1
+            continue
+        stages["phoneSyntaxOnly"] += 1
+        if not all(row.get(field, "").strip() for field in ("BPLCNM", "RDNWHLADDR")):
+            exclusions["missingNameOrRoadAddress"] += 1
+            continue
+        stages["nameAndRoadAddress"] += 1
+    n = len(rows)
+    return {
+        "state": "DIAGNOSTIC_ONLY" if n else "UNKNOWN_EMPTY",
+        "statusRule": {
+            "verification": "UNVERIFIED_FOR_OA18655",
+            "fields": list(PILOT_STATUS_FIELDS),
+            "experimentalNormalTuple": list(PILOT_NORMAL_TUPLE),
+            "closureValueMustBeExplicitlyEmpty": True,
+        },
+        "statusKinds": dict(status_kinds),
+        "statusKindDenominator": n,
+        "cumulativeCounts": stages,
+        "firstExclusionCounts": exclusions,
+        "countDenominator": n,
+        "duplicateIdGroups": sum(c > 1 for key, c in id_counts.items() if key),
+        "conflictingIdGroups": sum(len(group) > 1 for group in signatures.values()),
+        "screenedRecords": stages["nameAndRoadAddress"],
+        "productionCandidateCount": None,
+        "radiusMeters": 1000,
+        "boundaryUpperMeters": 1030,
+        "boundaryIncluded": False,
+        "distanceMeaning": "SPHERICAL_STRAIGHT_LINE_NOT_ROAD_DISTANCE_OR_ETA",
+        "grain": "INPUT_ADMINISTRATIVE_RECORD_NOT_UNIQUE_PHYSICAL_MERCHANT",
+        "coverage": "INPUT_BATCH_ONLY_NOT_REPRESENTATIVE_OR_COMPLETE",
+        "readyForRecommendation": False,
+    }
+
+
+def profile(rows, now, mode, snapshot_as_of=None, include_pilot_screening=False):
     if mode not in ("MOCK", "PUBLIC_SAMPLE", "LOCAL_INPUT") or now.tzinfo is None:
         raise QualityError("INVALID_PROFILE_CONTEXT")
     if (
@@ -296,7 +430,7 @@ def profile(rows, now, mode, snapshot_as_of=None):
         key: {"count": value, "denominator": n, "rate": value / n if n else None}
         for key, value in sorted(counts.items())
     }
-    return {
+    result = {
         "service": SERVICE,
         "dataset": "OA-18655",
         "mode": mode,
@@ -325,6 +459,9 @@ def profile(rows, now, mode, snapshot_as_of=None):
         "rawRowsExported": False,
         "contactValuesExported": False,
     }
+    if include_pilot_screening:
+        result["pilotScreening"] = pilot_screening(rows, coordinates)
+    return result
 
 
 def fictional_rows():
@@ -337,6 +474,9 @@ def fictional_rows():
             "RDNWHLADDR": "가상 주소",
             "TRDSTATEGBN": "01",
             "TRDSTATENM": "영업/정상",
+            "DTLSTATEGBN": "01",
+            "DTLSTATENM": "영업",
+            "DCBYMD": "",
             "LASTMODTS": "2020-01-01 00:00:00",
             "UPDATEDT": "2026-11-06 12:00:00",
             "X": "204790.93835900025",
@@ -350,6 +490,11 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, help="Local XML only; never fetched or echoed")
     parser.add_argument(
+        "--pilot-screening",
+        action="store_true",
+        help="Experimental aggregate cross-check; no product candidates",
+    )
+    parser.add_argument(
         "--snapshot-as-of", help="Verified source snapshot timestamp with UTC offset"
     )
     args = parser.parse_args(argv)
@@ -360,7 +505,13 @@ def main(argv=None):
                 rows = parse_xml(f.read(MAX_BYTES + 1))
         else:
             rows = fictional_rows()
-        result = profile(rows, now, "LOCAL_INPUT" if args.input else "MOCK", args.snapshot_as_of)
+        result = profile(
+            rows,
+            now,
+            "LOCAL_INPUT" if args.input else "MOCK",
+            args.snapshot_as_of,
+            args.pilot_screening,
+        )
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 0
     except Exception as error:

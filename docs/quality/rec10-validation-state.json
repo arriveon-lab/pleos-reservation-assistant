@@ -1,0 +1,68 @@
+{
+  "dateKst": "2026-11-09",
+  "issue": 34,
+  "dataset": "OA-18655",
+  "service": "LOCALDATA_072404_SD",
+  "mergedPrerequisite": {
+    "pr": 33,
+    "commit": "abd9aa45fe0edbddb46e532739b1af654de11eaf",
+    "issue32": "CLOSED"
+  },
+  "credential": {
+    "issued": true,
+    "uiStatus": "NORMAL",
+    "apiAuthenticationVerified": false,
+    "teamSharingAllowed": false,
+    "fileMode": "0600",
+    "directoryMode": "0700",
+    "valueRecordedHere": false
+  },
+  "sources": {
+    "spec": "https://data.seoul.go.kr/dataList/openApiView.do?infId=OA-18655&srvType=A",
+    "guide": "https://data.seoul.go.kr/together/guide/useGuide.do",
+    "terms": "https://data.seoul.go.kr/etc/accessTerms.do",
+    "otherServiceHttpsReply": "https://data.seoul.go.kr/together/notice/inquireView.do?bbsCd=10003&ditcCd=QNA01&seq=1d2186fcde0d53cbbb2814bec743624a"
+  },
+  "transport": {
+    "state": "UNVERIFIED_FOR_OA18655",
+    "documentedScheme": "http",
+    "documentedPort": 8088,
+    "tlsHost": "openapi.seoul.go.kr",
+    "tlsPort": 443,
+    "logicalProbeAttempts": 1,
+    "probeObservedAt": "2026-11-09T07:08:14.664006+00:00",
+    "probeResult": "TimeoutError",
+    "httpApplicationRequests": 0,
+    "credentialReadByProbe": false,
+    "credentialTransmitted": false,
+    "certificateVerificationDisabled": false,
+    "otherServiceReplyScope": "citydata_ppltn only; not proof for all services"
+  },
+  "statusRule": {
+    "state": "UNVERIFIED_FOR_OA18655",
+    "experimentalFields": [
+      "TRDSTATEGBN",
+      "TRDSTATENM",
+      "DTLSTATEGBN",
+      "DTLSTATENM"
+    ],
+    "experimentalTuple": [
+      "01",
+      "영업/정상",
+      "01",
+      "영업"
+    ],
+    "codeDictionaryObtained": false,
+    "closureTagRequired": true,
+    "closureValueMustBeEmpty": true
+  },
+  "snapshotTimestamp": "UNKNOWN",
+  "rowTimeZone": "UNVERIFIED_ASSUMPTION_ASIA_SEOUL",
+  "dataApiRequestsThisStep": 0,
+  "realPilotScreeningResult": null,
+  "fictionalTests": 29,
+  "productProviderAdopted": false,
+  "bookable": false,
+  "inquiryDispatchAllowed": false,
+  "derivation": "Account status and protocol observations plus metadata only; no merchant rows, contacts, coordinates or credential values"
+}
