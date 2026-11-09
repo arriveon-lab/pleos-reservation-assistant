@@ -330,8 +330,19 @@ class PlaceRecommendationPlannerTest {
             .findAndRegisterModules()
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     String serialized = json.writeValueAsString(result);
-    String contactPlan =
-        json.writeValueAsString(evaluate(List.of(place("private-fake-id", "한식", 0))));
+    var contactFixture =
+        new PlaceSummary(
+            PlaceSummary.Provider.MOCK,
+            "private-fake-id",
+            "가상 연락처 검증 식당",
+            "한식",
+            query.latitude(),
+            query.longitude(),
+            "가상 주소",
+            "fictional-contact-not-dialable",
+            "https://example.invalid/listing",
+            null);
+    String contactPlan = json.writeValueAsString(evaluate(List.of(contactFixture)));
     assertThat(contactPlan)
         .doesNotContain(
             "fictional-contact-not-dialable",
