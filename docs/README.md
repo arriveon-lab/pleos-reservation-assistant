@@ -23,6 +23,7 @@
 | [REC-04 실제 검색 시연](REC04_LIVE_SEARCH.md) | #13 저장 없는 독립 1회 장소 조회·키/무료 설정·표시·실행 기록 | 실제 1회·3곳 표시/쿼터 확인, 제품 예약과 분리 |
 | [REC-01 서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md) | 미리보기/예약 분리·IO/중복·출처/모드·후속 인수 조건 | 팀 합의 전 제안, API/DB 미적용 |
 | [REC-03 세션 관리와 실행 경계](REC03_PREVIEW.md) | #12 소유 scope·수명/상한·동시 합류·취소·H2 경계 | 전체 188개 검증, 인증/제품 API 미연결 |
+| [REC-08 후보 추천·질문 계획](REC08_RECOMMENDATION_PLAN.md) | 최대3개 후보·근거·기본 정보 누락·UNKNOWN 질문·가상 실행/계약 | 서버268개 검증, 제품 HTTP/화면 연결 전 |
 | [추천·장소 후속 작업](REC_FOLLOWUPS.md) | #12/#13 완료 범위와 #11/#16–18 담당·의존성·인수 조건 | 검증한 기반과 미완료 제품 연결 구분 |
 | [REC-05 HTTP 계약 초안](REC05_PREVIEW_API.md) | #16 기본 비활성 MOCK 실험 API·가상 인증 HTTP 통합 | 244개 검증, 실제 로그인/차량 화면 미연결 |
 | [REC-05 토큰 연동 검토](REC05_TOKEN_INTEGRATION.md) | #21 후보 인증 PR·개발용 호출자·임시 통합 증거 | 단독 244/Python 7·임시 통합 271·실제 토큰 HTTP 16건, main 미병합 |
@@ -30,6 +31,7 @@
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |
 | [연동 근거](INTEGRATIONS.md) | Pleos API 정책·ETA 증거·전화 PoC 조건 | 문서/정적 확인과 실행 확인 구분 |
+| [SDK 대체·단계별 연동](SDK_FALLBACK_PLAN.md) | 위치·사용자 음성의 표준 API 우선·어댑터 경계·미지원 처리·담당/인수 조건 | 2026-11-09 설계 결정, 새 런타임/기기 검증 전 |
 | [Android 환경](ANDROID_SETUP.md), [probe 사용법](../android/README.md) | SDK·APK·Pleos emulator·관측 절차 | 빌드와 기기 실행 구분 |
 | [GitHub 설정](GITHUB_SETUP.md) | 조직·main 보호·CI·팀원 시작 절차 | 기록된 설정 기준 |
 | [에이전트·검증 환경](AGENT_HARNESS.md) | 영역별 AGENTS와 공통 검사 명령 | 사람·에이전트 공통 |

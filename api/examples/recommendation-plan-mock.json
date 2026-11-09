@@ -1,0 +1,129 @@
+{
+  "state" : "RESULTS",
+  "provider" : "MOCK",
+  "requirements" : {
+    "party" : {
+      "adults" : 2,
+      "children" : 1
+    },
+    "maxWaitMinutes" : 15,
+    "requiredFeatures" : [ "parking" ],
+    "preferredCuisines" : [ "한식" ]
+  },
+  "listingFetchedAt" : "2026-11-09T01:00:00Z",
+  "displayValidUntil" : "2026-11-09T01:05:00Z",
+  "scannedRecords" : 3,
+  "rejectedRecords" : 0,
+  "duplicateRecords" : 0,
+  "outsideWindowRecords" : 0,
+  "failure" : null,
+  "candidates" : [ {
+    "ordinal" : 1,
+    "name" : "가상 성수 가족식당",
+    "cuisine" : "한식",
+    "address" : null,
+    "straightLineDistanceMeters" : 0,
+    "qualification" : "NEEDS_CONFIRMATION",
+    "bookable" : false,
+    "inquiryDispatchAllowed" : false,
+    "reasons" : [ "WITHIN_SEARCH_WINDOW", "PREFERRED_CUISINE_MATCH" ],
+    "missingInformation" : [ "ADDRESS", "PHONE" ],
+    "questions" : [ {
+      "field" : "childFriendly",
+      "scope" : "GENERAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : false,
+      "prompt" : "아동 동반 이용이 가능한가요?"
+    }, {
+      "field" : "parking",
+      "scope" : "GENERAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : false,
+      "prompt" : "주차가 가능한가요?"
+    }, {
+      "field" : "arrivalWaitMinutes",
+      "scope" : "ARRIVAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : true,
+      "prompt" : "도착 예정 시각 기준으로 성인 2명, 아동 1명의 예상 대기는 몇 분인가요? 최대 15분 이내인지 확인해 주세요."
+    }, {
+      "field" : "reservationAvailable",
+      "scope" : "ARRIVAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : true,
+      "prompt" : "도착 예정 시각에 성인 2명, 아동 1명의 예약이 가능한가요? 예약 가능 여부만 확인해 주세요."
+    } ]
+  }, {
+    "ordinal" : 2,
+    "name" : "가상 성수 국수집",
+    "cuisine" : "한식",
+    "address" : null,
+    "straightLineDistanceMeters" : 0,
+    "qualification" : "NEEDS_CONFIRMATION",
+    "bookable" : false,
+    "inquiryDispatchAllowed" : false,
+    "reasons" : [ "WITHIN_SEARCH_WINDOW", "PREFERRED_CUISINE_MATCH" ],
+    "missingInformation" : [ "ADDRESS", "PHONE" ],
+    "questions" : [ {
+      "field" : "childFriendly",
+      "scope" : "GENERAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : false,
+      "prompt" : "아동 동반 이용이 가능한가요?"
+    }, {
+      "field" : "parking",
+      "scope" : "GENERAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : false,
+      "prompt" : "주차가 가능한가요?"
+    }, {
+      "field" : "arrivalWaitMinutes",
+      "scope" : "ARRIVAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : true,
+      "prompt" : "도착 예정 시각 기준으로 성인 2명, 아동 1명의 예상 대기는 몇 분인가요? 최대 15분 이내인지 확인해 주세요."
+    }, {
+      "field" : "reservationAvailable",
+      "scope" : "ARRIVAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : true,
+      "prompt" : "도착 예정 시각에 성인 2명, 아동 1명의 예약이 가능한가요? 예약 가능 여부만 확인해 주세요."
+    } ]
+  }, {
+    "ordinal" : 3,
+    "name" : "가상 서울숲 파스타",
+    "cuisine" : "양식",
+    "address" : null,
+    "straightLineDistanceMeters" : 0,
+    "qualification" : "NEEDS_CONFIRMATION",
+    "bookable" : false,
+    "inquiryDispatchAllowed" : false,
+    "reasons" : [ "WITHIN_SEARCH_WINDOW" ],
+    "missingInformation" : [ "ADDRESS", "PHONE" ],
+    "questions" : [ {
+      "field" : "childFriendly",
+      "scope" : "GENERAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : false,
+      "prompt" : "아동 동반 이용이 가능한가요?"
+    }, {
+      "field" : "parking",
+      "scope" : "GENERAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : false,
+      "prompt" : "주차가 가능한가요?"
+    }, {
+      "field" : "arrivalWaitMinutes",
+      "scope" : "ARRIVAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : true,
+      "prompt" : "도착 예정 시각 기준으로 성인 2명, 아동 1명의 예상 대기는 몇 분인가요? 최대 15분 이내인지 확인해 주세요."
+    }, {
+      "field" : "reservationAvailable",
+      "scope" : "ARRIVAL",
+      "certainty" : "UNKNOWN",
+      "arrivalTimeRequired" : true,
+      "prompt" : "도착 예정 시각에 성인 2명, 아동 1명의 예약이 가능한가요? 예약 가능 여부만 확인해 주세요."
+    } ]
+  } ]
+}

@@ -1,5 +1,7 @@
 # API v1 — 계약 1.1.0
 
+별도 인수 초안: [REC-08 추천·질문 계획](recommendation-plan-draft.schema.json)과 [가상 예제](examples/recommendation-plan-mock.json)는 제품 HTTP API가 아닌 순수 평가기 결과입니다. `./gradlew -PincludeAndroid=false :server:recommendationPlan`은 외부 호출 없이 가상 결과를 출력합니다. `verify` 뒤 `python scripts/check-recommendation-plan.py`로 초안·예제·Java 실행 증거를 대조합니다. v1 경로/스키마/버전은 바꾸지 않았으며 #16/#26 화면 계약 채택 전입니다.
+
 정의: [OpenAPI 3.1 JSON](openapi.json). 기본 URL `http://127.0.0.1:8080/api/v1`. 성공은 모두 HTTP 200, 요청 오류 400, 미인증 401, 권한 부족 403, 없음/타인 소유 404, 상태/중복 충돌 409. 오류 JSON은 `code`, `message`, `mode`입니다. 현재 모든 결과는 MOCK입니다.
 
 요청의 boolean·정수 필드는 OpenAPI `required`에 따라 0/false도 명시합니다. null이나 누락을 암묵적으로 승인/기본값으로 바꾸지 않습니다. 알 수 없는 필드, 정수에 소수/문자열을 보내는 요청도 거부합니다.
