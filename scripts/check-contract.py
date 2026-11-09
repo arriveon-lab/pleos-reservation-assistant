@@ -61,8 +61,8 @@ def validate_preview_exchanges():
     print(f"PASS: {len(exchanges)} fictional preview HTTP exchanges match the draft (4 operations)")
 
 
-def validate_exchange(path, body, result, status):
-    method = "get" if body is None else "post"
+def validate_exchange(path, body, result, status, method=None):
+    method = method or ("get" if body is None else "post")
     matches = [item[method] for route, item in contract["paths"].items()
                if method in item and re.fullmatch(route.replace("{id}", "[^/]+"), path)]
     assert len(matches) == 1, (method, path)

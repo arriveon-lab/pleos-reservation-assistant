@@ -11,7 +11,9 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.error
 from urllib.error import HTTPError
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("demo", ROOT / "scripts/mock-demo.py")
@@ -55,8 +57,16 @@ with tempfile.TemporaryDirectory(prefix="pleos-smoke-") as tmp:
     env = {k: v for k, v in os.environ.items() if not k.startswith(("SPRING_", "APP_", "SERVER_"))}
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     with open(Path(tmp) / "server.log", "w+") as log:
-        def start(*extra):
-            process = subprocess.Popen(["java", "-jar", str(jar), f"--server.port={port}",
+        def start(*extra, authenticated=False):
+            if authenticated:
+                classpath_file = ROOT / "server/build/smoke-classpath.txt"
+                if not classpath_file.exists():
+                    raise RuntimeError("Run ./gradlew -PincludeAndroid=false verify for test-only HTTP fixtures")
+                command = ["java", "-cp", classpath_file.read_text().strip(),
+                           "ai.pleos.assistant.OwnershipSmokeApplication"]
+            else:
+                command = ["java", "-jar", str(jar)]
+            process = subprocess.Popen(command + [f"--server.port={port}",
                                         "--server.address=127.0.0.1", "--app.mode=MOCK", *extra],
                                        cwd=tmp, env=env, stdout=log, stderr=subprocess.STDOUT)
             for _ in range(150):
@@ -73,9 +83,27 @@ with tempfile.TemporaryDirectory(prefix="pleos-smoke-") as tmp:
             log.seek(0)
             raise RuntimeError(log.read())
 
+        # The real artifact has no synthetic identity or development authentication bypass.
+        with zipfile.ZipFile(jar) as archive:
+            assert not any("OwnershipSmokeApplication" in name for name in archive.namelist())
         process = start()
         try:
-            report = demo.run(base, validate=validate_exchange)
+            for path in ["/searches/missing", "/reservations/missing", "/calls/missing"]:
+                request = urllib.request.Request(base + "/api/v1" + path,
+                    headers={"Authorization": "Bearer forged", "X-User-Id": "smoke-owner"})
+                try:
+                    opener.open(request, timeout=10)
+                    raise AssertionError("Packaged server accepted an unverified caller")
+                except urllib.error.HTTPError as error:
+                    result = json.load(error)
+                    assert error.code == 401 and result["code"] == "AUTHENTICATION_REQUIRED"
+                    if validate_exchange:
+                        validate_exchange(path, None, result, error.code)
+            print("PASS: packaged JAR rejects unverified identity; test authentication absent")
+            auth_spec = importlib.util.spec_from_file_location("auth_smoke", ROOT / "scripts/auth-smoke.py")
+            auth_smoke = importlib.util.module_from_spec(auth_spec)
+            auth_spec.loader.exec_module(auth_smoke)
+            check_after_restart = auth_smoke.exercise(base, validate_exchange)
             subprocess.run([sys.executable, str(ROOT / "scripts/preview-contract-probe.py"),
                             "--base-url", base], check=True)
             request = urllib.request.Request(base + "/api/experimental/place-previews", data=b"{}",
@@ -89,10 +117,20 @@ with tempfile.TemporaryDirectory(prefix="pleos-smoke-") as tmp:
             stop(process)
         process = start()
         try:
+            check_after_restart()
+        finally:
+            stop(process)
+        process = start(authenticated=True)
+        try:
+            report = demo.run(base, validate=validate_exchange)
+        finally:
+            stop(process)
+        process = start(authenticated=True)
+        try:
             with opener.open(base + "/api/v1/reservations/" + report["reservationId"], timeout=10) as response:
                 stored = json.load(response)
                 assert stored["status"] == "CONFIRMED" and stored["pendingChangeCallId"]
-            print("PASS: packaged JAR, Flyway migrations, HTTP workflow, H2 restart persistence")
+            print("PASS: test-only Principal, Flyway migrations, HTTP workflow, owned H2 restart persistence")
             if args.check_contract:
                 print("PASS: HTTP requests and responses match OpenAPI 3.1")
         finally:
@@ -113,6 +151,14 @@ with tempfile.TemporaryDirectory(prefix="pleos-smoke-") as tmp:
                 assert error.headers["Cache-Control"] == "no-store"
                 assert json.load(error)["code"] == "PREVIEW_AUTHENTICATION_REQUIRED"
             print("PASS: packaged preview default-off 404 and opt-in unauthenticated/spoofed 401")
+            if args.check_contract:
+                token_spec = importlib.util.spec_from_file_location(
+                    "preview_token_smoke", ROOT / "scripts/preview-token-smoke.py")
+                token_smoke = importlib.util.module_from_spec(token_spec)
+                token_spec.loader.exec_module(token_smoke)
+                token_smoke.exercise(base)
+            subprocess.run([sys.executable, str(ROOT / "scripts/preview-session-demo.py"),
+                            "--base-url", base], check=True)
         finally:
             stop(process)
         live = subprocess.run(["java", "-jar", str(jar), "--app.mode=LIVE", "--server.port=0"],

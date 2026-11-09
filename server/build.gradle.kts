@@ -57,3 +57,15 @@ tasks.register<JavaExec>("placePreview") {
 }
 
 spotless { java { googleJavaFormat("1.28.0") } }
+
+// Local test harness only. This file and test classes are never included in bootJar.
+val smokeClasspath by
+    tasks.registering {
+        dependsOn(tasks.testClasses)
+        val destination = layout.buildDirectory.file("smoke-classpath.txt")
+        outputs.file(destination)
+        inputs.files(sourceSets.test.get().runtimeClasspath)
+        doLast { destination.get().asFile.writeText(sourceSets.test.get().runtimeClasspath.asPath) }
+    }
+
+tasks.named("check") { dependsOn(smokeClasspath) }

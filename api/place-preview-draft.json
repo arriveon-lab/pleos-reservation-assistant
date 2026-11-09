@@ -3,7 +3,7 @@
   "info": {
     "title": "Place preview — experimental MOCK contract draft",
     "version": "0.1.0-draft",
-    "description": "Default disabled (404). Opt-in app.place-preview.enabled=true is MOCK-only and requires a trusted Servlet Principal (401 otherwise). Login/authentication protocol and UI agreement are not implemented; do not deploy publicly. No header/body owner or fake-login fallback. Existing /api/v1 contract remains 1.0.0. All bodies are no-store. No DB/place cache, reservation linkage, navigation/ETA claims or live calls."
+    "description": "Default disabled (404). Opt-in app.place-preview.enabled=true is MOCK-only and uses main anonymous-session Bearer authentication (v1 contract 1.1.0). Trusted Servlet Principal ownership, no header/body owner or fake-login fallback. UI/navigation/data-policy agreement remains pending; do not deploy publicly. All bodies are no-store. No DB/place cache, reservation linkage or live calls."
   },
   "servers": [
     {
@@ -11,7 +11,7 @@
     }
   ],
   "x-status": "DRAFT_REQUIRES_TEAM_REVIEW",
-  "x-authentication-dependency": "Issue #4 must provide an authenticated, stable, unique Principal; mechanism is deliberately unresolved. Tests inject fictional principals only.",
+  "x-authentication-dependency": "Uses main #21 merged at 1b37bc2: server-issued anonymous access token with stable subject. Real token HTTP integration is verified with scripts/preview-token-smoke.py; UI token storage and lifecycle remain #26.",
   "paths": {
     "/place-previews": {
       "post": {
@@ -1185,12 +1185,5 @@
       }
     }
   },
-  "x-authentication-candidate": {
-    "pullRequest": "https://github.com/arriveon-lab/pleos-reservation-assistant/pull/21",
-    "headCommit": "8484a0469a1aed2a1661dbbd55b7bcd6c73139bf",
-    "status": "UNMERGED_NOT_INCLUDED_IN_THIS_BRANCH",
-    "mechanism": "Server-issued opaque Bearer token mapped to Servlet Principal",
-    "contractVersion": "1.1.0",
-    "client": "scripts/preview-session-demo.py"
-  }
+  "x-authentication-candidate": "#21 is merged into main at 1b37bc2; this branch integrates that main without changing the auth implementation."
 }

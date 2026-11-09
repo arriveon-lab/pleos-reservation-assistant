@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:workflow;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
 class WorkflowTest {
+  private static final RequestActor ACTOR = new RequestActor("test-owner", true);
   static final Instant START = Instant.parse("2026-11-04T06:00:00Z");
   @Autowired WorkflowService service;
   @Autowired Store store;
@@ -82,7 +83,7 @@ class WorkflowTest {
   }
 
   Search fresh() {
-    return service.search(key(), request(key()));
+    return service.search(ACTOR, key(), request(key()));
   }
 
   OutcomeRequest outcome(
@@ -95,8 +96,9 @@ class WorkflowTest {
   }
 
   Search ready(Search s) {
-    CallTask inquiry = service.inquire(s.id, key(), new InquiryRequest("mock-1"));
+    CallTask inquiry = service.inquire(ACTOR, s.id, key(), new InquiryRequest("mock-1"));
     service.outcome(
+        ACTOR,
         inquiry.id,
         outcome(
             Outcome.ANSWERED,
@@ -104,7 +106,7 @@ class WorkflowTest {
             null,
             0,
             new InquiryFacts(true, true, true, true, 25, 10, s.request.navigation().eta())));
-    return service.getSearch(s.id);
+    return service.getSearch(ACTOR, s.id);
   }
 
   BookingRequest booking(Search s) {
@@ -117,10 +119,10 @@ class WorkflowTest {
 
   Reservation confirmed() {
     Search s = ready();
-    Reservation r = service.book(s.id, key(), booking(s));
+    Reservation r = service.book(ACTOR, s.id, key(), booking(s));
     service.outcome(
-        r.bookingCallId, outcome(Outcome.ACCEPTED, true, r.originalRequestedTime, 0, null));
-    return service.getReservation(r.id);
+        ACTOR, r.bookingCallId, outcome(Outcome.ACCEPTED, true, r.originalRequestedTime, 0, null));
+    return service.getReservation(ACTOR, r.id);
   }
 
   void expectCode(String code, org.assertj.core.api.ThrowableAssert.ThrowingCallable action) {
@@ -137,20 +139,22 @@ class WorkflowTest {
     assertThat(c.facts.get("nowWaitMinutes").scope()).isEqualTo(Scope.NOW);
     assertThat(c.facts.get("arrivalWaitMinutes").certainty()).isEqualTo(Certainty.ESTIMATED);
     assertThat(c.facts.get("parking").mode()).isEqualTo(Mode.MOCK);
-    Reservation r = service.book(s.id, key(), booking(s));
+    Reservation r = service.book(ACTOR, s.id, key(), booking(s));
     assertThat(r.confirmedTime).isNull();
     assertThat(r.status).isEqualTo(ReservationStatus.PENDING);
     service.outcome(
-        r.bookingCallId, outcome(Outcome.ACCEPTED, true, r.originalRequestedTime, 0, null));
-    assertThat(service.getReservation(r.id).status).isEqualTo(ReservationStatus.CONFIRMED);
-    assertThat(service.getReservation(r.id).confirmedTime).isEqualTo(r.originalRequestedTime);
+        ACTOR, r.bookingCallId, outcome(Outcome.ACCEPTED, true, r.originalRequestedTime, 0, null));
+    assertThat(service.getReservation(ACTOR, r.id).status).isEqualTo(ReservationStatus.CONFIRMED);
+    assertThat(service.getReservation(ACTOR, r.id).confirmedTime)
+        .isEqualTo(r.originalRequestedTime);
   }
 
   @Test
   void unknownRequiredFactsBlockBookingAndNowDoesNotBecomeArrival() {
     Search s = fresh();
-    CallTask call = service.inquire(s.id, key(), new InquiryRequest("mock-1"));
+    CallTask call = service.inquire(ACTOR, s.id, key(), new InquiryRequest("mock-1"));
     service.outcome(
+        ACTOR,
         call.id,
         outcome(
             Outcome.ANSWERED,
@@ -159,19 +163,20 @@ class WorkflowTest {
             0,
             new InquiryFacts(true, true, true, true, 5, null, s.request.navigation().eta())));
     Candidate c =
-        service.getSearch(s.id).candidates.stream()
+        service.getSearch(ACTOR, s.id).candidates.stream()
             .filter(it -> it.id.equals("mock-1"))
             .findFirst()
             .orElseThrow();
     assertThat(c.missing).contains("arrivalWaitMinutes");
-    expectCode("CANDIDATE_NOT_READY", () -> service.book(s.id, key(), booking(s)));
+    expectCode("CANDIDATE_NOT_READY", () -> service.book(ACTOR, s.id, key(), booking(s)));
   }
 
   @Test
   void familyRequirementOverridesCuisinePreference() {
     Search s = fresh();
-    CallTask c = service.inquire(s.id, key(), new InquiryRequest("mock-1"));
+    CallTask c = service.inquire(ACTOR, s.id, key(), new InquiryRequest("mock-1"));
     service.outcome(
+        ACTOR,
         c.id,
         outcome(
             Outcome.ANSWERED,
@@ -179,17 +184,18 @@ class WorkflowTest {
             null,
             0,
             new InquiryFacts(false, true, true, true, 0, 0, s.request.navigation().eta())));
-    Search ranked = service.getSearch(s.id);
+    Search ranked = service.getSearch(ACTOR, s.id);
     assertThat(ranked.candidates.getLast().id).isEqualTo("mock-1");
     assertThat(ranked.candidates.getLast().exclusionReasons).contains("childFriendly");
-    expectCode("CANDIDATE_NOT_READY", () -> service.book(s.id, key(), booking(s)));
+    expectCode("CANDIDATE_NOT_READY", () -> service.book(ACTOR, s.id, key(), booking(s)));
   }
 
   @Test
   void unavailableReservationIsExcludedDespiteEmptySeats() {
     Search s = fresh();
-    CallTask c = service.inquire(s.id, key(), new InquiryRequest("mock-1"));
+    CallTask c = service.inquire(ACTOR, s.id, key(), new InquiryRequest("mock-1"));
     service.outcome(
+        ACTOR,
         c.id,
         outcome(
             Outcome.ANSWERED,
@@ -197,45 +203,48 @@ class WorkflowTest {
             null,
             0,
             new InquiryFacts(true, true, true, false, 0, 0, s.request.navigation().eta())));
-    expectCode("CANDIDATE_NOT_READY", () -> service.book(s.id, key(), booking(s)));
+    expectCode("CANDIDATE_NOT_READY", () -> service.book(ACTOR, s.id, key(), booking(s)));
   }
 
   @Test
   void expiredFactsAreReevaluatedOnReadAndBooking() {
     Search s = ready();
     clock.now = START.plusSeconds(301);
-    assertThat(service.getSearch(s.id).candidates).allMatch(c -> !c.bookable);
-    expectCode("CANDIDATE_NOT_READY", () -> service.book(s.id, key(), booking(s)));
+    assertThat(service.getSearch(ACTOR, s.id).candidates).allMatch(c -> !c.bookable);
+    expectCode("CANDIDATE_NOT_READY", () -> service.book(ACTOR, s.id, key(), booking(s)));
   }
 
   @Test
   void idempotencyReplaysAndRejectsDifferentPayload() {
     String k = key();
     SearchRequest req = request(key());
-    Search first = service.search(k, req);
-    assertThat(service.search(k, req).id).isEqualTo(first.id);
-    expectCode("KEY_REUSED", () -> service.search(k, request(key())));
-    expectCode("INVALID_KEY", () -> service.search(" ", req));
+    Search first = service.search(ACTOR, k, req);
+    assertThat(service.search(ACTOR, k, req).id).isEqualTo(first.id);
+    expectCode("KEY_REUSED", () -> service.search(ACTOR, k, request(key())));
+    expectCode("INVALID_KEY", () -> service.search(ACTOR, " ", req));
   }
 
   @Test
   void eventsReplayAndCannotBeRebound() {
     Search s = ready();
-    Reservation r = service.book(s.id, key(), booking(s));
+    Reservation r = service.book(ACTOR, s.id, key(), booking(s));
     OutcomeRequest e = outcome(Outcome.ACCEPTED, true, r.originalRequestedTime, 0, null);
-    service.outcome(r.bookingCallId, e);
-    service.outcome(r.bookingCallId, e);
+    service.outcome(ACTOR, r.bookingCallId, e);
+    service.outcome(ACTOR, r.bookingCallId, e);
     expectCode(
         "EVENT_REUSED",
         () ->
             service.outcome(
+                ACTOR,
                 r.bookingCallId,
                 new OutcomeRequest(
                     e.eventId(), Outcome.REJECTED, false, clock.instant(), null, 0, null)));
     expectCode(
         "CALL_FINALIZED",
-        () -> service.outcome(r.bookingCallId, outcome(Outcome.UNKNOWN, false, null, 0, null)));
-    assertThat(service.getReservation(r.id).status).isEqualTo(ReservationStatus.CONFIRMED);
+        () ->
+            service.outcome(
+                ACTOR, r.bookingCallId, outcome(Outcome.UNKNOWN, false, null, 0, null)));
+    assertThat(service.getReservation(ACTOR, r.id).status).isEqualTo(ReservationStatus.CONFIRMED);
   }
 
   @ParameterizedTest
@@ -244,20 +253,21 @@ class WorkflowTest {
       names = {"ANSWERED", "UNKNOWN"})
   void completionAloneIsUnknownAndBlocksNewBookingEvenAcrossSearches(Outcome result) {
     Search s = ready();
-    Reservation r = service.book(s.id, key(), booking(s));
-    service.outcome(r.bookingCallId, outcome(result, false, null, 0, null));
-    assertThat(service.getReservation(r.id).status).isEqualTo(ReservationStatus.UNKNOWN);
-    expectCode("ACTIVE_RESERVATION", () -> service.book(s.id, key(), booking(s)));
-    Search other = ready(service.search(key(), request(s.request.navigation().tripId())));
-    expectCode("ACTIVE_RESERVATION", () -> service.book(other.id, key(), booking(other)));
+    Reservation r = service.book(ACTOR, s.id, key(), booking(s));
+    service.outcome(ACTOR, r.bookingCallId, outcome(result, false, null, 0, null));
+    assertThat(service.getReservation(ACTOR, r.id).status).isEqualTo(ReservationStatus.UNKNOWN);
+    expectCode("ACTIVE_RESERVATION", () -> service.book(ACTOR, s.id, key(), booking(s)));
+    Search other = ready(service.search(ACTOR, key(), request(s.request.navigation().tripId())));
+    expectCode("ACTIVE_RESERVATION", () -> service.book(ACTOR, other.id, key(), booking(other)));
   }
 
   @Test
   void mismatchingTimeCostOrImplicitAcceptanceNeverConfirms() {
     for (int scenario = 0; scenario < 3; scenario++) {
       Search s = ready();
-      Reservation r = service.book(s.id, key(), booking(s));
+      Reservation r = service.book(ACTOR, s.id, key(), booking(s));
       service.outcome(
+          ACTOR,
           r.bookingCallId,
           outcome(
               Outcome.ACCEPTED,
@@ -265,28 +275,29 @@ class WorkflowTest {
               r.originalRequestedTime.plusSeconds(scenario == 0 ? 60 : 0),
               scenario == 1 ? 100 : 0,
               null));
-      assertThat(service.getReservation(r.id).status).isEqualTo(ReservationStatus.UNKNOWN);
-      assertThat(service.getReservation(r.id).confirmedTime).isNull();
+      assertThat(service.getReservation(ACTOR, r.id).status).isEqualTo(ReservationStatus.UNKNOWN);
+      assertThat(service.getReservation(ACTOR, r.id).confirmedTime).isNull();
     }
   }
 
   @Test
   void rejectedBookingAllowsAnExplicitNewAttempt() {
     Search s = ready();
-    Reservation r = service.book(s.id, key(), booking(s));
-    service.outcome(r.bookingCallId, outcome(Outcome.REJECTED, false, null, 0, null));
-    assertThat(service.book(s.id, key(), booking(s)).id).isNotEqualTo(r.id);
+    Reservation r = service.book(ACTOR, s.id, key(), booking(s));
+    service.outcome(ACTOR, r.bookingCallId, outcome(Outcome.REJECTED, false, null, 0, null));
+    assertThat(service.book(ACTOR, s.id, key(), booking(s)).id).isNotEqualTo(r.id);
   }
 
   @Test
   void changePreservesOriginalUntilMatchingAcceptance() {
     Reservation r = confirmed();
     Instant changed = r.confirmedTime.plusSeconds(900);
-    Reservation pending = service.change(r.id, key(), new ChangeRequest(changed, 1000, true));
+    Reservation pending =
+        service.change(ACTOR, r.id, key(), new ChangeRequest(changed, 1000, true));
     assertThat(pending.confirmedTime).isEqualTo(r.confirmedTime);
     service.outcome(
-        pending.pendingChangeCallId, outcome(Outcome.ACCEPTED, true, changed, 1000, null));
-    Reservation accepted = service.getReservation(r.id);
+        ACTOR, pending.pendingChangeCallId, outcome(Outcome.ACCEPTED, true, changed, 1000, null));
+    Reservation accepted = service.getReservation(ACTOR, r.id);
     assertThat(accepted.confirmedTime).isEqualTo(changed);
     assertThat(accepted.originalRequestedTime).isEqualTo(r.originalRequestedTime);
     assertThat(accepted.totalAdditionalCostKrw).isEqualTo(1000);
@@ -297,11 +308,13 @@ class WorkflowTest {
   void unknownChangeKeepsBothTimesAndBlocksRetry() {
     Reservation r = confirmed();
     Reservation pending =
-        service.change(r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(900), 0, false));
+        service.change(
+            ACTOR, r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(900), 0, false));
     service.outcome(
+        ACTOR,
         pending.pendingChangeCallId,
         outcome(Outcome.ACCEPTED, true, r.confirmedTime.plusSeconds(1200), 0, null));
-    Reservation unknown = service.getReservation(r.id);
+    Reservation unknown = service.getReservation(ACTOR, r.id);
     assertThat(unknown.status).isEqualTo(ReservationStatus.CONFIRMED);
     assertThat(unknown.confirmedTime).isEqualTo(r.confirmedTime);
     assertThat(unknown.pendingChangeCallId).isEqualTo(pending.pendingChangeCallId);
@@ -310,19 +323,23 @@ class WorkflowTest {
         "CHANGE_BLOCKED",
         () ->
             service.change(
-                r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(1500), 0, false)));
+                ACTOR,
+                r.id,
+                key(),
+                new ChangeRequest(r.confirmedTime.plusSeconds(1500), 0, false)));
   }
 
   @Test
   void rejectedChangePreservesConfirmationAndEnforcesCooldown() {
     Reservation r = confirmed();
     ChangeRequest change = new ChangeRequest(r.confirmedTime.plusSeconds(900), 0, false);
-    Reservation pending = service.change(r.id, key(), change);
-    service.outcome(pending.pendingChangeCallId, outcome(Outcome.REJECTED, false, null, 0, null));
-    assertThat(service.getReservation(r.id).confirmedTime).isEqualTo(r.confirmedTime);
-    expectCode("CHANGE_COOLDOWN", () -> service.change(r.id, key(), change));
+    Reservation pending = service.change(ACTOR, r.id, key(), change);
+    service.outcome(
+        ACTOR, pending.pendingChangeCallId, outcome(Outcome.REJECTED, false, null, 0, null));
+    assertThat(service.getReservation(ACTOR, r.id).confirmedTime).isEqualTo(r.confirmedTime);
+    expectCode("CHANGE_COOLDOWN", () -> service.change(ACTOR, r.id, key(), change));
     clock.now = START.plusSeconds(600);
-    assertThat(service.change(r.id, key(), change).pendingChangeCallId).isNotNull();
+    assertThat(service.change(ACTOR, r.id, key(), change).pendingChangeCallId).isNotNull();
   }
 
   @Test
@@ -332,26 +349,35 @@ class WorkflowTest {
         "COST_APPROVAL_REQUIRED",
         () ->
             service.change(
-                r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(300), 100, false)));
-    expectCode(
-        "OUTSIDE_CHANGE_POLICY",
-        () -> service.change(r.id, key(), new ChangeRequest(START.plusSeconds(8000), 0, false)));
+                ACTOR,
+                r.id,
+                key(),
+                new ChangeRequest(r.confirmedTime.plusSeconds(300), 100, false)));
     expectCode(
         "OUTSIDE_CHANGE_POLICY",
         () ->
             service.change(
-                r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(300), 11000, true)));
+                ACTOR, r.id, key(), new ChangeRequest(START.plusSeconds(8000), 0, false)));
+    expectCode(
+        "OUTSIDE_CHANGE_POLICY",
+        () ->
+            service.change(
+                ACTOR,
+                r.id,
+                key(),
+                new ChangeRequest(r.confirmedTime.plusSeconds(300), 11000, true)));
   }
 
   @Test
   void invalidOutcomeRollsBackEventAndCanBeCorrected() {
     Search s = fresh();
-    CallTask c = service.inquire(s.id, key(), new InquiryRequest("mock-1"));
+    CallTask c = service.inquire(ACTOR, s.id, key(), new InquiryRequest("mock-1"));
     String eventId = key();
     expectCode(
         "ARRIVAL_TIME_MISMATCH",
         () ->
             service.outcome(
+                ACTOR,
                 c.id,
                 new OutcomeRequest(
                     eventId,
@@ -361,8 +387,9 @@ class WorkflowTest {
                     null,
                     0,
                     new InquiryFacts(true, true, true, true, 0, 0, START))));
-    assertThat(service.getCall(c.id).status).isEqualTo(CallStatus.PENDING);
+    assertThat(service.getCall(ACTOR, c.id).status).isEqualTo(CallStatus.PENDING);
     service.outcome(
+        ACTOR,
         c.id,
         new OutcomeRequest(
             eventId,
@@ -386,13 +413,13 @@ class WorkflowTest {
             pool.submit(
                 () -> {
                   start.await();
-                  return service.book(s.id, k, booking(s)).id;
+                  return service.book(ACTOR, s.id, k, booking(s)).id;
                 }));
       start.countDown();
       Set<String> ids = new HashSet<>();
       for (Future<String> f : futures) ids.add(f.get(10, TimeUnit.SECONDS));
       assertThat(ids).hasSize(1);
-      assertThat(service.getCalls(s.id).stream().filter(c -> c.purpose == Purpose.BOOKING))
+      assertThat(service.getCalls(ACTOR, s.id).stream().filter(c -> c.purpose == Purpose.BOOKING))
           .hasSize(1);
     }
   }
@@ -409,7 +436,7 @@ class WorkflowTest {
                 () -> {
                   start.await();
                   try {
-                    service.book(s.id, key(), booking(s));
+                    service.book(ACTOR, s.id, key(), booking(s));
                     return true;
                   } catch (ApiError e) {
                     assertThat(e.code).isEqualTo("ACTIVE_RESERVATION");
@@ -431,12 +458,13 @@ class WorkflowTest {
 
   @Test
   void httpValidationAndModeAreExplicit() throws Exception {
-    http.perform(get("/api/v1/status"))
+    http.perform(get("/api/v1/status").principal(() -> "test-owner"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.mode").value("MOCK"))
         .andExpect(jsonPath("$.externalCallsEnabled").value(false));
     http.perform(
             post("/api/v1/searches")
+                .principal(() -> "test-owner")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(request(key()))))
         .andExpect(status().isBadRequest())
@@ -451,6 +479,7 @@ class WorkflowTest {
             valid.replace("\"adults\":2", "\"adults\":\"2\""))) {
       http.perform(
               post("/api/v1/searches")
+                  .principal(() -> "test-owner")
                   .header("Idempotency-Key", key())
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(invalid))
@@ -458,20 +487,23 @@ class WorkflowTest {
     }
     http.perform(
             post("/api/v1/searches")
+                .principal(() -> "test-owner")
                 .header("Idempotency-Key", key())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(valid.replace("\"MOCK\"", "\"PLEOS\"")))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("PLEOS_ETA_UNVERIFIED"));
-    http.perform(get("/api/v1/reservations/missing")).andExpect(status().isNotFound());
+    http.perform(get("/api/v1/reservations/missing").principal(() -> "test-owner"))
+        .andExpect(status().isNotFound());
   }
 
   @Test
   void lateObservationDoesNotGetAFreshExpiration() {
     Search s = fresh();
-    CallTask c = service.inquire(s.id, key(), new InquiryRequest("mock-1"));
+    CallTask c = service.inquire(ACTOR, s.id, key(), new InquiryRequest("mock-1"));
     clock.now = START.plusSeconds(301);
     service.outcome(
+        ACTOR,
         c.id,
         new OutcomeRequest(
             key(),
@@ -481,9 +513,9 @@ class WorkflowTest {
             null,
             0,
             new InquiryFacts(true, true, true, true, 0, 0, s.request.navigation().eta())));
-    expectCode("CANDIDATE_NOT_READY", () -> service.book(s.id, key(), booking(s)));
+    expectCode("CANDIDATE_NOT_READY", () -> service.book(ACTOR, s.id, key(), booking(s)));
     Candidate candidate =
-        service.getSearch(s.id).candidates.stream()
+        service.getSearch(ACTOR, s.id).candidates.stream()
             .filter(item -> item.id.equals("mock-1"))
             .findFirst()
             .orElseThrow();
@@ -496,8 +528,9 @@ class WorkflowTest {
     Reservation r = confirmed();
     Reservation pending =
         service.change(
-            r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(300), 7000, true));
+            ACTOR, r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(300), 7000, true));
     service.outcome(
+        ACTOR,
         pending.pendingChangeCallId,
         outcome(Outcome.ACCEPTED, true, r.confirmedTime.plusSeconds(300), 7000, null));
     clock.now = START.plusSeconds(600);
@@ -505,7 +538,10 @@ class WorkflowTest {
         "OUTSIDE_CHANGE_POLICY",
         () ->
             service.change(
-                r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(600), 4000, true)));
+                ACTOR,
+                r.id,
+                key(),
+                new ChangeRequest(r.confirmedTime.plusSeconds(600), 4000, true)));
   }
 
   @Test
@@ -513,7 +549,7 @@ class WorkflowTest {
     Reservation r = confirmed();
     Reservation pending =
         service.change(
-            r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(300), 1000, true));
+            ACTOR, r.id, key(), new ChangeRequest(r.confirmedTime.plusSeconds(300), 1000, true));
     OutcomeRequest event =
         outcome(Outcome.ACCEPTED, true, r.confirmedTime.plusSeconds(300), 1000, null);
     try (ExecutorService pool = Executors.newFixedThreadPool(6)) {
@@ -524,12 +560,12 @@ class WorkflowTest {
             pool.submit(
                 () -> {
                   start.await();
-                  return service.outcome(pending.pendingChangeCallId, event);
+                  return service.outcome(ACTOR, pending.pendingChangeCallId, event);
                 }));
       start.countDown();
       for (Future<CallTask> future : futures)
         assertThat(future.get(10, TimeUnit.SECONDS).status).isEqualTo(CallStatus.ACCEPTED);
-      assertThat(service.getReservation(r.id).totalAdditionalCostKrw).isEqualTo(1000);
+      assertThat(service.getReservation(ACTOR, r.id).totalAdditionalCostKrw).isEqualTo(1000);
     }
   }
 
@@ -553,7 +589,7 @@ class WorkflowTest {
             new LinkedHashSet<>(List.of("childFriendly", "parking")),
             Set.of("한식"),
             false);
-    assertThat(service.search(k, first).id).isEqualTo(service.search(k, second).id);
+    assertThat(service.search(ACTOR, k, first).id).isEqualTo(service.search(ACTOR, k, second).id);
   }
 
   @Test
@@ -562,6 +598,7 @@ class WorkflowTest {
     Search s =
         ready(
             service.search(
+                ACTOR,
                 key(),
                 new SearchRequest(
                     input.navigation(),
@@ -576,10 +613,11 @@ class WorkflowTest {
                 "mock-1", s.request.navigation().eta(), false, new ChangePolicy(false, null, 0)));
     http.perform(
             post("/api/v1/searches/" + s.id + "/reservations")
+                .principal(() -> "test-owner")
                 .header("Idempotency-Key", key())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
         .andExpect(status().isBadRequest());
-    assertThat(service.getCalls(s.id)).allMatch(c -> c.purpose == Purpose.INQUIRY);
+    assertThat(service.getCalls(ACTOR, s.id)).allMatch(c -> c.purpose == Purpose.INQUIRY);
   }
 }

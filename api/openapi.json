@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Pleos Reservation Assistant — local MOCK API",
-    "version": "1.0.0",
-    "description": "Local single-user development API. No external calls. Unauthenticated: loopback access only; do not deploy publicly. All successful commands return HTTP 200. LIVE is reserved in schemas but disabled at startup."
+    "version": "1.1.0",
+    "description": "Local MOCK API with server-issued opaque Bearer tokens and ownership isolation. Apps obtain an anonymous installation identity without login. GET /status and POST anonymous-sessions issuance/refresh are public; other operations require an access token. Token issuance does not grant MOCK_OPERATOR. No external calls; LIVE is disabled. URL remains /api/v1 by the pre-release BE-02 decision."
   },
   "servers": [
     {
@@ -54,8 +54,20 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Invalid supplied Authorization header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
-        }
+        },
+        "x-authentication-required": false,
+        "security": []
       }
     },
     "/searches": {
@@ -101,6 +113,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -117,7 +139,14 @@
               }
             }
           }
-        }
+        },
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/searches/{id}": {
@@ -163,6 +192,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -173,6 +212,13 @@
             "schema": {
               "type": "string"
             }
+          }
+        ],
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "security": [
+          {
+            "BearerAuth": []
           }
         ]
       }
@@ -223,6 +269,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -233,6 +289,13 @@
             "schema": {
               "type": "string"
             }
+          }
+        ],
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "security": [
+          {
+            "BearerAuth": []
           }
         ]
       }
@@ -280,6 +343,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -304,7 +377,14 @@
               }
             }
           }
-        }
+        },
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/searches/{id}/reservations": {
@@ -350,6 +430,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -374,7 +464,14 @@
               }
             }
           }
-        }
+        },
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/reservations/{id}": {
@@ -420,6 +517,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -430,6 +537,13 @@
             "schema": {
               "type": "string"
             }
+          }
+        ],
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "security": [
+          {
+            "BearerAuth": []
           }
         ]
       }
@@ -477,6 +591,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -501,7 +625,14 @@
               }
             }
           }
-        }
+        },
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/calls/{id}": {
@@ -547,6 +678,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -557,6 +698,13 @@
             "schema": {
               "type": "string"
             }
+          }
+        ],
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "security": [
+          {
+            "BearerAuth": []
           }
         ]
       }
@@ -604,6 +752,26 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "MOCK_OPERATOR role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -625,7 +793,187 @@
               }
             }
           }
-        }
+        },
+        "x-authentication-required": true,
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted. Requires server-assigned MOCK_OPERATOR role and ownership; installation tokens never have this role.",
+        "x-required-role": "MOCK_OPERATOR",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/anonymous-sessions": {
+      "post": {
+        "operationId": "createAuthenticationSession",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful result; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokens"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid supplied Authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Issuance limited: 10 per direct peer and 100 total per minute on a single server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSessionRequest"
+              }
+            }
+          }
+        },
+        "description": "Create a new installation identity. Call only when no saved credentials exist. Never automatically replace an existing subject after a 401. No client-specified subject or role."
+      }
+    },
+    "/anonymous-sessions/refresh": {
+      "post": {
+        "operationId": "refreshAuthenticationSession",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful result; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokens"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unknown, expired, or revoked credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Refresh already used or retry unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshSessionRequest"
+              }
+            }
+          }
+        },
+        "description": "Rotate both tokens while preserving subject. Persist a random Idempotency-Key before sending. Same old refresh token and same key replay the same pair for 120 seconds, until the successor refresh is used or session revoked. Other replays return 409. Old access tokens remain valid until original expiry; revoke invalidates all generations. Send no expired Authorization header to this endpoint.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._:-]{16,100}$"
+            }
+          }
+        ]
+      }
+    },
+    "/anonymous-sessions/current": {
+      "delete": {
+        "operationId": "revokeAuthenticationSession",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; Cache-Control: no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokedSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired, or revoked access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Revoke this installation authentication session and every token generation. Does not delete owned records or create a replacement identity."
       }
     }
   },
@@ -1384,7 +1732,7 @@
         "additionalProperties": false,
         "properties": {
           "contractVersion": {
-            "const": "1.0.0"
+            "const": "1.1.0"
           },
           "mode": {
             "const": "MOCK"
@@ -1426,6 +1774,77 @@
           "message",
           "mode"
         ]
+      },
+      "CreateSessionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "RefreshSessionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "pattern": "^pr_[A-Za-z0-9_-]{43}$",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "SessionTokens": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tokenType": {
+            "const": "Bearer"
+          },
+          "accessToken": {
+            "type": "string",
+            "pattern": "^pa_[A-Za-z0-9_-]{43}$"
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshToken": {
+            "type": "string",
+            "pattern": "^pr_[A-Za-z0-9_-]{43}$"
+          },
+          "refreshTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mode": {
+            "const": "MOCK"
+          }
+        },
+        "required": [
+          "tokenType",
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "refreshTokenExpiresAt",
+          "mode"
+        ]
+      },
+      "RevokedSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "const": "REVOKED"
+          },
+          "mode": {
+            "const": "MOCK"
+          }
+        },
+        "required": [
+          "state",
+          "mode"
+        ]
       }
     },
     "parameters": {
@@ -1438,6 +1857,14 @@
           "pattern": "^[A-Za-z0-9._:-]{1,100}$"
         },
         "description": "Stable per user command. Reuse after timeout; changed body with same key returns 409. Event IDs independently deduplicate outcomes globally."
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Opaque random access token",
+        "description": "Server-issued pa_ token. Refresh tokens cannot authorize resource requests."
       }
     }
   },
