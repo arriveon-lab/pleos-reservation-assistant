@@ -43,10 +43,6 @@
   <string name="change_title">모의 변경 승인</string>
   <string name="change_body">기존 기록 시각: %1$s\n요청할 시각: %2$s\n추가 비용: 0원. 유료 변경은 지원하지 않습니다.\n명시적 수락 전까지 기존 기록을 유지합니다.</string>
   <string name="call">모의 작업: %1$s · %2$s\n요청 시각: %3$s</string>
-  <string name="operator">개발용 모의 결과 주입 · 실제 매장 응답 아님</string>
-  <string name="answer">모의 조건 확인 / 수락</string>
-  <string name="reject">모의 거절</string>
-  <string name="unknown">모의 결과 미확인</string>
   <string name="fact">%1$s: %2$s\n출처 %3$s / 확실성 %4$s / 적용 범위 %5$s\n관측 %6$s / 적용 %7$s / 만료 %8$s</string>
   <string name="wait_notice">현재 대기와 도착 예상 대기는 서로 다릅니다. 빈자리와 예약 가능 여부는 별도 정보입니다.</string>
   <string name="not_confirmed">미확정</string>
