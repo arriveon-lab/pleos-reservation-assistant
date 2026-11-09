@@ -1,5 +1,9 @@
 # 구현·검증 현황
 
+## 2026-11-09 UX-04 차량 UI 개선 (#39 / #25)
+
+#36·#44를 보존하고 목적지/실제 ETA 미연결·현재 단계 우선 배치, 개발 진단 분리, 3개 후보의 같은 기준 비교, UNKNOWN/추정/만료 구분, 주야간 테마·adaptive icon·키패드/승인창을 개선했습니다. [동일 APK 검증](UX39_VEHICLE_UI.md): Pleos API34의 1682dp 가로/840dp 세로형 창, 실제 시스템 주야간 전환·초기 CarUx/수명·입력 보존, 주입 제한/결과 화면 검사 통과. UX62개·verifyAll·MOCK smoke·대비20개 성공. 실제 moving/장애·전체 Connect-S/W 조합·#40 공동 예약 시연·release/영상은 미완료입니다. #39/#25 OPEN과 Draft 유지, 다른 담당 범위 변경 없음.
+
 ## 2026-11-09 UX-02 실제 CarUxRestrictions 연결 (#25)
 
 공개 SDK35 adapter·초기 UNKNOWN·제한/실패 차단·listener 해제·늦은 callback 무효화·승인/전송 직전 검사를 구현했습니다. Pleos API34에서 실제 초기값(false/0), 종료·재진입·Activity 재생성을 확인했고 제한/실패 주입 시 승인 창 종료와 이전 승인 차단을 검증했습니다. 실제 moving callback/서비스 장애·물리 회전·release/영상·공동 인수는 미완료입니다. [검증 기록](UX25_CAR_RESTRICTIONS.md)을 우선하며 아래 미연동 표기는 과거 이력입니다. verifyAll·UX58개·MOCK smoke 성공, 원격 CI는 PR 최신 head에서 별도 확인합니다. #25/#5 OPEN과 Draft를 유지하며 #1 담당 범위는 변경하지 않습니다.
