@@ -5,9 +5,9 @@
 - #33은 사용자 진행 지시로 `abd9aa4`에 squash merge했고 #32 CLOSED입니다. 현재 `feat/34-seoul-pilot-validation`은 이 main에서 분기했습니다. 다른 미완료 PR/담당 범위는 유지합니다.
 - [REC-10](../docs/REC10_SEOUL_PILOT_VALIDATION.md)을 우선합니다. 개인 개발용 키는 명시 동의 후1개 발급했고 정상 상태/로컬 Git 제외0700/0600을 확인했습니다. 키는 팀/CI에 공유하지 않습니다. 인증 조회나 운영 주체 승인은 미완료입니다.
 - 독립 도구의 `--pilot-screening`은 가정 튜플·명시적으로 빈 폐업일·유일 MGTNO·유효 좌표·반경1000m·전화형식·상호/도로명주소를 같은 행에서 집계합니다. 모든 중복 그룹 제외,1000–1030m 경계 제외와 UNKNOWN을 보존합니다. **상태 사전 미확보**를 출력에 명시하며 생산 후보 수 null·추천/채택/예약/발신 false입니다. 공급자 adapter/API/DB에 연결하지 않았습니다.
-- Python29개(기존15+신규14)·MOCK 통과. 초기 결측 테스트의 batch 스키마 전제 오류를 수정하고 재검증했습니다. Gradle format/verify 성공(Java FROM-CACHE)이며 CI에는 가상 옵션만 추가합니다. 실제 행 fixture·새 런타임 의존성·Android 변경 없음.
+- Python29개(기존15+신규14)·MOCK 통과. 초기 결측 테스트의 batch 스키마 전제 오류를 수정하고 재검증했습니다. 초기 Gradle은 Java FROM-CACHE였으나 원격 CI에서 기존 REC-08 계약 파일 캐시 누락을 확인했습니다. test 산출물 선언 후 format/verify·Java268개를 재실행해 실패/오류/skip0, 파일 제거 후 FROM-CACHE 복원·계약2개 통과를 확인했습니다. CI에는 가상 옵션만 추가하며 서버 런타임 변경은 없습니다. 실제 행 fixture·새 런타임 의존성·Android 변경 없음.
 - 키 없이TLS443 연결1회가 timeout이어서 애플리케이션 요청/키 전송0회입니다. 다른 서비스의 공식 HTTPS 미제공 답변을 해당 API의 확정 결론으로 확대하지 않습니다. 다음은 공식 상태 사전·batch/TZ·안전한 공급 경로/접근과 제한된 실제 지역 품질 검증입니다. 원문 저장 없이 집계만 보존하며 기존 sample 상한은 재사용하지 않습니다. #34 OPEN/#11 채택 대기와 #3/#4/#26의 인수를 유지합니다.
-- 이번 실제 음식점 조회·Kakao·전화·AI·유료 호출0회. 로컬 증거는 Git 제외 work/rec10-tests.log·mock-screening.json·transport-check.json·gradle-verify.log, 공개 상태는 docs/quality/rec10-validation-state.json입니다. 계정 정보·키 값·상태 화면을 Git에 올리지 않습니다.
+- 이번 실제 음식점 조회·Kakao·전화·AI·유료 호출0회. 로컬 증거는 Git 제외 work/rec10-tests.log·mock-screening.json·transport-check.json·cache-output-verify.log·cache-restore.log·java-test-counts.json, 공개 상태는 docs/quality/rec10-validation-state.json입니다. 계정 정보·키 값·상태 화면을 Git에 올리지 않습니다.
 
 ## 2026-11-09 REC-09 #32 성동구 데이터 명세·품질 확인
 

@@ -40,7 +40,7 @@ work/contract-venv/bin/python scripts/seoul-place-quality.py --pilot-screening
 
 기존15개와 신규14개, 총29개 가상 테스트를 통과했습니다. 동일 행 교집합·주변 집계만 각각 통과하는 반례, 상세 상태/폐업일 결측과 코드 변형, 모든 중복 행 제외·순서 독립성, 유효/불량/반경 경계, 연락처 검토, 기본 정보 누락, 합계/분모와 출력 비노출을 확인합니다. 양성 교집합 테스트는 전화 분류 경계만 가상 값으로 대체하여 발신 가능한 번호를 fixture로 만들지 않습니다. CLI MOCK에는 실제 연락처가 없으므로 최종 통과0건이며 테스트 양성과 구분합니다.
 
-CI에도 가상 옵션 실행을 추가했고 실제 네트워크 조회·키를 요구하지 않습니다. `./gradlew -PincludeAndroid=false format verify`는 성공했으며 Java 테스트는 FROM-CACHE였습니다. 제품 테스트를 새로 실행했다고 세지 않습니다. 서버/Android/API/DB/예약 코드는 변경하지 않았습니다. 원격 CI 결과는 PR 최신 head에서 확인하며 기기/실데이터 검증으로 세지 않습니다.
+CI에도 가상 옵션 실행을 추가했고 실제 네트워크 조회·키를 요구하지 않습니다. `./gradlew -PincludeAndroid=false format verify`는 처음 Java 테스트를 FROM-CACHE로 복원했습니다. 원격 CI에서 기존 REC-08 계약 파일이 캐시 복원 대상에 없어 검사 실패를 확인했고, server/build.gradle.kts의 test 산출물에 해당 가상 JSON을 선언했습니다. 수정 후 Java268개를 재실행해 실패/오류/skip0을 확인했으며, 생성 파일을 Git 제외 work로 옮긴 뒤 test FROM-CACHE가 파일을 복원하고 계약 검사2개가 통과하는 것까지 검증했습니다. 서버 런타임/Android/API/DB/예약 코드는 변경하지 않았고 Gradle 테스트 산출물 선언만 보강했습니다. 원격 CI 결과는 PR 최신 head에서 확인하며 기기/실데이터 검증으로 세지 않습니다.
 
 ## 남은 완료 조건
 
