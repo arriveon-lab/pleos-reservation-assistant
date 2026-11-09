@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Validate the OpenAPI document, examples, and optional loopback HTTP workflow."""
 import argparse
+import copy
 import importlib.util
 import json
 from pathlib import Path
 import re
 
-from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 from openapi_spec_validator import validate
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,7 +35,53 @@ def check_preview(schema, value):
 
 check_preview({"$ref": "#/components/schemas/QueryRequest"},
               json.loads((ROOT / "api/examples/place-preview-query.json").read_text()))
-print("PASS: experimental MOCK preview OpenAPI draft and fictional query example")
+check_preview({"$ref": "#/components/schemas/QueryRequest"},
+              json.loads((ROOT / "api/examples/place-preview-recommendation-query.json").read_text()))
+plan_spec = importlib.util.spec_from_file_location("recommendation_plan", ROOT / "scripts/check-recommendation-plan.py")
+plan_checker = importlib.util.module_from_spec(plan_spec)
+plan_spec.loader.exec_module(plan_checker)
+assert preview_contract["components"]["schemas"]["RecommendationPlan"] == {
+    k: v for k, v in plan_checker.SCHEMA.items() if k != "$schema"}
+assert preview_contract["components"]["schemas"]["RecommendationRequirements"] == plan_checker.SCHEMA["properties"]["requirements"]
+
+
+def check_preview_result(result):
+    check_preview({"$ref": "#/components/schemas/Result"}, result)
+    plan = result["recommendationPlan"]
+    if plan is None:
+        return
+    plan_checker.check(plan)
+    assert plan["state"] == result["state"]
+    assert plan["listingFetchedAt"] == result["fetchedAt"]
+    assert plan["displayValidUntil"] == result["expiresAt"]
+    assert plan["rejectedRecords"] == result["rejectedRecords"]
+    assert len(plan["candidates"]) == len(result["places"])
+    for candidate, place in zip(plan["candidates"], result["places"]):
+        for key in ("name", "cuisine", "address"):
+            assert candidate[key] == place[key]
+        assert candidate["straightLineDistanceMeters"] == place["distanceMeters"]
+
+
+example = json.loads((ROOT / "api/examples/place-preview-recommendation-result.json").read_text())
+check_preview_result(example)
+for mutation in ("authority", "scope", "cancelled", "time", "order"):
+    unsafe = copy.deepcopy(example)
+    if mutation == "authority":
+        unsafe["recommendationPlan"]["candidates"][0]["inquiryDispatchAllowed"] = True
+    elif mutation == "scope":
+        unsafe["recommendationPlan"]["candidates"][0]["questions"][-1]["scope"] = "NOW"
+    elif mutation == "cancelled":
+        unsafe.update(state="CANCELLED", places=[], fetchedAt=None, expiresAt=None)
+    elif mutation == "time":
+        unsafe["recommendationPlan"]["listingFetchedAt"] = "2026-11-01T00:00:00Z"
+    else:
+        unsafe["places"].reverse()
+    try:
+        check_preview_result(unsafe)
+    except (AssertionError, ValidationError):
+        continue
+    raise AssertionError("Unsafe preview recommendation accepted: " + mutation)
+print("PASS: preview draft, listing/planned examples, shared plan schema and 5 unsafe mutations rejected")
 
 
 def validate_preview_exchanges():
@@ -57,6 +104,8 @@ def validate_preview_exchanges():
                           exchange["request"])
         check_preview(operation["responses"][str(exchange["status"])]["content"]["application/json"]["schema"],
                       exchange["response"])
+        if exchange["path"].endswith("/queries") and exchange["status"] == 200:
+            check_preview_result(exchange["response"])
     assert operations == set(preview_contract["paths"]), operations
     print(f"PASS: {len(exchanges)} fictional preview HTTP exchanges match the draft (4 operations)")
 

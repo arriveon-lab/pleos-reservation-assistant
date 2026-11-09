@@ -105,10 +105,19 @@ final class PlacePreviewRegistry implements AutoCloseable {
 
   CompletionStage<PlacePreviewSession.Outcome> start(
       Owner owner, UUID id, long generation, PlaceQuery query) {
+    return start(owner, id, generation, query, null);
+  }
+
+  CompletionStage<PlacePreviewSession.Outcome> start(
+      Owner owner,
+      UUID id,
+      long generation,
+      PlaceQuery query,
+      PlaceRecommendationPlanner.Requirements requirements) {
     PlacePreviewSession.requireOutsideTransaction();
     if (generation < 1) throw new IllegalArgumentException("Invalid preview generation");
     Objects.requireNonNull(query);
-    return lookup(owner, id).session.start(generation, query);
+    return lookup(owner, id).session.start(generation, query, requirements);
   }
 
   boolean cancel(Owner owner, UUID id, long generation) {

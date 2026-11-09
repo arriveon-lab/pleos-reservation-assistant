@@ -42,6 +42,7 @@ final class PlacePreviewSession implements AutoCloseable {
   private final ScheduledThreadPoolExecutor deadlines;
   private long lastGeneration;
   private PlaceQuery lastQuery;
+  private PlaceRecommendationPlanner.Requirements lastRequirements;
   private Flight current;
   private boolean closed;
 
@@ -68,6 +69,11 @@ final class PlacePreviewSession implements AutoCloseable {
   }
 
   CompletionStage<Outcome> start(long generation, PlaceQuery query) {
+    return start(generation, query, null);
+  }
+
+  CompletionStage<Outcome> start(
+      long generation, PlaceQuery query, PlaceRecommendationPlanner.Requirements requirements) {
     requireGeneration(generation);
     Objects.requireNonNull(query);
     requireOutsideTransaction();
@@ -77,7 +83,8 @@ final class PlacePreviewSession implements AutoCloseable {
       if (closed) return completed(generation, Status.CLOSED);
       if (generation < lastGeneration) return completed(generation, Status.STALE_GENERATION);
       if (generation == lastGeneration) {
-        if (lastQuery != null && !lastQuery.equals(query))
+        if (lastQuery != null
+            && (!lastQuery.equals(query) || !Objects.equals(lastRequirements, requirements)))
           return completed(generation, Status.REQUEST_CONFLICT);
         // A completed place response is deliberately not cached or automatically re-requested.
         return current == null
@@ -88,6 +95,7 @@ final class PlacePreviewSession implements AutoCloseable {
       if (previous != null) stop(previous);
       lastGeneration = generation;
       lastQuery = query;
+      lastRequirements = requirements;
       next = new Flight(generation, query);
       current = next;
       next.deadline =
@@ -112,6 +120,7 @@ final class PlacePreviewSession implements AutoCloseable {
       if (generation > lastGeneration) {
         lastGeneration = generation;
         lastQuery = null; // Fence a delayed start for a screen already cancelled by its owner.
+        lastRequirements = null;
       }
       cancelled = current;
       current = null;
@@ -165,6 +174,7 @@ final class PlacePreviewSession implements AutoCloseable {
       pending = current;
       current = null;
       lastQuery = null;
+      lastRequirements = null;
       if (pending != null) stop(pending);
     }
     worker.shutdownNow();

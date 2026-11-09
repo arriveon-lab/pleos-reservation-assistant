@@ -1873,7 +1873,8 @@
       "document": "place-preview-draft.json",
       "status": "DRAFT_REQUIRES_TEAM_REVIEW",
       "enabledByDefault": false,
-      "issue": 16
+      "issue": 16,
+      "draftVersion": "0.2.0-draft"
     }
   ]
 }

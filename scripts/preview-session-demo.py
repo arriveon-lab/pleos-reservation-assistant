@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """One MOCK query with server-issued tokens. Requires the #20/#21 authentication integration."""
 import argparse
+from datetime import datetime, timedelta, timezone
 import json
 import re
 import sys
@@ -90,10 +91,13 @@ class PreviewDemo:
             except (KeyError, TypeError, ValueError):
                 raise DemoError("INVALID_PREVIEW_RESPONSE") from None
             path = "/api/experimental/place-previews/" + preview
+            requirements = {"party": {"adults": 2, "children": 1}, "maxWaitMinutes": 15,
+                            "requiredFeatures": ["parking"], "preferredCuisines": ["한식"]}
             result = self.request(path + "/queries", {
                 "generation": 1,
                 "query": {"latitude": 37.544, "longitude": 127.055,
-                          "radiusMeters": 1000, "limit": 3}}, access)
+                          "radiusMeters": 1000, "limit": 3},
+                "requirements": requirements}, access)
             if (result.get("previewId") != preview or result.get("generation") != 1
                     or result.get("state") not in ("RESULTS", "EMPTY")
                     or result.get("mode") != "MOCK" or result.get("placeSource") != "MOCK"
@@ -106,6 +110,47 @@ class PreviewDemo:
                                   ("parking", "childFriendly", "reservationAvailability"))
                            for p in result["places"])):
                 raise DemoError("INVALID_MOCK_RESULT")
+            plan = result.get("recommendationPlan")
+            if (not isinstance(plan, dict) or plan.get("state") != result["state"]
+                    or plan.get("provider") != "MOCK" or plan.get("requirements") != requirements
+                    or plan.get("listingFetchedAt") != result.get("fetchedAt")
+                    or plan.get("displayValidUntil") != result.get("expiresAt")
+                    or not isinstance(plan.get("candidates"), list)
+                    or len(plan["candidates"]) != len(result["places"])):
+                raise DemoError("INVALID_RECOMMENDATION_PLAN")
+            try:
+                fetched = datetime.fromisoformat(result["fetchedAt"].replace("Z", "+00:00"))
+                expires = datetime.fromisoformat(result["expiresAt"].replace("Z", "+00:00"))
+                now = datetime.now(timezone.utc)
+                if fetched > now or expires <= now or expires - fetched != timedelta(minutes=5):
+                    raise ValueError("Stale recommendation")
+            except (KeyError, TypeError, ValueError):
+                raise DemoError("INVALID_RECOMMENDATION_PLAN") from None
+            for index, (candidate, place) in enumerate(zip(plan["candidates"], result["places"]), 1):
+                if (not isinstance(candidate, dict) or candidate.get("ordinal") != index
+                        or any(candidate.get(k) != place.get(k) for k in ("name", "cuisine", "address"))
+                        or candidate.get("straightLineDistanceMeters") != place.get("distanceMeters")
+                        or candidate.get("qualification") != "NEEDS_CONFIRMATION"
+                        or candidate.get("bookable") is not False
+                        or candidate.get("inquiryDispatchAllowed") is not False
+                        or not isinstance(candidate.get("reasons"), list) or not candidate["reasons"]
+                        or not isinstance(candidate.get("questions"), list)
+                        or len(candidate["questions"]) != 4):
+                    raise DemoError("INVALID_RECOMMENDATION_PLAN")
+                fields = set()
+                for question in candidate["questions"]:
+                    if not isinstance(question, dict):
+                        raise DemoError("INVALID_RECOMMENDATION_PLAN")
+                    field = question.get("field")
+                    arrival = field in ("arrivalWaitMinutes", "reservationAvailable")
+                    if (field not in ("childFriendly", "parking", "arrivalWaitMinutes", "reservationAvailable")
+                            or question.get("certainty") != "UNKNOWN"
+                            or question.get("scope") != ("ARRIVAL" if arrival else "GENERAL")
+                            or question.get("arrivalTimeRequired") is not arrival):
+                        raise DemoError("INVALID_RECOMMENDATION_PLAN")
+                    fields.add(field)
+                if len(fields) != 4:
+                    raise DemoError("INVALID_RECOMMENDATION_PLAN")
             # A user-requested protocol check, not an automatic response to a failed request.
             # Never re-issue anonymous identity or retry/refresh-and-repeat a place query.
             key = str(uuid.uuid4())
@@ -139,7 +184,9 @@ class PreviewDemo:
         return {"mode": "MOCK", "placeSource": "MOCK", "state": result["state"],
                 "displayed": len(result["places"]), "refreshed": refreshed,
                 "closed": closed, "revoked": revoked, "httpRequests": self.requests,
-                "placeQueries": 1, "externalCalls": 0}
+                "placeQueries": 1, "externalCalls": 0,
+                "recommendationCandidates": len(result["recommendationPlan"]["candidates"]),
+                "plannedQuestions": sum(len(c["questions"]) for c in result["recommendationPlan"]["candidates"])}
 
 
 def main(argv=None):

@@ -1,5 +1,6 @@
 """Fictional loopback protocol tests. No real tokens, places, phone calls or outside network."""
 from contextlib import redirect_stdout
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import io
@@ -66,10 +67,15 @@ class Sandbox:
                     if sandbox.behavior == "disabled":
                         status = 404
                 elif self.path == BASE_PATH + "/queries":
-                    place = {"name": "가상 식당", "bookable": False, "parking": "UNKNOWN",
-                             "childFriendly": "UNKNOWN", "reservationAvailability": "UNKNOWN"}
-                    response.update(previewId=PREVIEW, generation=1, state="RESULTS", placeSource="MOCK",
-                                    reservationMode="MOCK", places=[place])
+                    response = json.loads((MODULE.parents[1] / "api/examples/place-preview-recommendation-result.json").read_text())
+                    response["previewId"] = PREVIEW
+                    fetched = datetime.now(timezone.utc)
+                    response["fetchedAt"] = fetched.isoformat()
+                    response["expiresAt"] = (fetched + timedelta(minutes=5)).isoformat()
+                    plan = response["recommendationPlan"]
+                    plan["listingFetchedAt"] = response["fetchedAt"]
+                    plan["displayValidUntil"] = response["expiresAt"]
+                    place = response["places"][0]
                     if sandbox.behavior == "query-failure":
                         status = 500
                         response = {"message": ACCESS}
@@ -77,6 +83,19 @@ class Sandbox:
                         response["placeSource"] = "KAKAO"
                     if sandbox.behavior == "bookable":
                         place["bookable"] = True
+                    if sandbox.behavior == "plan-missing":
+                        response["recommendationPlan"] = None
+                    if sandbox.behavior == "plan-authority":
+                        plan["candidates"][0]["inquiryDispatchAllowed"] = True
+                    if sandbox.behavior == "plan-order":
+                        response["places"].reverse()
+                    if sandbox.behavior == "plan-unknown":
+                        plan["candidates"][0]["questions"][0]["certainty"] = "CONFIRMED"
+                    if sandbox.behavior == "plan-stale":
+                        response["fetchedAt"] = (fetched - timedelta(minutes=10)).isoformat()
+                        response["expiresAt"] = (fetched - timedelta(minutes=5)).isoformat()
+                        plan["listingFetchedAt"] = response["fetchedAt"]
+                        plan["displayValidUntil"] = response["expiresAt"]
                     if sandbox.behavior == "redirect":
                         self.send_response(302)
                         self.send_header("Location", sandbox.base + "/trap")
@@ -131,6 +150,8 @@ class PreviewSessionDemoTest(unittest.TestCase):
             self.assertEqual(status, 0)
             self.assertEqual(result["httpRequests"], 8)
             self.assertEqual(result["placeQueries"], 1)
+            self.assertEqual(result["recommendationCandidates"], 3)
+            self.assertEqual(result["plannedQuestions"], 12)
             self.assertTrue(result["closed"] and result["revoked"] and result["refreshed"])
             refresh = next(c for c in sandbox.calls if c[1].endswith("/refresh"))
             self.assertEqual(refresh[4], {"refreshToken": REFRESH})
@@ -155,7 +176,8 @@ class PreviewSessionDemoTest(unittest.TestCase):
             self.assertEqual(sandbox.calls[-1][1], "/api/v1/anonymous-sessions/current")
 
     def test_query_or_refresh_failure_cleans_up_without_requery_or_secret_output(self):
-        for behavior in ("query-failure", "refresh-failure", "query-source", "bookable"):
+        for behavior in ("query-failure", "refresh-failure", "query-source", "bookable",
+                         "plan-missing", "plan-authority", "plan-order", "plan-unknown", "plan-stale"):
             with self.subTest(behavior=behavior), Sandbox(behavior) as sandbox:
                 status, _ = self.run_cli(sandbox)
                 self.assertEqual(status, 1)

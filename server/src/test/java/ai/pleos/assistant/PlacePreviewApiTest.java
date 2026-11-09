@@ -53,6 +53,11 @@ class PlacePreviewApiTest {
   static final String BASE = "/api/experimental/place-previews";
   static final String QUERY =
       "{\"generation\":1,\"query\":{\"latitude\":37.544,\"longitude\":127.055,\"radiusMeters\":1000,\"limit\":3}}";
+  static final String REQUIREMENTS =
+      "{\"party\":{\"adults\":2,\"children\":1},\"maxWaitMinutes\":15,"
+          + "\"requiredFeatures\":[\"parking\"],\"preferredCuisines\":[\"한식\"]}";
+  static final String PLANNED_QUERY =
+      QUERY.substring(0, QUERY.length() - 1) + ",\"requirements\":" + REQUIREMENTS + "}";
   static final List<Map<String, Object>> EXCHANGES = new ArrayList<>();
   static final PlaceSearchResult.Success EMPTY = new PlaceSearchResult.Success(List.of(), NOW, 0);
   @Autowired MockMvc mvc;
@@ -116,12 +121,181 @@ class PlacePreviewApiTest {
     for (String field : List.of("parking", "childFriendly", "reservationAvailability"))
       assertThat(place.path(field).asText()).isEqualTo("UNKNOWN");
     assertThat(place.path("bookable").asBoolean()).isFalse();
+    assertThat(result.path("recommendationPlan").isNull()).isTrue();
     assertThat(result.toString())
         .doesNotContain("fictional-provider-id", "010-0000-0000", "latitude", "longitude");
     body(send(BASE + "/" + id + "/close", "{}", OWNER), 200);
     body(send(BASE + "/" + id + "/queries", QUERY, OWNER), 404);
     assertThat(counts()).isEqualTo(before);
     verify(adapter, times(1)).search(any());
+  }
+
+  @Test
+  void explicitConditionsReturnAlignedReasonsUnknownQuestionsAndNoBookingAuthority()
+      throws Exception {
+    List<Long> before = counts();
+    when(adapter.search(any()))
+        .thenReturn(
+            new MockPlaceSearchAdapter(Clock.fixed(NOW, ZoneOffset.UTC))
+                .search(new PlaceQuery(37.544, 127.055, 1000, 3)));
+    UUID id = open();
+    JsonNode result = body(send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER), 200);
+    JsonNode plan = result.path("recommendationPlan");
+    assertThat(result.path("state").asText()).isEqualTo("RESULTS");
+    assertThat(plan.path("state")).isEqualTo(result.path("state"));
+    assertThat(plan.path("listingFetchedAt")).isEqualTo(result.path("fetchedAt"));
+    assertThat(plan.path("displayValidUntil")).isEqualTo(result.path("expiresAt"));
+    assertThat(plan.path("candidates").size()).isEqualTo(3);
+    for (int i = 0; i < 3; i++) {
+      JsonNode candidate = plan.path("candidates").get(i);
+      JsonNode display = result.path("places").get(i);
+      assertThat(candidate.path("name")).isEqualTo(display.path("name"));
+      assertThat(candidate.path("straightLineDistanceMeters"))
+          .isEqualTo(display.path("distanceMeters"));
+      assertThat(candidate.path("qualification").asText()).isEqualTo("NEEDS_CONFIRMATION");
+      assertThat(candidate.path("bookable").asBoolean()).isFalse();
+      assertThat(candidate.path("inquiryDispatchAllowed").asBoolean()).isFalse();
+      assertThat(candidate.path("reasons")).isNotEmpty();
+      assertThat(candidate.path("questions").size()).isEqualTo(4);
+      for (JsonNode question : candidate.path("questions")) {
+        assertThat(question.path("certainty").asText()).isEqualTo("UNKNOWN");
+        boolean arrival = question.path("scope").asText().equals("ARRIVAL");
+        assertThat(question.path("arrivalTimeRequired").asBoolean()).isEqualTo(arrival);
+      }
+    }
+    assertThat(result.toString())
+        .doesNotContain("providerPlaceId", "phone", "latitude", "longitude", "placeUrl");
+    assertThat(counts()).isEqualTo(before);
+    verify(adapter, times(1)).search(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"EMPTY", "FILTERED", "FAILED"})
+  void plannedEmptyFilteredAndFailureStayDistinct(String state) throws Exception {
+    if (state.equals("FILTERED"))
+      when(adapter.search(any()))
+          .thenReturn(
+              new PlaceSearchResult.Success(
+                  List.of(
+                      new PlaceSummary(
+                          PlaceSummary.Provider.MOCK,
+                          "outside-fictional",
+                          "가상 먼 식당",
+                          null,
+                          38,
+                          127,
+                          null,
+                          null,
+                          null,
+                          null)),
+                  NOW,
+                  0));
+    if (state.equals("FAILED"))
+      when(adapter.search(any()))
+          .thenReturn(new PlaceSearchResult.Failure(PlaceSearchFailure.TIMEOUT));
+    UUID id = open();
+    JsonNode result = body(send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER), 200);
+    assertThat(result.path("state").asText()).isEqualTo(state);
+    assertThat(result.path("places")).isEmpty();
+    if (state.equals("FAILED")) {
+      assertThat(result.path("recommendationPlan").isNull()).isTrue();
+      assertThat(result.path("failure").asText()).isEqualTo("TIMEOUT");
+    } else {
+      assertThat(result.path("recommendationPlan").path("state").asText()).isEqualTo(state);
+      assertThat(result.path("recommendationPlan").path("candidates")).isEmpty();
+    }
+    verify(adapter, times(1)).search(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{}",
+        "{\"party\":null}",
+        "{\"party\":{\"adults\":2},\"maxWaitMinutes\":15,\"requiredFeatures\":[],\"preferredCuisines\":[]}",
+        "{\"party\":{\"adults\":0,\"children\":0},\"maxWaitMinutes\":15,\"requiredFeatures\":[],\"preferredCuisines\":[]}",
+        "{\"party\":{\"adults\":2,\"children\":1},\"maxWaitMinutes\":121,\"requiredFeatures\":[],\"preferredCuisines\":[]}",
+        "{\"party\":{\"adults\":2,\"children\":1},\"requiredFeatures\":[],\"preferredCuisines\":[]}",
+        "{\"party\":{\"adults\":2,\"children\":1},\"maxWaitMinutes\":15,\"requiredFeatures\":[\"wheelchair\"],\"preferredCuisines\":[]}",
+        "{\"party\":{\"adults\":2,\"children\":1},\"maxWaitMinutes\":15,\"requiredFeatures\":[null],\"preferredCuisines\":[]}",
+        "{\"party\":{\"adults\":2,\"children\":1},\"maxWaitMinutes\":15,\"requiredFeatures\":[\"parking\",\"parking\"],\"preferredCuisines\":[]}",
+        "{\"party\":{\"adults\":2,\"children\":1},\"maxWaitMinutes\":15,\"requiredFeatures\":[],\"preferredCuisines\":[\" \"]}",
+        "{\"party\":{\"adults\":2,\"children\":1},\"maxWaitMinutes\":15,\"requiredFeatures\":[],\"preferredCuisines\":[\"한식\",\"한식\"]}"
+      })
+  void invalidRecommendationConditionsNeverDispatch(String requirements) throws Exception {
+    UUID id = open();
+    String request =
+        QUERY.substring(0, QUERY.length() - 1) + ",\"requirements\":" + requirements + "}";
+    body(send(BASE + "/" + id + "/queries", request, OWNER), 400);
+    verifyNoInteractions(adapter);
+  }
+
+  @Test
+  void changedConditionsInSameGenerationConflictAndNeverRecomputeOrRedispatch() throws Exception {
+    UUID id = open();
+    CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+    when(adapter.search(any()))
+        .thenAnswer(
+            invocation -> {
+              entered.countDown();
+              release.await();
+              return EMPTY;
+            });
+    try {
+      MvcResult pending = send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER);
+      assertThat(entered.await(1, TimeUnit.SECONDS)).isTrue();
+      MvcResult joined = send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER);
+      for (String changed : List.of(PLANNED_QUERY.replace(":15", ":20"), QUERY)) {
+        JsonNode conflict = body(send(BASE + "/" + id + "/queries", changed, OWNER), 200);
+        assertThat(conflict.path("state").asText()).isEqualTo("REQUEST_CONFLICT");
+        assertThat(conflict.path("recommendationPlan").isNull()).isTrue();
+      }
+      release.countDown();
+      assertThat(body(pending, 200)).isEqualTo(body(joined, 200));
+      JsonNode replay = body(send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER), 200);
+      assertThat(replay.path("state").asText()).isEqualTo("ALREADY_FINISHED");
+      assertThat(replay.path("recommendationPlan").isNull()).isTrue();
+      verify(adapter, times(1)).search(any());
+      String next =
+          PLANNED_QUERY.replace("\"generation\":1", "\"generation\":2").replace(":15", ":20");
+      JsonNode updated = body(send(BASE + "/" + id + "/queries", next, OWNER), 200);
+      assertThat(
+              updated
+                  .path("recommendationPlan")
+                  .path("requirements")
+                  .path("maxWaitMinutes")
+                  .asInt())
+          .isEqualTo(20);
+      verify(adapter, times(2)).search(any());
+    } finally {
+      release.countDown();
+    }
+  }
+
+  @Test
+  void screenCloseSuppressesAnInFlightRecommendation() throws Exception {
+    UUID id = open();
+    CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+    when(adapter.search(any()))
+        .thenAnswer(
+            invocation -> {
+              entered.countDown();
+              release.await();
+              return EMPTY;
+            });
+    try {
+      MvcResult pending = send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER);
+      assertThat(entered.await(1, TimeUnit.SECONDS)).isTrue();
+      body(send(BASE + "/" + id + "/close", "{}", OWNER), 200);
+      JsonNode closed = body(pending, 200);
+      assertThat(closed.path("state").asText()).isEqualTo("CLOSED");
+      assertThat(closed.path("places")).isEmpty();
+      assertThat(closed.path("recommendationPlan").isNull()).isTrue();
+      body(send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER), 404);
+      verify(adapter, times(1)).search(any());
+    } finally {
+      release.countDown();
+    }
   }
 
   @Test
@@ -253,14 +427,16 @@ class PlacePreviewApiTest {
               return EMPTY;
             });
     try {
-      MvcResult pending = send(BASE + "/" + id + "/queries", QUERY, OWNER);
+      MvcResult pending = send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER);
       assertThat(entered.await(1, TimeUnit.SECONDS)).isTrue();
       assertThat(
               body(send(BASE + "/" + id + "/cancel", "{\"generation\":2}", OWNER), 200)
                   .path("cancelledWork")
                   .asBoolean())
           .isTrue();
-      assertThat(body(pending, 200).path("state").asText()).isEqualTo("CANCELLED");
+      JsonNode cancelled = body(pending, 200);
+      assertThat(cancelled.path("state").asText()).isEqualTo("CANCELLED");
+      assertThat(cancelled.path("recommendationPlan").isNull()).isTrue();
       assertThat(
               body(
                       send(
@@ -299,14 +475,17 @@ class PlacePreviewApiTest {
               return EMPTY;
             });
     try {
-      MvcResult old = send(BASE + "/" + id + "/queries", QUERY, OWNER);
+      MvcResult old = send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER);
       assertThat(entered.await(1, TimeUnit.SECONDS)).isTrue();
       String next =
-          QUERY.replace("\"generation\":1", "\"generation\":2").replace("127.055", "127.056");
+          PLANNED_QUERY
+              .replace("\"generation\":1", "\"generation\":2")
+              .replace("127.055", "127.056");
       MvcResult current = send(BASE + "/" + id + "/queries", next, OWNER);
       JsonNode oldBody = body(old, 200);
       assertThat(oldBody.path("state").asText()).isEqualTo("SUPERSEDED");
       assertThat(oldBody.path("places")).isEmpty();
+      assertThat(oldBody.path("recommendationPlan").isNull()).isTrue();
       release.countDown();
       JsonNode currentBody = body(current, 200);
       assertThat(currentBody.path("generation").asLong()).isEqualTo(2);
@@ -367,10 +546,14 @@ class PlacePreviewApiTest {
               return EMPTY;
             });
     try {
-      JsonNode result = body(send(BASE + "/" + id + "/queries", QUERY, OWNER), 200);
+      JsonNode result = body(send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER), 200);
       assertThat(result.path("state").asText()).isEqualTo("TIMED_OUT");
       assertThat(result.path("places")).isEmpty();
-      assertThat(body(send(BASE + "/" + id + "/queries", QUERY, OWNER), 200).path("state").asText())
+      assertThat(result.path("recommendationPlan").isNull()).isTrue();
+      assertThat(
+              body(send(BASE + "/" + id + "/queries", PLANNED_QUERY, OWNER), 200)
+                  .path("state")
+                  .asText())
           .isEqualTo("ALREADY_FINISHED");
       verify(adapter, times(1)).search(any());
     } finally {
