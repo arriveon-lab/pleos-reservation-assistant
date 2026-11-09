@@ -1,5 +1,9 @@
 # 구현·검증 현황
 
+## 2026-11-09 UX-02 실제 CarUxRestrictions 연결 (#25)
+
+공개 SDK35 adapter·초기 UNKNOWN·제한/실패 차단·listener 해제·늦은 callback 무효화·승인/전송 직전 검사를 구현했습니다. Pleos API34에서 실제 초기값(false/0), 종료·재진입·Activity 재생성을 확인했고 제한/실패 주입 시 승인 창 종료와 이전 승인 차단을 검증했습니다. 실제 moving callback/서비스 장애·물리 회전·release/영상·공동 인수는 미완료입니다. [검증 기록](UX25_CAR_RESTRICTIONS.md)을 우선하며 아래 미연동 표기는 과거 이력입니다. verifyAll·UX58개·MOCK smoke 성공, 원격 CI는 PR 최신 head에서 별도 확인합니다. #25/#5 OPEN과 Draft를 유지하며 #1 담당 범위는 변경하지 않습니다.
+
 2026-11-09 추가: #19 최신 `5526f92`의 계약/제품 로직이 이전 검증본과 동일함을 대조하고 최신 격리 JAR로 Pleos 후보·조건·수명 시나리오를 다시 실행했습니다. `docs/UX26_PREVIEW_VALIDATION.md`에 실제/주입 결과를 구분했습니다. 공동 인수·실제 차량 제한 완료는 아닙니다.
 
 ## 2026-11-09 UX-03 조건별 미리보기 초안 연결 (#26)
