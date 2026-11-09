@@ -2,6 +2,12 @@
 
 2026-11-09. 추천/장소 담당 `tiemo0708`, 화면 협업 `soyeong03`. [#16](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16) / [Draft PR #19](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/19)와 [#26](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/26)을 연결합니다. **서버 MOCK 계약 제안이며 화면 담당의 합의·Android 연결 완료가 아닙니다.** #19는 main에 미병합입니다.
 
+## 2026-11-09 화면 담당 정적 검토 반영
+
+[#26 담당의 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)을 확인했습니다. 초안0.2.0-draft의 현재 필드에 추가 차단 사항은 없다는 정적 검토이며 Android 구현/공동 기기 인수는 미완료입니다. 앱 인원 범위(성인1–8/아동0–6)는 화면 정책으로 두고 서버 계약 범위와 구분합니다.
+
+서버 측에서도 다음 두 경계를 확인합니다. 앱 복귀 시 완료 미리보기 결과를 다시 표시/복원하지 않고 비운 상태에서 사용자의 명시적 새 검색을 기다립니다. 현재 추천 후보의 ordinal을 예약 candidateId로 변환하거나 발신 승인으로 바꾸는 API는 없습니다. bookable/inquiryDispatchAllowed=false이면 문의·예약 조작을 제공하지 않습니다. 웹 상세정보 보강의 후속 구현도 이 계약에 임의 필드를 추가하거나 UNKNOWN을 발신 허가로 바꾸지 않습니다.
+
 ## 이번 서버 제공 범위
 
 - main의 인증 계약 1.1.0과 추천 평가기를 사용합니다. `/api/v1` 경로·인증 구현·DB는 변경하지 않습니다.
@@ -50,7 +56,7 @@
 
 아래 체크는 **공동 인수 대기**입니다. 서버 단위/HTTP 검사 통과로 Android 체크를 대신하지 않습니다.
 
-- [ ] #26에서 `0.2.0-draft` 요청·응답·오류와 UI에 필요한 필드를 검토하고 합의 결과를 #16에 남긴다.
+- [x] #26에서 `0.2.0-draft` 요청·응답·오류를 정적 검토하고 현재 필드로 진행 가능하다는 답변을 #16에 남겼다. 실제 화면/기기 인수와 구분한다.
 - [ ] 성인2/아동1·주차 필수·한식 선호·최대15분에서 후보 3개·근거·미확인 질문을 표시한다.
 - [ ] 0건/범위 밖/실패를 다르게 표시하고 UNKNOWN을 예약 가능/확정으로 바꾸지 않는다.
 - [ ] 조건 변경은 새 세대를 사용하고 같은 세대 조건 충돌을 자동 재시도하지 않는다.

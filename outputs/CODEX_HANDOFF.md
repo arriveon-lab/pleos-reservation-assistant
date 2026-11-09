@@ -1,5 +1,12 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-09 #16 화면 담당 정적 검토·최신 main 반영
+
+- #26 담당의 [정적 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)을 확인하고 인수 문서에 반영했습니다. 현재 초안0.2.0 필드로 진행 가능하며 앱 복귀 시 완료 결과를 비운 상태에서 명시적 새 검색을 기다립니다. ordinal을 예약ID로 변환하거나 발신 승인으로 사용하는 API는 없습니다. 정적 합의를 Android 구현/공동 기기 인수 완료로 세지 않습니다.
+- main abd9aa4를 공유 이력 보존으로 반영하고 CI/PLAN/STATUS/HANDOFF 충돌을 양쪽 내용 유지로 해소했습니다. PR #35의 미병합 코드를 가져오지 않았습니다. 기존 REC-08 계약 JSON의 캐시 복원을 위해 Gradle test 산출물을 선언했습니다.
+- Java329개·Python 호출자7개/품질15개·가상HTTP137건/위험변형5개·추천계약2개·JAR 토큰HTTP16건/기존MOCK/H2재시작/LIVE차단 검증을 통과했습니다. 외부 장소/웹상세정보/전화/AI/유료 요청은0회이며 Android 코드/화면/기기는 미검증입니다.
+- 웹 상세정보 보강은 하위 #37에서 별도 공통 모듈로 구현하고 #16에 연결합니다. 기존0.2.0/1.1.0 필드를 변경하지 않으며 실제 데이터 조건은 #11, 화면 구현/기기 인수는 #26, ETA는 #1에 남아 #16 OPEN/PR #19 Draft를 유지합니다.
+
 ## 2026-11-09 #16 추천·질문 응답과 #26 화면 인수
 
 - 사용자 요청으로 화면 담당에게 전달할 [공통 인수안](../docs/REC05_UI_HANDOFF.md)과 조건 포함 요청/가상 응답을 준비하고, 최신 main `35e22a8`의 순수 평가기를 opt-in MOCK 미리보기 HTTP에 연결했습니다. 공유 브랜치 feat/16-place-preview-integration / Draft PR #19에서 진행하며 force push·main 직접 push·다른 담당 코드 변경은 없습니다.
