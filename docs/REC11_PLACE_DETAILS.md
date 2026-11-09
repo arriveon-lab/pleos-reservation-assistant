@@ -26,7 +26,7 @@
 
 필드별 `REPORTED / UNKNOWN / CONFLICT`를 반환합니다. 서로 다른 출처가 다르면 최종 값을 null로 남기고 양쪽 근거를 보존합니다. 반복되는 동일 값은 근거를 합칩니다. 미지원 일반 HTML 문장·PDF·이미지·JavaScript 페이지·커스텀 JSON-LD context는 추론으로 메우지 않습니다. 매장 타입도 현재 음식점 계열이며 다른 예약 업종은 후속 확장입니다.
 
-각 근거는 URL, observedAt, sourceUpdatedAt, validUntil, certainty, scope, appliesAt을 포함합니다. sourceUpdatedAt/TZ가 없으면 null이고 조회 시각으로 덮어쓰지 않습니다. 웹 보고는 GENERAL/appliesAt=null이며, 표시 기한은 목록의 기한과 페이지 관측 후5분 중 짧은 값입니다. 이5분은 화면 표시 수명이며 원 정보의 최신성을 보증하지 않습니다. future/stale 관측은 채택하지 않습니다.
+각 근거는 URL, sourceType=WEB_JSON_LD, observedAt, sourceUpdatedAt, validUntil, certainty, scope, appliesAt을 포함합니다. sourceUpdatedAt/TZ가 없으면 null이고 조회 시각으로 덮어쓰지 않습니다. 웹 보고는 GENERAL/appliesAt=null이며, 표시 기한은 목록의 기한과 페이지 관측 후5분 중 짧은 값입니다. 이5분은 화면 표시 수명이며 원 정보의 최신성을 보증하지 않습니다. future/stale 관측은 채택하지 않습니다.
 
 주차·아동 질문은 명시적 필수 조건에 따라 만들고 아동 동행이면 아동 조건을 추가합니다. 웹 보고가 true인 일반 조건은 상세정보의 `remainingQuestions`에서 제외할 수 있지만 `ARRIVAL_WAIT_MINUTES`와 `ARRIVAL_RESERVATION_AVAILABLE`은 항상 남습니다. false·충돌·미확인 필수 조건은 남습니다. 기존 평가기의 questions는 기초 계획으로 유지하며 caller가 상세정보의 남은 질문과 구분해 표시해야 합니다. 모든 결과의 bookable·inquiryDispatchAllowed는 false입니다.
 

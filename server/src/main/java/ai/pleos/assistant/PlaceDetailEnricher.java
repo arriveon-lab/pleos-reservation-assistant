@@ -42,6 +42,10 @@ public final class PlaceDetailEnricher {
     CONFLICT
   }
 
+  public enum SourceType {
+    WEB_JSON_LD
+  }
+
   public enum Outcome {
     DETAILS,
     UNKNOWN,
@@ -109,6 +113,7 @@ public final class PlaceDetailEnricher {
 
   public record Evidence(
       URI url,
+      SourceType sourceType,
       Instant observedAt,
       Instant sourceUpdatedAt,
       Instant validUntil,
@@ -221,6 +226,7 @@ public final class PlaceDetailEnricher {
         var evidence =
             new Evidence(
                 page.url(),
+                SourceType.WEB_JSON_LD,
                 page.observedAt(),
                 parsed.updatedAt(),
                 pageExpiry.isBefore(listingValidUntil) ? pageExpiry : listingValidUntil,

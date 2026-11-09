@@ -122,6 +122,7 @@ class PlaceDetailEnricherTest {
     assertThat(report.bookable()).isFalse();
     assertThat(report.inquiryDispatchAllowed()).isFalse();
     Evidence evidence = detail(report, Field.CUISINE).evidence().getFirst();
+    assertThat(evidence.sourceType()).isEqualTo(SourceType.WEB_JSON_LD);
     assertThat(evidence.scope()).isEqualTo(Model.Scope.GENERAL);
     assertThat(evidence.appliesAt()).isNull();
     assertThat(evidence.sourceUpdatedAt()).isNull();
