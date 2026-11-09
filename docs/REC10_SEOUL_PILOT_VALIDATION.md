@@ -1,49 +1,73 @@
 # REC-10 시범 지역 교차 검사와 인증키 준비
 
-2026-11-09 KST, 담당 tiemo0708, [#34](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/34). [REC-09](REC09_SEOUL_DATA_VALIDATION.md)의 PR #33을 사용자 진행 지시에 따라 `abd9aa4`로 squash merge하고 #32를 종료했습니다. 후속 작업은 이 main에서 만든 `feat/34-seoul-pilot-validation`입니다. 다른 Draft PR이나 팀원 코드는 병합하지 않았습니다.
+2026-11-09 KST, 담당 tiemo0708, [#34](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/34) / [PR #35](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/35). 공식 상태 코드와 키 없는 HTTPS 표 경로를 확인하고 **행정상 영업 상태01의 첫1000행**을 교차 검사했습니다. 1km·전화형식·상호/도로명주소까지 만족한 것은115행입니다. 입력 범위의 인허가 기록이며 서로 다른 현재 영업 매장115곳·예약 가능115곳을 뜻하지 않습니다.
 
-## 준비된 것과 미검증
+선행 REC-09 PR #33은 사용자 진행 지시로 `abd9aa4`에 squash merge돼 #32가 종료됐습니다. 이 main에서 `feat/34-seoul-pilot-validation`을 만들었으며 다른 Draft PR/팀원 코드는 병합하지 않았습니다.
 
-- 사용자 명시 동의 후 일반 인증키1개를 발급했고 성공 안내와 새 키 정상 상태를 확인했습니다. 기존 키는 변경하지 않았습니다. 새 키는 Git 제외 로컬 디렉터리0700/파일0600에 보관하며 팀원·CI와 공유하지 않습니다. 발급은 데이터 API 인증 성공과 다릅니다.
-- [신청 약관](https://data.seoul.go.kr/etc/accessTerms.do) 제7조의 발급 회원 본인 사용·타인 제공/공유 금지를 확인했습니다. 개인 개발용 키를 팀 공용 서비스의 운영 키로 승인받았다고 해석하지 않습니다. 출처 표시는 데이터셋 공공누리 조건과 서비스 약관을 함께 확인합니다. 관리 이메일·키/일부 문자/해시·키 관리 화면은 공개 문서에 넣지 않습니다.
-- [공식 명세](https://data.seoul.go.kr/dataList/openApiView.do?infId=OA-18655&srvType=A)의 추가 선택 요청 인자는 OPNSFTEAMCODE입니다. 영업 상태·반경 검색 인자는 확인되지 않았으므로 수신 범위 안에서만 로컬 교차 검사합니다. 첫1000행도 지역 전체나 대표 표본이 아닙니다.
-- 코드/명칭·상세 상태 사전, batch/version·시간대는 확보 전입니다. 필드 존재와 코드 값 의미 검증은 다릅니다. 행 수정일·조회 시각으로 snapshot을 만들지 않습니다.
+## 공식 상태 코드 근거
 
-## 전송 경로 확인
+[공공데이터포털의 제공 표준20차 원문](https://www.data.go.kr/bbs/rcr/selectRecsroom.do?originId=PDS_0000000001252)을 확보했습니다. 게시2025-11-17·수정2026-03-03, 첨부 전문2,664,887bytes의 **127) 일반음식점**에서 확인했습니다. [참조 메타데이터](quality/rec10-status-reference.json)에 URL·문서 SHA256·절·코드/필드 의미만 기록하며 원문 전체/예시 매장 정보는 Git에 넣지 않습니다. 문서 해시는 매장/연락처 해시가 아닙니다.
 
-[공식 이용 안내](https://data.seoul.go.kr/together/guide/useGuide.do)는 HTTP:8088 경로에 키를 포함하는 예시를 제공합니다. 개인 키 없이 openapi.seoul.go.kr:443에 TLS 연결을 한 번 시도했지만 TimeoutError였으며 애플리케이션 요청은 보내지 않았습니다. 한 환경의 timeout만으로 모든 HTTPS 경로가 없다고 단정하지 않습니다. 인증서 검증을 끄거나 HTTP로 개인 키를 보내지 않았습니다.
+| 필드 | 확인한 값/의미 |
+| --- | --- |
+| 영업상태구분코드 | 01 영업/정상,02 휴업,03 폐업,04 취소/말소/만료/정지/중지 |
+| 상세영업상태코드 | 01 영업,02 폐업 |
+| 폐업일자 | 폐업한 일자, 선택 항목 |
+| 최종수정/갱신 시점 | 행 수정/갱신 시각, 날짜·시간 형식. 시간대와 데이터셋 snapshot은 확인되지 않음 |
 
-[서울시 공개 답변](https://data.seoul.go.kr/together/notice/inquireView.do?bbsCd=10003&ditcCd=QNA01&seq=1d2186fcde0d53cbbb2814bec743624a)은 citydata_ppltn 문의에 HTTPS를 제공할 수 없다고 답합니다. **다른 서비스에 대한 답변**이며 OA-18655의 최종 확인으로 확대하지 않습니다. 해당 API의 지원 경로 또는 키 없는 공식 파일 공급 경로를 확인한 뒤 추가 실제 조회를 진행합니다. 새 문의 발송·약관 동의·다른 공급자 가입은 이번에 하지 않았습니다.
+[OA-18655 명세](https://data.seoul.go.kr/dataList/openApiView.do?infId=OA-18655&srvType=A)의 대응 필드명을 사용합니다. 기존 실험 튜플은 표준의 정상 코드와 일치합니다. 이제 코드/명칭 충돌·행정 상태와 상세 상태의 상충·미인식 코드·폐업일 값 존재를 구분합니다. 실제1000행은 정상 코드/명칭 조합을 모두 만족했습니다. 행정상 정상은 지금 영업 중·빈자리·예약 가능 확인이 아닙니다.
 
-[상태 근거 JSON](quality/rec10-validation-state.json)에 문서 확인·TLS 관측·미검증을 구분했습니다. 이번 데이터 API 호출0회·키 전송0회입니다. 기존 REC-09 공개 sample1회 상한을 재사용하지 않았습니다.
+**좌표 근거 차이:** 일반 제공 표준은 EPSG:2097을 표기하지만 [해당 데이터셋 카탈로그](https://data.seoul.go.kr/dataList/OA-18655/A/1/datasetView.do)와 원천 카탈로그는 EPSG:5174를 안내합니다. 데이터셋별 명시를 우선해5174를 유지하며 근거 차이를 출력합니다. 범용 표준으로 일괄 변환하지 않았고 실제 매장 좌표의 측량 정확도를 검증했다고 주장하지 않습니다.
 
-## 오프라인 교차 검사
+## 키와 취득 경로
 
-기존 [품질 도구](../scripts/seoul-place-quality.py)에 `--pilot-screening`을 추가했습니다. HTTP/키 로딩 기능은 없으며 기본 명령은 기존 프로파일만 반환합니다. 옵션을 켜면 입력 batch의 **같은 행**에서 다음 순서의 누적 수와 최초 탈락 사유를 집계합니다. 실제 행·연락처·좌표·관리번호·해시는 출력하지 않습니다.
+사용자 명시 동의 후 개인 개발용 일반 키1개를 발급해 정상 상태를 확인했습니다. Git 제외 로컬 디렉터리0700/파일0600 보관, 기존 키 변경 없음입니다. [약관](https://data.seoul.go.kr/etc/accessTerms.do) 제7조의 본인 사용·타인 제공/공유 금지를 유지하며 팀/CI에 공유하지 않습니다. 이메일·키/일부 문자/해시·키 화면은 Git에 넣지 않습니다.
 
-1. 비어 있지 않고 batch 안에서 한 번만 나타나는 MGTNO. 동일 중복도 그룹 전체를 제외하고 첫 행을 임의 채택하지 않습니다. 검사 필드·상세 상태·폐업일이 다른 중복 그룹은 별도로 집계합니다.
-2. **미검증 실험 가정** `(TRDSTATEGBN, TRDSTATENM, DTLSTATEGBN, DTLSTATENM) = (01, 영업/정상, 01, 영업)` 일치와 명시적으로 빈 DCBYMD. 확정 코드 사전이 아니며 `statusRule.verification=UNVERIFIED_FOR_OA18655`를 항상 내보냅니다. 태그/값 누락·다른 튜플·폐업일 값은 제외하고 미확인/불일치 집계로 보존합니다. `1`, `영업중` 등을 같은 값으로 바꾸지 않습니다.
-3. EPSG:5174 유효 좌표를 기존 네트워크OFF PROJ 설정으로 변환. 공개 시범 중심 경도127.055/위도37.544로부터 구면 직선거리1000m 이내. `1000 < 거리 <= 1030m`는 진단 경계 구간으로 따로 집계하며 통과시키지 않습니다. 도로거리·ETA·측량 정확도 보장이 아닙니다.
-4. 전화 기본 형식 `SYNTAX_ONLY`. 누락·미인식·placeholder·이동전화 검토는 제외합니다. 형식 통과는 소유자·응답·발신 동의·AI 처리 권한을 보장하지 않습니다.
-5. 상호와 도로명주소가 비어 있지 않은지 확인. 주소 종류 대체나 다른 공급자 데이터 조인은 하지 않습니다.
+키 있는 OpenAPI의 HTTPS는 미확인입니다. 앞선 키 없는443 연결은 timeout이었고, [다른 서비스의 서울시 답변](https://data.seoul.go.kr/together/notice/inquireView.do?bbsCd=10003&ditcCd=QNA01&seq=1d2186fcde0d53cbbb2814bec743624a)은 HTTPS 미제공을 안내합니다. 이를 모든 서비스의 결론으로 확대하거나 개인 키를 HTTP로 보내지 않았습니다. 공공데이터포털이 연결한 원천 파일 안내 경로도 접근 거절을 확인했습니다.
 
-`screenedRecords`는 위 **실험 가정을 만족한 입력 행 수**이며 실제 추천 후보나 물리적으로 서로 다른 매장 수가 아닙니다. `productionCandidateCount=null`, `readyForRecommendation=false`, `adoptionReady/bookable/inquiryDispatchAllowed=false`를 유지합니다. 정상0건도 입력 범위의 집계이며 지역에 매장이 없다는 뜻이 아닙니다. 빈 batch는 UNKNOWN_EMPTY입니다. 분모·중복 그룹·누적 단계·최초 탈락 합계를 함께 표시합니다.
+대신 [공식 Sheet 메타데이터](https://data.seoul.go.kr/dataList/sheetView.do?infId=OA-18655&srvType=S)의 표 조회 기능이 사용하는 `https://data.seoul.go.kr/dataList/dataView.do`를 확인했습니다. 원래 성동구 조건을 유지하고, 화면에 있는 영업상태코드 필터01·page1·최대1000행으로 읽었습니다. **공식 웹 표의 제한된 점검 경로**이며 안정적인 제품 API 계약/운영 수집 허가로 채택하지 않습니다. 키 발급/키 인증 API와 별도이며 이 경로에는 개인 키를 보내지 않았습니다.
 
-## 재현과 검증
+## 실제 실행과 범위
+
+첫 요청은 HTTP200·882,435bytes였으나 레거시 객체 응답을 엄격한 JSON으로 읽어 실패했습니다. 원문을 저장/재조회하거나0건으로 바꾸지 않았습니다. 그 전에 있었던 로컬 Python import 오류는 네트워크 전 중단으로 실제 호출0회입니다.
+
+사용자가 최대1회 추가 조회를 명시 승인했습니다. 추가 요청은 HTTP200·882,166bytes·1000행이며 원문을 프로세스 메모리에만 유지했습니다. 파서 수정 후 같은 메모리를 재분석하고 프로세스 종료로 폐기했습니다. 추가 네트워크 재시도/다음 페이지는 없습니다. 두 요청 모두 HTTPS·키 없음·2MiB 상한·0원입니다. **이번 실제 데이터 요청은 총2회(첫1+승인 추가1)**, 전화/Kakao/AI/유료 호출0회입니다. 기존 공개 sample 상한을 재사용하지 않았습니다.
+
+응답은 text/html;charset=UTF-8의 객체 형태로 따옴표 없는 식별자 키·끝 쉼표를 포함합니다. 파서는 문자열 내부를 보존하며 이 두 문법만 정규화한 뒤 JSON으로 검사합니다. eval/JavaScript 실행·주석·함수 값·추가 실행문·단일 인용 문자열은 허용하지 않습니다. 중복 키·인코딩·행/크기·필드 한도·메타데이터/실패 경계를 검사합니다. null 폐업일은 빈 문자열로 바꾸지 않고 미확인으로 유지합니다.
+
+[실제 집계](quality/rec10-public-sheet-2026-11-09.json)는 행·상호·연락처·주소·좌표·ID/해시 없이 개수만 보존합니다. 응답은 필터된 총3959행·pageNo1·pageCount40을 보고했지만 pageSize는 없었습니다. 요청 상한/pageCount로 pageSize를 추정하지 않고 null로 남깁니다. 수신1000행은 전체/대표 표본이 아니며 나머지 페이지를 스캔하지 않았습니다. request 시작·로컬 분석 시각과 원본 snapshot 시각도 구분합니다.
+
+| 검사 | 실제 수신1000행에서 관측 |
+| --- | --- |
+| 관리번호·상호/정상 상태 | 결측/ID 중복·충돌0, 정상 코드/명칭1000 |
+| 좌표 | 누락82, 유효 변환918, 입력 있는 행 변환 오류0 |
+| 전화 | 누락719(71.9%), 기본 형식273, placeholder1, 미인식7 |
+| 도로명주소 | 누락3 |
+| 1km 교차 단계 | 유일ID1000 → 정상1000 → 유효좌표918 → 1000m 이내433 → 전화형식116 → 상호/도로명주소115 |
+| 반경 경계 | 1000m 초과~1030m8행 제외, 1030m 밖477행 제외 |
+| 원본 batch/version·시간대 | 미확인, snapshot 최신성UNKNOWN 유지 |
+
+전화 형식은 번호 소유/최신성/응답/동의의 증명이 아닙니다. 누락률을 전체3959행의 품질로 일반화하지 않습니다. 반경은 EPSG/시범 중심 가정 아래 구면 직선거리이며 도로거리/ETA가 아닙니다.
+
+## 도구와 가상 검증
+
+[독립 도구](../scripts/seoul-place-quality.py)는 네트워크/키 로딩 없이 기본 MOCK 또는 허용된 로컬 입력만 처리합니다. `--pilot-screening`은 같은 행의 유일 MGTNO·정상 상태/빈 폐업일·유효 좌표·1000m·전화형식·상호/도로명주소를 교차 집계합니다. 동일 중복도 그룹 전체를 제외하고 최초 탈락/누적 합계·분모를 함께 출력합니다. 정상0건/실패·빈 batch UNKNOWN_EMPTY를 구분합니다.
+
+`screenedRecords`는 입력 인허가 기록의 진단 통과 수입니다. `productionCandidateCount=null`, `readyForRecommendation=false`, `adoptionReady/bookable/inquiryDispatchAllowed=false`를 유지합니다. 서버 bean·adapter·공개 API·DB·예약에 연결하지 않았습니다.
 
 ```bash
 work/contract-venv/bin/python -m unittest discover -s scripts/tests -p 'test_seoul_place_quality.py'
 work/contract-venv/bin/python scripts/seoul-place-quality.py --pilot-screening
+# 별도 허용받아 이미 확보한 로컬 입력만 처리. 도구 자체가 내려받지 않음
+work/contract-venv/bin/python scripts/seoul-place-quality.py --input work/allowed-sheet.json --input-format sheet-json --pilot-screening
 ```
 
-품질 의존성 설치는 [REC-09 재현 절차](REC09_SEOUL_DATA_VALIDATION.md#검증과-재현)를 따릅니다. 별도 notebook/실제 행 fixture/새 런타임 의존성은 없습니다.
+의존성 설치는 [REC-09](REC09_SEOUL_DATA_VALIDATION.md#검증과-재현)를 따릅니다. 가상40개(기존29+신규11)를 통과했습니다. 상태 사전/충돌·좌표 근거 차이·레거시 파싱·결측/중복/메타데이터·비노출을 검사하며 실제 행은 fixture가 아닙니다. MOCK 가상3행의 통과0행을 실제115행과 혼동하지 않습니다. 새 의존성 없음, Gradle format/verify 성공(Java 테스트 UP-TO-DATE)입니다.
 
-기존15개와 신규14개, 총29개 가상 테스트를 통과했습니다. 동일 행 교집합·주변 집계만 각각 통과하는 반례, 상세 상태/폐업일 결측과 코드 변형, 모든 중복 행 제외·순서 독립성, 유효/불량/반경 경계, 연락처 검토, 기본 정보 누락, 합계/분모와 출력 비노출을 확인합니다. 양성 교집합 테스트는 전화 분류 경계만 가상 값으로 대체하여 발신 가능한 번호를 fixture로 만들지 않습니다. CLI MOCK에는 실제 연락처가 없으므로 최종 통과0건이며 테스트 양성과 구분합니다.
+앞선 CI의 REC-08 계약 파일 캐시 누락은 test 산출물 선언으로 수정했습니다. 당시 Java268개 재실행·파일 제거 후 FROM-CACHE 복원·계약2개를 통과했습니다. 이번 Python/문서 변경을 Java 재실행/기기 검증으로 세지 않습니다. 원격 CI는 최신 PR head가 기준입니다.
 
-CI에도 가상 옵션 실행을 추가했고 실제 네트워크 조회·키를 요구하지 않습니다. `./gradlew -PincludeAndroid=false format verify`는 처음 Java 테스트를 FROM-CACHE로 복원했습니다. 원격 CI에서 기존 REC-08 계약 파일이 캐시 복원 대상에 없어 검사 실패를 확인했고, server/build.gradle.kts의 test 산출물에 해당 가상 JSON을 선언했습니다. 수정 후 Java268개를 재실행해 실패/오류/skip0을 확인했으며, 생성 파일을 Git 제외 work로 옮긴 뒤 test FROM-CACHE가 파일을 복원하고 계약 검사2개가 통과하는 것까지 검증했습니다. 서버 런타임/Android/API/DB/예약 코드는 변경하지 않았고 Gradle 테스트 산출물 선언만 보강했습니다. 원격 CI 결과는 PR 최신 head에서 확인하며 기기/실데이터 검증으로 세지 않습니다.
+## 종료 범위와 제품 후속
 
-## 남은 완료 조건
+#34 인수는 공식 상태 근거·개인 키 준비·안전한 실제 접근/제한 표본·오프라인 교차 도구/검증/한계 기록입니다. batch/version/TZ는 확인된 값이 없어 UNKNOWN을 보존하는 완료 조건을 따릅니다. 키 있는 OpenAPI 인증은 이번 경로에서 불필요해 실행하지 않았으며, 운영 경로/팀 계정·원본 최신성/CRS 차이·추가 품질/저장·전달 판단은 **기존 #11의 공급자 채택 인수**에 남깁니다. 원래 키 인증 검토를 실제 인증 성공으로 바꾸지 않습니다.
 
-#34는 OPEN으로 유지합니다. 공식 상태 사전·원본 batch/TZ·안전한 전송 경로와 접근 성공·실제 지역/현행 행 품질은 미검증입니다. 접근이 준비되면 최대1회/1–1000행/2MiB·자동 재시도/redirect/추가 페이지 없음의 최소 범위에서 확인하고, 원문은 메모리 처리·집계만 보존합니다. 상한이 정해졌다는 이유로 호출했다고 기록하지 않습니다.
-
-#11 공급자 채택·저장/삭제/전달, #3 발신/번호/비용/AI 고지, #4 운영 모델, #26 출처/UNKNOWN 표시와 기기 인수는 별도입니다. 이번 실제 음식점 조회·Kakao·전화·AI·유료 호출은0회이며 제품 MOCK/LIVE 차단을 유지합니다.
+#3 발신/번호/비용/AI 고지, #4 운영 모델, #26 출처/UNKNOWN 표시와 기기 인수도 별도입니다. #35 병합 전 #34는 OPEN이며 다른 미완료 이슈를 닫지 않습니다. 실제 데이터가 포함된 제품의 LIVE 경계는 계속 차단합니다.

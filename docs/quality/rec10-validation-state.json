@@ -24,7 +24,7 @@
     "otherServiceHttpsReply": "https://data.seoul.go.kr/together/notice/inquireView.do?bbsCd=10003&ditcCd=QNA01&seq=1d2186fcde0d53cbbb2814bec743624a"
   },
   "transport": {
-    "state": "UNVERIFIED_FOR_OA18655",
+    "state": "KEYLESS_SHEET_VERIFIED_KEYED_OPENAPI_UNVERIFIED",
     "documentedScheme": "http",
     "documentedPort": 8088,
     "tlsHost": "openapi.seoul.go.kr",
@@ -36,31 +36,31 @@
     "credentialReadByProbe": false,
     "credentialTransmitted": false,
     "certificateVerificationDisabled": false,
-    "otherServiceReplyScope": "citydata_ppltn only; not proof for all services"
+    "otherServiceReplyScope": "citydata_ppltn only; not proof for all services",
+    "keylessSheetHttpsVerified": true,
+    "keylessSheetEndpoint": "https://data.seoul.go.kr/dataList/dataView.do",
+    "keyedOpenApiHttpsState": "UNVERIFIED_NO_KEY_TRANSMISSION",
+    "publicSheetIsProductionApiContract": false
   },
   "statusRule": {
-    "state": "UNVERIFIED_FOR_OA18655",
-    "experimentalFields": [
-      "TRDSTATEGBN",
-      "TRDSTATENM",
-      "DTLSTATEGBN",
-      "DTLSTATENM"
-    ],
-    "experimentalTuple": [
+    "state": "DOCUMENTED_STANDARD_20_GENERAL_RESTAURANTS",
+    "reference": "rec10-status-reference.json",
+    "codeDictionaryObtained": true,
+    "input1000CodeLabelMatches": 1000,
+    "normalTuple": [
       "01",
       "영업/정상",
       "01",
       "영업"
     ],
-    "codeDictionaryObtained": false,
     "closureTagRequired": true,
     "closureValueMustBeEmpty": true
   },
   "snapshotTimestamp": "UNKNOWN",
   "rowTimeZone": "UNVERIFIED_ASSUMPTION_ASIA_SEOUL",
-  "dataApiRequestsThisStep": 0,
-  "realPilotScreeningResult": null,
-  "fictionalTests": 29,
+  "dataApiRequestsThisStep": 2,
+  "realPilotScreeningResult": "rec10-public-sheet-2026-11-09.json",
+  "fictionalTests": 40,
   "productProviderAdopted": false,
   "bookable": false,
   "inquiryDispatchAllowed": false,

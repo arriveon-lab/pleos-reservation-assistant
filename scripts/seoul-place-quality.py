@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline OA-18655 XML quality profile. No HTTP, row exports, contact values or booking authority."""
+"""Offline OA-18655 XML/sheet profile. No HTTP, row/contact exports or booking authority."""
 import argparse
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -31,7 +31,15 @@ FIELDS = (
 )
 PILOT = (127.055, 37.544)
 PILOT_STATUS_FIELDS = ("TRDSTATEGBN", "TRDSTATENM", "DTLSTATEGBN", "DTLSTATENM", "DCBYMD")
-# Experimental tuple, not a verified OA-18655 code dictionary. Never grants product authority.
+# Public Data Provision Standard, revision 20, section 127 (general restaurants).
+STATUS_STANDARD_URL = "https://www.data.go.kr/bbs/rcr/selectRecsroom.do?originId=PDS_0000000001252"
+ADMINISTRATIVE_STATUS = {
+    "01": "영업/정상",
+    "02": "휴업",
+    "03": "폐업",
+    "04": "취소/말소/만료/정지/중지",
+}
+DETAILED_STATUS = {"01": "영업", "02": "폐업"}
 PILOT_NORMAL_TUPLE = ("01", "영업/정상", "01", "영업")
 
 
@@ -118,6 +126,117 @@ def parse_xml(raw):
     return result
 
 
+def quote_sheet_keys(text):
+    """Normalize identifier keys/trailing commas only; never evaluate JavaScript values."""
+    decoder = json.JSONDecoder()
+    identifier = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
+    chunks, position, previous = [], 0, ""
+    while position < len(text):
+        char = text[position]
+        if char == '"':
+            _, end = decoder.raw_decode(text, position)
+            chunks.append(text[position:end])
+            position, previous = end, '"'
+            continue
+        if char in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$":
+            token = identifier.match(text, position)[0]
+            end = position + len(token)
+            lookahead = end
+            while lookahead < len(text) and text[lookahead].isspace():
+                lookahead += 1
+            is_key = previous in ("{", ",") and lookahead < len(text) and text[lookahead] == ":"
+            chunks.append(json.dumps(token) if is_key else token)
+            position, previous = end, token[-1]
+            continue
+        if char == ",":
+            lookahead = position + 1
+            while lookahead < len(text) and text[lookahead].isspace():
+                lookahead += 1
+            if lookahead < len(text) and text[lookahead] in "]}":
+                position += 1
+                continue
+        chunks.append(char)
+        if not char.isspace():
+            previous = char
+        position += 1
+    return "".join(chunks)
+
+
+def parse_sheet_json(raw):
+    """Local copy of the official HTTPS sheet envelope; no fetching or raw-value exports."""
+    if not isinstance(raw, bytes) or len(raw) > MAX_BYTES:
+        raise QualityError("INPUT_SIZE_LIMIT")
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise QualityError("DUPLICATE_JSON_KEY")
+            result[key] = value
+        return result
+
+    def reject_constant(_value):
+        raise QualityError("INVALID_JSON")
+
+    try:
+        data = json.loads(
+            quote_sheet_keys(raw.decode("utf-8-sig")),
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+    except UnicodeError:
+        raise QualityError("INVALID_ENCODING") from None
+    except (ValueError, RecursionError):
+        raise QualityError("INVALID_JSON") from None
+    if not isinstance(data, dict) or data.get("result") != "ok":
+        raise QualityError("SHEET_RESULT_NOT_SUCCESS")
+    source_rows, page = data.get("list"), data.get("page")
+    if not isinstance(source_rows, list) or not isinstance(page, dict):
+        raise QualityError("INVALID_SHEET_SHAPE")
+    if len(source_rows) > MAX_ROWS:
+        raise QualityError("ROW_LIMIT")
+    metadata = {}
+    for field in ("pageNo", "totalCount"):
+        value = page.get(field)
+        if isinstance(value, bool) or not re.fullmatch(r"\d{1,12}", str(value)):
+            raise QualityError("INVALID_PAGE_METADATA")
+        metadata[field] = int(value)
+    if not (metadata["pageNo"] >= 1 and metadata["totalCount"] >= len(source_rows)):
+        raise QualityError("INVALID_PAGE_METADATA")
+    metadata["pageSize"] = None
+    if "pageSize" in page:
+        size = page["pageSize"]
+        if isinstance(size, bool) or not re.fullmatch(r"\d{1,4}", str(size)):
+            raise QualityError("INVALID_PAGE_METADATA")
+        if not (1 <= int(size) <= MAX_ROWS and len(source_rows) <= int(size)):
+            raise QualityError("INVALID_PAGE_METADATA")
+        metadata["pageSize"] = int(size)
+    if "pageCount" in page:
+        count = page["pageCount"]
+        if isinstance(count, bool) or not re.fullmatch(r"\d{1,12}", str(count)):
+            raise QualityError("INVALID_PAGE_METADATA")
+        metadata["reportedPageCount"] = int(count)
+    if metadata["totalCount"] > 0 and not source_rows:
+        raise QualityError("UNEXPECTED_EMPTY_PAGE")
+    rows = []
+    for source_row in source_rows:
+        if not isinstance(source_row, dict):
+            raise QualityError("INVALID_ROW_SHAPE")
+        row = {}
+        for field, value in source_row.items():
+            if not isinstance(field, str) or isinstance(value, (dict, list, bool)):
+                raise QualityError("INVALID_ROW_SHAPE")
+            # A null closure value is not proof of an explicitly blank closure date.
+            if value is None and field == "DCBYMD":
+                continue
+            value = "" if value is None else str(value)
+            if len(field) > 128 or len(value) > 4096:
+                raise QualityError("FIELD_SIZE_LIMIT")
+            row[field] = value
+        rows.append(row)
+    return rows, metadata
+
+
 class CoordinateCheck:
     def __init__(self):
         # Explicitly disable PROJ downloads, including environments that set PROJ_NETWORK=ON.
@@ -160,6 +279,9 @@ class CoordinateCheck:
             "operationAccuracyMeters": self.transformer.accuracy,
             "networkEnabled": network.is_network_enabled(),
             "allowBallpark": False,
+            "sourceCrsBasis": "OA18655_DATASET_CATALOG",
+            "genericStandardReferenceCrs": "EPSG:2097",
+            "crsEvidenceState": "DATASET_SPECIFIC_RULE_DIFFERS_FROM_GENERIC_STANDARD",
         }
 
 
@@ -203,9 +325,16 @@ def pilot_status(row):
     values = tuple(row[field].strip() for field in PILOT_STATUS_FIELDS[:-1])
     if not all(values):
         return "MISSING"
-    if values != PILOT_NORMAL_TUPLE:
-        return "OTHER_TUPLE_OR_UNVERIFIED"
-    return "CLOSURE_PRESENT" if row["DCBYMD"].strip() else "NORMAL_TUPLE_MATCH"
+    code, label, detail_code, detail_label = values
+    if code not in ADMINISTRATIVE_STATUS or detail_code not in DETAILED_STATUS:
+        return "UNRECOGNIZED_CODE"
+    if label != ADMINISTRATIVE_STATUS[code] or detail_label != DETAILED_STATUS[detail_code]:
+        return "CODE_LABEL_CONFLICT"
+    if (code == "01" and detail_code != "01") or (code == "03" and detail_code != "02"):
+        return "STATE_CONFLICT"
+    if code == "01":
+        return "CLOSURE_PRESENT" if row["DCBYMD"].strip() else "NORMAL_STATUS"
+    return "CLOSED" if code == "03" else "NOT_NORMAL"
 
 
 def pilot_screening(rows, coordinates):
@@ -222,7 +351,7 @@ def pilot_screening(rows, coordinates):
         (
             "input",
             "uniqueId",
-            "normalTuple",
+            "normalStatus",
             "validCoordinates",
             "within1000m",
             "phoneSyntaxOnly",
@@ -234,7 +363,7 @@ def pilot_screening(rows, coordinates):
         (
             "missingId",
             "duplicateId",
-            "statusUnverifiedOrConflicting",
+            "statusNotNormalOrUnknown",
             "missingCoordinates",
             "invalidCoordinates",
             "boundary1000To1030m",
@@ -246,7 +375,17 @@ def pilot_screening(rows, coordinates):
     )
     status_kinds = Counter(
         dict.fromkeys(
-            ("MISSING", "OTHER_TUPLE_OR_UNVERIFIED", "CLOSURE_PRESENT", "NORMAL_TUPLE_MATCH"), 0
+            (
+                "MISSING",
+                "UNRECOGNIZED_CODE",
+                "CODE_LABEL_CONFLICT",
+                "STATE_CONFLICT",
+                "CLOSURE_PRESENT",
+                "NORMAL_STATUS",
+                "CLOSED",
+                "NOT_NORMAL",
+            ),
+            0,
         )
     )
     for row in rows:
@@ -262,10 +401,10 @@ def pilot_screening(rows, coordinates):
             exclusions["duplicateId"] += 1
             continue
         stages["uniqueId"] += 1
-        if status != "NORMAL_TUPLE_MATCH":
-            exclusions["statusUnverifiedOrConflicting"] += 1
+        if status != "NORMAL_STATUS":
+            exclusions["statusNotNormalOrUnknown"] += 1
             continue
-        stages["normalTuple"] += 1
+        stages["normalStatus"] += 1
         x, y = row.get("X", "").strip(), row.get("Y", "").strip()
         if not x or not y:
             exclusions["missingCoordinates"] += 1
@@ -295,9 +434,12 @@ def pilot_screening(rows, coordinates):
     return {
         "state": "DIAGNOSTIC_ONLY" if n else "UNKNOWN_EMPTY",
         "statusRule": {
-            "verification": "UNVERIFIED_FOR_OA18655",
+            "verification": "DOCUMENTED_STANDARD_20_GENERAL_RESTAURANTS",
+            "source": STATUS_STANDARD_URL,
+            "section": 127,
             "fields": list(PILOT_STATUS_FIELDS),
-            "experimentalNormalTuple": list(PILOT_NORMAL_TUPLE),
+            "normalTuple": list(PILOT_NORMAL_TUPLE),
+            "rowConformanceScope": "INPUT_BATCH_ONLY_NOT_REAL_TIME_OPERATION",
             "closureValueMustBeExplicitlyEmpty": True,
         },
         "statusKinds": dict(status_kinds),
@@ -488,11 +630,19 @@ def fictional_rows():
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, help="Local XML only; never fetched or echoed")
+    parser.add_argument(
+        "--input", type=Path, help="Permitted local XML/sheet; never fetched or echoed"
+    )
+    parser.add_argument(
+        "--input-format",
+        choices=("xml", "sheet-json"),
+        default="xml",
+        help="Explicit format for an already permitted local input",
+    )
     parser.add_argument(
         "--pilot-screening",
         action="store_true",
-        help="Experimental aggregate cross-check; no product candidates",
+        help="Aggregate cross-check; no product candidates",
     )
     parser.add_argument(
         "--snapshot-as-of", help="Verified source snapshot timestamp with UTC offset"
@@ -500,9 +650,14 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         now = datetime.now(timezone.utc) if args.input else instant("2026-11-09T00:00:00Z")
+        page = None
         if args.input:
             with args.input.open("rb") as f:
-                rows = parse_xml(f.read(MAX_BYTES + 1))
+                raw = f.read(MAX_BYTES + 1)
+            if args.input_format == "sheet-json":
+                rows, page = parse_sheet_json(raw)
+            else:
+                rows = parse_xml(raw)
         else:
             rows = fictional_rows()
         result = profile(
@@ -512,6 +667,8 @@ def main(argv=None):
             args.snapshot_as_of,
             args.pilot_screening,
         )
+        if page is not None:
+            result["sheetPage"] = page
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 0
     except Exception as error:
