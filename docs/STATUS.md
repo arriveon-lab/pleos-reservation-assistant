@@ -1,12 +1,17 @@
 # 구현·검증 현황
 
+## 2026-11-10 VOICE-01 Telkit 채택 (#3)
+
+- 팀이 전화 회선으로 Telkit을 사용하기로 결정했습니다(사용자 전달). [업체 검토](calls/VENDOR_REVIEW.md#0-결정-telkit-채택-2026-11-10)에 Telkit 공개 문서·요금·약관을 다시 확인해 LiveKit SIP 연결 조건, 계정당 번호 1개, 동시 4통·발신 하루 500통, 발신 웹훅 없음, 녹음 없음, 요금을 정리했습니다. [INTEGRATIONS](INTEGRATIONS.md#전화-사업자-비교)·ISSUE_GUIDE·PLAN·목차의 미선정 표기를 고쳤습니다.
+- 문서 확인만입니다. Telkit 계정 생성·본인인증·카드 등록·번호 구매·실제 발신·유료 API는 0회이며 제품 코드·API·DB 변경과 Gradle 재실행은 없습니다. 발신 표시 번호, `telkit_call_id` 연결, 한국어 통화 품질, 법률 검토는 미검증입니다.
+
 ## 2026-11-10 INT-01 #52 격리 통합 진행
 
 - GPT 웹추천 일회성 permit에 256~3072 출력 토큰 상한을 추가하고 1024 한도의 요청 본문을 가상 테스트로 확인했다. 이후 모든 추가 호출은 모델·범위·비용 승인을 다시 받은 뒤에만 진행한다.
 - 승인된 `gpt-6-luna` Responses API HTTP 요청을 가상 서울 목적지·주차 조건으로 정확히 1회 실행했다(재시도 없음). HTTP 200/완료, 입력 13,080·출력 534토큰, 응답의 `web_search_call` 항목 2개, 주차 UNKNOWN, 인용 주석 0개였다. 청구 가능한 검색 횟수는 응답에서 확인하지 못했다. 제품 추천으로 채택하지 않았고 추가 API 호출은 없다.
-- 추천 계획과 미리보기 계약에 `highChair`·`stepFreeAccess`를 추가했다. 웹사이트 상세 정보로 두 조건을 자동 충족하지 않고 직접 확인 질문을 남긴다. Java `verify`, 추천 계획 schema, JAR HTTP/계약 smoke를 통과했다. 실제 API 호출은 사용자에게 모델·범위·비용을 설명하고 확인받기 전에는 하지 않는다.
+- 추천 계획과 미리보기 계약에 `highChair`·`stepFreeAccess`를 추가했다. 웹사이트 상세 정보로 두 조건을 자동 충족하지 않고 직접 확인 질문을 남긴다. Java `verify`, 추천 계획 schema, JAR HTTP/계약 smoke를 통과했다. 추가 API 호출은 사용자에게 모델·범위·비용을 설명하고 다시 확인받기 전에는 하지 않는다.
 - PR #53의 이전 schema 불일치 후 새 head의 GitHub Actions 6개가 모두 통과했다. 이전 실패 실행의 기록은 남는다.
-- 웹추천 조건에 `HIGH_CHAIR`와 `STEP_FREE_ACCESS`를 독립 필수 조건으로 추가했다. 일반 아동 친화/접근성 문구로 각각을 추론하지 않고, 근거가 부족하면 UNKNOWN과 전화 확인 질문으로 남긴다. 가상 파서 테스트와 `check-web-recommendation.py`의 loopback 계약 검사를 통과했다. 실제 GPT 호출은 하지 않았다.
+- 웹추천 조건에 `HIGH_CHAIR`와 `STEP_FREE_ACCESS`를 독립 필수 조건으로 추가했다. 일반 아동 친화/접근성 문구로 각각을 추론하지 않고, 근거가 부족하면 UNKNOWN과 전화 확인 질문으로 남긴다. 가상 파서 테스트와 `check-web-recommendation.py`의 loopback 계약 검사를 통과했다.
 - `PublicDestinationRecommendationService`는 로컬 공공 catalog 검색→최대3개 UNKNOWN 후보 계획→소유자별 작업 폴링을 연결한다. 가상 catalog에서 3개 후보/예약·문의 불가와 시범 지역 밖 INVALID_QUERY를 검증했다. Spring/HTTP/Android 호출자·실제 catalog 입력은 아직 없다.
 - 제품 `android/app`에 Pleos NaviHelper 목적지 조회 경계를 추가했다. 별도 버튼으로 명시적 조회하며 목적지 변경/취소/도착/오류/화면 종료에서 기존 관측을 무효화한다. 수신값은 응답 연관성 미확인으로 표시하고 추천·예약/ETA로 자동 전환하지 않는다. 로컬 `verifyAndroid`는 Android SDK 경로가 없어 태스크 의존성 단계에서 중단됐으며 컴파일·Lint·APK·기기 검증은 새 CI에서 판정한다.
 - 서버 `RecommendationJobRegistry`는 같은 화면의 목적지 세대가 바뀌면 이전 비동기 추천 결과를 폐기하고, 소유자별 폴링에서 완료 결과만 재조회한다. 폴링은 공급자 작업을 재실행하지 않는다. 가상 지연·취소·실패·타인 조회 단위 테스트를 통과했다. 현재는 메모리 경계이며 제품 HTTP·Spring 주입·실제 검색 worker는 아직 연결하지 않았다.
@@ -478,6 +483,8 @@ GitHub API로 [추가 코멘트](https://github.com/arriveon-lab/pleos-reservati
 
 **실제 실행 증거:** [독립 시연](REC04_LIVE_SEARCH.md)의 Kakao 1회 성공·3곳 일시 표시·쿼터 1 / 100,000, 비용 0원·전화/예약/AI 0회입니다. 이번 병합 중 추가 실제 호출은 없으며 제품 MOCK/LIVE 차단·응답 미저장을 유지합니다. 앞선 브랜치별 188개/156개 기록과 통합 결과를 구분합니다. 아래 OPEN/Draft·병합 대기 표현은 당시 이력이며 최신 병합 상태는 GitHub가 기준입니다.
 
+**VOICE-01 업체 문서 검토 (2026-11-08, #3 `feat/3-call-normalizer`):** Vox·한국AI통신·Twilio·CLOVA AiCall의 공개 문서·약관·요금을 [업체 검토](calls/VENDOR_REVIEW.md)에 정리했습니다. Vox를 PoC 1순위 후보로 두되 업체를 선정하지 않았습니다(이후 2026-11-10 Telkit 채택). 문서 확인만이며 계정 생성·번호 구매·실제 발신·유료 API는 0회, 제품 코드·API·DB 변경과 Gradle 재실행은 없습니다. 법률 검토와 실제 한국어 통화 품질은 미검증입니다.
+
 갱신: **2026-11-07 KST**. 기준 환경: macOS arm64, Corretto OpenJDK 21.0.6, Gradle 8.11.1, Spring Boot 3.5.16, Python 3. 본 문서는 실제 실행 결과와 미검증을 구분합니다.
 
 REC-01 서버 재검증: **2026-11-07 KST**. Android·SDK 기록은 2026-11-04입니다. ERD·기능 명세의 문서/정적 검증을 제품 재실행이나 실제 연동 성공으로 세지 않습니다.
@@ -568,7 +575,7 @@ Android Studio/SDK 설치·경로 연결·Pleos 이미지 준비는 [ANDROID_SET
 1. Android Studio·Pleos Emulator/Virtual Console 확보 후 기기 probe. 빌드 SDK와 debug APK는 준비됨. `./gradlew -PincludeAndroid=true verifyAndroid`로 재현하고 기기 실행은 별도로 확인.
 2. 실제 ETA 시간 기준·콜백 주기·권한·백그라운드·목적지 변경을 확인한 뒤 변환 adapter와 테스트 추가. 지금 source=PLEOS는 서버에서 거부.
 3. 제품 Android 화면, CarUxRestrictions, Gleo/STT/TTS 연동, release 서명·시연 영상은 미구현.
-4. 성수·서울숲 시범 범위 구체화, Kakao 사용 조건 확인과 장소 adapter 구현, 전화 업체 선정. 계정·번호·허용 대상·예산 승인 전 실발신 없음.
+4. 성수·서울숲 시범 범위 구체화, Kakao 사용 조건 확인과 장소 adapter 구현. 전화는 Telkit으로 결정(2026-11-10)했으며 Telkit 계정·번호·허용 대상·예산 승인 전 실발신 없음.
 5. 실제 통화 도입 전 사용자 인증/소유권·승인 증빙, webhook 서명, outbox/timeout 대조, UNKNOWN 수동 해결 추가. 현재 API는 loopback 단일 사용자용이며 공개 배포 대상이 아님.
 6. 지속 ETA 지연 감지·자동 변경은 후속 범위. 현재는 명시적 모의 변경 명령만 지원. 학습 동의는 저장만 하며 학습 미구현.
 7. 팀 경험 확인 후 운영 DB 결정. H2 전역 lock은 단일 서버 MVP 한계가 있음.
