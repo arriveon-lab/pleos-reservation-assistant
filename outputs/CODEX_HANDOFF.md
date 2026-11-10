@@ -2,13 +2,13 @@
 
 ## 2026-11-10 INT-01 #52 통합 진행
 
-- 추천 계획/미리보기 schema·서버가 아기의자와 계단 없는 동선을 독립 필수 조건으로 받으며 직접 확인 질문을 생성한다. Java verify, schema, JAR HTTP smoke 통과. 최신 이전 head의 PR #53 GitHub Actions 6개도 통과했으며 이번 변경은 push 후 다시 확인해야 한다.
+- 추천 계획/미리보기 schema·서버가 아기의자와 계단 없는 동선을 독립 필수 조건으로 받으며 직접 확인 질문을 생성한다. Java verify, schema, JAR HTTP smoke와 해당 head의 PR #53 GitHub Actions 6개가 모두 통과했다.
 - 사용자는 기존에 전달한 키 사용을 허용했지만 실제 GPT API 호출 전 모델·호출 범위·비용을 설명하고 확인받도록 요청했다. 키를 저장하거나 아직 사용하지 않았다.
 - 웹추천에 아기의자와 계단 없는 접근 동선을 별도 필수 조건으로 추가했다. 리뷰/일반 친화 표현만으로 YES로 전환하지 않으며 UNKNOWN은 전화 질문으로 남는다. 가상 parser/loopback 계약 검사를 통과했고 실제 GPT 호출은 없다.
 - `PublicDestinationRecommendationService`에서 공공 catalog 후보와 작업 폴링을 내부 연결했다. 가상 3개/소유권/시범 외 실패를 확인했으며 모든 후보는 UNKNOWN·예약/문의 불가다. 실제 catalog·HTTP·앱 연결은 아직 없다.
 - `android/app`에 Pleos 목적지 수신/무효화와 출처 미확인 표시 경계를 추가했다. 추천·예약에 아직 전달하지 않는다. 로컬 Android SDK 부재로 `verifyAndroid`는 의존성 평가에서 중단돼 컴파일·Lint·APK/기기 확인으로 세지 않는다. 새 원격 CI에서 빌드 확인 필요.
 - 서버 `RecommendationJobRegistry`의 소유자 범위·세대 무효화·폴링 중복 실행 방지를 가상 테스트로 확인했다. 제품 HTTP/실제 worker는 미연결이다. #43에 조건 문의·예약·지연 통보 API 제안 댓글을 남겼으며 담당자 합의 전이다.
-- 공공 provider enum의 공유 스키마/미리보기 초안 불일치로 PR #53의 서버 계약 CI가 한 차례 실패했다. 두 schema를 맞춘 후 로컬 `smoke-test.py --check-contract`를 통과했으며 새 push의 CI 재판정이 필요하다.
+- 공공 provider enum의 공유 스키마/미리보기 초안 불일치로 PR #53의 서버 계약 CI가 한 차례 실패했다. 두 schema를 맞춘 뒤 로컬 `smoke-test.py --check-contract`와 최신 head의 원격 CI가 통과했다. 과거 실패 실행은 이력에 남는다.
 - #48/PR #49 공공 catalog 코드를 격리 브랜치에 가져왔다. 제품 Spring/DB/전화에 등록하지 않았고 실제 입력은 없다. 공개 데이터로 식별한 후보만 승인된 웹 출처의 일반 조건 조사 경로에 넣고 Kakao 후보는 DATA_USE_BLOCKED를 유지하는 테스트를 추가했다. PR #49는 Draft/미병합이다.
 - `ux/core`에 목적지/추천 세대 상태 경계를 추가했다. 새 관측·경로 무효화·다음 추천·종료 뒤 이전 추천 결과 적용을 막는 단위 테스트를 통과했다. 제품 SDK와 화면 연결은 미완료이며 원 SDK 응답 연관성도 검증되지 않았다.
 - 작업 브랜치 `feat/52-vehicle-recommendation-integration`은 #50/#43/#16/#26/#1 Draft 소스를 격리 통합했다. 원 PR의 병합이나 제품 인수를 의미하지 않는다.
