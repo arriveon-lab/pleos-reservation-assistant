@@ -57,6 +57,75 @@ class PlaceDetailRecommendationServiceTest {
   }
 
   @Test
+  void approved_public_identity_can_use_approved_web_source_but_kakao_cannot() {
+    var calls = new AtomicInteger();
+    var svc =
+        new PlaceDetailRecommendationService(
+            clock,
+            PlaceDetailEnricher.Mode.READ_ONLY_WEB,
+            (source, deadline) -> {
+              calls.incrementAndGet();
+              return new PlaceDetailEnricher.Page(
+                  source.url(),
+                  html(business()),
+                  NOW.minusSeconds(60),
+                  PlaceDetailEnricher.Mode.READ_ONLY_WEB);
+            });
+    var publicPlace =
+        new PlaceSummary(
+            PlaceSummary.Provider.SEOUL_OPEN_DATA,
+            "fictional-public-id",
+            ID.name(),
+            null,
+            37.544,
+            127.055,
+            ID.address(),
+            "fictional-contact",
+            null,
+            null);
+    var publicResult =
+        svc.evaluate(
+            1,
+            PlaceSummary.Provider.SEOUL_OPEN_DATA,
+            query,
+            new PlaceSearchResult.Success(List.of(publicPlace), NOW, 0),
+            requirements,
+            Map.of("fictional-public-id", List.of(A)),
+            () -> true);
+    assertThat(calls).hasValue(1);
+    assertThat(publicResult.candidateDetails().getFirst().detailReport().outcome())
+        .isEqualTo(PlaceDetailEnricher.Outcome.DETAILS);
+    assertThat(publicResult.candidateDetails().getFirst().detailReport().bookable()).isFalse();
+
+    var kakaoPlace =
+        new PlaceSummary(
+            PlaceSummary.Provider.KAKAO,
+            "fictional-kakao-id",
+            ID.name(),
+            null,
+            37.544,
+            127.055,
+            ID.address(),
+            "fictional-contact",
+            null,
+            null);
+    var kakaoResult =
+        svc.evaluate(
+            2,
+            PlaceSummary.Provider.KAKAO,
+            query,
+            new PlaceSearchResult.Success(List.of(kakaoPlace), NOW, 0),
+            requirements,
+            Map.of("fictional-kakao-id", List.of(A)),
+            () -> true);
+    assertThat(calls).hasValue(1);
+    assertThat(kakaoResult.candidateDetails().getFirst().detailReport().outcome())
+        .isEqualTo(PlaceDetailEnricher.Outcome.UNKNOWN);
+    assertThat(kakaoResult.candidateDetails().getFirst().detailReport().reasons())
+        .contains(PlaceDetailEnricher.Reason.DATA_USE_BLOCKED);
+  }
+
+  @Test
   void binds_at_most_three_selected_ordinals_to_details_without_contact_or_provider_ids()
       throws Exception {
     var calls = new AtomicInteger();

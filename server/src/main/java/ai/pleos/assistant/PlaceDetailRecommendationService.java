@@ -78,9 +78,11 @@ public final class PlaceDetailRecommendationService {
               .distinct()
               .toList();
       var origin =
-          provider == PlaceSummary.Provider.MOCK
-              ? PlaceDetailEnricher.Origin.MOCK
-              : PlaceDetailEnricher.Origin.KAKAO;
+          switch (provider) {
+            case MOCK -> PlaceDetailEnricher.Origin.MOCK;
+            case KAKAO -> PlaceDetailEnricher.Origin.KAKAO;
+            case SEOUL_OPEN_DATA -> PlaceDetailEnricher.Origin.APPROVED_PUBLIC;
+          };
       boolean unambiguous = matches.size() == 1;
       var identity =
           new PlaceDetailEnricher.Identity(
