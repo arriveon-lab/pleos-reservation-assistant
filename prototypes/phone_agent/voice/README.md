@@ -93,6 +93,10 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 가상 및 네트워크 차단 검사는 실제 수신 성공의 증거가 아닙니다. 수신·사용자 전달
 검증 전에는 발신 통화에서 “이 번호로 다시 연락 주세요”라는 안내를 하지 않습니다.
 
+수신 보완 소스 `b2be74a`는 로컬과 EC2 Linux(network=none)에서 기본 36개·음성 94개,
+총 130개 검사를 통과하고 배포됐습니다. 기본 양쪽 비활성·worker 중단 상태이며 기존
+13개 통화와 마지막 발신 확정 성공은 보존했습니다. 실제 수신과 변경 재확인은 미검증입니다.
+
 의존성은 `livekit-agents[silero]==1.8.11`, `livekit-api==1.2.2`, `livekit-plugins-noise-cancellation==0.3.3`입니다. NC 플러그인은 LiveKit Cloud용이며 패키지 라이선스는 LiveKit 서비스 약관을 참조합니다. 공급자 바이너리를 저장소에 복사하지 않습니다. LiveKit Inference의 AssemblyAI Universal 3.6 Pro(ko) → Google Gemma 4 31B → Cartesia Sonic 3(ko)를 사용합니다. OpenAI API 키는 이 경로에 필요하지 않습니다. 공급자와 모델·음성 ID는 `.env.example`에서 바꿀 수 있습니다.
 
 2026-11-09 실제 발신 1회: Telkit 연결 46초·60원 차감, 잔액 2,940원·추가 카드 결제 0원. 번호 1개 구매에는 기존 크레딧 7,000원이 사용됐으며 30일마다 갱신됩니다. LiveKit은 무료 Build 프로젝트로 시험했고 유료 플랜 전환은 하지 않았습니다. 시험 후 LiveKit 콘솔의 Build 플랜·다음 청구액 $0.00을 확인했습니다. 사용량 집계는 지연될 수 있습니다.
