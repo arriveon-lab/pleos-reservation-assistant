@@ -21,3 +21,5 @@ __pycache__/
 .venv/
 *.log
 captures/
+# Private public-data catalog snapshots can contain merchant contact values.
+*.private.json

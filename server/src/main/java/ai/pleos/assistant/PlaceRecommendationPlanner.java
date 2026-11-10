@@ -270,7 +270,7 @@ public final class PlaceRecommendationPlanner {
         State.FAILED, provider, requirements, null, null, 0, 0, 0, 0, failure, List.of());
   }
 
-  private static double distance(PlaceQuery query, PlaceSummary place) {
+  static double distance(PlaceQuery query, PlaceSummary place) {
     double lat1 = Math.toRadians(query.latitude()), lat2 = Math.toRadians(place.latitude());
     double lat = Math.sin((lat2 - lat1) / 2);
     double lon = Math.sin(Math.toRadians(place.longitude() - query.longitude()) / 2);

@@ -1,6 +1,7 @@
 # API v1 — 계약 1.1.0
 
 [REC-13 실험 계약](../docs/REC13_WEB_RECOMMENDATION.md) — #50의 기본 비활성 MOCK 실험 API와 사용자 입력/직접 평가 전용 V5 테이블입니다. 기존 v1·앱 계약/아래 논리 ERD 제안을 대체하지 않습니다.
+[REC-12 로컬 catalog 계약](../docs/REC12_PUBLIC_CATALOG.md) — #48의 오프라인 코드 준비이며 제품 HTTP/DB/실제 발신 연결은 아닙니다.
 
 별도 인수 초안: [REC-08 추천·질문 계획](recommendation-plan-draft.schema.json)과 [가상 예제](examples/recommendation-plan-mock.json)는 제품 HTTP API가 아닌 순수 평가기 결과입니다. `./gradlew -PincludeAndroid=false :server:recommendationPlan`은 외부 호출 없이 가상 결과를 출력합니다. `verify` 뒤 `python scripts/check-recommendation-plan.py`로 초안·예제·Java 실행 증거를 대조합니다. v1 경로/스키마/버전은 바꾸지 않았으며 #16/#26 화면 계약 채택 전입니다.
 

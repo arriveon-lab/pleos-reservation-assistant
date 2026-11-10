@@ -14,7 +14,8 @@ public record PlaceSummary(
     Integer distanceMeters) {
   public enum Provider {
     MOCK,
-    KAKAO
+    KAKAO,
+    SEOUL_OPEN_DATA
   }
 
   public PlaceSummary {

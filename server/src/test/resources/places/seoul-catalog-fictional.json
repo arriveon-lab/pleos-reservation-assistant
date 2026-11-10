@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "0.1.0-draft",
+  "sourceKind": "SEOUL_OPEN_DATA",
+  "datasetId": "OA-18655",
+  "catalogUrl": "https://data.seoul.go.kr/dataList/OA-18655/A/1/datasetView.do",
+  "licenseUrl": "https://www.kogl.or.kr/info/licenseType1.do",
+  "attribution": "서울특별시 성동구 · 서울 열린데이터광장 OA-18655 · 공공누리 제1유형",
+  "sourceCrs": "EPSG:5174",
+  "targetCrs": "EPSG:4326",
+  "acquiredAt": "2026-11-10T00:00:00Z",
+  "sourceSnapshotAt": "2026-11-07T00:00:00Z",
+  "inputRows": 4,
+  "rejectedRows": 0,
+  "entries": [
+    {
+      "catalogPlaceId": "sdo-458a7e452e967c7e8e49e82f46a5a51f",
+      "sourceRecordId": "fictional-catalog-0",
+      "name": "가상 공공데이터 식당 0",
+      "address": "가상 성수 시험주소 0",
+      "phone": "0212345678",
+      "latitude": 37.543999957643656,
+      "longitude": 127.05500003186367,
+      "rowModifiedRaw": "20191231000000",
+      "rowUpdatedRaw": "",
+      "rowTimeZone": "UNKNOWN",
+      "administrativeStatus": "NORMAL_REPORTED",
+      "contactStatus": "UNVERIFIED"
+    },
+    {
+      "catalogPlaceId": "sdo-4afba0d256b8330e0ccc3d7b8605c576",
+      "sourceRecordId": "fictional-catalog-2",
+      "name": "가상 공공데이터 식당 2",
+      "address": "가상 성수 시험주소 2",
+      "phone": "0212345678",
+      "latitude": 37.543999957643656,
+      "longitude": 127.05500003186367,
+      "rowModifiedRaw": "20191231000000",
+      "rowUpdatedRaw": "",
+      "rowTimeZone": "UNKNOWN",
+      "administrativeStatus": "NORMAL_REPORTED",
+      "contactStatus": "UNVERIFIED"
+    },
+    {
+      "catalogPlaceId": "sdo-4db5d916d644b34f2ec1b4782adef60d",
+      "sourceRecordId": "fictional-catalog-1",
+      "name": "가상 공공데이터 식당 1",
+      "address": "가상 성수 시험주소 1",
+      "phone": "0212345678",
+      "latitude": 37.543999957643656,
+      "longitude": 127.05500003186367,
+      "rowModifiedRaw": "20191231000000",
+      "rowUpdatedRaw": "",
+      "rowTimeZone": "UNKNOWN",
+      "administrativeStatus": "NORMAL_REPORTED",
+      "contactStatus": "UNVERIFIED"
+    },
+    {
+      "catalogPlaceId": "sdo-5850cff3a38dc6ff366dd338d132145a",
+      "sourceRecordId": "fictional-catalog-3",
+      "name": "가상 공공데이터 식당 3",
+      "address": "가상 성수 시험주소 3",
+      "phone": "0212345678",
+      "latitude": 37.543999957643656,
+      "longitude": 127.05500003186367,
+      "rowModifiedRaw": "20191231000000",
+      "rowUpdatedRaw": "",
+      "rowTimeZone": "UNKNOWN",
+      "administrativeStatus": "NORMAL_REPORTED",
+      "contactStatus": "UNVERIFIED"
+    }
+  ]
+}

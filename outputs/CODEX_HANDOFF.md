@@ -160,6 +160,13 @@
 **최신 #16 후속 (2026-11-08):** [#21 인증 후보 연동과 호출자](../docs/REC05_TOKEN_INTEGRATION.md)를 먼저 읽습니다. `preview-session-demo.py`는 #21+#19가 함께 있는 loopback MOCK/1.1.0 서버용이며 토큰은 메모리에서만 사용하고 1회 가상 검색 후 갱신·종료·폐기합니다. 단독 서버244/Python7과 임시 통합 서버271·토큰HTTP16건·신규호출자8요청/가상검색1회의 성공을 구분합니다. #19 코드 `5b8e874` 원격 3개 검사 통과, #21 head `8484a04`는 실패 검사를 한 번 재실행해도 Gradle 타임아웃/504로 테스트 전 실패했습니다. #21 코드/본문·main 변경이나 병합은 없습니다. #19 자체는 여전히 기본 비활성·v1 1.0.0입니다. 인증 통합 후 status 버전 테스트는 OpenAPI를 읽어 대조합니다. #16 OPEN·PR #19 Draft, 실제 장소/전화/AI/유료 추가 실행 0회입니다.
 
 **최신 #16 첫 단계 (2026-11-07):** 브랜치 `feat/16-place-preview-integration`은 main `9518b6a` 기준입니다. [HTTP 계약 초안·MOCK 통합](../docs/REC05_PREVIEW_API.md)을 먼저 읽습니다. 기본 비활성 실험 API 4개 연산, 가상 Principal 기반 owner 대조, 서버 244개·가상 HTTP 교환 96건의 초안 대조·JAR 404/401 및 기존 smoke/계약/LIVE 차단을 확인했습니다. 실제 인증은 #4, 화면은 #5, navigation freshness/ETA는 #1과 합의 전이며 #16은 OPEN·PR Draft입니다. 기본 v1/제품 MOCK 유지, 실제 장소/전화/AI/유료 작업 추가 0회입니다. `verify` 후 `check-contract.py --preview-exchanges`, `smoke-test.py --check-contract`로 재현합니다. Android는 이번 로컬 검증 대상이 아닙니다.
+## 2026-11-10 REC-12 공공데이터 catalog 준비
+
+- #48 / feat/48-public-place-catalog에서 공식 OA-18655 로컬 XML→비공개 catalog와 서버 로컬 검색 adapter를 준비했습니다. 출처/라이선스/자체·원천ID/취득·snapshot·원시 행시각/번호 UNVERIFIED를 보존하고 중복·상태충돌/폐업·번호/좌표/시범범위를 검사합니다. catalog 스키마와 공유 가상 fixture·가상 테스트를 추가했습니다. Python49개/Java321개 실패·오류·skip0, format/verify·schema/가상 fixture·REC-08 검사 및 JAR MOCK/인증/계약/H2 재시작/LIVE 차단을 통과했습니다. 로컬 링크76/JSON/diff도 통과했으며 Android/기기는 이번 로컬 검증에 포함하지 않습니다. 원격 CI는 최종 PR 기록을 따릅니다.
+- 기본 MOCK·LIVE 시작 차단·v1/DB/앱/미리보기 공개 계약은 유지합니다. 새 adapter는 Spring 미등록이며 실제 XML 수집/연락처 저장·Kakao/GPT/전화/유료 호출0회입니다. snapshot 미확인/7일 경과 검색 거부와 dispatchBlockers 기본 차단은 운영 최신성/발신 인수의 대체물이 아닙니다.
+- #16 최신 화면 담당의 Docker 기기 보고를 읽고 동일 commit/입력 차이·429/정리 실패 안내를 대조했습니다. 원본 PNG/기기 재검증·공동 전체 인수/PR 병합은 하지 않았습니다. #11 정책은 #23, 상세 인계/남은 계약은 docs/REC12_PUBLIC_CATALOG.md에서 이어갑니다.
+
+
 ## 2026-11-10 #35/#38 통합과 #42 CI·문서 이력 복구
 
 - 사용자 승인으로 #35는4d65c01, #38은9ea227d에 squash merge됐고 #34/#37은 독립 검증/코드 준비 범위로 종료됐습니다. 실제 공급자 채택·기기/ETA·전화/유료 실행 인수는 별도입니다.
