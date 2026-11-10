@@ -1,5 +1,11 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 INT-01 #52 통합 진행
+
+- 작업 브랜치 `feat/52-vehicle-recommendation-integration`은 #50/#43/#16/#26/#1 Draft 소스를 격리 통합했다. 원 PR의 병합이나 제품 인수를 의미하지 않는다.
+- `docs/INT01_VEHICLE_RECOMMENDATION.md`에 개발 순서와 전화 AI 계약을 기록했다. 지연 연락은 10분 간격 ETA 점검·예약 시각보다 10분 이상 지연·매번 사용자 승인 기준이다.
+- `DelayContactPolicy`는 순수 판단만 구현했다. 주기 실행·저장·발신·실제 GPT/기기 검증은 남았다. 채팅에 노출된 키는 저장하지 않았으며 재발급이 필요하다.
+
 ## 2026-11-10 REC-13 검색 기반 추천·직접 피드백
 
 - #50 / feat/50-web-needs-recommendation에서 조건별 O/X/UNKNOWN/CONFLICT와 인용·세부 조건·최대3 후보, 별도 기본 비활성 MOCK API, 사용자 요청/선택/직접 평가만 저장하는 V5를 구현했습니다. 실제 GPT 연동 코드는 기본 주입하지 않습니다. 상세는 docs/REC13_WEB_RECOMMENDATION.md.
