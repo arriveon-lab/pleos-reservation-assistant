@@ -24,7 +24,8 @@ def fake_config(**changes):
                          sip_uri="sip:example.sip.livekit.cloud", telkit_number="+827000000000",
                          telkit_number_id="example-number", telkit_key="test-telkit-key",
                          sip_username="example-user", sip_password="example-password",
-                         inbound_trunk_id="ST_in", outbound_trunk_id="ST_out", enabled=True,
+                         inbound_trunk_id="ST_in", outbound_trunk_id="ST_out",
+                         enabled=True, inbound_enabled=True,
                          allowed_numbers=("+821000000000",), restaurant_numbers={"demo-garden": "+821000000000"},
                          daily_calls=6)
     return replace(config, **changes)
@@ -339,7 +340,9 @@ class LiveWorkflowTest(unittest.TestCase):
         inbound = self.workflow.begin_inbound("+821000000000", "ST_in", "inbound-room")
         self.assertFalse(self.workflow.identify(inbound["id"], "다른이름", DAY, "19:00")["found"])
         self.assertTrue(self.workflow.identify(inbound["id"], "김예약", DAY, "19:00")["found"])
-        self.workflow.request_change(inbound["id"], "19:30", "가상 변경 사유")
+        evidence = "일곱 시 반으로 변경할 수 있을까요?"
+        self.workflow.transcript(inbound["id"], "restaurant", evidence)
+        self.workflow.request_change(inbound["id"], "19:30", "가상 변경 사유", evidence)
         self.workflow.finish(inbound["id"])
         current = self.get_booking(booking)
         self.command("decide_change", {"bookingId": booking, "version":current["version"], "approve":True})
@@ -358,6 +361,155 @@ class LiveWorkflowTest(unittest.TestCase):
         self.result(call,time="19:30")
         self.assertEqual("19:30", self.get_booking(booking)["confirmedTime"])
         self.assertEqual("APPLIED", self.get_booking(booking)["change"]["status"])
+
+    def inbound(self, identify=True):
+        booking = self.confirmed()
+        call = self.workflow.begin_inbound("+821000000000", "ST_in", "inbound-room")
+        if identify:
+            self.workflow.identify(call["id"], "김예약", DAY, "19:00")
+        return booking, call
+
+    def test_receive_only_worker_accepts_inbound_but_never_dials(self):
+        booking = self.confirmed()
+        config = replace(self.config, enabled=False, outbound_trunk_id="")
+        config.require_worker()
+        workflow = LiveWorkflow(self.service, config)
+        with self.assertRaises(ConfigurationError):
+            workflow.reserve(self.owner, booking, self.get_booking(booking)["version"], "no-dial")
+        call = workflow.begin_inbound("+821000000000", "ST_in", "receive-only")
+        self.assertEqual("CALLBACK", workflow.context(call["id"])["purpose"])
+        with self.assertRaises(ConfigurationError):
+            LiveWorkflow(self.service, replace(config, inbound_enabled=False)).begin_inbound(
+                "+821000000000", "ST_in", "disabled")
+
+    def test_unidentified_callback_starts_without_exposing_booking(self):
+        from .resilience import initial_reply_instructions, opening_text
+        _, call = self.inbound(identify=False)
+        context = self.workflow.context(call["id"])
+        self.assertFalse(context["found"])
+        self.assertNotIn("reservationName", context)
+        self.assertNotIn("김예약", opening_text(context))
+        self.assertIn("성함", initial_reply_instructions(context))
+        self.assertIn("새 예약을 요청하지 않는다", initial_reply_instructions(context))
+        self.assertEqual("CALLBACK", context["purpose"])
+
+    def test_identification_moves_only_this_calls_private_journal(self):
+        booking, call = self.inbound(identify=False)
+        self.workflow.transcript(call["id"], "restaurant", "김예약 예약으로 연락했어요.")
+        pending = self.service._list("inbound", "unidentified_call_event")[0]
+        self.service._put("inbound", "unidentified_call_event", {
+            **pending, "id": identifier(), "callId": "another-call", "message": "별도 통화"})
+        self.assertFalse(any(e.get("callId") == call["id"] for e in self.service.state(self.owner)["events"]))
+        self.assertFalse(self.workflow.identify(call["id"], "김예약", DAY, "20:00")["found"])
+        self.workflow.identify(call["id"], "김예약", DAY, "19:00")
+        moved = next(e for e in self.service.state(self.owner)["events"] if e["id"] == pending["id"])
+        self.assertEqual((booking, pending["at"], "LIVE"),
+                         (moved["bookingId"], moved["at"], moved["mode"]))
+        self.assertEqual(["another-call"], [e["callId"] for e in self.service._list("inbound", "unidentified_call_event")])
+        with self.assertRaises(DomainError):
+            self.workflow.identify(call["id"], "다른이름", DAY, "19:00")
+
+    def test_ambiguous_reservations_never_reveal_candidates_or_mutate_them(self):
+        booking, call = self.inbound(identify=False)
+        other_owner, _ = self.service.session()
+        duplicate = {**self.get_booking(booking), "id": identifier()}
+        self.service._put(other_owner, "booking", duplicate)
+        result = self.workflow.identify(call["id"], "김예약", DAY, "19:00")
+        self.assertFalse(result["found"])
+        self.assertNotIn("conditions", result)
+        self.assertEqual([], self.service.state(other_owner)["callbacks"])
+        with self.assertRaises(DomainError):
+            self.workflow.request_note(call["id"], "OTHER", "문의", "김예약입니다")
+
+    def test_callback_requires_actual_whole_recent_same_call_evidence(self):
+        _, call = self.inbound()
+        evidence = "일곱 시 반으로 바꿔 주세요. 어려우면 다시 연락 주세요."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        for quote in (None, "만든 발화", "일곱 시 반으로 바꿔 주세요.",
+                      "김예약 이름으로 예약 확정됐습니다. 요청하신 조건 모두 가능합니다."):
+            with self.subTest(quote=quote), self.assertRaises(DomainError):
+                self.workflow.request_change(call["id"], "19:30", "변경 요청", quote)
+        self.assertEqual([], self.service.state(self.owner)["callbacks"])
+
+    def test_callback_is_idempotent_preserves_original_and_exposes_only_live_receipt(self):
+        booking, call = self.inbound()
+        original = copy.deepcopy(self.get_booking(booking))
+        evidence = "일곱 시 반으로 바꿔 주세요."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        events_before = len(self.service.state(self.owner)["events"])
+        result = self.workflow.request_change(call["id"], "19:30", "영업 사정", evidence)
+        again = self.workflow.request_change(call["id"], "19:30", "영업 사정", evidence)
+        self.assertEqual(result, again)
+        with self.assertRaises(DomainError):
+            self.workflow.request_change(call["id"], "20:00", "영업 사정", evidence)
+        current = self.get_booking(booking)
+        self.assertEqual("19:00", current["confirmedTime"])
+        self.assertEqual(original["approvedSnapshot"], current["approvedSnapshot"])
+        self.assertEqual("AWAITING_USER", current["change"]["status"])
+        state = self.service.state(self.owner)
+        self.assertEqual((1, 1), (len(state["callbacks"]), state["inboundCalls"]))
+        self.assertEqual(events_before, len(state["events"]))  # No synthetic speech.
+        self.assertEqual(("LIVE", call["id"], evidence),
+                         tuple(state["callbacks"][0][k] for k in ("mode", "callId", "evidence")))
+        other_owner, _ = self.service.session()
+        self.assertEqual([], self.service.state(other_owner)["callbacks"])
+
+    def test_callback_version_conflict_never_overwrites_changed_booking(self):
+        booking, call = self.inbound()
+        current = self.get_booking(booking)
+        current["version"] += 1
+        self.service._put(self.owner, "booking", current)
+        self.workflow.transcript(call["id"], "restaurant", "예약 취소 부탁드립니다.")
+        with self.assertRaises(DomainError):
+            self.workflow.request_note(call["id"], "CANCELLATION", "취소 통보", "예약 취소 부탁드립니다.")
+        self.assertEqual([], self.service.state(self.owner)["callbacks"])
+        self.assertNotIn("reviewRequired", self.get_booking(booking))
+
+    def test_live_callback_cannot_attach_to_identical_mock_booking(self):
+        booking, call = self.inbound()
+        duplicate = {**self.get_booking(booking), "id": identifier(), "mode": "MOCK"}
+        self.service._put(self.owner, "booking", duplicate)
+        evidence = "일곱 시 반으로 바꿔 주세요."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        self.workflow.request_change(call["id"], "19:30", "변경", evidence)
+        self.assertEqual(booking, self.service.state(self.owner)["callbacks"][0]["bookingId"])
+        self.assertIsNone(self.get_booking(duplicate["id"])["change"])
+
+    def test_cancellation_receipt_blocks_approved_change_without_cancelling_reservation(self):
+        booking, call = self.inbound()
+        self.workflow.transcript(call["id"], "restaurant", "일곱 시 반으로 변경 부탁드려요.")
+        self.workflow.request_change(call["id"], "19:30", "변경", "일곱 시 반으로 변경 부탁드려요.")
+        self.workflow.finish(call["id"])
+        current = self.get_booking(booking)
+        self.command("decide_change", {"bookingId": booking, "version": current["version"], "approve": True})
+        call = self.workflow.begin_inbound("+821000000000", "ST_in", "second-inbound")
+        self.workflow.identify(call["id"], "김예약", DAY, "19:00")
+        evidence = "영업이 어려워 예약 취소 부탁드립니다."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        result = self.workflow.request_note(call["id"], "CANCELLATION", "식당 취소 통보", evidence)
+        self.assertEqual(result, self.workflow.request_note(call["id"], "CANCELLATION", "식당 취소 통보", evidence))
+        self.workflow.finish(call["id"])
+        current = self.get_booking(booking)
+        self.assertEqual(("CONFIRMED", "19:00", True),
+                         (current["status"], current["confirmedTime"], current["reviewRequired"]))
+        with self.assertRaises(DomainError):
+            self.workflow.reserve(self.owner, booking, current["version"], "blocked-reconfirmation")
+        self.assertEqual("NEEDS_REVIEW", self.service.state(self.owner)["callbacks"][-1]["status"])
+
+    def test_unavailable_note_needs_review_and_other_note_preserves_booking(self):
+        booking, call = self.inbound()
+        evidence = "주차 위치를 안내드리려고 전화했어요."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        self.workflow.request_note(call["id"], "OTHER", "주차 안내", evidence)
+        self.assertNotIn("reviewRequired", self.get_booking(booking))
+        self.workflow.finish(call["id"])
+        call = self.workflow.begin_inbound("+821000000000", "ST_in", "unavailable")
+        self.workflow.identify(call["id"], "김예약", DAY, "19:00")
+        evidence = "예약을 받을 수 없게 됐어요."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        self.workflow.request_note(call["id"], "UNAVAILABLE", "예약 불가", evidence)
+        self.assertTrue(self.get_booking(booking)["reviewRequired"])
+        self.assertEqual("19:00", self.get_booking(booking)["confirmedTime"])
 
     def test_dispatch_timeout_never_redials_on_request_retry(self):
         from .transport import dial_booking
@@ -394,6 +546,38 @@ class LiveWorkflowTest(unittest.TestCase):
 
 
 class ConfigurationAndSDKTest(unittest.TestCase):
+    def test_callback_receipt_is_spoken_before_close_without_claiming_applied(self):
+        from livekit.agents import StopResponse
+        from .worker import BookingVoiceAgent
+        for method, args, operation in (
+            ("save_change_request", ("19:30", "변경", "실제 발화"), "request_change"),
+            ("save_callback_note", ("CANCELLATION", "취소 통보", "실제 발화"), "request_note")):
+            with self.subTest(method=method):
+                order = []
+                async def prior(): order.append("prior")
+                async def say(text, **kwargs): order.append(text)
+                async def close(reason): order.append(reason)
+                workflow = SimpleNamespace(**{operation: Mock(return_value={"saved": True})})
+                agent = BookingVoiceAgent(workflow, "call", {}, close)
+                context = SimpleNamespace(wait_for_playout=prior, session=SimpleNamespace(say=say))
+                with self.assertRaises(StopResponse):
+                    asyncio.run(getattr(agent, method)(context, *args))
+                self.assertEqual("prior", order[0])
+                self.assertIn("접수", order[1])
+                self.assertNotIn("완료", order[1])
+                self.assertEqual("callback_received", order[-1])
+
+    def test_invalid_callback_receipt_does_not_announce_or_close(self):
+        from .worker import BookingVoiceAgent
+        workflow = SimpleNamespace(request_note=Mock(side_effect=DomainError("EVIDENCE_REQUIRED", "근거 필요")))
+        close, say = AsyncMock(), AsyncMock()
+        agent = BookingVoiceAgent(workflow, "call", {}, close)
+        context = SimpleNamespace(wait_for_playout=AsyncMock(), session=SimpleNamespace(say=say))
+        result = asyncio.run(agent.save_callback_note(context, "OTHER", "문의", "없는 발화"))
+        self.assertFalse(result["saved"])
+        close.assert_not_awaited()
+        say.assert_not_awaited()
+
     def test_saved_outcome_controls_closing_and_prevents_model_success_rewrite(self):
         from livekit.agents import StopResponse
         from .worker import BookingVoiceAgent

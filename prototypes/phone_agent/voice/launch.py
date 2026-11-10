@@ -7,7 +7,7 @@ from .config import VoiceConfig, load_env_file
 
 def main():
     load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
-    VoiceConfig.from_env().require_live()
+    VoiceConfig.from_env().require_worker()
     worker = importlib.import_module("prototypes.phone_agent.voice.worker")
     worker.agents.cli.run_app(worker.server)
 

@@ -1,13 +1,14 @@
 'use strict';
 const $ = (selector) => document.querySelector(selector);
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let state, tripId, busy = false;
+let state, tripId, busy = false, polling = false, stateVersion = 0;
 const labels = {AWAITING_APPROVAL:'승인 대기',READY:'발신 준비',CALLING:'실제 통화 중',CONFIRMED:'예약 확정',DECLINED:'예약 불가',UNKNOWN:'결과 미확인',FAILED:'연결 실패'};
 const changes = {AWAITING_USER:'사용자 확인 대기',RECONFIRMING:'식당 재확인 대기',APPLIED:'변경 완료',REJECTED:'변경 거절',UNKNOWN:'변경 결과 미확인'};
 const scenarios = {ACCEPT:'명확한 수락 + 필수 조건 가능',DECLINE:'예약 거절',AMBIGUOUS:'애매한 답변',DISCONNECT:'통화 중 연결 끊김',REQUIREMENT_UNKNOWN:'필수 조건 미확인',REQUIREMENT_UNAVAILABLE:'필수 조건 충족 불가',BUSY:'통화 중',TIME_MISMATCH:'다른 시간 제안',COST_REQUIRED:'추가 비용 요구',ARS:'자동 안내 응답'};
 function message(value, error = false) {const el=$('#message');el.hidden=false;el.textContent=value;el.className=error?'error':'';}
-async function refresh() {const response=await fetch('/api/state');if(!response.ok)throw new Error('상태를 조회하지 못했어요.');state=await response.json();render();}
+async function refresh() {const version=stateVersion;const response=await fetch('/api/state');if(!response.ok)throw new Error('상태를 조회하지 못했어요.');const fresh=await response.json();if(version!==stateVersion)return;state=fresh;render();}
 async function act(action, payload = {}) {
+  stateVersion++;
   const response=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json','X-Prototype-Request':'1'},body:JSON.stringify({action,payload,requestId:crypto.randomUUID()})});
   const body=await response.json();
   if(!response.ok)throw new Error(body.error?.message || '요청을 처리하지 못했어요.');
@@ -27,18 +28,21 @@ function render() {
   $('#load-profile').disabled=!state.profile;$('#delete-profile').disabled=!state.profile;$('#update-trip').disabled=!trip;
   $('#booking-count').textContent=`${state.bookings.length}건`;
   const voice=state.voice||{};
-  $('.mode').textContent=state.mode==='LIVE'?`LIVE · 실제 발신 요청 ${state.externalCalls}회`:'MOCK · 외부 통화 0회';
+  $('.mode').textContent=state.mode==='LIVE'?`LIVE · 발신 요청 ${state.externalCalls}회 · 수신 접수 ${state.inboundCalls||0}회`:'MOCK · 외부 통화 0회';
   $('#voice-status').textContent=voice.ready?'실전화 연결 설정 준비됨 · 가상 통화와 실제 발신을 구분해 실행하세요.':voice.missingRuntime?.length===0?'Telkit·LiveKit 연결 설정 완료 · 실제 통화 실행 승인 대기':`실전화 설정 대기 · ${voice.missingRuntime?.join(', ')||'설정을 확인해 주세요.'}`;
+  if(voice.inboundEnabled)$('#voice-status').textContent+=' · 수신 시험 허용됨(실제 연결은 worker 실행 필요)';
   const container=$('#bookings');container.className=state.bookings.length?'':'empty';
   container.innerHTML=state.bookings.length?state.bookings.toReversed().map((booking)=>{
     let actions='';
     if(booking.status==='AWAITING_APPROVAL')actions='<button data-action="approve">이 조건으로 발신 승인</button>';
     if(booking.status==='READY')actions=`<select aria-label="가상 식당 응답">${Object.entries(scenarios).map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select><button data-action="call">가상 통화 시작</button>`;
     if(booking.status==='UNKNOWN' && booking.mode!=='LIVE')actions='<button data-action="verify-exists" class="outline">기존 예약·필수 조건 모두 확인됨</button><button data-action="verify-missing" class="quiet">대조 결과 예약 없음</button>';
-    if(state.voice?.ready && (booking.status==='READY'||(booking.mode==='LIVE'&&booking.change?.status==='RECONFIRMING')))actions+='<button data-action="live-call" class="outline">실제 테스트 전화 걸기</button>';
+    if(!booking.reviewRequired && state.voice?.ready && (booking.status==='READY'||(booking.mode==='LIVE'&&booking.change?.status==='RECONFIRMING')))actions+='<button data-action="live-call" class="outline">실제 테스트 전화 걸기</button>';
     let change='';
-    if(booking.change){const c=booking.change;let controls='';if(c.status==='AWAITING_USER')controls='<button data-action="approve-change">변경 승인</button><button data-action="reject-change" class="outline">거절</button>';if(c.status==='RECONFIRMING' && booking.mode!=='LIVE')controls='<button data-action="reconfirm">식당이 변경 수락</button><button data-action="reconfirm-decline" class="outline">식당 거절</button><button data-action="reconfirm-disconnect" class="quiet">재확인 중 단절</button>';change=`<div class="change"><b>${escape(changes[c.status]||c.status)}</b><p>${escape(c.originalTime)} → ${escape(c.proposedTime)} · ${escape(c.reason)}</p><div class="actions">${controls}</div></div>`;}
-    return `<article class="booking" data-booking="${escape(booking.id)}"><div class="booking-head"><h3>${escape(booking.restaurantName)}${booking.mode==='LIVE'?' · 실제 통화':''}</h3><span class="badge ${escape(booking.status)}">${escape(labels[booking.status]||booking.status)}</span></div><p class="details">${escape(booking.date)} · ${escape(booking.confirmedTime||booking.requestedTime)} · ${escape(booking.reservationName)}</p><div class="conditions">${escape(summary(booking.approvedSnapshot||booking.snapshot))}<br>예약 당시 조건 보존 · 예약 v${booking.version}</div><p class="notice">${escape(booking.notice)}</p><div class="actions">${actions}</div>${change}</article>`;
+    if(booking.change){const c=booking.change;let controls='';if(c.status==='AWAITING_USER' && !booking.reviewRequired)controls='<button data-action="approve-change">변경 승인</button><button data-action="reject-change" class="outline">거절</button>';if(c.status==='RECONFIRMING' && booking.mode!=='LIVE')controls='<button data-action="reconfirm">식당이 변경 수락</button><button data-action="reconfirm-decline" class="outline">식당 거절</button><button data-action="reconfirm-disconnect" class="quiet">재확인 중 단절</button>';change=`<div class="change"><b>${escape(changes[c.status]||c.status)}</b><p>${escape(c.originalTime)} → ${escape(c.proposedTime)} · ${escape(c.reason)}</p><div class="actions">${controls}</div></div>`;}
+    const categories={CANCELLATION:'취소 통보',UNAVAILABLE:'예약 불가 통보',OTHER:'식당 문의'};
+    const notes=state.callbacks.filter((c)=>c.bookingId===booking.id && c.status==='NEEDS_REVIEW').map((c)=>`<div class="change"><b>${escape(categories[c.category]||'식당 회신')} · 확인 필요</b><p>${escape(c.summary)}</p><p>식당 발화: ${escape(c.evidence)}</p><p>접수 기록이며 변경·취소 완료나 사용자 확인을 뜻하지 않아요.</p></div>`).join('');
+    return `<article class="booking" data-booking="${escape(booking.id)}"><div class="booking-head"><h3>${escape(booking.restaurantName)}${booking.mode==='LIVE'?' · 실제 통화':''}</h3><span class="badge ${escape(booking.reviewRequired?'UNKNOWN':booking.status)}">${escape(booking.reviewRequired?'식당 회신 · 확인 필요':labels[booking.status]||booking.status)}</span></div><p class="details">${escape(booking.date)} · ${escape(booking.confirmedTime||booking.requestedTime)} · ${escape(booking.reservationName)}</p><div class="conditions">${escape(summary(booking.approvedSnapshot||booking.snapshot))}<br>예약 당시 조건 보존 · 예약 v${booking.version}</div><p class="notice">${escape(booking.notice)}</p><div class="actions">${actions}</div>${change}${notes}</article>`;
   }).join(''):'아직 예약이 없어요. 왼쪽에서 여정 조건과 예약을 만들어 주세요.';
   const speakers={agent:'AI 예약 비서 · 가상',restaurant:'가상 식당',system:'처리 결과'};
   $('#events').innerHTML=state.events.length?state.events.map((event)=>`<div class="event ${escape(event.speaker)}"><b>${escape(event.mode==='LIVE'?(event.speaker==='agent'?'AI 예약 비서 · 실제 음성':event.speaker==='restaurant'?'식당 · 실제 음성':'실제 통화 결과'):(speakers[event.speaker]||event.speaker))}</b>${escape(event.message)}<time>${escape(new Date(event.at).toLocaleTimeString('ko-KR'))}</time></div>`).join(''):'<p class="muted">가상 통화를 시작하면 대화 기록이 표시됩니다.</p>';
@@ -53,6 +57,7 @@ $('#delete-profile').addEventListener('click',run(async()=>{await act('delete_pr
 $('#booking-form').addEventListener('submit',run(async()=>{const form=$('#booking-form'),trip=state.trips.find((value)=>value.id===tripId);if(!trip)throw new Error('먼저 이번 여정 조건을 저장해 주세요.');await act('create_booking',{tripId,tripVersion:trip.version,reservationName:$('#trip-form').reservationName.value,restaurantId:form.restaurantId.value,date:form.date.value,time:form.time.value});message('요청을 만들었어요. 예약 당시 조건을 확인하고 발신을 승인하세요.');}));
 $('#bookings').addEventListener('click',run(async(event)=>{const button=event.target.closest('button[data-action]');if(!button)return;const card=button.closest('[data-booking]'),booking=latestBooking(card.dataset.booking),payload=bookingPayload(booking),action=button.dataset.action;
   if(action==='live-call'){
+    stateVersion++;
     const response=await fetch('/api/live/dial',{method:'POST',headers:{'Content-Type':'application/json','X-Prototype-Request':'1'},body:JSON.stringify({...payload,requestId:crypto.randomUUID()})});
     const body=await response.json();if(!response.ok)throw new Error(body.error?.message||'실제 발신을 요청하지 못했어요.');state=body.state;render();
   }
@@ -82,3 +87,6 @@ $('#quick-demo').addEventListener('click',run(async()=>{
 const day=new Date();day.setDate(day.getDate()+7);const iso=`${day.getFullYear()}-${String(day.getMonth()+1).padStart(2,'0')}-${String(day.getDate()).padStart(2,'0')}`;
 $('#booking-form').date.value=iso;$('#callback-form').date.value=iso;
 refresh().catch((error)=>message(error.message,true));
+async function pollState(){if(busy||polling||document.hidden)return;polling=true;try{await refresh();}catch{}finally{polling=false;}}
+setInterval(pollState,5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)pollState();});

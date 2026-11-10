@@ -25,6 +25,14 @@ def opening_text(context):
     return "안녕하세요, AI 예약 비서입니다."
 
 
+def initial_reply_instructions(context):
+    if context.get("purpose") == "CALLBACK":
+        return ("소개는 이미 했다. 식당에서 걸려온 회신 전화다. 새 예약을 요청하지 않는다. "
+                "예약을 식별하기 위해 예약자 성함을 묻는 짧은 질문 하나만 한다.")
+    return ("소개는 이미 했다. 이번 통화 목적에 맞는 질문 하나만 한다. "
+            "새 예약이면 날짜·시간·인원을 포함해 예약 가능한지 한 문장으로 묻는다.")
+
+
 def room_options(config):
     return room_io.RoomOptions(audio_input=room_io.AudioInputOptions(
         sample_rate=16000 if config.echo_cancellation else 24000,

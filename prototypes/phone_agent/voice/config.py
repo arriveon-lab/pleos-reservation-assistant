@@ -58,6 +58,7 @@ class VoiceConfig:
     allowed_numbers: tuple = field(default=(), repr=False)
     restaurant_numbers: dict = field(default_factory=dict, repr=False)
     enabled: bool = False
+    inbound_enabled: bool = False
     max_seconds: int = 180
     daily_calls: int = 1
     agent_name: str = "arriveon-reservation"
@@ -96,9 +97,10 @@ class VoiceConfig:
             echo = env.get("PHONE_ECHO_CANCELLATION", "false").lower()
             echo_delay = int(env.get("PHONE_ECHO_DELAY_MS", "200"))
             probe = env.get("PHONE_INPUT_LEVEL_PROBE", "false").lower()
+            inbound = env.get("PHONE_INBOUND_ENABLED", "false").lower()
             interruption = env.get("PHONE_INTERRUPTION_MODE", "adaptive").lower()
             if (noise not in ("true", "false") or echo not in ("true", "false")
-                    or probe not in ("true", "false")
+                    or probe not in ("true", "false") or inbound not in ("true", "false")
                     or not 0 <= echo_delay <= 500 or interruption not in ("adaptive", "vad")):
                 raise ValueError
             if not 30 <= seconds <= 600 or not 1 <= daily <= 10:
@@ -116,6 +118,7 @@ class VoiceConfig:
             outbound_trunk_id=(env.get("LIVEKIT_OUTBOUND_TRUNK_ID") or setup.get("outbound_trunk_id", "")),
             allowed_numbers=allowed, restaurant_numbers=mapping,
             enabled=env.get("PHONE_LIVE_ENABLED", "false").lower() == "true",
+            inbound_enabled=inbound == "true",
             max_seconds=seconds, daily_calls=daily, database=env.get("PHONE_DATABASE", cls.database),
             agent_name=env.get("PHONE_AGENT_NAME", cls.agent_name), secrets_dir=str(folder),
             stt_model=env.get("PHONE_STT_MODEL", cls.stt_model),
@@ -126,7 +129,7 @@ class VoiceConfig:
             input_level_probe=probe == "true",
             tts_voice=env.get("PHONE_TTS_VOICE", cls.tts_voice))
 
-    def missing(self, setup=False):
+    def missing(self, setup=False, direction="outbound"):
         fields = [("LIVEKIT_URL", self.livekit_url), ("LIVEKIT_API_KEY", self.api_key),
                   ("LIVEKIT_API_SECRET", self.api_secret), ("PHONE_ALLOWED_NUMBERS", self.allowed_numbers)]
         if setup:
@@ -134,11 +137,12 @@ class VoiceConfig:
                        ("TELKIT_NUMBER_ID", self.telkit_number_id), ("TELKIT_API_KEY", self.telkit_key),
                        ("TELKIT_SIP_USERNAME", self.sip_username), ("TELKIT_SIP_PASSWORD", self.sip_password)]
         else:
-            fields += [("LIVEKIT_OUTBOUND_TRUNK_ID", self.outbound_trunk_id)]
+            fields += ([("LIVEKIT_INBOUND_TRUNK_ID", self.inbound_trunk_id)] if direction == "inbound"
+                       else [("LIVEKIT_OUTBOUND_TRUNK_ID", self.outbound_trunk_id)])
         return [name for name, value in fields if not value]
 
-    def validate(self, setup=False):
-        missing = self.missing(setup)
+    def validate(self, setup=False, direction="outbound"):
+        missing = self.missing(setup, direction)
         if missing:
             raise ConfigurationError("필요한 설정: " + ", ".join(missing))
         url = urlsplit(self.livekit_url)
@@ -151,13 +155,26 @@ class VoiceConfig:
             if not number.startswith("+8270"):
                 raise ConfigurationError("Telkit의 070 번호를 설정해 주세요.")
 
-    def require_live(self):
-        self.validate()
-        if not self.enabled:
-            raise ConfigurationError("실전화 실행은 PHONE_LIVE_ENABLED=true와 허용 대상 설정 후 사용할 수 있어요.")
+    def require_live(self, direction="outbound"):
+        if direction not in ("inbound", "outbound"):
+            raise ConfigurationError("허용한 통화 방향이 아니에요.")
+        self.validate(direction=direction)
+        if not (self.inbound_enabled if direction == "inbound" else self.enabled):
+            flag = "PHONE_INBOUND_ENABLED" if direction == "inbound" else "PHONE_LIVE_ENABLED"
+            raise ConfigurationError(f"실전화 실행은 {flag}=true와 허용 대상 설정 후 사용할 수 있어요.")
+
+    def require_worker(self):
+        if not self.enabled and not self.inbound_enabled:
+            raise ConfigurationError("PHONE_LIVE_ENABLED=true 또는 PHONE_INBOUND_ENABLED=true가 필요해요.")
+        if self.enabled:
+            self.require_live()
+        if self.inbound_enabled:
+            self.require_live("inbound")
 
     def report(self):
         return {"liveEnabled": self.enabled, "missingRuntime": self.missing(),
+                "inboundEnabled": self.inbound_enabled,
+                "missingInboundRuntime": self.missing(direction="inbound"),
                 "missingSetup": self.missing(True), "allowedNumberCount": len(self.allowed_numbers),
                 "restaurantCount": len(self.restaurant_numbers), "maxSeconds": self.max_seconds,
                 "dailyCalls": self.daily_calls, "models": {"stt": self.stt_model, "llm": self.llm_model, "tts": self.tts_model},

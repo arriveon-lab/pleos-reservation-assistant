@@ -33,6 +33,7 @@ runtime.env는 다음 `.env.example`의 값 중 실행에 필요한 설정만 �
 
 ```dotenv
 PHONE_LIVE_ENABLED=false
+PHONE_INBOUND_ENABLED=false
 PHONE_DATABASE=/var/lib/arriveon-phone/phone-agent-prototype.sqlite3
 PHONE_SECRETS_DIR=/run/secrets/no-admin
 PHONE_MAX_SECONDS=60
@@ -77,7 +78,11 @@ healthcheck는 정적 `/`만 읽어 세션을 추가하지 않습니다. `/api/s
 docker compose -f prototypes/phone_agent/deploy/compose.yml --profile voice up -d worker
 ```
 
-API는 공개 서비스 인증이 없는 테스트 도구이므로 SSH 터널로 사용합니다. worker를 로컬과 서버에서 동시에 켜지 않습니다. 시험이 끝나면 runtime.env를 LIVE=false로 되돌리고 worker를 중단합니다. API는 계속 MOCK으로 사용할 수 있습니다.
+수신 전용 시험은 `PHONE_LIVE_ENABLED=false`, `PHONE_INBOUND_ENABLED=true`로 실행합니다.
+발신 trunk가 없어도 수신 설정이 완전하면 worker를 시작할 수 있습니다. 수신에도 동일한
+일일 상한·동시 1통·시간 제한이 적용되므로 기존 통화 이력은 그대로 유지합니다.
+
+API는 공개 서비스 인증이 없는 테스트 도구이므로 SSH 터널로 사용합니다. worker를 로컬과 서버에서 동시에 켜지 않습니다. 시험이 끝나면 runtime.env의 LIVE와 INBOUND를 모두 false로 되돌리고 worker를 중단합니다. API는 계속 MOCK으로 사용할 수 있습니다.
 
 ```bash
 docker compose -f prototypes/phone_agent/deploy/compose.yml stop worker

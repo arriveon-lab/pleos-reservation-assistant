@@ -138,7 +138,9 @@ class ReservationService:
         with self.lock:
             profiles = self._list(owner, "profile")
             calls = self._list(owner, "live_call")
-            return {"mode": "LIVE" if calls else "MOCK", "externalCalls": sum(bool(c.get("inviteRequested")) for c in calls), "profile": profiles[0] if profiles else None,
+            return {"mode": "LIVE" if calls else "MOCK", "externalCalls": sum(bool(c.get("inviteRequested")) for c in calls),
+                    "inboundCalls": sum(c.get("direction") == "inbound" for c in calls),
+                    "profile": profiles[0] if profiles else None,
                     "trips": self._list(owner, "trip"), "bookings": self._list(owner, "booking"),
                     "callbacks": self._list(owner, "callback"),
                     "events": self._list(owner, "event")[-100:]}
@@ -274,7 +276,8 @@ class ReservationService:
         self._put(owner, "booking", booking)
         return {"id": booking["id"]}
 
-    def _receive_callback(self, owner, payload, live=False):
+    def _receive_callback(self, owner, payload, live=False, call_id=None, evidence=None,
+                          booking_id=None):
         restaurant = payload.get("restaurantId")
         require(restaurant in ("demo-garden", "demo-table"), "INVALID_INPUT", "가상 식당을 선택해 주세요.", 400)
         # These are the facts supplied by the simulated caller, not a list read to them.
@@ -282,8 +285,11 @@ class ReservationService:
         matches = [b for b in self._list(owner, "booking") if b["restaurantId"] == restaurant
                    and b["reservationName"] == name and b["date"] == day
                    and b["confirmedTime"] == payload.get("currentTime")
-                   and b["status"] == "CONFIRMED" and (live or b.get("mode") != "LIVE")]
-        callback = {"id": identifier(), "status": "UNMATCHED", "bookingId": None, "at": timestamp()}
+                   and b["status"] == "CONFIRMED"
+                   and (b.get("mode") == "LIVE" and b["id"] == booking_id
+                        if live else b.get("mode") != "LIVE")]
+        callback = {"id": identifier(), "status": "UNMATCHED", "bookingId": None, "at": timestamp(),
+                    "mode": "LIVE" if live else "MOCK", "callId": call_id, "category": "TIME_CHANGE"}
         if len(matches) != 1:
             self._put(owner, "callback", callback)
             return {"id": callback["id"], "matched": False}
@@ -297,16 +303,21 @@ class ReservationService:
                   "approved": False, "createdAt": timestamp()}
         booking.update(change=change, version=booking["version"] + 1, notice="식당에서 시간 변경을 요청했어요. 기존 예약은 유지하고 사용자 확인을 기다려요.")
         callback.update(status="MATCHED", bookingId=booking["id"])
+        if live:
+            callback.update(proposedTime=proposed, summary=change["reason"], evidence=evidence)
         self._put(owner, "callback", callback)
         self._put(owner, "booking", booking)
-        self._event(owner, booking["id"], "restaurant", f"{proposed}로 변경할 수 있을까요?")
-        self._event(owner, booking["id"], "agent", "예약자에게 확인 후 다시 연락드리겠습니다.")
+        if not live:
+            self._event(owner, booking["id"], "restaurant", f"{proposed}로 변경할 수 있을까요?")
+            self._event(owner, booking["id"], "agent", "예약자에게 확인 후 다시 연락드리겠습니다.")
         return {"id": callback["id"], "matched": True}
 
     def _decide_change(self, owner, payload):
         booking = self._get(owner, "booking", payload.get("bookingId"))
         self._version(booking, payload)
         change = booking.get("change")
+        require(not booking.get("reviewRequired"), "CALLBACK_REVIEW_REQUIRED",
+                "식당의 취소·예약 불가 통보를 먼저 확인해야 해요.")
         require(change is not None and change["status"] == "AWAITING_USER", "INVALID_STATE", "승인 대기인 변경 요청이 없어요.")
         require(type(payload.get("approve")) is bool, "INVALID_INPUT", "승인 또는 거절을 선택해 주세요.", 400)
         change.update(approved=payload["approve"], status="RECONFIRMING" if payload["approve"] else "REJECTED")

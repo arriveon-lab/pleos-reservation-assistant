@@ -5,6 +5,7 @@ import hmac
 import json
 import re
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from ..service import DomainError, identifier, require, required_conditions, timestamp
 from .config import normalize_number
@@ -106,7 +107,8 @@ class LiveWorkflow:
             booking = self.service._get(owner, "booking", booking_id)
             change = booking.get("change")
             changing = (booking["status"] == "CONFIRMED" and booking.get("mode") == "LIVE"
-                        and change and change["status"] == "RECONFIRMING" and change["approved"])
+                        and not booking.get("reviewRequired") and change
+                        and change["status"] == "RECONFIRMING" and change["approved"])
             require(booking["version"] == version and (booking["status"] == "READY" or changing),
                     "INVALID_STATE", "승인된 최신 예약·변경에서만 실제 발신할 수 있어요.")
             trip = self.service._get(owner, "trip", booking["tripId"])
@@ -147,7 +149,7 @@ class LiveWorkflow:
             return owner, call
 
     def begin_inbound(self, caller, trunk_id, room):
-        self.config.require_live()
+        self.config.require_live("inbound")
         caller = normalize_number(caller)
         require(caller in self.config.allowed_numbers and trunk_id == self.config.inbound_trunk_id,
                 "CALLER_NOT_ALLOWED", "허용한 수신 테스트 통화가 아니에요.", 403)
@@ -156,6 +158,7 @@ class LiveWorkflow:
         def operation():
             self._capacity()
             call = {"id": identifier(), "direction": "inbound", "status": "ACTIVE",
+                    "purpose": "CALLBACK",
                     "room": room, "restaurantId": restaurants[0], "bookingId": None,
                     "nonce": identifier(), "createdAt": timestamp(), "inviteRequested": False}
             self.service._put("inbound", "live_call", call)
@@ -172,7 +175,7 @@ class LiveWorkflow:
                 require(booking["reservationName"] == name and booking["date"] == day
                         and booking["confirmedTime"] == current_time,
                         "BOOKING_LOCKED", "확인한 예약을 다른 예약으로 바꿀 수 없어요.")
-                return self._context(booking)
+                return {**self._context(booking), "purpose": "CALLBACK"}
             matches = []
             for row in self.service.db.execute("SELECT owner,body FROM objects WHERE kind='booking'"):
                 booking = json.loads(row[1])
@@ -186,7 +189,13 @@ class LiveWorkflow:
             self.service.db.execute("DELETE FROM objects WHERE owner=? AND kind='live_call' AND id=?", (owner, call_id))
             call.update(bookingId=booking["id"], bookingVersion=booking["version"])
             self.service._put(new_owner, "live_call", call)
-            return self._context(booking)
+            for event in self.service._list(owner, "unidentified_call_event"):
+                if event["callId"] == call_id:
+                    self.service.db.execute("DELETE FROM objects WHERE owner=? AND kind=? AND id=?",
+                                            (owner, "unidentified_call_event", event["id"]))
+                    event["bookingId"] = booking["id"]
+                    self.service._put(new_owner, "event", event)
+            return {**self._context(booking), "purpose": "CALLBACK"}
         return self._atomic(operation)
 
     @staticmethod
@@ -200,7 +209,8 @@ class LiveWorkflow:
         with self.service.lock:
             owner, call = self._find(call_id)
             if not call.get("bookingId"):
-                return {"found": False}
+                return {"found": False, "purpose": "CALLBACK",
+                        "today": datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()}
             context = self._context(self.service._get(owner, "booking", call["bookingId"]))
             context["purpose"] = call.get("purpose", "CALLBACK")
             if call.get("purpose") == "CHANGE_CONFIRMATION":
@@ -216,6 +226,15 @@ class LiveWorkflow:
             owner, call = self._find(call_id)
             if call.get("bookingId"):
                 self.service._event(owner, call["bookingId"], speaker, message[:2000], mode="LIVE", call_id=call_id)
+            elif call["direction"] == "inbound":
+                pending = [e for e in self.service._list(owner, "unidentified_call_event")
+                           if e["callId"] == call_id]
+                if len(pending) >= 20:
+                    self.service.db.execute("DELETE FROM objects WHERE owner=? AND kind=? AND id=?",
+                                            (owner, "unidentified_call_event", pending[0]["id"]))
+                self.service._put(owner, "unidentified_call_event", {
+                    "id": identifier(), "callId": call_id, "speaker": speaker,
+                    "message": message[:2000], "mode": "LIVE", "at": timestamp()})
 
     def record_diagnostics(self, call_id, diagnostics):
         def operation():
@@ -282,22 +301,65 @@ class LiveWorkflow:
             return {"saved": True, "status": status}
         return self._atomic(operation)
 
-    def request_change(self, call_id, proposed_time, reason):
+    def _callback_receipt(self, call_id, evidence, payload):
+        owner, call = self._find(call_id)
+        require(call["direction"] == "inbound" and call.get("bookingId") and call["status"] == "ACTIVE",
+                "IDENTIFICATION_REQUIRED", "예약을 먼저 확인해야 해요.")
+        recent = [e for e in self.service._list(owner, "event")
+                  if e.get("callId") == call_id and e["speaker"] == "restaurant"][-3:]
+        compact = lambda value: re.sub(r"[\s,.!?~…。！？]+", "", value)
+        matching = [e for e in recent if isinstance(evidence, str) and compact(evidence)
+                    and compact(e["message"]) == compact(evidence)]
+        require(bool(matching), "EVIDENCE_REQUIRED", "식당이 실제로 말한 최근 전체 발화를 인용해 주세요.")
+        actual = matching[-1]["message"]
+        digest = hashlib.sha256(json.dumps([payload, actual], sort_keys=True).encode()).hexdigest()
+        if call.get("receiptDigest"):
+            require(call["receiptDigest"] == digest, "IDEMPOTENCY_CONFLICT",
+                    "같은 회신에서 이미 접수한 내용과 달라 자동 덮어쓰지 않았어요.")
+            return owner, call, None, actual, digest
+        booking = self.service._get(owner, "booking", call["bookingId"])
+        require(booking["version"] == call["bookingVersion"], "VERSION_CONFLICT", "예약 상태가 바뀌었어요.")
+        return owner, call, booking, actual, digest
+
+    def request_change(self, call_id, proposed_time, reason, evidence=None):
         def operation():
-            owner, call = self._find(call_id)
-            require(call["direction"] == "inbound" and call.get("bookingId") and call["status"] == "ACTIVE",
-                    "IDENTIFICATION_REQUIRED", "예약을 먼저 확인해야 해요.")
-            if call.get("changeSaved"):
-                return {"saved": True, "status": "AWAITING_USER"}
-            booking = self.service._get(owner, "booking", call["bookingId"])
-            require(booking["version"] == call["bookingVersion"], "VERSION_CONFLICT", "예약 상태가 바뀌었어요.")
+            owner, call, booking, actual, digest = self._callback_receipt(
+                call_id, evidence, ["TIME_CHANGE", proposed_time, reason])
+            if booking is None:
+                return {"saved": True, "status": "AWAITING_USER", "id": call["callbackId"]}
             result = self.service._receive_callback(owner, {
                 "restaurantId": call["restaurantId"], "reservationName": booking["reservationName"],
                 "date": booking["date"], "currentTime": booking["confirmedTime"],
-                "proposedTime": proposed_time, "reason": reason}, live=True)
+                "proposedTime": proposed_time, "reason": reason}, live=True,
+                call_id=call_id, evidence=actual, booking_id=booking["id"])
             call["changeSaved"] = result.get("matched", False)
+            call.update(receiptDigest=digest, callbackId=result["id"], outcome="CHANGE_REQUESTED")
             self.service._put(owner, "live_call", call)
-            return {"saved": call["changeSaved"], "status": "AWAITING_USER"}
+            return {"saved": call["changeSaved"], "status": "AWAITING_USER", "id": result["id"]}
+        return self._atomic(operation)
+
+    def request_note(self, call_id, category, summary, evidence):
+        require(category in ("CANCELLATION", "UNAVAILABLE", "OTHER"),
+                "INVALID_INPUT", "지원하는 회신 분류를 확인해 주세요.", 400)
+        require(isinstance(summary, str) and 1 <= len(summary.strip()) <= 320,
+                "INVALID_INPUT", "회신 요약을 확인해 주세요.", 400)
+        def operation():
+            owner, call, booking, actual, digest = self._callback_receipt(
+                call_id, evidence, [category, summary])
+            if booking is None:
+                return {"saved": True, "status": "NEEDS_REVIEW", "id": call["callbackId"]}
+            callback = {"id": identifier(), "bookingId": booking["id"], "callId": call_id,
+                        "status": "NEEDS_REVIEW", "category": category, "summary": summary.strip(),
+                        "evidence": actual, "mode": "LIVE", "at": timestamp()}
+            booking.update(version=booking["version"] + 1,
+                           notice="식당 회신을 접수했어요. 변경·취소를 완료한 것은 아니며 확인이 필요해요.")
+            if category in ("CANCELLATION", "UNAVAILABLE"):
+                booking["reviewRequired"] = True
+            self.service._put(owner, "callback", callback)
+            self.service._put(owner, "booking", booking)
+            call.update(receiptDigest=digest, callbackId=callback["id"], outcome="CALLBACK_RECORDED")
+            self.service._put(owner, "live_call", call)
+            return {"saved": True, "status": "NEEDS_REVIEW", "id": callback["id"]}
         return self._atomic(operation)
 
     def finish(self, call_id, reason="ended"):

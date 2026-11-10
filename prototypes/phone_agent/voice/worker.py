@@ -14,7 +14,8 @@ from .config import VoiceConfig, load_env_file
 from .diagnostics import AudioDiagnostics
 from .echo import attach_echo
 from .input_probe import InputProbe
-from .resilience import CallSupervisor, SerializedStore, opening_text, room_options, turn_options
+from .resilience import (CallSupervisor, SerializedStore, initial_reply_instructions,
+                         opening_text, room_options, turn_options)
 from .workflow import LiveWorkflow
 
 load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
@@ -59,9 +60,12 @@ INSTRUCTIONS = """너는 한국어 식당 예약 비서다. 짧고 자연스러�
 예약 요청 직후의 수락을 결과 도구 근거로 인용한다. 추가 비용이 없다는 답만 예약 수락 근거로 제출하지 않는다.
 확정/완료 안내나 마지막 재확인 질문을 만들기 전에 결과 도구를 호출한다. 저장 뒤 안내와 종료는 도구가 처리한다.
 다른 시간이나 추가 비용, 불확실한 조건을 임의로 수락하지 않는다.
-회신 전화는 상대가 예약자 이름·YYYY-MM-DD 날짜·HH:MM 시간을 먼저 말하게 하고 identify_booking으로 확인한다.
+CALLBACK은 식당에서 걸려온 회신이다. 새 예약을 요청하지 않는다. 상대에게 예약자 성함부터 묻고 필요한 날짜·기존 시간은 한 가지씩 자연스럽게 확인한다.
+회신의 identify_booking에는 상대가 말한 이름·날짜·시간을 YYYY-MM-DD·HH:MM으로 정리해 제출한다. 식별 전에는 후보나 예약 정보를 먼저 읽지 않는다.
+회신의 상대 날짜는 서버 today의 한국 날짜를 기준으로 정리한다. 날짜나 오전·오후가 애매하면 해당 항목만 물어본다.
 조회 실패 시 다른 예약 목록이나 개인정보를 읽어주지 않는다. 확인한 예약만 변경 요청을 받는다.
-변경 요청을 저장한 뒤에는 사용자에게 확인하고 다시 연락하겠다고 말한다. 현 통화에서 임의 확정하지 않는다.
+시간 변경은 save_change_request, 취소·예약 불가 통보나 다른 문의는 save_callback_note로 실제 근거와 함께 접수한다.
+사용자 확인 전에는 변경이나 취소가 완료됐다고 말하지 않는다. 푸시 알림을 보냈다거나 사용자가 읽었다고 주장하지 않는다.
 CHANGE_CONFIRMATION은 이미 사용자가 승인한 변경을 식당에 재확인하는 목적이다. 원 시간을 먼저 밝힌다.
 결과 도구로 저장한 뒤 추가 요약·질문을 하지 않는다. 결과를 저장하지 못한 통화만 finish_call로 마친다.
 질문이 중단됐으면 상대의 답과 정정을 먼저 반영하고 답이 없는 항목만 다시 묻는다.
@@ -176,9 +180,37 @@ class BookingVoiceAgent(Agent):
         raise StopResponse()
 
     @function_tool()
-    async def save_change_request(self, context: RunContext, proposed_time: str, reason: str) -> dict:
-        """식당이 요청한 새 시간과 사유를 저장한다. 사용자 승인이나 변경 완료를 뜻하지 않는다."""
-        return await self._tool(lambda: self.workflow.request_change(self.call_id, proposed_time, reason))
+    async def save_change_request(self, context: RunContext, proposed_time: str, reason: str,
+                                  restaurant_evidence: str) -> dict:
+        """식별한 식당 회신의 새 시간·사유·실제 전체 발화 근거를 접수한다.
+
+        proposed_time은 HH:MM이다. 사용자 승인이나 변경 완료가 아니며 저장 후 안내하고 종료한다.
+        """
+        result = await self._tool(lambda: self.workflow.request_change(
+            self.call_id, proposed_time, reason, restaurant_evidence))
+        return await self._finish_callback_receipt(context, result)
+
+    @function_tool()
+    async def save_callback_note(self, context: RunContext, category: str, summary: str,
+                                 restaurant_evidence: str) -> dict:
+        """식별 후 취소(CANCELLATION)·예약 불가(UNAVAILABLE)·기타(OTHER) 회신을 접수한다.
+
+        실제 전체 발화를 근거로 제출한다. 예약 취소·변경을 실행하거나 알림 전달을 보장하지 않는다.
+        """
+        result = await self._tool(lambda: self.workflow.request_note(
+            self.call_id, category, summary, restaurant_evidence))
+        return await self._finish_callback_receipt(context, result)
+
+    async def _finish_callback_receipt(self, context, result):
+        if not result.get("saved"):
+            return result
+        if self.supervisor:
+            self.supervisor.closing = True
+        await context.wait_for_playout()
+        await context.session.say("요청을 접수했습니다. 예약자 확인이 필요한 내용으로 남겨두겠습니다.",
+                                  allow_interruptions=False)
+        await self.close_call("callback_received")
+        raise StopResponse()
 
     @function_tool()
     async def finish_call(self, context: RunContext) -> dict:
@@ -193,7 +225,7 @@ class BookingVoiceAgent(Agent):
 
 @server.rtc_session(agent_name=config.agent_name)
 async def reservation_agent(ctx: agents.JobContext):
-    config.require_live()
+    config.require_worker()
     service = ReservationService(config.database)
     workflow = LiveWorkflow(service, config)
     call_id = None
@@ -255,10 +287,13 @@ async def reservation_agent(ctx: agents.JobContext):
     try:
         metadata = json.loads(ctx.job.metadata or "{}")
         if metadata.get("direction") == "outbound":
+            config.require_live()
             candidate_id = metadata.get("callId")
             workflow.authorize_outbound_worker(candidate_id, metadata.get("nonce"), room_name)
             call_id = candidate_id
-        elif metadata.get("direction") != "inbound":
+        elif metadata.get("direction") == "inbound":
+            config.require_live("inbound")
+        else:
             raise DomainError("INVALID_JOB", "허용한 전화 작업이 아니에요.", 403)
         await ctx.connect()
         deadline = asyncio.create_task(expire())
@@ -340,8 +375,7 @@ async def reservation_agent(ctx: agents.JobContext):
         await session.say(opening_text(booking_context), allow_interruptions=False)
         if not ended and not supervisor.terminal and agent.user_turns == 0:
             await session.generate_reply(
-                instructions="소개는 이미 했다. 이번 통화 목적에 맞는 질문 하나만 한다. "
-                             "새 예약이면 날짜·시간·인원을 포함해 예약 가능한지 한 문장으로 묻는다.",
+                instructions=initial_reply_instructions(booking_context),
                 allow_interruptions=True)
     except Exception:
         await close_call("worker_error")
