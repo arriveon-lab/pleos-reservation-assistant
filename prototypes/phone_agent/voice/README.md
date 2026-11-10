@@ -123,7 +123,10 @@ binding은 영속 SQLite에 저장하고 번호·소유 ID를 웹 상태에 공�
 그 예약의 이름 하나만 보정어로 전달합니다. 변경 제안·승인 상태와 확인 필요 여부도 문맥에
 포함하며 변경 완료나 사용자 확인을 주장하지 않습니다. 원 예약·동승 조건과 승인/실제
 재확인 경계는 유지합니다. 연락처 저장 이름의 자동 동기화·새 번호 구매·일반 사용자 가입
-기능은 아닙니다. 로컬 142개 검사 통과, 전용 문맥의 실제 수신은 미검증입니다.
+기능은 아닙니다. 로컬/EC2 Linux(network=none) 142개 검사를 통과한 `b64bb5b`를 배포하고
+사용자 선택에 따라 기존 번호를 승인 이름의 예약 소유 세션에 실제 연결했습니다. DB를 다시
+열어 binding·원 예약/조건·통화 15건 보존을 확인했습니다. 발신/수신 비활성·worker 중단
+상태이며 전용 문맥을 사용한 실제 수신은 미검증입니다.
 
 의존성은 `livekit-agents[silero]==1.8.11`, `livekit-api==1.2.2`, `livekit-plugins-noise-cancellation==0.3.3`입니다. NC 플러그인은 LiveKit Cloud용이며 패키지 라이선스는 LiveKit 서비스 약관을 참조합니다. 공급자 바이너리를 저장소에 복사하지 않습니다. LiveKit Inference의 AssemblyAI Universal 3.6 Pro(ko) → Google Gemma 4 31B → Cartesia Sonic 3(ko)를 사용합니다. OpenAI API 키는 이 경로에 필요하지 않습니다. 공급자와 모델·음성 ID는 `.env.example`에서 바꿀 수 있습니다.
 
