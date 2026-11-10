@@ -82,3 +82,5 @@
 문서 push c14cf47 이후 원격 PR은 새 main4d65c01과 충돌해 pull_request CI가 생성되지 않았다. 공유 이력을 보존한 merge로 STATUS/HANDOFF 두 충돌에서 양측 기록을 모두 유지했다. main의 품질 도구/가상 검사/CI와 서버 test 산출물 선언을 보존했으며 Android·UX core·루트 빌드 설정은 기기 검증 소스cf35ead 대비 diff가 없다. APK는 여전히 위 cf35ead 빌드 증거이며 merge 뒤 새 APK를 재설치했다고 주장하지 않는다.
 
 통합 후 verifyAll 성공(112 tasks,7 executed/105 up-to-date), MOCK smoke 성공. Python 품질 검사는 최초 pyproj 미설치로 import 실패했고, 격리 `work/ux16-joint/quality-venv`에 requirements-quality를 설치한 뒤40개 가상 테스트와 MOCK pilot-screening 성공. 전역 Python 변경·실제 데이터 추가 조회는 없다. 로그는 integrated-verifyAll.log/integrated-smoke.log/integrated-quality-retry.log다. 원격 최신 head CI는 PR에서 별도로 보고하며 이전 cf35ead 성공을 최신 성공으로 표시하지 않는다.
+
+통합 작업 중 main이 다시2e873bc로 갱신돼 #38 내부 웹 상세정보 모듈(9ea227d)과 전화 개발 계획 문서가 추가됐다. 두 번째 merge에서도 STATUS/HANDOFF 양측 이력을 보존했다. 최신 통합 후 verifyAll(112 tasks,13 executed/99 up-to-date)·MOCK smoke 성공. Android/UX·루트 빌드 설정은 여전히 cf35ead 대비 변경 없다. #38 모듈은 main에 들어왔지만 미리보기 공개 필드/제품 앱 채택 합의와 실제 GPT 호출은 별개이며 이번에 연결하지 않았다. 로그 latest-main-verifyAll.log/latest-main-smoke.log.

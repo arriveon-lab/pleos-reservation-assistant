@@ -2,7 +2,7 @@
 
 ## 2026-11-10 #16 Docker 서버·Pleos 앱 측 인수 검증
 
-최신 main4d65c01 충돌은 양측 STATUS/HANDOFF 기록을 보존한 merge로 해결했다. Android/UX 소스 변경 없음. 통합 후 verifyAll·MOCK smoke·격리 venv 품질40개/MOCK 성공. 원격 CI는 최신 PR head 기준으로 확인한다.
+main4d65c01 및 후속2e873bc 충돌은 양측 STATUS/HANDOFF 기록을 보존한 merge로 해결했다. Android/UX 소스 변경 없음. 통합 후 verifyAll·MOCK smoke·격리 venv 품질40개/MOCK 성공. 원격 CI는 최신 PR head 기준으로 확인한다.
 
 앱cf35ead를 별도 jointvalidation APK로 빌드해 서버#19 d415ef7 Docker linux/arm64에 연결했다. 서버 직접 RESULTS/EMPTY/FILTERED/FAILED, 인증 갱신·Keystore 재실행·조건/목적지 변경·실제 STOPPED 복귀·중복 클릭 검증과 별도 늦은 응답/취소503/유실/3초 만료·개발 제한 검사를 수행했다. verifyAll·MOCK smoke PASS. 제품/API 수정 없음. [고정 APK/image·절차·증거·한계](UX16_DOCKER_ACCEPTANCE.md) 참조. 취소 실패 뒤 실제429와 HOME의 RESUMED 유지도 기록했다. 서버 담당의 결과 검토/공동 완료는 대기, 인원 경계/두 취향·실제5분 만료·실제 moving/장애·#40 예약 시연은 미완료다. OPEN/Draft 유지.
 
@@ -40,6 +40,33 @@
 - 원격 CI의 캐시된 서버 테스트에서 추천 예제 JSON이 복원되지 않는 실패를 확인했습니다. Test output 선언으로 수정하고 파일 삭제→FROM-CACHE 복원→추천 계약 검사 및 `smoke-test.py --check-contract`를 로컬에서 통과했습니다. 제품 서버 로직/계약 변경 없음.
 - 상세 계약·검증 수준·증거·제한: [UX-03 인수 기록](UX26_AUTH_HANDOFF.md). #5/#26 OPEN, PR Draft, 외부 장소/전화/AI/유료 호출0회, 병합 없음.
 
+
+## 2026-11-10 #35/#38 통합과 #42 CI·문서 이력 복구
+
+- 사용자 승인으로 #35는4d65c01, #38은9ea227d에 squash merge됐고 #34/#37은 독립 검증/코드 준비 범위로 종료됐습니다. 실제 공급자 채택·기기/ETA·전화/유료 실행 인수는 별도입니다.
+- #42에 최신 main과 REC-08 Gradle cache 산출물 수정을 반영했습니다. 문서 충돌 정리 중 누락된 PLAN/STATUS/HANDOFF 이력은 원본4d65c01/a22745a/6e48416과3-way 재대조해 복구했습니다. 세 원본의 모든 비어 있지 않은 행 보존을 확인했습니다. 전화 계획과 문서 복구만 변경하며 런타임 구현을 추가하지 않습니다.
+- 통합 기반 Java313개·JAR 인증/MOCK/UNKNOWN·OpenAPI/H2 재시작/LIVE 차단을 확인했습니다. REC-08 가상 파일 제거 후 FROM-CACHE 동일 hash 복원·추천 계약2개를 재현했습니다. 실제 외부 장소/GPT/전화/유료 호출0회입니다. 아래 실패/미병합 기록은 당시 이력이며 최신 CI는 해당 PR head를 따릅니다.
+
+
+## 2026-11-10 #35 병합 이후 #38 통합 검증
+
+- 사용자 승인으로 PR #35를4d65c01에 squash merge했고 #34는 종료됐습니다. #38은 이 main을 공유 이력 보존으로 반영하며 PLAN/STATUS/HANDOFF의 충돌에서 양쪽 기록을 보존했습니다. 품질 도구40개 검사와 GPT/웹 상세정보 코드 준비 범위를 함께 유지합니다.
+- 이 기록은 최신 main 반영 단계이며 #16/#26 기기·#11 데이터 인수나 실제 GPT/웹 수집/전화/유료 호출을 완료로 세지 않습니다. #38은 코드 준비/가상 검증 범위로 통합하며 실제 실행은 별도 승인 후입니다. 아래 #35 미병합/#34 OPEN 표기는 당시 이력입니다.
+- 최신 통합본 format/verify·Java313개/실패·오류·skip0, 가상 품질40개, 패키징 JAR 인증/MOCK/UNKNOWN·OpenAPI·H2 재시작·LIVE 차단을 통과했습니다. 원격 CI는 이 통합 head의 결과를 별도 확인합니다.
+
+## 2026-11-09 전화예약 에이전트 개발 계획
+
+- [전화예약 에이전트 계획](PHONE_RESERVATION_AGENT_PLAN.md)에 Telkit·LiveKit 기반 예약 발신, 회신 식별, 변경 승인·식당 재확인, UNKNOWN·중복 복구와 P01~P11의 일정·인수 기준을 정리했습니다. 15영업일은 역할별 병행 개발을 가정한 예상치입니다.
+- 사용자 요청으로 프로필·여정별 동승자 조건·예약 당시 조건 사본을 분리하고, 재사용 저장 선택·예약 승인·학습 동의 구분, 최소 정보 전달, 수정·삭제·만료 기준을 추가했습니다. P01/P05/P06/P08과 인수 시나리오 9개를 보완했으며 새 DB/API 구현은 아닙니다.
+- 계획의 함수·API·상태·저장 모델은 팀 검토용 제안이며 현행 계약·소스·DB·MOCK/LIVE 동작을 변경하지 않았습니다. #3/#4/#26의 구현·인수 상태와 담당을 유지합니다.
+- 이번 변경은 문서 4개·로컬 링크 65개·작업 ID 11개·형식·게시 정보·명명 규칙·diff 정적 검사를 통과했습니다. 로컬 Gradle·기기 테스트를 새로 실행한 결과가 아니며 실제 전화·계정 생성·번호 구매·유료 API 실행은 없습니다.
+## 2026-11-09 REC-11 #37 웹 상세정보·GPT 코드 준비
+
+- 사용자 선택에 따라 [GPT 출처 검색·웹 상세정보 모듈](REC11_PLACE_DETAILS.md)을 최신 mainabd9aa4 기반 `feat/37-place-detail-enrichment`에 분리했습니다. GPT 인용 URL 후보 → 별도 이용 조건/host 검토 → 이름+주소 일치 → 구조화 필드/출처·관측/표시 기한·충돌/UNKNOWN → 후보 최대3개의 남은 질문을 제공합니다. #19/#26 코드나 공개 v1/미리보기 계약은 변경하지 않았습니다.
+- Responses/web_search의 일회성 Permit·명시적 모델·도구1회/출력1024토큰·최대30초/1MiB·재시도/redirect 차단을 구현했습니다. Permit은 메모리상의 제한이며 운영 인증/전역 비용 원장이 아닙니다. 실제 실행 전 데이터·모델·횟수·비용 상한 승인이 별도로 필요합니다. HTTP/페이지 adapter는 Spring 미등록·제품 미연결입니다.
+- Java313개(기반268+신규45), 실패/오류/skip0. 가상 JSON-LD·GPT 응답·loopback HTTP로 지점/주소·출처 충돌·시각·취소/만료·중복 실행·응답 한도와 후보 결합을 검증했습니다. `:server:placeDetails`의 전체 예제도 MOCK입니다. 패키징 JAR 인증·기존 MOCK/UNKNOWN·OpenAPI·H2 재시작·LIVE 차단을 통과했습니다. jsoup1.24.1과 lockfile을 추가했습니다.
+- 웹 일반 보고는 GENERAL이며 도착 시각 빈자리·대기·예약 가능이나 권한으로 전환하지 않습니다. #11의 KAKAO/미검토 출처 GPT 전송을 차단하며 검토된 공공 출처의 제품 채택도 아직 아닙니다. 일반 문장/PDF/JS-only/다른 업종과 실제 TLS/모델/청구/매장 페이지·Android 기기는 미검증입니다. 이번 실제 GPT·웹 수집·Kakao·전화·유료 호출0회입니다. 원격 CI 결과는 PR에서 따로 확인합니다.
+- #16 별도 브랜치는 mainabd9aa4와의 충돌을 공유 이력 보존으로 해결하고 #26 담당의 [정적 검토](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)를 반영해 head5526f92로 push했습니다. Java329·Python7/15·가상HTTP137·토큰HTTP16·CI3개 통과. 계약 추가 차단 필드는 없었고 완료 preview 재사용 금지·app token의 MOCK_OPERATOR 미보유를 확인했습니다. 실제 #26 구현/공동 기기·#1 ETA·#11 인수는 남아 #16 OPEN/#19 Draft입니다. 이 #37 모듈은 이후 필드 합의 후 별도 연결합니다.
 ## 2026-11-09 REC-10 #34 공식 상태·HTTPS 실제 입력 확인
 
 - [REC-10](REC10_SEOUL_PILOT_VALIDATION.md)의 최신 결과가 아래 초기 진단보다 우선합니다. 공공데이터 제공 표준20차의127)일반음식점 원문에서 행정01–04·상세01/02 코드/명칭·폐업일 의미를 확인했습니다. 기존 가정 표기를 공식 사전 기반 판정으로 바꾸고 코드/명칭·상태 충돌을 구분했습니다. 범용 표준EPSG2097과 데이터셋EPSG5174의 차이를 기록하고 데이터셋별5174를 유지합니다.

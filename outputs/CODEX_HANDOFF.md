@@ -2,7 +2,7 @@
 
 ## 2026-11-10 #16 Docker 서버·Pleos 앱 측 인수 검증
 
-최신 main4d65c01 충돌은 양측 STATUS/HANDOFF 기록을 보존한 merge로 해결했다. Android/UX 소스 변경 없음. 통합 후 verifyAll·MOCK smoke·격리 venv 품질40개/MOCK 성공. 원격 CI는 최신 PR head 기준으로 확인한다.
+main4d65c01 및 후속2e873bc 충돌은 양측 STATUS/HANDOFF 기록을 보존한 merge로 해결했다. Android/UX 소스 변경 없음. 통합 후 verifyAll·MOCK smoke·격리 venv 품질40개/MOCK 성공. 원격 CI는 최신 PR head 기준으로 확인한다.
 
 앱cf35ead를 별도 jointvalidation APK로 빌드해 서버#19 d415ef7 Docker linux/arm64에 연결했다. 서버 직접 RESULTS/EMPTY/FILTERED/FAILED, 인증 갱신·Keystore 재실행·조건/목적지 변경·실제 STOPPED 복귀·중복 클릭 검증과 별도 늦은 응답/취소503/유실/3초 만료·개발 제한 검사를 수행했다. verifyAll·MOCK smoke PASS. 제품/API 수정 없음. [고정 APK/image·절차·증거·한계](../docs/UX16_DOCKER_ACCEPTANCE.md) 참조. 취소 실패 뒤 실제429와 HOME의 RESUMED 유지도 기록했다. 서버 담당의 결과 검토/공동 완료는 대기, 인원 경계/두 취향·실제5분 만료·실제 moving/장애·#40 예약 시연은 미완료다. OPEN/Draft 유지.
 
@@ -40,6 +40,35 @@
 - 원격 CI의 캐시된 서버 테스트에서 추천 예제 JSON이 복원되지 않는 실패를 확인했습니다. Test output 선언으로 수정하고 파일 삭제→FROM-CACHE 복원→추천 계약 검사 및 `smoke-test.py --check-contract`를 로컬에서 통과했습니다. 제품 서버 로직/계약 변경 없음.
 - 상세 계약·검증 수준·증거·제한: [UX-03 인수 기록](../docs/UX26_AUTH_HANDOFF.md). #5/#26 OPEN, PR Draft, 외부 장소/전화/AI/유료 호출0회, 병합 없음.
 
+
+## 2026-11-10 #35/#38 통합과 #42 CI·문서 이력 복구
+
+- 사용자 승인으로 #35는4d65c01, #38은9ea227d에 squash merge됐고 #34/#37은 독립 검증/코드 준비 범위로 종료됐습니다. 실제 공급자 채택·기기/ETA·전화/유료 실행 인수는 별도입니다.
+- #42에 최신 main과 REC-08 Gradle cache 산출물 수정을 반영했습니다. 문서 충돌 정리 중 누락된 PLAN/STATUS/HANDOFF 이력은 원본4d65c01/a22745a/6e48416과3-way 재대조해 복구했습니다. 세 원본의 모든 비어 있지 않은 행 보존을 확인했습니다. 전화 계획과 문서 복구만 변경하며 런타임 구현을 추가하지 않습니다.
+- 통합 기반 Java313개·JAR 인증/MOCK/UNKNOWN·OpenAPI/H2 재시작/LIVE 차단을 확인했습니다. REC-08 가상 파일 제거 후 FROM-CACHE 동일 hash 복원·추천 계약2개를 재현했습니다. 실제 외부 장소/GPT/전화/유료 호출0회입니다. 아래 실패/미병합 기록은 당시 이력이며 최신 CI는 해당 PR head를 따릅니다.
+
+
+## 2026-11-10 #35 병합 이후 #38 통합 검증
+
+- 사용자 승인으로 PR #35를4d65c01에 squash merge했고 #34는 종료됐습니다. #38은 이 main을 공유 이력 보존으로 반영하며 PLAN/STATUS/HANDOFF의 충돌에서 양쪽 기록을 보존했습니다. 품질 도구40개 검사와 GPT/웹 상세정보 코드 준비 범위를 함께 유지합니다.
+- 이 기록은 최신 main 반영 단계이며 #16/#26 기기·#11 데이터 인수나 실제 GPT/웹 수집/전화/유료 호출을 완료로 세지 않습니다. #38은 코드 준비/가상 검증 범위로 통합하며 실제 실행은 별도 승인 후입니다. 아래 #35 미병합/#34 OPEN 표기는 당시 이력입니다.
+- 최신 통합본 format/verify·Java313개/실패·오류·skip0, 가상 품질40개, 패키징 JAR 인증/MOCK/UNKNOWN·OpenAPI·H2 재시작·LIVE 차단을 통과했습니다. 원격 CI는 이 통합 head의 결과를 별도 확인합니다.
+
+## 2026-11-09 전화예약 에이전트 계획 인계 (#41)
+
+- [개발 계획](../docs/PHONE_RESERVATION_AGENT_PLAN.md)을 팀 문서 목차에 연결했습니다. 서비스 전용 070 번호, 예약·문의 발신, 식당 회신, 변경 승인과 재확인을 하나의 흐름으로 제안합니다.
+- 후속 보완으로 프로필과 이번 동승자 조건, 승인된 예약 사본을 분리했습니다. 프로필 수정으로 기존 예약을 덮어쓰지 않으며 재사용 저장을 선택하지 않아도 예약은 가능합니다. P01에서 정보별 보관·삭제 기간을 확정하고 P05/P06/P08에서 저장·최소 전달·앱 선택을 구현하도록 계획했습니다. 추가 인수 시나리오 9개는 실행 전 조건입니다.
+- 다음 작업은 #3 전화 담당, #4 서버 담당, #26 앱 담당의 계약·범위·일정 검토입니다. P01~P11을 합의 후 후속 이슈로 나누며, 기존 구현 이슈를 문서 게시만으로 종료하지 않습니다.
+- Telkit의 종료 웹훅은 현재 준비 중이므로 실시간 상태는 LiveKit·에이전트에서 처리하고 통화 기록은 사후 대조에 사용하도록 계획했습니다. 실제 설정·양방향 통화·한국어 품질·운영 배포는 미검증입니다.
+- 이번 변경은 계획·목차·상태·인계 문서만 포함합니다. 로컬 검증은 문서 정적 검사이며 서버/Android 테스트 재실행·계정 생성·실제 전화·번호 구매·유료 실행은 없습니다. 실제 실행은 기존 협업 규칙의 구체적 승인 범위를 따릅니다.
+## 2026-11-09 REC-11 #37과 #16 정적 합의 반영
+
+- 사용자가 GPT 웹검색 API 연동 코드 준비를 선택했습니다. mainabd9aa4 기반 `feat/37-place-detail-enrichment`에 [REC-11](../docs/REC11_PLACE_DETAILS.md)의 내부 모듈과 MOCK 실행 task를 추가했습니다. #19/#26 미병합 코드는 가져오지 않았으며 공개 v1/미리보기 계약·DB·Android는 변경하지 않았습니다.
+- GptPlaceSourceDiscovery/GptWebSearchHttpTransport는 명시적 모델과 대상/기한에 묶인 일회성 Permit으로 Responses/web_search 요청을 구성합니다. 키 Supplier만 있고 자동 키 로딩/LIVE 실행 명령/제품 bean은 없습니다. 실제 GPT·웹 수집·전화·Kakao·유료 호출0회. Permit은 전역 비용 승인 원장이 아니며 다음 실제 실행 전 모델/가격·출처·전송 데이터·횟수·비용 상한의 명시적 승인을 받아야 합니다.
+- PlaceDetailEnricher/JsonLdPlaceDetailParser는 schema.org 매장명+주소를 대조해 영업시간/메뉴 링크/가격/음식/일반 예약/명시적 주차·아동 보고와 출처/시각/기한/충돌·UNKNOWN을 보존합니다. 페이지는 독립 검토된 URL/host만 받습니다. KAKAO/UNVERIFIED 입력의 GPT 전송과 미검토 identity의 READ_ONLY_WEB을 차단합니다. 웹 정보는 GENERAL이며 ARRIVAL 질문·예약/발신 차단을 유지합니다.
+- PlaceDetailRecommendationService는 기존 최대3개 평가에 ordinal별 상세정보와 남은 질문을 결합하고 전체 generation/current/최단 표시 기한을 적용합니다. 기존 추천 질문은 기초 계획으로 유지합니다. 신규 필드가 #16/#26 합의된 API라는 뜻은 아니며 공개 스키마/화면 연결은 후속입니다. 페이지 HTTP adapter의 DNS pinning/전체 DNS 제한은 운영 전 보완해야 하며 실제 외부 수집은 미검증입니다.
+- `./gradlew -PincludeAndroid=false format verify :server:placeDetails`: Java313개(기반268+신규45), 실패/오류/skip0. GPT와 페이지는 가상, transport만 loopback HTTP로 검사했습니다. `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`: JAR 인증·기존 MOCK/UNKNOWN·OpenAPI·H2 재시작·LIVE 차단 통과. 의존성은 jsoup1.24.1 추가, lockfile 대조. 로그는 Git 제외 work/rec11-verify.log·rec11-smoke.log입니다. 원격 CI는 해당 PR에서 별도 확인합니다.
+- #16 브랜치는 mainabd9aa4를 merge해 충돌 해소했고, #26 담당의 정적 검토를 문서에 반영한 head5526f92를 push했습니다. 서버329·Python7/15·가상HTTP137·실제 로컬 서버 토큰HTTP16·CI3개 성공. [담당 검토](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)는 현행0.2.0-draft 필드 정적 합의이며 app 구현/기기 완료가 아닙니다. #26의 화면 수명/토큰 보관/UNKNOWN, #1 ETA·#11 데이터 인수가 남아 #16 OPEN/#19 Draft를 유지합니다. #35와 다른 PR을 임의 병합하지 않습니다.
 ## 2026-11-09 REC-10 후속: 공식 사전·키 없는 HTTPS1000행
 
 - 최신 [REC-10](../docs/REC10_SEOUL_PILOT_VALIDATION.md)과 docs/quality/rec10-status-reference.json·rec10-public-sheet-2026-11-09.json을 우선합니다. 제공 표준20차127)일반음식점 원문을 확보해 행정01–04·상세01/02·폐업일 의미를 확인했습니다. 가정 튜플이 아닌 공식 코드/명칭 판정이며 실제 입력1000행의 정상 조합 일치를 확인했습니다. 범용EPSG2097과 데이터셋EPSG5174의 차이는 출력하고5174를 유지합니다.
