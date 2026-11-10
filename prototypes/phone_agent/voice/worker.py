@@ -15,7 +15,7 @@ from .diagnostics import AudioDiagnostics
 from .echo import attach_echo
 from .input_probe import InputProbe
 from .resilience import (CallSupervisor, SerializedStore, initial_reply_instructions,
-                         opening_text, room_options, turn_options)
+                         opening_text, room_options, start_sip_audio, turn_options)
 from .workflow import LiveWorkflow
 
 load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
@@ -304,17 +304,6 @@ async def reservation_agent(ctx: agents.JobContext):
             call_id = call["id"]
         elif participant.identity != "restaurant-" + call_id:
             raise DomainError("WRONG_PARTICIPANT", "예상한 전화 참가자가 아니에요.", 403)
-        # A SIP participant can appear before the restaurant answers.
-        for _ in range(350):
-            if participant.attributes.get("sip.callStatus") == "active":
-                break
-            if participant.attributes.get("sip.callStatus") == "hangup":
-                await close_call("sip_disconnected")
-                return
-            await asyncio.sleep(0.1)
-        else:
-            await close_call("answer_timeout")
-            return
         booking_context = workflow.context(call_id)
         session = create_session(config, booking_context, vad=ctx.proc.userdata.get("vad"))
         supervisor = CallSupervisor(session, close_call, diagnostics, lambda: ended, store)
@@ -365,7 +354,10 @@ async def reservation_agent(ctx: agents.JobContext):
                 supervisor.spawn(close_call("sip_disconnected"))
 
         agent = BookingVoiceAgent(workflow, call_id, booking_context, close_call, diagnostics, supervisor, store)
-        await session.start(room=ctx.room, agent=agent, room_options=room_options(config))
+        async def start_audio():
+            await session.start(room=ctx.room, agent=agent, room_options=room_options(config))
+        if not await start_sip_audio(metadata["direction"], participant, start_audio, close_call) or ended:
+            return
         if config.input_level_probe:
             input_probe = InputProbe(session, participant)
             diagnostics.input_probe = input_probe

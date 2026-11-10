@@ -33,6 +33,33 @@ def initial_reply_instructions(context):
             "새 예약이면 날짜·시간·인원을 포함해 예약 가능한지 한 문장으로 묻는다.")
 
 
+async def start_sip_audio(direction, participant, start_audio, close_call, *, sleep=asyncio.sleep):
+    """Inbound audio must be published before LiveKit can accept the ringing call.
+
+    Outbound audio still waits for the callee to answer. Never speak a greeting
+    until active, and never restart a failed or disconnected call.
+    """
+    if direction not in ("inbound", "outbound"):
+        raise DomainError("INVALID_JOB", "허용한 전화 방향이 아니에요.", 403)
+    if participant.attributes.get("sip.callStatus") == "hangup":
+        await close_call("sip_disconnected")
+        return False
+    if direction == "inbound":
+        await start_audio()
+    for _ in range(350):
+        status = participant.attributes.get("sip.callStatus")
+        if status == "active":
+            if direction == "outbound":
+                await start_audio()
+            return True
+        if status == "hangup":
+            await close_call("sip_disconnected")
+            return False
+        await sleep(0.1)
+    await close_call("answer_timeout")
+    return False
+
+
 def room_options(config):
     return room_io.RoomOptions(audio_input=room_io.AudioInputOptions(
         sample_rate=16000 if config.echo_cancellation else 24000,
