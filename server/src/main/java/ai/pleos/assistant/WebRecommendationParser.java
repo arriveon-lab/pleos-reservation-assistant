@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,11 +48,18 @@ public final class WebRecommendationParser {
         return empty(mode, State.FAILED);
       int searches = 0;
       Map<URI, String> citations = new HashMap<>();
+      Set<URI> consulted = new HashSet<>();
       var texts = new ArrayList<String>();
       for (JsonNode output : root.path("output")) {
         if ("web_search_call".equals(output.path("type").asText())) {
           if (!"completed".equals(output.path("status").asText())) return empty(mode, State.FAILED);
           searches++;
+          for (JsonNode source : output.path("action").path("sources")) {
+            if (!"url".equals(source.path("type").asText())) continue;
+            URI url = URI.create(required(source, "url", 2048));
+            if (safeCitation(url)) consulted.add(url);
+            if (consulted.size() > 64) return empty(mode, State.FAILED);
+          }
         }
         if (!"message".equals(output.path("type").asText())
             || !"assistant".equals(output.path("role").asText())) continue;
@@ -69,7 +77,8 @@ public final class WebRecommendationParser {
           }
         }
       }
-      if (searches != 1 || texts.size() != 1) return empty(mode, State.FAILED);
+      // One Responses request may contain search plus page-open actions. It is still one API call.
+      if (searches < 1 || searches > 3 || texts.size() != 1) return empty(mode, State.FAILED);
       JsonNode content = json.readTree(texts.getFirst());
       shape(content, Set.of("candidates"));
       JsonNode input = content.path("candidates");
@@ -82,7 +91,8 @@ public final class WebRecommendationParser {
         String name = required(candidate, "name", 150),
             address = required(candidate, "address", 250);
         URI identityUrl = URI.create(required(candidate, "identitySourceUrl", 2048));
-        if (!citations.containsKey(identityUrl)) return empty(mode, State.FAILED);
+        if (!citations.containsKey(identityUrl) && !consulted.contains(identityUrl))
+          return empty(mode, State.FAILED);
         String key =
             PlaceDetailEnricher.canonical(name) + "\u0000" + PlaceDetailEnricher.canonical(address);
         Draft draft =
@@ -98,8 +108,12 @@ public final class WebRecommendationParser {
           if (answer == Verdict.CONFLICT) return empty(mode, State.FAILED);
           if (!request.requiredNeeds().contains(need)) continue;
           URI url = URI.create(required(report, "sourceUrl", 2048));
-          if (!citations.containsKey(url)) continue;
-          SourceType type = SourceType.valueOf(required(report, "sourceType", 30));
+          if (!citations.containsKey(url) && !consulted.contains(url)) continue;
+          boolean inlineCited = citations.containsKey(url);
+          SourceType type =
+              inlineCited
+                  ? SourceType.valueOf(required(report, "sourceType", 30))
+                  : SourceType.OTHER;
           Instant updated =
               report.path("sourceUpdatedAt").isNull()
                   ? null
@@ -110,19 +124,19 @@ public final class WebRecommendationParser {
           var evidence =
               new Evidence(
                   url,
-                  citations.get(url),
+                  inlineCited ? citations.get(url) : "웹검색 출처",
                   type,
                   observedAt,
-                  updated,
+                  inlineCited ? updated : null,
                   validUntil,
-                  required(report, "condition", 240),
+                  inlineCited ? required(report, "condition", 240) : "직접 인용 근거 없음",
                   "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION",
                   Model.Scope.GENERAL,
                   null);
           draft
               .reports
               .computeIfAbsent(need, ignored -> new ArrayList<>())
-              .add(new Report(answer, evidence));
+              .add(new Report(inlineCited ? answer : Verdict.UNKNOWN, evidence));
         }
       }
       var ranked = new ArrayList<Candidate>();

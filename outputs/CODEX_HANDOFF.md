@@ -6,6 +6,7 @@
 - 서버 계약은 `api/destination-recommendation-draft.json`, 요청 예제는 `api/examples/destination-recommendation-request.json`입니다. Bearer 인증으로 `POST /api/experimental/destination-recommendations`에 `viewId`, 증가하는 `generation`, `userRequest`, Pleos 목적지 이름·좌표, 인원을 보냅니다. `GET /{taskId}`를 폴링하고 화면/경로 종료 때 `DELETE /views/{viewId}`로 무효화합니다. 결과의 `result.matches.candidates`는 웹 근거와 Kakao 상호·주소가 같은 최대 3곳이며 `listing.candidates`는 미확인 목록입니다. `webState=APPROVAL_REQUIRED` 또는 `matches=null`이면 검증된 추천으로 표시하지 마세요.
 - Pleos 목적지 응답의 현재 경로 연관성은 아직 기기에서 확인되지 않았습니다. 경로 변경·취소·도착·재관측 시 화면 결과를 폐기하고, 늦은 폴링 응답을 세대별로 버려야 합니다. 거리 값은 목적지 직선거리이고 ETA나 주행 시간이 아닙니다. 조건별 `assessments`의 YES/NO/UNKNOWN과 근거·출처·유효 시각을 표시해야 하며 예약/전화 버튼은 이 계약에서 허용되지 않습니다. Gleo 음성 입력/완료 TTS는 별도 앱 인수입니다.
 - 서버는 실제 Kakao/GPT 데이터로 추천 3곳 품질을 검증하지 못했습니다. 전화 AI 조건 확인·예약·지연 연락은 후속 연결입니다. 전화번호용 공공 catalog는 이 추천 단계의 필수 입력이 아닙니다.
+- 서버는 Kakao 첫 페이지에 없는 웹 후보를 상호로 최대 3회 키워드 재조회하고 주소까지 같은 지점만 `matches.candidates`에 넣습니다. 웹검색 `action.sources`만 있고 본문 인용이 없으면 조건은 UNKNOWN입니다. 앱은 UNKNOWN을 주차 가능 등의 확정 문구로 읽지 말아야 합니다.
 
 ## 2026-11-10 INT-01 목적지 목록 API 초안 (#52)
 

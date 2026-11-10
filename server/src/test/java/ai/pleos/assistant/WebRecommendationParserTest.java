@@ -86,6 +86,39 @@ class WebRecommendationParserTest {
   }
 
   @Test
+  void consulted_sources_without_inline_citations_can_identify_places_but_not_verify_conditions()
+      throws Exception {
+    var root = response();
+    var message = (ObjectNode) root.at("/output/1/content/0");
+    var annotations = (ArrayNode) message.path("annotations");
+    var sources = json.createArrayNode();
+    for (var annotation : annotations)
+      sources.addObject().put("type", "url").put("url", annotation.path("url").asText());
+    ((ObjectNode) root.at("/output/0"))
+        .putObject("action")
+        .put("type", "search")
+        .set("sources", sources);
+    message.set("annotations", json.createArrayNode());
+    ((ArrayNode) root.path("output"))
+        .addObject()
+        .put("type", "web_search_call")
+        .put("status", "completed")
+        .putObject("action")
+        .put("type", "open_page");
+    var result = parse(root, content(root));
+    assertThat(result.state()).isEqualTo(State.RESULTS);
+    assertThat(result.candidates()).hasSize(3);
+    assertThat(result.candidates())
+        .allSatisfy(
+            candidate -> {
+              assertThat(candidate.fit()).isEqualTo(Fit.NEEDS_CONFIRMATION);
+              assertThat(candidate.assessments())
+                  .allSatisfy(
+                      assessment -> assertThat(assessment.verdict()).isEqualTo(Verdict.UNKNOWN));
+            });
+  }
+
+  @Test
   void generalPetYesNeverFillsMissingIndoorPolicy() throws Exception {
     var root = response();
     var content = content(root);
@@ -209,14 +242,15 @@ class WebRecommendationParserTest {
   }
 
   @Test
-  void absentOrMultipleSearchCallsCannotPassAsGroundedResults() throws Exception {
+  void absentOrExcessiveWebActionsCannotPassAsGroundedResults() throws Exception {
     var root = response();
     var content = content(root);
     ((ObjectNode) root.at("/output/0")).put("type", "unrelated");
     assertThat(parse(root, content).state()).isEqualTo(State.FAILED);
     root = response();
     content = content(root);
-    ((ArrayNode) root.get("output")).add(root.at("/output/0").deepCopy());
+    for (int i = 0; i < 3; i++)
+      ((ArrayNode) root.get("output")).add(root.at("/output/0").deepCopy());
     assertThat(parse(root, content).state()).isEqualTo(State.FAILED);
   }
 }
