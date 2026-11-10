@@ -53,6 +53,7 @@ class GptWebRecommendationAdapterTest {
               assertThat(data.path("max_tool_calls").asInt()).isEqualTo(1);
               assertThat(data.path("max_output_tokens").asInt()).isEqualTo(3072);
               assertThat(data.path("instructions").asText()).contains("도로명주소");
+              assertThat(data.path("instructions").asText()).contains("about 1 km");
               assertThat(body)
                   .doesNotContain(
                       request.viewId().toString(), "personalizationConsent", "fixture-key");
