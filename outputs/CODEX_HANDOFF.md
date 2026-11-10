@@ -1,5 +1,12 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 최소 MVP 범위와 핵심 검증
+
+#54를 사용자 지시에 따라 미구현/not planned로 종료했고 #5/#25/#26/#39 및 다른 담당 이슈는 유지했다. docs/PLAN.md 최신 순서에 따라 0원 변경 수락(21:04→21:19)·서버10분 간격·실제 대기 후 같은 pending 재전송·두 번째 변경UNKNOWN·재실행/재변경 차단을 확인했다. 변경 통화2건, 원 확정21:19/요청21:34/0원 유지.
+
+cddc1cd: 서버 lastChangeRequestedAt+600초 기준의 안내·조기 명령 저장/전송 차단 추가. 기존 pending 원본은 보존했다. UX82개·format/verifyAll/MOCK smoke·기기 cooldown/제한 fixture PASS. 실제 서버 단절 복구와 초기 fixture 오설정 실패/재검사, 고정 APK·증거는 docs/UX39_VEHICLE_UI.md 최신 절. 실제 차량 신호/일반 UNKNOWN 해결/공동 시연은 남는다. 표준 MOCK18082와 앱 UNKNOWN 결과 화면 유지, 로컬 운영자/오류 도구 종료. 확장·제출 산출물 보류를 완료로 표시하지 않는다.
+
+
 ## 2026-11-10 #39 단계별 안내3곳 수정 완료
 
 검색/문의/예약/변경 단계별 다음 행동을 구분하고 UNKNOWN/미해결 변경을 우선한다. 새 검색·예약 뒤 과거 복구 안내를 숨기되 기록은 보존한다. 전화 요약은 문의/예약/변경 목적을 구분한다. 실제 Pleos의 기존 CONFIRMED 조회·화면과 journal 불변, 기기 fixture의 대기/거절/UNKNOWN/변경 우선 안내를 확인했다. format/verifyAll/MOCK smoke PASS, Lint 기존4개 유지. 고정 APK·증거·미검증은 docs/UX39_VEHICLE_UI.md 최신 절. 전체 인수는 미완료, OPEN/Draft 유지. 사용자 확인용 앱과 표준 MOCK18082/adb8080→18082 실행 유지.
