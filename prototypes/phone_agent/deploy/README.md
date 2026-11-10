@@ -27,6 +27,8 @@ Docker Engine·Compose가 있는 Linux에서 release 소스를 별도 경로에 
 
 `config/`는 권한 700, `runtime.env`와 DB는 600·소유자 10001:10001로 준비합니다. data 디렉터리도 10001:10001이 SQLite journal을 만들 수 있어야 합니다. 새 서버로 옮길 때는 진행 중 통화가 없고 LIVE가 꺼져 있는지 확인한 후 SQLite backup API로 사본을 만듭니다. 기존 원격 DB를 자동으로 덮어쓰지 않습니다. 통화 이력을 유지해 이전 UNKNOWN과 일일 통화 수가 초기화되지 않게 합니다.
 
+config 디렉터리를 읽기 전용으로 마운트하므로 설정 파일을 원자적으로 교체해도 API가 새 파일을 읽습니다. 단일 파일 bind mount는 교체 전 inode에 남을 수 있어 사용하지 않습니다. config에는 runtime.env만 두며, 설정 교체 시에도 소유자·권한 600을 유지합니다. 실행 중 worker는 설정을 재로딩하지 않으므로 LIVE를 끌 때 반드시 worker도 중단합니다.
+
 runtime.env는 다음 `.env.example`의 값 중 실행에 필요한 설정만 담습니다. 실제 값은 별도로 비공개 전송합니다.
 
 ```dotenv

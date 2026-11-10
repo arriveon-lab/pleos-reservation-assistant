@@ -5,6 +5,7 @@
 - 사용자가 제공한 기존 EC2에 별도 Docker 배포를 구성했습니다. 호스트는 Ubuntu 26.04 x86_64·2코어·약 2GiB이며 기존 Nginx 컨테이너와 원격 main checkout은 보존합니다. [배포 안내](../prototypes/phone_agent/deploy/README.md)의 Python 3.12 이미지 digest·SDK 버전을 사용합니다.
 - API와 선택형 worker는 같은 영속 SQLite를 마운트합니다. 진행 중 통화가 없는 상태에서 온라인 backup으로 기존 LIVE 통화 7건과 소유권/예약 이력을 옮겼습니다. 서버에서 7건 모두 종료 상태인 것을 확인했고 실제 통화 수를 초기화하지 않았습니다.
 - worker는 idle process 1개와 작업 할당 전 Silero 로드를 사용합니다. `voice.launch`는 LIVE=false일 때 SDK worker 등록 전에 실패합니다. Compose 기본 시작은 API뿐이고 worker는 별도 profile입니다. API는 loopback 18765·SSH 터널로 사용합니다.
+- runtime 설정은 디렉터리 단위로 읽기 전용 마운트합니다. 파일을 원자적으로 교체해도 API가 새 설정을 읽는지 서버에서 검증했고, LIVE=false를 유지하며 비교 모드를 바꾼 뒤 adaptive로 복원했습니다.
 - 로컬 및 서버 Linux 컨테이너에서 기본 36개+음성 59개, **총 95개 테스트 통과**. 서버 검사는 network=none으로 실제 전화/모델 요청을 막았으며, Compose 설정·기본 LIVE 차단·DB 이력 보존·서버에서 LiveKit 제어 API 및 기존 trunk 조회도 확인했습니다.
 - 브라우저에서 서버 MOCK 예약→회신→사용자 승인→식당 재확인→19:30 변경 확정을 관측했습니다. HTTP health는 정적 페이지를 조회해 주기적으로 세션을 만들지 않습니다. 실제 발신/새 모델 추론은 없고 서버에서의 한국어 음질·STT 안정성과 통화 중 메모리는 미검증입니다.
 - SSH 개인 키·서버 주소·runtime 설정·DB·로그는 Git 제외 비공개 기록에 둡니다. 서버에는 필요한 LiveKit runtime 자격 증명만 전송하고 Telkit 관리 키/SIP 비밀번호는 복사하지 않았습니다. 배포 revision·이미지 ID와 접속 정보는 로컬 비공개 `work/phone-ec2-*.json/log`를 기준으로 확인합니다.
