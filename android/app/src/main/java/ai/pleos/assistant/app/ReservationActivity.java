@@ -39,6 +39,8 @@ public final class ReservationActivity extends ComponentActivity {
   private EditText adults;
   private EditText children;
   private CheckBox parking;
+  private EditText destinationRequest;
+  private String destinationRequestInput = "도착지 근처 주차 가능한 맛집 3곳 추천해줘";
 
   @Override
   public void onCreate(Bundle saved) {
@@ -134,9 +136,12 @@ public final class ReservationActivity extends ComponentActivity {
     if (adults != null) adultsInput = adults.getText().toString();
     if (children != null) childrenInput = children.getText().toString();
     if (parking != null) parkingInput = parking.isChecked();
+    if (destinationRequest != null)
+      destinationRequestInput = destinationRequest.getText().toString();
     adults = null;
     children = null;
     parking = null;
+    destinationRequest = null;
     if (approval != null && !model.canWrite()) approval.dismiss();
     int previousY = scroll == null ? 0 : scroll.getScrollY();
     scroll = new ScrollView(this);
@@ -161,6 +166,30 @@ public final class ReservationActivity extends ComponentActivity {
     text(vehicleStatus);
     if (model.vehicleDestination() != null)
       text(getString(R.string.pleos_destination_name, model.vehicleDestination().name()), 24);
+    if (BuildConfig.DEBUG && model.vehicleDestination() != null) {
+      text(R.string.destination_recommendation_title);
+      destinationRequest = new EditText(this);
+      destinationRequest.setHint(R.string.destination_recommendation_hint);
+      destinationRequest.setText(destinationRequestInput);
+      destinationRequest.setTextSize(22);
+      destinationRequest.setMinHeight(dp(72));
+      destinationRequest.setEnabled(model.canWrite());
+      content.addView(destinationRequest);
+      button(
+          R.string.destination_recommendation_search,
+          model.canWrite(),
+          v -> {
+            try {
+              model.recommendDestination(
+                  destinationRequest.getText().toString(),
+                  Integer.parseInt(adultsInput),
+                  Integer.parseInt(childrenInput));
+            } catch (NumberFormatException invalid) {
+              text(R.string.invalid_input);
+            }
+          });
+      destinationRecommendations();
+    }
     int restriction =
         switch (model.restriction()) {
           case UNKNOWN -> R.string.restriction_unknown;
@@ -270,6 +299,47 @@ public final class ReservationActivity extends ComponentActivity {
       text(R.string.failure);
     }
     scroll.post(() -> scroll.scrollTo(0, restoredY));
+  }
+
+  private void destinationRecommendations() {
+    var view = model.destinationRecommendationView();
+    text(getString(R.string.destination_recommendation_state, view.state()), 20);
+    if (view.result() == null) return;
+    JSONObject recommendation = view.result().optJSONObject("result");
+    if (recommendation == null) return;
+    JSONObject matches = recommendation.optJSONObject("matches");
+    JSONArray candidates =
+        matches != null && "RESULTS".equals(matches.optString("state"))
+            ? matches.optJSONArray("candidates")
+            : null;
+    if (candidates == null || candidates.length() == 0) {
+      text(R.string.destination_recommendation_unverified);
+      return;
+    }
+    for (int i = 0; i < candidates.length(); i++) {
+      JSONObject candidate = candidates.optJSONObject(i);
+      if (candidate == null) continue;
+      text(
+          getString(
+              R.string.destination_recommendation_candidate,
+              candidate.optString("name"),
+              candidate.optString("address"),
+              candidate.optInt("straightLineDistanceMeters")),
+          22);
+      JSONArray assessments = candidate.optJSONArray("assessments");
+      if (assessments == null) continue;
+      for (int j = 0; j < assessments.length(); j++) {
+        JSONObject assessment = assessments.optJSONObject(j);
+        if (assessment == null) continue;
+        text(
+            getString(
+                R.string.destination_recommendation_evidence,
+                assessment.optString("need"),
+                assessment.optString("verdict")),
+            18);
+      }
+    }
+    text(R.string.destination_recommendation_disclosure);
   }
 
   private String list(JSONArray array) throws Exception {

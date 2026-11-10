@@ -1,6 +1,7 @@
 package ai.pleos.assistant.app;
 
 import ai.pleos.assistant.ux.AuthSession;
+import ai.pleos.assistant.ux.DestinationRecommendationClient;
 import ai.pleos.assistant.ux.DestinationRecommendationState;
 import ai.pleos.assistant.ux.MockRepository;
 import ai.pleos.assistant.ux.PreviewController;
@@ -25,6 +26,7 @@ public final class ReservationViewModel extends AndroidViewModel {
   private final DestinationRecommendationState vehicleDestination =
       new DestinationRecommendationState();
   private PleosDestinationSource vehicleSource;
+  private DestinationRecommendationClient destinationClient;
   private PreviewController preview;
   private boolean previewOpen;
   private final Runnable expiry =
@@ -32,6 +34,7 @@ public final class ReservationViewModel extends AndroidViewModel {
         public void run() {
           if (closed || observer == null) return;
           if (preview != null) preview.tick();
+          if (destinationClient != null) destinationClient.tick();
           main.postDelayed(this, 1000);
         }
       };
@@ -56,6 +59,17 @@ public final class ReservationViewModel extends AndroidViewModel {
       preview =
           new PreviewController(
               auth::exchangeTransient,
+              () ->
+                  main.post(
+                      () -> {
+                        if (!closed && observer != null) observer.run();
+                      }),
+              java.time.Clock.systemUTC(),
+              android.os.SystemClock::elapsedRealtimeNanos);
+      destinationClient =
+          new DestinationRecommendationClient(
+              auth::exchangeTransient,
+              vehicleDestination,
               () ->
                   main.post(
                       () -> {
@@ -155,6 +169,19 @@ public final class ReservationViewModel extends AndroidViewModel {
     return vehicleDestination.destination();
   }
 
+  DestinationRecommendationClient.View destinationRecommendationView() {
+    return destinationClient == null
+        ? new DestinationRecommendationClient.View("UNAVAILABLE", null)
+        : destinationClient.view();
+  }
+
+  void recommendDestination(String userRequest, int adults, int children) {
+    if (!canWrite()
+        || destinationClient == null
+        || vehicleStatus() != PleosDestinationSource.Status.AVAILABLE_UNVERIFIED) return;
+    destinationClient.search(userRequest, adults, children);
+  }
+
   void requestVehicleDestination() {
     if (closed) return;
     stopVehicleDestination();
@@ -163,6 +190,7 @@ public final class ReservationViewModel extends AndroidViewModel {
             getApplication(),
             vehicleDestination,
             () -> {
+              if (destinationClient != null) destinationClient.invalidate("ROUTE_CHANGED");
               if (!closed && observer != null) observer.run();
             });
     vehicleSource.start();
@@ -173,6 +201,7 @@ public final class ReservationViewModel extends AndroidViewModel {
       vehicleSource.close();
       vehicleSource = null;
     }
+    if (destinationClient != null) destinationClient.invalidate("CLOSED");
   }
 
   boolean canWrite() {
@@ -247,6 +276,7 @@ public final class ReservationViewModel extends AndroidViewModel {
     vehicleDestination.close();
     main.removeCallbacks(expiry);
     if (preview != null) preview.close();
+    if (destinationClient != null) destinationClient.close();
     if (repository != null) repository.restrict(MockRepository.Restriction.UNKNOWN);
     worker.shutdownNow();
   }
