@@ -21,6 +21,7 @@
 | [ISSUE_GUIDE](ISSUE_GUIDE.md) | 각 이슈의 입력/출력·파일 경계·완료 조건 | 작업 해설, 이슈 상태는 GitHub가 기준 |
 | [REC-01 상세 계획](REC01_PLAN.md) | #2 기반 PR과 후속 #11–13의 범위·브랜치·계약·검증 | PR #10 통합·#2 CLOSED, 실연동 미완료 |
 | [REC-01 실제 연동 검토](REC01_INTEGRATION.md) | 공식 저장 제한·앱 설정 결과·HTTP 경계·재전송 제어 | 무료 쿼터 설정·HTTP loopback 검증, 실제 API 미실행 |
+| [REC-02 MVP 데이터 흐름](REC02_MVP_DATA_FLOW.md) | #11 문의 재확인·개발 결정 DATA-01–08·OA-18655 후보·실제 연동 진입 조건 | 초기 DATA 결정과 후속 REC-10/11 구분, 공급자 채택 전 |
 | [REC-04 실제 검색 시연](REC04_LIVE_SEARCH.md) | #13 저장 없는 독립 1회 장소 조회·키/무료 설정·표시·실행 기록 | 실제 1회·3곳 표시/쿼터 확인, 제품 예약과 분리 |
 | [REC-01 서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md) | 미리보기/예약 분리·IO/중복·출처/모드·후속 인수 조건 | 팀 합의 전 제안, API/DB 미적용 |
 | [REC-03 세션 관리와 실행 경계](REC03_PREVIEW.md) | #12 소유 scope·수명/상한·동시 합류·취소·H2 경계 | 전체 188개 검증, 인증/제품 API 미연결 |
@@ -29,6 +30,7 @@
 | [REC-09 공공데이터 검증](REC09_SEOUL_DATA_VALIDATION.md) | #32 공식 명세39필드·전화/좌표/시각 검사·공개 표본5건·독립 도구 | 가상 테스트15개·공개 샘플 집계, 제품 공급자 채택 전 |
 | [REC-10 시범 지역 교차 검사](REC10_SEOUL_PILOT_VALIDATION.md) | #34 공식 상태 사전·HTTPS실제1000행·동일 행/중복/반경·취득 조건 | 가상40개, 실제 진단115행·원문 미저장, 제품 공급자 채택 전 |
 | [추천·장소 후속 작업](REC_FOLLOWUPS.md) | #12/#13 완료 범위와 #11/#16–18 담당·의존성·인수 조건 | 검증한 기반과 미완료 제품 연결 구분 |
+| [장소 데이터 이용 범위](PLACE_DATA_USE_MATRIX.md) | #11 공식 근거·미확인 항목·공급 경로·provenance 계약 | 2026-11-08 재확인, 예약 공급자 최종 합의 전 |
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |
@@ -54,3 +56,5 @@
 - 편집 가능한 관계도 소스: [erd/ERD.mmd](erd/ERD.mmd)
 - 107개 컬럼과 15개 FK를 포함한 가져오기 표기: [erd/ERDCLOUD_IMPORT.sql](erd/ERDCLOUD_IMPORT.sql)
 - [ERDCloud 편집본](https://www.erdcloud.com/d/GLtbN3YfiazAMYi6X)은 비공개입니다. GitHub 게시가 ERDCloud 접근 권한을 변경하지는 않습니다. UNIQUE 5개의 가져오기 누락과 필요한 업무 제약은 [ERD](ERD.md)에 기록했습니다.
+
+- [REC-02 팀 회신 기준](REC02_TEAM_HANDOFF.md): #11 표시·폐기, #43 전화 API 지원 경계, #1 차량 입력, #50 최소 MVP 범위. 문서 결정과 런타임 구현 구분.

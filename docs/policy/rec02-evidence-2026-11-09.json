@@ -1,0 +1,87 @@
+{
+  "checkedDateKst": "2026-11-09",
+  "issue": 11,
+  "kind": "PUBLIC_DOCUMENTATION_AND_TOPIC_METADATA_ONLY",
+  "sources": [
+    {
+      "id": "KAKAO_PROJECT_TOPIC",
+      "url": "https://devtalk.kakao.com/t/local-api/152647",
+      "publicJson": "https://devtalk.kakao.com/t/152647.json",
+      "postsCount": 1,
+      "replyCount": 0,
+      "visiblePostNumbers": [
+        1
+      ],
+      "staffReplyObserved": false
+    },
+    {
+      "id": "KAKAO_FAQ",
+      "url": "https://devtalk.kakao.com/t/faq-api/125610",
+      "observed": [
+        "REALTIME_USE_GUIDANCE",
+        "SEPARATE_RESPONSE_STORAGE_RESTRICTED"
+      ]
+    },
+    {
+      "id": "KAKAO_LOCAL_REPLY",
+      "url": "https://devtalk.kakao.com/t/local-api/151263",
+      "replyAuthor": "Map",
+      "replyDate": "2026-08-20",
+      "observed": [
+        "SOURCE_AND_DERIVED_DATA_STORAGE_RESTRICTED",
+        "USER_RESELECTION_NOT_A_GENERAL_EXCEPTION"
+      ]
+    },
+    {
+      "id": "KAKAO_POLICY",
+      "url": "https://developers.kakao.com/terms/ko/site-policies",
+      "sections": [
+        "5.20",
+        "5.30"
+      ],
+      "projectProcessorApplication": "UNCONFIRMED"
+    },
+    {
+      "id": "SEOUL_OA_18655",
+      "url": "https://data.seoul.go.kr/dataList/OA-18655/A/1/datasetView.do",
+      "publisher": "서울특별시 성동구",
+      "catalogLicense": "KOGL_TYPE_1",
+      "documentedCoordinateSystem": "EPSG:5174",
+      "documentedUpdateCycle": "DAILY",
+      "documentedDataLagDays": 3,
+      "catalogDisplayedDateConsistency": "UNVERIFIED_DIFFERENT_PUBLIC_READS",
+      "rawRowsFetched": 0,
+      "telephoneSchemaAndQuality": "UNVERIFIED"
+    },
+    {
+      "id": "KOGL_TYPE_1",
+      "url": "https://www.kogl.or.kr/info/licenseType1.do",
+      "observed": [
+        "ATTRIBUTION_REQUIRED",
+        "SHARING_ADAPTATION_COMMERCIAL_USE_PERMITTED_UNDER_TERMS",
+        "ACCURACY_AND_CONTINUITY_NOT_GUARANTEED"
+      ]
+    }
+  ],
+  "projectDecisions": [
+    "DATA-01",
+    "DATA-02",
+    "DATA-03",
+    "DATA-04",
+    "DATA-05",
+    "DATA-06",
+    "DATA-07",
+    "DATA-08"
+  ],
+  "currentProductMode": "MOCK",
+  "nextValidationCandidate": "SEOUL_OA_18655",
+  "reservationSupplierAdopted": false,
+  "liveCallsAuthorizedByThisDocument": false,
+  "placeDataApiCalls": 0,
+  "merchantRowsDownloaded": 0,
+  "phoneCalls": 0,
+  "paidCalls": 0,
+  "newKakaoInquiriesSent": 0,
+  "publicTopicModified": false,
+  "accountKeyIpPaymentChanges": false
+}
