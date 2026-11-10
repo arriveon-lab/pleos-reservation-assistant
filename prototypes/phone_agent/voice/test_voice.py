@@ -159,6 +159,22 @@ class LiveWorkflowTest(unittest.TestCase):
         self.assertEqual("CONFIRMED", result["status"])
         self.assertEqual("19:00", self.get_booking(booking)["confirmedTime"])
 
+    def test_short_acceptance_uses_this_bookings_approved_name(self):
+        name = "박테스트"
+        trip = self.command("create_trip", {"conditions": CONDITIONS})["id"]
+        booking = self.command("create_booking", {"tripId": trip, "tripVersion": 1,
+                               "date": DAY, "time": "19:00", "reservationName": name})["id"]
+        self.command("approve_booking", {"bookingId": booking, "version": 1})
+        call, _ = self.workflow.reserve(self.owner, booking, 2, "different-approved-name")
+        self.workflow.mark_dispatching(call["id"])
+        self.assertEqual(name, self.workflow.context(call["id"])["reservationName"])
+        self.workflow.transcript(call["id"], "agent", name + " 이름으로 예약 부탁드립니다.")
+        self.workflow.transcript(call["id"], "restaurant", "네")
+        result = self.workflow.record_outcome(call["id"], accepted=True, day=DAY, time="19:00",
+            reservation_name=name, people=4, additional_cost=0,
+            confirmed_requirements=required_conditions(CONDITIONS), evidence="네")
+        self.assertEqual("CONFIRMED", result["status"])
+
     def test_booking_completion_reply_does_not_require_repeating_the_name(self):
         booking, call = self.reserve()
         for speaker, message in [
