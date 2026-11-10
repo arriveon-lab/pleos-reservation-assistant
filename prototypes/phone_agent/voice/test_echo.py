@@ -33,7 +33,8 @@ class Sink(io.AudioOutput):
             self.on_playback_finished(playback_position=len(self.data) / 32000, interrupted=False)
 
     def clear_buffer(self):
-        self.on_playback_finished(playback_position=len(self.data) / 32000, interrupted=True)
+        if self._pending_playback_count:
+            self.on_playback_finished(playback_position=len(self.data) / 32000, interrupted=True)
 
     def pause(self):
         self.paused = True
@@ -138,6 +139,27 @@ class EchoTest(unittest.IsolatedAsyncioTestCase):
         output.flush()
         self.assertEqual(320, len(sink.data))
         self.assertTrue((await output.wait_for_playout()).interrupted)
+
+    async def test_interrupt_before_first_frame_leaves_no_unfinishable_segment(self):
+        for cancel in (False, True):
+            with self.subTest(cancel=cancel):
+                sink = Sink()
+                output = EchoOutput(sink, EchoProcessor())
+                output.pause()
+                task = asyncio.create_task(output.capture_frame(pcm_frame(bytes(320))))
+                await asyncio.sleep(0)
+                if cancel:
+                    task.cancel()
+                    with self.assertRaises(asyncio.CancelledError):
+                        await task
+                else:
+                    output.clear_buffer()
+                    await asyncio.wait_for(task, 0.2)
+                output.flush()
+                output.clear_buffer()
+                await asyncio.wait_for(output.wait_for_playout(), 0.2)
+                self.assertEqual(0, output.captured_playout_segments)
+                self.assertFalse(sink.data)
 
     async def test_input_processing_precedes_all_session_consumers(self):
         class Input(io.AudioInput):

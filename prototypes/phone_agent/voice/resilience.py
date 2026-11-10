@@ -18,6 +18,13 @@ END_TEXT = "이번 통화는 여기서 마치겠습니다. 예약 결과는 서�
 REPEAT_TEXT = "말씀을 처리하지 못했어요. 다시 한 번 말씀해 주시겠어요?"
 
 
+def opening_text(context):
+    name = context.get("reservationName")
+    if isinstance(name, str) and name.strip():
+        return f"안녕하세요, {name} 님의 AI 비서입니다."
+    return "안녕하세요, AI 예약 비서입니다."
+
+
 def room_options(config):
     return room_io.RoomOptions(audio_input=room_io.AudioInputOptions(
         sample_rate=16000 if config.echo_cancellation else 24000,

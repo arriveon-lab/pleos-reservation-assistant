@@ -14,7 +14,7 @@ from ..service import DomainError
 from .config import VoiceConfig, ConfigurationError
 from .diagnostics import AudioDiagnostics
 from .resilience import (CallSupervisor, SerializedStore, control_intent, fallback_audio,
-                         room_options, turn_options)
+                         opening_text, room_options, turn_options)
 
 
 def fake_session():
@@ -24,6 +24,11 @@ def fake_session():
 
 
 class ResilienceTest(unittest.IsolatedAsyncioTestCase):
+    def test_opening_uses_only_the_current_approved_name(self):
+        self.assertEqual("안녕하세요, 박테스트 님의 AI 비서입니다.",
+                         opening_text({"reservationName": "박테스트"}))
+        self.assertEqual("안녕하세요, AI 예약 비서입니다.", opening_text({}))
+
     def setUp(self):
         self.now = 0
         self.session = fake_session()

@@ -133,7 +133,6 @@ class EchoOutput(io.AudioOutput):
     async def capture_frame(self, frame):
         if frame.sample_rate != RATE or frame.num_channels != 1:
             raise ValueError("AEC output requires mono 16 kHz PCM")
-        await super().capture_frame(frame)
         generation = self.generation
         data = bytes(frame.data)
         for offset in range(0, len(data), BYTES):
@@ -143,9 +142,13 @@ class EchoOutput(io.AudioOutput):
             if self.next_at < self.clock() - 0.02:
                 self.next_at = self.clock()
             await self.sleep(max(0, self.next_at - self.clock()))
+            await self.ready.wait()
             if generation != self.generation:
                 return
             chunk = pcm_frame(data[offset:offset + BYTES])
+            # A pause can be interrupted before any PCM reaches the sink. Counting
+            # that as a segment would wait forever for a nonexistent playout event.
+            await super().capture_frame(chunk)
             await self.next_in_chain.capture_frame(chunk)
             # A short tail is passed through unchanged but padded only in the reference.
             self.processor.reference(pcm_frame(bytes(chunk.data).ljust(BYTES, b"\0")))

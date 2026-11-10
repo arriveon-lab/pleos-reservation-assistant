@@ -13,7 +13,7 @@ from ..service import DomainError, ReservationService
 from .config import VoiceConfig, load_env_file
 from .diagnostics import AudioDiagnostics
 from .echo import attach_echo
-from .resilience import CallSupervisor, SerializedStore, room_options, turn_options
+from .resilience import CallSupervisor, SerializedStore, opening_text, room_options, turn_options
 from .workflow import LiveWorkflow
 
 load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
@@ -327,7 +327,7 @@ async def reservation_agent(ctx: agents.JobContext):
         echo = attach_echo(session, config, diagnostics)
         reminder = supervisor.spawn(supervisor.watch())
         # Only the short identity statement is protected; buffered user audio is preserved.
-        await session.say("안녕하세요, AI 예약 비서입니다.", allow_interruptions=False)
+        await session.say(opening_text(booking_context), allow_interruptions=False)
         if not ended and not supervisor.terminal and agent.user_turns == 0:
             await session.generate_reply(
                 instructions="소개는 이미 했다. 이번 통화 목적에 맞는 질문 하나만 한다. "
