@@ -1,5 +1,12 @@
 # 구현·검증 현황
 
+## 2026-11-10 REC-08 추천 산출물 캐시 복원 수정 (#43)
+
+- CI의 `:server:test FROM-CACHE` 뒤 추천 JSON 누락을 로컬에서 재현했습니다. Java 테스트가 쓴 파일이 Gradle의 선언된 출력에 없어서 테스트 보고서만 복원됐습니다.
+- `server/build.gradle.kts`에 `rec08/mock-recommendation-plan.json`을 이름 있는 테스트 산출물로 등록했습니다. 캐시를 계속 사용하고 Java 실행 결과의 스키마 검사를 유지합니다.
+- 수정 후 `format verify --build-cache`와 서버 Java 268개 테스트(실패/오류/skip 0)를 확인했습니다. 이어 `:server:clean verify --build-cache`에서 `:server:test FROM-CACHE`와 JSON의 바이트 동일 복원을 확인했고, 예제/Java 결과 2개 스키마 검사도 통과했습니다.
+- 패키지 MOCK HTTP/OpenAPI·소유권·H2 재시작 smoke 검사를 통과했습니다. 로컬 증거는 Git 제외 `work/rec08-cache-before-hit.log`, `work/rec08-cache-fixed-first.log`, `work/rec08-cache-fixed-hit.log`, `work/rec08-cache-fixed-smoke.log`입니다. 원격 결과는 PR #45 Checks를 기준으로 확인합니다.
+
 ## 2026-11-10 소음·대기·장애 대응 적용 (#43)
 
 - 입력 소음 억제 NC와 adaptive 끼어들기 판단을 기본으로 연결했습니다. `PHONE_NOISE_SUPPRESSION`·`PHONE_INTERRUPTION_MODE`로 비교/복귀할 수 있습니다. Silero 기준 0.5, 최소 발화 0.5초, 무전사 오감지 복구 2초, endpointing 0.5–3초를 명시했습니다. 유료 주화자 분리 모델은 추가하지 않았습니다.
