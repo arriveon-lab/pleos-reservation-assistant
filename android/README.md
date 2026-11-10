@@ -86,3 +86,25 @@ adb logcat -s PleosNaviProbe:I '*:S'
 비식별 증거: captures/veh01-clean-second-reroute-20261109-live.jsonl, veh01-clean-second-reroute-result.json. 화면은 Git 제외 work/veh01/clean-reroute-return.png에만 보관했습니다. 코드 변경/테스트 재실행/commit/push/PR/외부 문의 발송은 없습니다.
 
 2026-11-09 Issue #1의 앱 인수 코멘트 반영: [차량 데이터 앱 인수안](../docs/VEH01_APP_HANDOFF.md)에 #16/#26 전달 정보·오류/수명 상태·Navigation 변환 차단·공동 시나리오를 정리했습니다. 협의용 문서이며 제품 adapter 구현/공통 계약 변경/앱 연결 완료를 뜻하지 않습니다.
+
+## 2026-11-10 ETA 무요청 관측·수동 반복 조회
+
+Navigation3.3.2-rc5-hotfix.3/probe0.1.0-probe/NaviHelper3.0.5, Asia/Seoul, 같은 세션에서 길안내 시작(05:49:50.220220Z), 명시적 목적지 VALID_FIELDS(05:50:37.363502Z)를 받았습니다. 첫 Trip 요청05:51:16.353738Z→응답05:51:17.293121Z/raw731초, 두 번째 수동 요청05:54:59.346307Z→응답05:54:59.779159Z/raw734초입니다. monotonic 응답 간격222.494초이고 원시값은3초 증가했습니다.
+
+첫 응답 이후 두 번째 수동 요청 전 222.052초 구간에서 추가 tripInfo는0건입니다. 중간 STOPPED/내비 전면/같은 세션 HOT 복귀를 포함하며 listener는 유지됐습니다. 이 제한된 정차·경로 시험에서 자발 콜백을 관측하지 못한 것이며 SDK 자동 갱신 없음/주기나 단순 카운트다운을 확정하지 않습니다. 시스템 시작횟수는 전후1이었습니다. 현재 경로 연관성과 ETA 시간 기준은 계속 UNVERIFIED입니다.
+
+내비 캡처 전후 UTC05:52:29–05:52:39에 시계14:52/남은13분/도착15:04/속도0kmh였습니다. 첫 SDK 응답보다 약72–82초 늦고 UI 분 단위/반올림 규칙도 미확정이므로 동시 일치나 절대 ETA 변환 근거로 쓰지 않습니다. 위치/이름/POI는 공유 문서에 기록하지 않았고 화면은 Git 제외 work/veh01/eta-ui-20261110.png에만 있습니다.
+
+비식별 근거: captures/veh01-eta-20261110.json, veh01-followup-20261110-live.jsonl, 누적 snapshot146건. 도착/실패 조합/늦은 유효 응답·공동 인수는 여전히 미검증입니다. 이번 단계는 기기 관측/문서 갱신이며 코드·테스트·commit/push·PR/Issue 변경은 없습니다.
+
+## 2026-11-10 권한 미선언 실제 SDK 예외 검증
+
+기기 dumpsys/pm 권한 정의에서 NAVI_ROUTE/NAVI_ROUTE_SEARCH 모두 normal, 제공 패키지 ai.pleos.playground.service.navi임을 확인했습니다. 런타임 권한 창 거부/pm revoke 시험으로 간주하지 않습니다. 기존 권한을 강제 변경하거나 시스템 서비스를 중지하지 않았습니다.
+
+정상 probe Java 소스와 동일한 별도 진단 package ai.pleos.assistant.probe.denied를 Git 제외 work/veh01/no-permission-probe에 만들었습니다. 두 uses-permission 선언만 제외하고 applicationId를 분리했으며 고정 AGP8.9.2/SDK35/NaviHelper3.0.5를 유지했습니다. 첫 assemble은 복사본의 AndroidX 설정 누락으로 실패했고 원본 gradle.properties를 반영한 재시도47초에 성공했습니다. 이 fixture는 APK 빌드만 실행했으며 Lint/단위 테스트 통과를 주장하지 않습니다. 최종 merged manifest에 두 권한 없음과 Java 소스 동일을 검사했습니다. APK SHA256=f3541e1c378d563db4ac26ab11af44cd838bfd2467a898e33d62de8ad05bec05. 정상 APK/manifest/앱은 덮어쓰지 않았습니다.
+
+기존 격리 에뮬레이터를 정상 종료 후 같은 데이터로 부팅해 설치 Success를 받았습니다. 초기 검은 화면은 SDK 결과로 쓰지 않고 표준 WAKEUP과 포커스/화면 재확인 후 버튼을 눌렀습니다. 같은 시험 세션에서 06:14:05.921867Z NAVI_ROUTE=false, 06:14:05.949898Z NAVI_ROUTE_SEARCH=false, 06:14:06.791312Z initialized, 06:14:06.801825Z destinationRequested, 06:14:06.819745Z sdkCallFailed/PERMISSION_DENIED를 받았습니다. routeRevision=1/목적지 사용가능=false, 화면에서 초기화/재조회/Trip/재탐색 버튼 비활성을 확인했습니다. 실패는 유효 목적지나 정상 빈 결과로 바뀌지 않았습니다. 이 경로는 코드상 SecurityException 분류입니다. 실패 처리의 listener 해제/SDK release 호출 구현은 있지만 SDK 내부 해제 완료 자체를 별도 계측하지 않았습니다.
+
+시스템 시작횟수는 시험 중1회였습니다. 원시 근거는 Git 제외 captures/veh01-permission-fixture-20261110.json, veh01-permission-20261110-live.jsonl, 누적 snapshot158건, 화면 work/veh01/denied-result.png입니다. 정상 probe 화면으로 복귀 요청했습니다. 권한 미선언 조회 실패 경로는 실제 확인했지만 개별 권한 조합/런타임 거부·서비스 미지원/단절·도착·늦은 유효 응답·ETA 기준은 아직 미검증입니다. 테스트 앱/생성 프로젝트/SDK는 공유 fixture에 추가하지 않았으며 제품 코드·commit/push·PR/Issue 변경은 없습니다.
+
+2026-11-10 근접 시점 ETA 대조 추가: [공유 관측 요약](../docs/VEH01_OBSERVATIONS_20261110.md)에 비식별 발췌·시각 구간·연관성/갱신 한계·다음 검증 환경을 정리했습니다. 수동2회 raw681/화면12분은 가설 근거이며 시간 기준 확정이나 제품 입력 허용은 아닙니다.
