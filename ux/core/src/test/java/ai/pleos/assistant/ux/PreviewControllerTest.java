@@ -169,7 +169,7 @@ class PreviewControllerTest {
     c.search(INPUT);
     assertTrue(w.entered.await(2, TimeUnit.SECONDS));
     c.invalidate("EDITING");
-    await(() -> w.closes.get() == 1);
+    await(() -> w.closes.get() == 1 && !c.view().cleanupPending());
     assertTrue(c.view().cleanupFailed());
     assertNull(c.view().result());
     w.release.countDown();

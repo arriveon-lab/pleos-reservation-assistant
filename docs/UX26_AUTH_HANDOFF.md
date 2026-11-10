@@ -84,3 +84,5 @@ PR #19 `a5ae15e`의 인증 1.1.0 OpenAPI와 서버 구현, #26/#4 최신 댓글�
 로컬 증거: `captures/unknown-contract/{query,offline,restart}.png`, `work/unknown-contract/{device,verifyAll,smoke}.log`, `work/unknown-contract/tested.apk`. restart 최초 캡처는 시작 전 빈 화면이라 로딩 완료 후 다시 캡처·육안 확인했다. 민감할 수 있는 journal과 기기 파일은 Git 제외. 실제 예약 BOOKING/UNKNOWN의 서버 생성은 이번에 하지 않았고 JVM/기기 fixture 결과와 실제 CHANGE/UNKNOWN을 구분한다. 404·저장 실패·참조 불일치는 JVM 오류 주입이며 실제 서버 장애 재현과 별개다.
 
 남음: #4 서버 담당의 일반 UNKNOWN 해결/종료 계약(소유권·증빙·허용 전이·중복/응답 유실·원 예약 시각/비용·감사 기록), 이후 #26 앱 연결/공동 인수. GET 확인은 수동 해결/종료가 아니다. #5/#25/#26/#39 OPEN, PR #46 Draft 유지. 실제 주행 신호/#40 공동 시연은 이번 검증 범위 밖이다.
+
+원격 CI 첫 실행(9d071ef): Server and contract·PR naming PASS, Android checks에서 기존 `PreviewControllerTest.editHidesLateResultEvenWhenCancellationFails` 실패. close 호출 횟수 증가와 controller cleanupFailed 반영 사이 경쟁이었다. `cleanupPending=false`까지 기다린 뒤 기존 오류/늦은 결과 차단 assertion을 실행하도록 테스트만 수정했다. 제품 코드/APK는 동일하다. 수정 후 로컬 verifyAll 재검사 및 최신 원격 결과는 PR #46에 연결한다.
