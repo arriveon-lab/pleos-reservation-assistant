@@ -1,5 +1,10 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 로컬 서버로 각자 실행·비동기 인수
+
+- [REC-05 진행 절차](../docs/REC05_JOINT_ACCEPTANCE.md)를 보완했습니다. 화면 담당이 자기 PC에서 서버07b0a43을 별도 checkout으로 실행하고, 자기 기기의8080을 그 PC의18082로 reverse해 최종 APK/4fixture를 확인합니다. 원격 공유 서버/터널은 없고 두 사람의 동시 접속이나 추천 담당 Mac 상시 실행은 필요하지 않습니다.
+- 서버 commit·최종 APK SHA·시험 조건·증거를 고정하고 양측이 검토한 뒤 인수합니다. PC별 토큰/세션/DB를 공유하거나 별도 실행만으로 공동 인수 완료를 표시하지 않습니다. 기존 reverse 조회/복구와 앱/DB 보존을 문서화했으며 실제 연결·설치·배포·API/전화/유료 작업은 수행하지 않았습니다. 이번 변경은 문서뿐이며 새 Gradle/기기 실행 결과로 세지 않습니다.
+
 ## 2026-11-10 REC-05 #16 앱 core와 실제 MOCK 서버 호환
 
 - [직접 호환 검증](../docs/REC05_JOINT_ACCEPTANCE.md)에서 앱cf35ead의 실제 AuthSession/MockRepository/PreviewController 세 소스를 읽기용 checkout에서 미수정 상태로 컴파일했습니다. Java17 대상/host JVM, memory vault·제한 wire를 사용해4fixture의 앱 HTTP52건과 기존 스키마 HTTP48건을 대조했습니다. 앱/서버 공개 계약은1.1.0/0.2.0-draft 그대로이며 다른 담당 브랜치는 변경하지 않았습니다.

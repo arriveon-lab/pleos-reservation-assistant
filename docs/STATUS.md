@@ -1,5 +1,10 @@
 # 구현·검증 현황
 
+## 2026-11-10 REC-05 로컬 실행·비동기 인수 절차 명확화
+
+- [인수 절차](REC05_JOINT_ACCEPTANCE.md)에 각자 PC에서 서버07b0a43 실행 → 자기 기기에8080→18082 연결 → 최종 APK/4fixture 증거 → 양측 검토를 명시했습니다. 원격 공유 서버가 없으며 담당자 동시 접속이나 추천 담당 Mac 상시 실행은 필요하지 않습니다.
+- 문서/기존 이슈 전달을 보완한 작업입니다. 서버 배포·공개 바인딩·터널·기기/adb·앱/인증 DB 변경·실제 API/전화/유료 실행은 없습니다. 새 기기 검증이나 공동 인수 성공으로 세지 않으며 #16/#26 OPEN·#19 Draft를 유지합니다.
+
 ## 2026-11-10 REC-05 #16 고정 앱 core·서버 직접 호환
 
 - 새 화면 답변/실행 중 adb 기기가 없는 동안 앱cf35ead의 AuthSession/MockRepository/PreviewController를 수정 없이 읽어 Java17 대상으로 컴파일하고 현재 서버4fixture에 직접 연결했습니다. [호환 검증과 재현](REC05_JOINT_ACCEPTANCE.md)의 RESULTS/EMPTY/FILTERED/FAILED 모두 앱에서 수용했습니다. 다른 담당의 브랜치·Android 코드·기기/키 저장소는 변경하지 않았습니다.
