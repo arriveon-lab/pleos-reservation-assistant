@@ -19,6 +19,7 @@
 | [REC-05 공동 인수·MOCK fixture](REC05_JOINT_ACCEPTANCE.md) | #16/#26 필드·인원 합의, 직접4상태 재현과 격리 시험 명령, 웹 상세정보 다음 협의안 | 서버 준비/HTTP 검증, 공동 기기 실행 대기 |
 | [REC-05 Docker 실행](REC05_DOCKER.md) | 각 PC의 Compose 기동·4상태·인증 DB 유지·기기 포트 연결/복구 | 개발용 MOCK 이미지, Docker 실행 검증/기기 인수 구분 |
 | [PLAN](PLAN.md) | 전체 범위·일정·5명 역할·통합 순서 | 기존 개발 계획 |
+| [전화예약 에이전트 개발 계획](PHONE_RESERVATION_AGENT_PLAN.md) | 송수신·회신·변경, 사용자·동승자 조건과 예약 사본, P01~P11 일정·인수 | 팀 검토용 제안, API/DB·실전화 미적용 |
 | [ISSUE_GUIDE](ISSUE_GUIDE.md) | 각 이슈의 입력/출력·파일 경계·완료 조건 | 작업 해설, 이슈 상태는 GitHub가 기준 |
 | [REC-01 상세 계획](REC01_PLAN.md) | #2 기반 PR과 후속 #11–13의 범위·브랜치·계약·검증 | PR #10 통합·#2 CLOSED, 실연동 미완료 |
 | [REC-01 실제 연동 검토](REC01_INTEGRATION.md) | 공식 저장 제한·앱 설정 결과·HTTP 경계·재전송 제어 | 무료 쿼터 설정·HTTP loopback 검증, 실제 API 미실행 |
@@ -27,7 +28,9 @@
 | [REC-03 세션 관리와 실행 경계](REC03_PREVIEW.md) | #12 소유 scope·수명/상한·동시 합류·취소·H2 경계 | 전체 188개 검증, 인증/제품 API 미연결 |
 | [REC-05 화면 연결 인수안](REC05_UI_HANDOFF.md) | #16/#26 조건 포함 미리보기·추천 근거/질문·화면 수명·공동 확인 항목 | MOCK HTTP 연결 검증, 화면 담당 합의/기기 인수 대기 |
 | [REC-08 후보 추천·질문 계획](REC08_RECOMMENDATION_PLAN.md) | 최대3개 후보·근거·기본 정보 누락·UNKNOWN 질문·가상 실행/계약 | 서버268개 검증, 제품 HTTP/화면 연결 전 |
+| [REC-11 웹 상세정보와 GPT 출처 검색](REC11_PLACE_DETAILS.md) | 매장 일치·구조화 웹 정보·출처/시각·남은 질문·일회성 GPT 연동 코드 | 가상 검증, 실제 유료/웹 호출과 제품 화면 연결 전 |
 | [REC-09 공공데이터 검증](REC09_SEOUL_DATA_VALIDATION.md) | #32 공식 명세39필드·전화/좌표/시각 검사·공개 표본5건·독립 도구 | 가상 테스트15개·공개 샘플 집계, 제품 공급자 채택 전 |
+| [REC-10 시범 지역 교차 검사](REC10_SEOUL_PILOT_VALIDATION.md) | #34 공식 상태 사전·HTTPS실제1000행·동일 행/중복/반경·취득 조건 | 가상40개, 실제 진단115행·원문 미저장, 제품 공급자 채택 전 |
 | [추천·장소 후속 작업](REC_FOLLOWUPS.md) | #12/#13 완료 범위와 #11/#16–18 담당·의존성·인수 조건 | 검증한 기반과 미완료 제품 연결 구분 |
 | [REC-05 HTTP 계약 초안](REC05_PREVIEW_API.md) | #16 기본 비활성 MOCK 실험 API·가상 인증 HTTP 통합 | 244개 검증, 실제 로그인/차량 화면 미연결 |
 | [REC-05 토큰 연동 검토](REC05_TOKEN_INTEGRATION.md) | #21 후보 인증 PR·개발용 호출자·임시 통합 증거 | 단독 244/Python 7·임시 통합 271·실제 토큰 HTTP 16건, main 미병합 |
