@@ -1,0 +1,96 @@
+# 단일 Linux 서버 배포
+
+예약 API와 선택형 음성 worker가 같은 영속 SQLite를 사용하는 전화 프로토타입 배포입니다. 제품 Spring 서버 배포와 별개입니다. 기본 시작은 MOCK 웹 화면만 실행하며, 실제 전화 worker는 `voice` profile과 LIVE 검증을 통과해야 시작합니다.
+
+## 구성
+
+- Python 3.12 Debian 이미지 digest와 음성 SDK 버전을 고정합니다. 호스트 Python 버전은 사용하지 않습니다.
+- Linux host network에서 API는 `127.0.0.1:18765`, 음성 worker health는 `127.0.0.1:8081`에 바인딩합니다. 포트를 공개하거나 기존 Nginx 설정을 변경하지 않습니다.
+- `/opt/arriveon-phone/data/phone-agent-prototype.sqlite3`를 API와 worker의 `/var/lib/arriveon-phone/phone-agent-prototype.sqlite3`에 함께 마운트합니다. 단일 서버·동시 통화 1개용이며 다중 서버 배포는 별도 설계가 필요합니다.
+- worker는 idle process 1개를 준비하고 Silero를 작업 할당 전에 로드해 통화 중 재로딩을 줄입니다. 호출 중 다른 종류의 지연이나 외부 STT 단절 해결을 보장하지 않습니다.
+- API 192MiB, worker 1200MiB 메모리 상한을 사용합니다. 실제 worker/모델의 메모리는 승인된 통화에서 별도로 관측합니다. OOM 여부는 `docker inspect`와 서버 메모리로 확인합니다.
+- 비 root UID/GID 10001, 읽기 전용 root filesystem, 제한된 임시 디렉터리와 로그 회전을 사용합니다. `Dockerfile.dockerignore`는 전화 소스만 빌드에 허용합니다.
+
+## 서버 준비와 데이터
+
+Docker Engine·Compose가 있는 Linux에서 release 소스를 별도 경로에 둡니다. 서버 IP·SSH 키·runtime.env·DB·로그는 Git에 넣지 않습니다. SSH 개인 키는 로컬에만 둡니다.
+
+서버 경로:
+
+```text
+/opt/arriveon-phone/
+  releases/<revision>/prototypes/phone_agent/...
+  current -> releases/<revision>
+  config/runtime.env
+  data/phone-agent-prototype.sqlite3
+```
+
+`config/`는 권한 700, `runtime.env`와 DB는 600·소유자 10001:10001로 준비합니다. data 디렉터리도 10001:10001이 SQLite journal을 만들 수 있어야 합니다. 새 서버로 옮길 때는 진행 중 통화가 없고 LIVE가 꺼져 있는지 확인한 후 SQLite backup API로 사본을 만듭니다. 기존 원격 DB를 자동으로 덮어쓰지 않습니다. 통화 이력을 유지해 이전 UNKNOWN과 일일 통화 수가 초기화되지 않게 합니다.
+
+runtime.env는 다음 `.env.example`의 값 중 실행에 필요한 설정만 담습니다. 실제 값은 별도로 비공개 전송합니다.
+
+```dotenv
+PHONE_LIVE_ENABLED=false
+PHONE_DATABASE=/var/lib/arriveon-phone/phone-agent-prototype.sqlite3
+PHONE_SECRETS_DIR=/run/secrets/no-admin
+PHONE_MAX_SECONDS=60
+PHONE_DAILY_CALLS=1
+# LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET
+# LIVEKIT_INBOUND_TRUNK_ID, LIVEKIT_OUTBOUND_TRUNK_ID
+# PHONE_AGENT_NAME, PHONE_ALLOWED_NUMBERS, PHONE_RESTAURANT_NUMBERS
+# PHONE_STT_MODEL, PHONE_LLM_MODEL, PHONE_TTS_MODEL, PHONE_TTS_VOICE
+# PHONE_NOISE_SUPPRESSION=true, PHONE_INTERRUPTION_MODE=adaptive
+```
+
+Telkit 관리 API 키·SIP 비밀번호는 이미 준비된 trunk로 통화하는 데 필요하지 않아 이 배포에 복사하지 않습니다. runtime 진단의 `missingRuntime`이 비어 있는지 확인하며 `missingSetup`은 관리 자격 증명을 두지 않아 남을 수 있습니다.
+
+## 빌드와 기본 시작
+
+release 루트에서 실행합니다. Docker 이미지 빌드는 공개 모델 파일을 미리 받으며 계정 키·전화 발신·STT/LLM/TTS 추론을 사용하지 않습니다.
+
+```bash
+export PHONE_RELEASE=<revision>
+docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
+docker compose -f prototypes/phone_agent/deploy/compose.yml build
+docker compose -f prototypes/phone_agent/deploy/compose.yml up -d api
+docker compose -f prototypes/phone_agent/deploy/compose.yml ps
+```
+
+필요한 경우 위 명령에 서버 권한에 맞게 `sudo`를 사용합니다. revision은 환경에 남기거나 매번 지정해 같은 이미지를 선택합니다. 현재 배포된 소스에서 `PHONE_RELEASE`와 revision을 바꿔 다른 소스와 같은 태그로 빌드하지 않습니다.
+
+로컬에서 SSH 터널을 열고 `http://localhost:18765`에 접속합니다. 터널의 양쪽 포트는 같아야 기존 Host 검증과 맞습니다.
+
+```bash
+ssh -i "$EC2_KEY" -N -L 18765:127.0.0.1:18765 "$EC2_USER@$EC2_HOST"
+```
+
+healthcheck는 정적 `/`만 읽어 세션을 추가하지 않습니다. `/api/state`는 세션을 만들 수 있어 주기적인 healthcheck로 사용하지 않습니다.
+
+## 실제 전화 worker
+
+기본 `up`은 worker를 실행하지 않습니다. Compose는 서비스를 명시하면 profile 없이도 시작할 수 있으므로, `voice.launch`가 LIVE를 먼저 검증하고 비활성 상태에서는 SDK worker 등록 자체를 막습니다. 실제 발신/수신 시험은 대상·횟수·시간·비용 승인을 받은 다음 진행합니다. 이미 소비한 통화 이력을 지우거나 DB를 바꿔 상한을 우회하지 않습니다.
+
+```bash
+# 승인된 시험 범위로 runtime.env를 준비한 뒤
+docker compose -f prototypes/phone_agent/deploy/compose.yml --profile voice up -d worker
+```
+
+API는 공개 서비스 인증이 없는 테스트 도구이므로 SSH 터널로 사용합니다. worker를 로컬과 서버에서 동시에 켜지 않습니다. 시험이 끝나면 runtime.env를 LIVE=false로 되돌리고 worker를 중단합니다. API는 계속 MOCK으로 사용할 수 있습니다.
+
+```bash
+docker compose -f prototypes/phone_agent/deploy/compose.yml stop worker
+docker compose -f prototypes/phone_agent/deploy/compose.yml ps --all
+```
+
+`down -v`나 data 폴더 삭제를 초기화 수단으로 사용하지 않습니다. rollback은 worker 중단 후 이전 release/image로 API를 다시 시작하되 같은 DB를 보존합니다. 스키마가 달라지는 변경은 별도 호환 검토가 필요합니다.
+
+## 검증
+
+```bash
+PHONE_ENV_FILE=work/no-test-secrets python -m unittest prototypes.phone_agent.test_service prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience -q
+docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
+```
+
+95개 로컬 검사는 전화/모델 요청 없이 LIVE 시작 차단, 기존 예약 상태·소유권·중복·장애 처리, VAD 재사용을 확인합니다. 컨테이너에서도 같은 검사를 실행합니다. 배포·readiness·MOCK 검증과 실제 한국어 음질 검증은 별개이며, 서버에서의 실통화 품질은 승인된 시험 전까지 미검증입니다.
+
+근거: [Docker host network](https://docs.docker.com/engine/network/drivers/host/), [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/), [LiveKit prewarm](https://docs.livekit.io/agents/server/options/), [LiveKit 이미지 빌드](https://docs.livekit.io/deploy/agents/builds/).

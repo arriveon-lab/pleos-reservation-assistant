@@ -1,0 +1,57 @@
+name: arriveon-phone
+
+x-runtime: &runtime
+  image: arriveon-phone:${PHONE_RELEASE:-local}
+  build:
+    context: ../../..
+    dockerfile: prototypes/phone_agent/deploy/Dockerfile
+    args:
+      SOURCE_REVISION: ${PHONE_RELEASE:-unknown}
+  user: "10001:10001"
+  # Linux only. Applications themselves bind to loopback; no public port is published.
+  network_mode: host
+  init: true
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  environment:
+    PHONE_ENV_FILE: /run/secrets/phone.env
+  volumes:
+    - type: bind
+      source: ${PHONE_DEPLOY_ROOT:-/opt/arriveon-phone}/data
+      target: /var/lib/arriveon-phone
+    - type: bind
+      source: ${PHONE_DEPLOY_ROOT:-/opt/arriveon-phone}/config/runtime.env
+      target: /run/secrets/phone.env
+      read_only: true
+  tmpfs:
+    - /tmp:size=256m,mode=1777
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  api:
+    <<: *runtime
+    restart: unless-stopped
+    mem_limit: 192m
+    healthcheck:
+      # A static page avoids creating a new owner/session on every probe.
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18765/', timeout=2).close()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  worker:
+    <<: *runtime
+    profiles: [voice]
+    command: [python, -m, prototypes.phone_agent.voice.launch, start]
+    restart: "no"
+    mem_limit: 1200m
+    stop_grace_period: 75s
+    depends_on:
+      api:
+        condition: service_healthy

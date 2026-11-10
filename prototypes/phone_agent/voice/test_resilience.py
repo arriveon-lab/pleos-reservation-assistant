@@ -226,6 +226,44 @@ class ResilienceTest(unittest.IsolatedAsyncioTestCase):
 
 
 class AudioConfigurationTest(unittest.TestCase):
+    def test_disabled_deployment_worker_never_imports_or_registers_sdk_worker(self):
+        from . import launch
+        config = VoiceConfig(livekit_url="wss://example.invalid", api_key="test-key",
+                             api_secret="test-secret", outbound_trunk_id="test-trunk",
+                             allowed_numbers=("+821000000000",))
+        with patch.object(launch, "load_env_file"), \
+             patch.object(launch.VoiceConfig, "from_env", return_value=config), \
+             patch.object(launch.importlib, "import_module") as importer:
+            with self.assertRaises(ConfigurationError):
+                launch.main()
+            importer.assert_not_called()
+
+    def test_enabled_deployment_worker_delegates_to_sdk_after_validation(self):
+        from . import launch
+        config = VoiceConfig(livekit_url="wss://example.invalid", api_key="test-key",
+                             api_secret="test-secret", outbound_trunk_id="test-trunk",
+                             allowed_numbers=("+821000000000",), enabled=True)
+        worker = SimpleNamespace(server=object(), agents=SimpleNamespace(
+            cli=SimpleNamespace(run_app=Mock())))
+        with patch.object(launch, "load_env_file"), \
+             patch.object(launch.VoiceConfig, "from_env", return_value=config), \
+             patch.object(launch.importlib, "import_module", return_value=worker):
+            launch.main()
+            worker.agents.cli.run_app.assert_called_once_with(worker.server)
+
+    def test_prewarmed_vad_is_reused_without_loading_again_during_call(self):
+        from .worker import prewarm, create_session
+        process = SimpleNamespace(userdata={})
+        with patch("prototypes.phone_agent.voice.worker.silero.VAD.load") as load, \
+             patch("prototypes.phone_agent.voice.worker.create_stt"), \
+             patch("prototypes.phone_agent.voice.worker.inference.LLM"), \
+             patch("prototypes.phone_agent.voice.worker.inference.TTS"), \
+             patch("prototypes.phone_agent.voice.worker.AgentSession") as factory:
+            prewarm(process)
+            create_session(VoiceConfig(), {}, vad=process.userdata["vad"])
+            load.assert_called_once_with(activation_threshold=0.5)
+            self.assertIs(load.return_value, factory.call_args.kwargs["vad"])
+
     def test_default_only_uses_nc_and_preserves_overlap_audio(self):
         config = VoiceConfig()
         options = turn_options(config)
