@@ -33,6 +33,10 @@ class DestinationRecommendationConfiguration {
       @Value("${KAKAO_REST_API_KEY:}") String kakaoKey)
       throws IOException {
     var web = webProvider.getIfAvailable();
+    if ("WEB_SEARCH".equals(source)) {
+      if (web == null) throw new IllegalStateException("Approved web search required");
+      return DestinationRecommendationService.webOnly(clock, workers, web);
+    }
     if ("KAKAO".equals(source)) {
       if (kakaoKey.isBlank()) throw new IllegalStateException("Kakao key required");
       var adapter = new KakaoPlaceSearchAdapter(kakaoKey, new KakaoPlaceMapper(mapper, clock));

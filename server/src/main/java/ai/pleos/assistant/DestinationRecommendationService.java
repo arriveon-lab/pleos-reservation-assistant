@@ -32,7 +32,12 @@ public final class DestinationRecommendationService implements AutoCloseable {
       WebRecommendation.FailureReason webFailureReason,
       int webCandidateCount,
       LookupState identityLookupState,
-      WebListingRecommendationJoiner.Result matches) {}
+      WebListingRecommendationJoiner.Result matches,
+      List<WebRecommendation.Candidate> webRecommendations) {
+    public Recommendation {
+      webRecommendations = List.copyOf(webRecommendations);
+    }
+  }
 
   public enum LookupState {
     NOT_RUN,
@@ -58,6 +63,18 @@ public final class DestinationRecommendationService implements AutoCloseable {
   private final WebListingRecommendationJoiner joiner;
   private final WebGateway web;
   private final RecommendationJobRegistry<Recommendation> jobs;
+
+  public static DestinationRecommendationService webOnly(
+      Clock clock, Executor executor, WebGateway web) {
+    return new DestinationRecommendationService(
+        null,
+        PlaceSummary.Provider.WEB_SEARCH,
+        new SourceInfo(
+            PlaceSummary.Provider.WEB_SEARCH, null, null, null, "OpenAI web search", null, null),
+        clock,
+        executor,
+        web);
+  }
 
   public DestinationRecommendationService(
       SeoulPlaceSearchAdapter places, Clock clock, Executor executor) {
@@ -114,7 +131,9 @@ public final class DestinationRecommendationService implements AutoCloseable {
       Clock clock,
       Executor executor,
       WebGateway web) {
-    this.places = Objects.requireNonNull(places);
+    if (places == null && provider != PlaceSummary.Provider.WEB_SEARCH)
+      throw new IllegalArgumentException("Place source required");
+    this.places = places;
     this.provider = Objects.requireNonNull(provider);
     this.source = Objects.requireNonNull(source);
     this.clock = Objects.requireNonNull(clock);
@@ -140,6 +159,30 @@ public final class DestinationRecommendationService implements AutoCloseable {
         generation,
         current -> {
           if (!current.getAsBoolean()) return null;
+          if (provider == PlaceSummary.Provider.WEB_SEARCH) {
+            var request =
+                new WebRecommendation.Request(
+                    viewId, generation, area, webNeeds(requirements.requiredFeatures()), false);
+            var result = web.search(request, clock.instant().plusSeconds(30), current);
+            if (!current.getAsBoolean()) return null;
+            if (result == null)
+              return new Recommendation(
+                  null,
+                  WebRecommendation.State.FAILED,
+                  WebRecommendation.FailureReason.TRANSPORT_ERROR,
+                  0,
+                  LookupState.NOT_RUN,
+                  null,
+                  List.of());
+            return new Recommendation(
+                null,
+                result.state(),
+                result.failureReason(),
+                result.candidates().size(),
+                LookupState.NOT_RUN,
+                null,
+                result.candidates());
+          }
           PlaceSearchResult listing = places.search(destinationWindow);
           if (!current.getAsBoolean()) return null;
           var plan = planner.evaluate(provider, destinationWindow, listing, requirements);
@@ -147,7 +190,13 @@ public final class DestinationRecommendationService implements AutoCloseable {
               || plan.state() != PlaceRecommendationPlanner.State.RESULTS)
             return current.getAsBoolean()
                 ? new Recommendation(
-                    plan, WebRecommendation.State.EMPTY, null, 0, LookupState.NOT_RUN, null)
+                    plan,
+                    WebRecommendation.State.EMPTY,
+                    null,
+                    0,
+                    LookupState.NOT_RUN,
+                    null,
+                    List.of())
                 : null;
           Set<WebRecommendation.Need> needs = webNeeds(requirements.requiredFeatures());
           var request = new WebRecommendation.Request(viewId, generation, area, needs, false);
@@ -160,7 +209,8 @@ public final class DestinationRecommendationService implements AutoCloseable {
                 WebRecommendation.FailureReason.TRANSPORT_ERROR,
                 0,
                 LookupState.NOT_RUN,
-                null);
+                null,
+                List.of());
           LookupState lookupState = LookupState.NOT_RUN;
           var matches =
               webResult.state() == WebRecommendation.State.RESULTS
@@ -205,7 +255,8 @@ public final class DestinationRecommendationService implements AutoCloseable {
               webResult.failureReason(),
               webResult.candidates().size(),
               lookupState,
-              matches);
+              matches,
+              List.of());
         });
   }
 

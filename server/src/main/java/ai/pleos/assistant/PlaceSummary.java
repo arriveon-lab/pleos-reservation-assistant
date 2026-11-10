@@ -15,7 +15,8 @@ public record PlaceSummary(
   public enum Provider {
     MOCK,
     KAKAO,
-    SEOUL_OPEN_DATA
+    SEOUL_OPEN_DATA,
+    WEB_SEARCH
   }
 
   public PlaceSummary {

@@ -82,6 +82,8 @@ public final class PlaceDetailRecommendationService {
             case MOCK -> PlaceDetailEnricher.Origin.MOCK;
             case KAKAO -> PlaceDetailEnricher.Origin.KAKAO;
             case SEOUL_OPEN_DATA -> PlaceDetailEnricher.Origin.APPROVED_PUBLIC;
+            case WEB_SEARCH ->
+                throw new IllegalArgumentException("Web source has no place listing");
           };
       boolean unambiguous = matches.size() == 1;
       var identity =

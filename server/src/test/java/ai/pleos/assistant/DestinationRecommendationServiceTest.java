@@ -15,6 +15,40 @@ import org.junit.jupiter.api.Test;
 
 class DestinationRecommendationServiceTest {
   @Test
+  void webOnlySourceReturnsThreeCitedRestaurantsWithoutKakaoJoin() {
+    Clock clock = Clock.fixed(Instant.parse("2026-11-11T00:01:00Z"), ZoneOffset.UTC);
+    DestinationRecommendationService.WebGateway web =
+        (request, deadline, current) ->
+            new WebRecommendationParser()
+                .parse(
+                    MockWebRecommendationGateway.fictionalResponse(),
+                    request,
+                    WebRecommendation.Mode.WEB_SEARCH,
+                    clock.instant(),
+                    clock.instant().plusSeconds(300));
+    try (var service = DestinationRecommendationService.webOnly(clock, Runnable::run, web)) {
+      var id =
+          service.start(
+              "owner-a",
+              UUID.randomUUID(),
+              1,
+              "서울숲",
+              new PlaceQuery(37.544, 127.055, 1000, 15),
+              new PlaceRecommendationPlanner.Requirements(
+                  new Model.Party(2, 1), 15, Set.of("parking", "highChair"), Set.of()));
+      var result = service.poll("owner-a", id).orElseThrow().result();
+      assertThat(service.source().provider()).isEqualTo(PlaceSummary.Provider.WEB_SEARCH);
+      assertThat(result.listing()).isNull();
+      assertThat(result.matches()).isNull();
+      assertThat(result.webState()).isEqualTo(WebRecommendation.State.RESULTS);
+      assertThat(result.webRecommendations()).hasSize(3);
+      assertThat(result.webRecommendations().getFirst().reviews()).hasSize(1);
+      assertThat(result.webRecommendations())
+          .allSatisfy(candidate -> assertThat(candidate.bookable()).isFalse());
+    }
+  }
+
+  @Test
   void resolves_web_identified_branches_when_category_first_page_does_not_contain_them() {
     Clock clock = Clock.fixed(Instant.parse("2026-11-10T00:01:00Z"), ZoneOffset.UTC);
     class Lookup implements PlaceSearchAdapter, PlaceIdentityLookup {

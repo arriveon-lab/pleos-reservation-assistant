@@ -3,7 +3,7 @@
   "info": {
     "title": "Destination restaurant shortlist — experimental contract",
     "version": "0.1.0-draft",
-    "description": "Disabled by default. Explicit source KAKAO uses the existing real-time Local adapter with an environment key; PUBLIC_CATALOG is optional. A separately enabled, exact one-shot permit may research web evidence without forwarding Kakao responses. Telephone and booking calls are absent. Matching web and listing results remain unconfirmed and do not confer reservation authority."
+    "description": "Disabled by default. WEB_SEARCH independently finds up to three cited restaurants using only a public destination label and required needs under an exact one-shot permit. KAKAO remains a separate transient listing source and PUBLIC_CATALOG is optional; Kakao responses are never forwarded to OpenAI. Telephone, booking, driving ETA and numeric star ratings are absent."
   },
   "servers": [{ "url": "http://127.0.0.1:8080" }],
   "paths": {
@@ -136,7 +136,7 @@
         "type": "object",
         "required": ["provider", "attribution"],
         "properties": {
-          "provider": { "type": "string", "enum": ["KAKAO", "SEOUL_OPEN_DATA"] },
+          "provider": { "type": "string", "enum": ["KAKAO", "SEOUL_OPEN_DATA", "WEB_SEARCH"] },
           "datasetId": { "type": ["string", "null"] },
           "catalogUrl": { "type": ["string", "null"], "format": "uri" },
           "licenseUrl": { "type": ["string", "null"], "format": "uri" },
@@ -147,13 +147,14 @@
       },
       "Recommendation": {
         "type": "object",
-        "required": ["listing", "webState", "webCandidateCount", "identityLookupState"],
+        "required": ["listing", "webState", "webCandidateCount", "identityLookupState", "webRecommendations"],
         "properties": {
-          "listing": { "$ref": "#/components/schemas/Plan" },
+          "listing": { "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/Plan" }] },
           "webState": { "type": "string", "enum": ["RESULTS", "EMPTY", "FILTERED", "FAILED", "CANCELLED", "EXPIRED", "APPROVAL_REQUIRED", "ALREADY_REQUESTED"] },
-          "webFailureReason": { "type": ["string", "null"], "enum": ["CREDENTIAL_MISSING", "HTTP_REJECTED", "INVALID_RESPONSE", "TRANSPORT_ERROR", null], "description": "Coarse diagnostic only when webState=FAILED. No provider body or credential is exposed." },
+          "webFailureReason": { "type": ["string", "null"], "enum": ["CREDENTIAL_MISSING", "HTTP_BAD_REQUEST", "HTTP_UNAUTHORIZED", "HTTP_RATE_LIMITED", "HTTP_REJECTED", "INCOMPLETE_RESPONSE", "MISSING_WEB_SEARCH", "MISSING_OUTPUT_TEXT", "UNMATCHED_IDENTITY_SOURCE", "INVALID_SOURCE_METADATA", "INVALID_OUTPUT_SHAPE", "INVALID_CANDIDATE", "INVALID_REVIEW", "INVALID_REPORT", "INVALID_RESPONSE", "TRANSPORT_ERROR", null], "description": "Coarse diagnostic only when webState=FAILED. No provider body or credential is exposed." },
           "webCandidateCount": { "type": "integer", "minimum": 0, "maximum": 3, "description": "Count of independently found web candidates before Kakao identity matching; no names or addresses." },
           "identityLookupState": { "type": "string", "enum": ["NOT_RUN", "MATCHED", "EMPTY", "FAILED"], "description": "Coarse result of the bounded Kakao keyword recheck; MATCHED does not imply final recommendation." },
+          "webRecommendations": { "type": "array", "maxItems": 3, "items": { "type": "object" }, "description": "WEB_SEARCH source only: independently cited restaurant candidates with review and condition evidence. No Kakao data or driving ETA." },
           "matches": {
             "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/WebMatches" }],
             "description": "Only independently searched web results matched to a transient listing. Null until web approval/search succeeds."
@@ -170,7 +171,7 @@
             "type": "array", "maxItems": 3,
             "items": {
               "type": "object",
-              "required": ["ordinal", "name", "address", "straightLineDistanceMeters", "fit", "assessments", "remainingQuestions", "bookable", "inquiryDispatchAllowed"],
+              "required": ["ordinal", "name", "address", "straightLineDistanceMeters", "fit", "assessments", "reviews", "remainingQuestions", "bookable", "inquiryDispatchAllowed"],
               "properties": {
                 "ordinal": { "type": "integer", "minimum": 1, "maximum": 3 },
                 "name": { "type": "string" },
@@ -178,6 +179,7 @@
                 "straightLineDistanceMeters": { "type": "integer" },
                 "fit": { "type": "string", "enum": ["POTENTIAL_MATCH", "NEEDS_CONFIRMATION"] },
                 "assessments": { "type": "array", "items": { "type": "object" } },
+                "reviews": { "type": "array", "maxItems": 3, "items": { "type": "object" }, "description": "Short paraphrases with cited URLs, not numeric star ratings or booking facts." },
                 "remainingQuestions": { "type": "array", "items": { "type": "string" } },
                 "bookable": { "type": "boolean", "const": false },
                 "inquiryDispatchAllowed": { "type": "boolean", "const": false }

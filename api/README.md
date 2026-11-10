@@ -1,10 +1,12 @@
 # API v1 — 계약 1.1.0
 
-[목적지 추천 작업 초안](destination-recommendation-draft.json)과 [가상 요청](examples/destination-recommendation-request.json)은 #52의 기본 비활성 실험 API입니다. 명시적 `KAKAO` 선택 시 실시간 Local adapter를, `PUBLIC_CATALOG` 선택 시 별도 로컬 snapshot을 사용합니다. Bearer 인증으로 POST 접수·GET 소유자별 폴링·DELETE 화면 무효화를 제공합니다. 사용자 요청의 아기의자·무계단을 별도 조건으로 해석하고 주차를 필수 조사 조건으로 추가합니다. 별도 일회성 허가가 있는 경우 독립적인 GPT 웹검색 근거를 상호·전체 주소로 대조합니다. Kakao 응답·전화번호는 DB/GPT/전화로 넘기지 않습니다. 프론트엔드 호출자는 @soyeong03에게 인계했으며 이 PR에 구현하지 않습니다. 실제 공급자 데이터의 3곳 추천·전화 확인·예약은 아직 검증/연결되지 않았습니다.
+[목적지 추천 작업 초안](destination-recommendation-draft.json)과 [가상 요청](examples/destination-recommendation-request.json)은 #52의 기본 비활성 실험 API입니다. 명시적 `KAKAO` 선택 시 실시간 Local adapter를, `PUBLIC_CATALOG` 선택 시 별도 로컬 snapshot을 사용합니다. Bearer 인증으로 POST 접수·GET 소유자별 폴링·DELETE 화면 무효화를 제공합니다. 사용자 요청의 아기의자·무계단을 별도 조건으로 해석하고 주차를 필수 조사 조건으로 추가합니다. 별도 `source=WEB_SEARCH`는 Pleos 목적지의 공개 지역명·필수 조건만 OpenAI 웹검색에 전달하고 식당 최대 3곳의 후기 요약·조건 조사 근거를 반환합니다. Kakao 응답·주소·전화번호·좌표·사용자 발화는 GPT에 보내지 않습니다. 현재는 정확한 요청과 모델이 맞는 일회성 유료 호출 허가가 필요합니다. 프론트엔드 호출자는 @soyeong03에게 인계하며 이 PR에 구현하지 않습니다. 별도 승인된 실제 공급자 응답의 식당 3곳을 오프라인 파서와 인증된 POST/GET API에서 확인했습니다. 세 곳의 주차·아기의자 판정은 UNKNOWN이며 전화 확인·예약은 연결되지 않았습니다.
 
 웹 후보가 Kakao 음식점 카테고리 첫 페이지에 없으면 상호만 키워드 검색으로 최대 3회 재조회하고, 상호·주소·목적지 반경이 일치하는 지점만 `result.matches.candidates`에 합칩니다. `result.listing.candidates`는 초기 목록 진단이며 최종 추천으로 표시하지 않습니다. 인용 주석 없는 웹 출처는 지점 식별에만 사용하고 조건은 UNKNOWN으로 남깁니다.
 
-`result.webState=FAILED`이면 `result.webFailureReason`이 자격 증명 누락·HTTP 거절·응답 형식 오류·전송 오류를 구분합니다. 공급자 응답 본문이나 키는 이 계약에 포함되지 않습니다. 승인된 가상 서울숲 실호출에서는 Kakao 목록 3곳만 반환되고 웹 단계가 실패해 실제 검증된 추천은 0곳이었습니다. 추가 GPT 실호출은 새 승인이 필요합니다.
+Kakao Local 응답에는 별점·리뷰 수가 없습니다. `WEB_SEARCH` 결과의 `webRecommendations[].reviews`는 인용된 방문 후기의 짧은 요약과 출처이며, 수치 별점이나 매장 확정 사실이 아닙니다. 리뷰 근거가 없으면 빈 배열을 유지합니다.
+
+`result.webState=FAILED`이면 `result.webFailureReason`이 자격 증명 누락·HTTP 거절·응답 형식 오류·전송 오류를 구분합니다. 공급자 응답 본문이나 키는 이 계약에 포함되지 않습니다. 별도 `WEB_SEARCH` 공급자 응답에서는 식당 3곳을 받아 파서와 인증된 HTTP 폴링에서 오프라인 재생했습니다. 이 시험은 한 공개 목적지의 관측이며 다른 목적지나 조건에서 항상 3곳을 보장하지 않습니다. 추가 GPT 실호출은 새 승인이 필요합니다.
 
 `result.webCandidateCount`와 `result.identityLookupState`는 웹 후보가 있었는지, Kakao 상호 키워드 재조회가 일치 지점을 찾았는지 구분하는 비식별 진단입니다. `MATCHED`라도 최종 추천 여부는 `result.matches.candidates`만 기준으로 판단합니다. 별도 승인 시험 두 번에서는 웹 결과가 있었지만 지점 대조 `NO_MATCH`로 끝났습니다.
 
