@@ -17,15 +17,23 @@ public final class GptWebRecommendationAdapter {
   public static final class Permit {
     final Request request;
     final String model;
+    final int maxOutputTokens;
     final Instant expiresAt;
     final AtomicBoolean used = new AtomicBoolean();
 
     public Permit(Request request, String model, Instant expiresAt) {
+      this(request, model, expiresAt, 3072);
+    }
+
+    public Permit(Request request, String model, Instant expiresAt, int maxOutputTokens) {
       this.request = Objects.requireNonNull(request);
       if (model == null || !model.matches("[a-zA-Z0-9._:-]{1,100}"))
         throw new IllegalArgumentException("Explicitly verified model required");
+      if (maxOutputTokens < 256 || maxOutputTokens > 3072)
+        throw new IllegalArgumentException("Invalid approved output limit");
       this.model = model;
       this.expiresAt = Objects.requireNonNull(expiresAt);
+      this.maxOutputTokens = maxOutputTokens;
     }
 
     @Override
@@ -62,7 +70,7 @@ public final class GptWebRecommendationAdapter {
           || key.length() > 1000
           || !key.chars().allMatch(c -> c >= 33 && c <= 126))
         return empty(Mode.WEB_SEARCH, State.FAILED);
-      String body = requestJson(request, permit.model);
+      String body = requestJson(request, permit.model, permit.maxOutputTokens);
       Instant now = clock.instant(),
           until = deadline.isBefore(permit.expiresAt) ? deadline : permit.expiresAt;
       if (!current.getAsBoolean()) return empty(Mode.WEB_SEARCH, State.CANCELLED);
@@ -90,11 +98,11 @@ public final class GptWebRecommendationAdapter {
     }
   }
 
-  String requestJson(Request request, String model) throws Exception {
+  String requestJson(Request request, String model, int maxOutputTokens) throws Exception {
     var body = json.createObjectNode();
     body.put("model", model);
     body.put("store", false);
-    body.put("max_output_tokens", 3072);
+    body.put("max_output_tokens", maxOutputTokens);
     body.put("max_tool_calls", 1);
     body.putArray("include").add("web_search_call.action.sources");
     var tool = body.putArray("tools").addObject();

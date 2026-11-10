@@ -70,6 +70,20 @@ class GptWebRecommendationAdapterTest {
   }
 
   @Test
+  void lowerCostPermitLimitsOutputTokensWithoutChangingDefault() throws Exception {
+    var adapter = new GptWebRecommendationAdapter(clock, (b, k, t) -> null, () -> "fixture-key");
+    var limited =
+        new GptWebRecommendationAdapter.Permit(request, "gpt-6-luna", NOW.plusSeconds(30), 1024);
+    var json = new ObjectMapper();
+    assertThat(
+            json.readTree(adapter.requestJson(request, limited.model, limited.maxOutputTokens))
+                .path("max_output_tokens")
+                .asInt())
+        .isEqualTo(1024);
+    assertThat(limited.maxOutputTokens).isLessThan(3072);
+  }
+
+  @Test
   void concurrentPermitAndFailedAttemptNeverAutomaticallyRetry() throws Exception {
     var calls = new AtomicInteger();
     var adapter =

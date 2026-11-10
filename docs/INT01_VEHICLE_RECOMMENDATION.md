@@ -57,6 +57,8 @@
 
 - 웹추천 요청의 `HIGH_CHAIR`·`STEP_FREE_ACCESS`를 기존 `CHILD_FRIENDLY`와 분리했다. 명시적 근거가 없으면 UNKNOWN으로 두며 전화 문의 대상이다. 실제 GPT 모델/계정 호출 검증은 하지 않았다.
 - 추천 계획·미리보기 계약도 `highChair`·`stepFreeAccess`를 별도 필수 조건과 전화 확인 질문으로 수용한다. 웹사이트 상세 정보만으로 이 두 조건을 충족 처리하지 않으며 직접 확인이 남는다.
+- GPT 웹추천의 일회성 permit에 출력 토큰 상한을 명시할 수 있게 했다(기본 3072, 허용 256~3072). 저비용 가상 검증은 1024 한도를 쓰는 요청 본문을 확인했다.
+- 사용자 승인 범위에서 `gpt-6-luna` Responses API를 가상 서울 목적지·주차 조건으로 HTTP 요청 **1회** 실행했다. `store=false`, `max_output_tokens=1024`, `max_tool_calls=1`, 웹검색 문맥 low, 재시도 없음이었다. HTTP 200/완료, 입력 13,080·출력 534토큰(추론 517), 응답 내 `web_search_call` 항목 2개였다. 이 항목 수는 청구되는 검색 횟수와 같다고 단정하지 않는다. 결과의 주차는 UNKNOWN이고 인용 주석은 0개이며 URL도 HTTP라 제품 파서는 이를 검증된 추천으로 수용하지 않는다. 실제 매장·응답 원문·API 키를 저장소에 남기지 않았다. 추가 GPT 호출은 하지 않았다.
 - 공공 catalog의 내부 목적지 검색과 비동기 폴링을 합친 `PublicDestinationRecommendationService`를 추가했다. 아직 제품 HTTP/앱·실제 catalog·GPT/전화 경로에 연결하지 않았고 시범 지역 밖은 실패로 처리한다.
 - 제품 Android 앱에 명시적 Pleos 목적지 조회·화면 표시·경로 이벤트 무효화 경계를 넣었다. 아직 SDK 응답 연관성 미검증으로 실제 추천/예약 입력에는 사용하지 않으며 로컬 SDK 부재로 Android 빌드/기기 검증은 미완료다.
 - 서버 `RecommendationJobRegistry`의 메모리 작업 상태·소유권·세대 취소·완료 결과 폴링 경계를 추가했다. 실제 검색 worker와 HTTP 계약은 아직 붙지 않았다. 전화 AI 계약 제안은 #43에 남겼으며 답변 전이다.
