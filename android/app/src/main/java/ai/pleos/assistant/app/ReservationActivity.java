@@ -76,6 +76,7 @@ public final class ReservationActivity extends ComponentActivity {
   protected void onStop() {
     if (approval != null) approval.dismiss();
     model.observe(null);
+    model.stopVehicleDestination();
     model.invalidatePreview("CLOSED");
     model.restrict(MockRepository.Restriction.UNKNOWN);
     super.onStop();
@@ -147,6 +148,19 @@ public final class ReservationActivity extends ComponentActivity {
     setContentView(scroll);
     text(getString(R.string.title), 32);
     text(R.string.disclosure);
+    button(R.string.pleos_destination_refresh, true, v -> model.requestVehicleDestination());
+    int vehicleStatus =
+        switch (model.vehicleStatus()) {
+          case NOT_REQUESTED -> R.string.pleos_destination_not_requested;
+          case INITIALIZING, QUERYING -> R.string.pleos_destination_loading;
+          case AVAILABLE_UNVERIFIED -> R.string.pleos_destination_unverified;
+          case PERMISSION_DENIED -> R.string.pleos_destination_permission;
+          case UNAVAILABLE -> R.string.pleos_destination_unavailable;
+          case CLEARED -> R.string.pleos_destination_cleared;
+        };
+    text(vehicleStatus);
+    if (model.vehicleDestination() != null)
+      text(getString(R.string.pleos_destination_name, model.vehicleDestination().name()), 24);
     int restriction =
         switch (model.restriction()) {
           case UNKNOWN -> R.string.restriction_unknown;

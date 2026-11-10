@@ -2,6 +2,7 @@
 
 ## 2026-11-10 INT-01 #52 통합 진행
 
+- `android/app`에 Pleos 목적지 수신/무효화와 출처 미확인 표시 경계를 추가했다. 추천·예약에 아직 전달하지 않는다. 로컬 Android SDK 부재로 `verifyAndroid`는 의존성 평가에서 중단돼 컴파일·Lint·APK/기기 확인으로 세지 않는다. 새 원격 CI에서 빌드 확인 필요.
 - 서버 `RecommendationJobRegistry`의 소유자 범위·세대 무효화·폴링 중복 실행 방지를 가상 테스트로 확인했다. 제품 HTTP/실제 worker는 미연결이다. #43에 조건 문의·예약·지연 통보 API 제안 댓글을 남겼으며 담당자 합의 전이다.
 - 공공 provider enum의 공유 스키마/미리보기 초안 불일치로 PR #53의 서버 계약 CI가 한 차례 실패했다. 두 schema를 맞춘 후 로컬 `smoke-test.py --check-contract`를 통과했으며 새 push의 CI 재판정이 필요하다.
 - #48/PR #49 공공 catalog 코드를 격리 브랜치에 가져왔다. 제품 Spring/DB/전화에 등록하지 않았고 실제 입력은 없다. 공개 데이터로 식별한 후보만 승인된 웹 출처의 일반 조건 조사 경로에 넣고 Kakao 후보는 DATA_USE_BLOCKED를 유지하는 테스트를 추가했다. PR #49는 Draft/미병합이다.

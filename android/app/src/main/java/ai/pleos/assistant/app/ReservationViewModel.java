@@ -1,6 +1,7 @@
 package ai.pleos.assistant.app;
 
 import ai.pleos.assistant.ux.AuthSession;
+import ai.pleos.assistant.ux.DestinationRecommendationState;
 import ai.pleos.assistant.ux.MockRepository;
 import ai.pleos.assistant.ux.PreviewController;
 import android.app.Application;
@@ -21,6 +22,9 @@ public final class ReservationViewModel extends AndroidViewModel {
   private final ExecutorService worker = Executors.newSingleThreadExecutor();
   private final Handler main = new Handler(Looper.getMainLooper());
   private MockRepository repository;
+  private final DestinationRecommendationState vehicleDestination =
+      new DestinationRecommendationState();
+  private PleosDestinationSource vehicleSource;
   private PreviewController preview;
   private boolean previewOpen;
   private final Runnable expiry =
@@ -141,6 +145,36 @@ public final class ReservationViewModel extends AndroidViewModel {
     return connected;
   }
 
+  PleosDestinationSource.Status vehicleStatus() {
+    return vehicleSource == null
+        ? PleosDestinationSource.Status.NOT_REQUESTED
+        : vehicleSource.status();
+  }
+
+  DestinationRecommendationState.Destination vehicleDestination() {
+    return vehicleDestination.destination();
+  }
+
+  void requestVehicleDestination() {
+    if (closed) return;
+    stopVehicleDestination();
+    vehicleSource =
+        new PleosDestinationSource(
+            getApplication(),
+            vehicleDestination,
+            () -> {
+              if (!closed && observer != null) observer.run();
+            });
+    vehicleSource.start();
+  }
+
+  void stopVehicleDestination() {
+    if (vehicleSource != null) {
+      vehicleSource.close();
+      vehicleSource = null;
+    }
+  }
+
   boolean canWrite() {
     return BuildConfig.DEBUG
         && connected
@@ -209,6 +243,8 @@ public final class ReservationViewModel extends AndroidViewModel {
   protected void onCleared() {
     closed = true;
     observer = null;
+    stopVehicleDestination();
+    vehicleDestination.close();
     main.removeCallbacks(expiry);
     if (preview != null) preview.close();
     if (repository != null) repository.restrict(MockRepository.Restriction.UNKNOWN);
