@@ -7,14 +7,6 @@
     <string name="pleos_destination_unavailable">Pleos 목적지를 확인할 수 없습니다.</string>
     <string name="pleos_destination_cleared">경로 변경 또는 종료로 이전 목적지를 지웠습니다.</string>
     <string name="pleos_destination_name">목적지: %1$s</string>
-    <string name="destination_recommendation_title">목적지 기반 식당 탐색 · 개발용</string>
-    <string name="destination_recommendation_hint">원하는 식당 조건을 입력하세요</string>
-    <string name="destination_recommendation_search">이 목적지 주변 식당 찾기</string>
-    <string name="destination_recommendation_state">탐색 상태: %1$s</string>
-    <string name="destination_recommendation_candidate">%1$s · %2$s\n목적지 직선거리 %3$d m</string>
-    <string name="destination_recommendation_evidence">%1$s: %2$s</string>
-    <string name="destination_recommendation_unverified">웹 근거와 장소가 일치한 추천이 없습니다. 후보를 확정해 표시할 수 없습니다.</string>
-    <string name="destination_recommendation_disclosure">웹 근거와 Kakao 장소 목록의 지점명이 일치한 후보입니다. 주차·아기 의자·무계단은 전화 확인 전까지 확정되지 않습니다. 직선거리는 주행 시간이 아닙니다. 예약은 아직 연결되지 않았습니다.</string>
   <string name="app_name">Pleos 예약 비서 · MOCK</string>
   <string name="title">가상 예약 연습</string>
   <string name="disclosure">MOCK · 가상 식당 · 실제 전화/예약 없음\n개발용 모의 정책 · 실제 CarUxRestrictions·실통화 미연동.</string>

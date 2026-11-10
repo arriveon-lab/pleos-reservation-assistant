@@ -13,16 +13,15 @@ final class LoopbackTransport implements AuthSession.Wire {
   @Override
   public JSONObject exchange(String path, JSONObject body, String key, String bearer)
       throws Exception {
-    boolean experimental =
-        path.matches("/experimental/(place-previews|destination-recommendations)(/[a-zA-Z0-9-]+)*");
+    boolean preview = path.matches("/experimental/place-previews(/[a-zA-Z0-9-]+)*");
     if (!BuildConfig.DEBUG
-        || (!experimental
+        || (!preview
             && !path.matches(
                 "/(status|searches|reservations|calls|anonymous-sessions)(/[a-zA-Z0-9-]+)*")))
       throw new IllegalStateException("LOCAL_DEBUG_ONLY");
     HttpURLConnection connection =
         (HttpURLConnection)
-            new URL("http://127.0.0.1:8080/api" + (experimental ? "" : "/v1") + path)
+            new URL("http://127.0.0.1:8080/api" + (preview ? "" : "/v1") + path)
                 .openConnection(Proxy.NO_PROXY);
     try {
       connection.setConnectTimeout(5000);
