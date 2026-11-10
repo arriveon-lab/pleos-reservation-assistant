@@ -274,10 +274,31 @@ public final class ReservationActivity extends ComponentActivity {
               && java.util.Set.of("INVALID_TIME", "STALE_NAVIGATION")
                   .contains(pending.optString("recoveryCode"));
       text(timeRejected ? R.string.pending_time_rejected : R.string.pending);
+      if (pending != null
+          && "/searches".equals(pending.optString("path"))
+          && "searchId".equals(pending.optString("target"))) {
+        text(R.string.reconcile_search_notice);
+        button(
+            R.string.reconcile_search,
+            !model.busy() && model.restriction().allowsInput(),
+            v -> model.run(MockRepository::reconcileSearch));
+      }
       button(
           R.string.retry,
           !model.busy() && model.restriction().allowsInput(),
           v -> model.run(MockRepository::retry));
+    }
+    if (!state.has("pending") && state.has("searchReconciliations")) {
+      JSONArray history = state.optJSONArray("searchReconciliations");
+      if (history != null && history.length() > 0) {
+        JSONObject last = history.optJSONObject(history.length() - 1);
+        JSONObject receipt = last == null ? null : last.optJSONObject("result");
+        if (receipt != null)
+          text(
+              "REJECTED_CLOSED".equals(receipt.optString("state"))
+                  ? R.string.reconcile_search_closed
+                  : R.string.reconcile_search_completed);
+      }
     }
     try {
       if (state.has("reservation")) reservation(state.getJSONObject("reservation"));

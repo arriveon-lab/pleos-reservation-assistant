@@ -167,10 +167,15 @@ public final class MockRepository {
   private void persist() throws Exception {
     // Do not persist complete candidate/fact responses. Only recovery references and pending
     // intent.
-    JSONObject durable = new JSONObject().put("tripId", state.getString("tripId"));
+    persist(state);
+  }
+
+  private void persist(JSONObject source) throws Exception {
+    JSONObject durable = new JSONObject().put("tripId", source.getString("tripId"));
     for (String key :
-        new String[] {"searchId", "reservationId", "callId", "pending", "authBinding"})
-      if (state.has(key)) durable.put(key, state.get(key));
+        new String[] {
+          "searchId", "reservationId", "callId", "pending", "authBinding", "searchReconciliations"
+        }) if (source.has(key)) durable.put(key, source.get(key));
     journal.save(durable.toString());
   }
 
@@ -224,6 +229,63 @@ public final class MockRepository {
       throw failure;
     }
     refresh();
+  }
+
+  /**
+   * Explicit same-subject reconciliation; never changes the original command or starts a search.
+   */
+  public void reconcileSearch() throws Exception {
+    if (!verified || !restriction.allowsInput()) throw new IllegalStateException("INPUT_BLOCKED");
+    JSONObject pending = state.optJSONObject("pending");
+    if (pending == null
+        || !"/searches".equals(pending.optString("path"))
+        || !"searchId".equals(pending.optString("target")))
+      throw new IllegalStateException("RECONCILIATION_BLOCKED");
+    persist();
+    if (!restriction.allowsInput()) throw new IllegalStateException("INPUT_BLOCKED");
+    JSONObject response =
+        transport.exchange(
+            "/searches/reconcile", pending.getJSONObject("body"), pending.getString("key"));
+    checkMode(response);
+    String outcome = response.getString("state");
+    Instant.parse(response.getString("resolvedAt"));
+    JSONObject next = new JSONObject(state.toString());
+    if ("COMPLETED".equals(outcome)) {
+      String id = response.getString("searchId");
+      UUID.fromString(id);
+      if (!response.has("reason") || !response.isNull("reason"))
+        throw new IllegalStateException("INVALID_RECONCILIATION");
+      JSONObject search = read("/searches/" + id);
+      if (!id.equals(search.getString("id")))
+        throw new IllegalStateException("INVALID_RECONCILIATION");
+      next.put("searchId", id).put("search", search);
+      if (!id.equals(state.optString("searchId"))) {
+        next.remove("callId");
+        next.remove("call");
+      }
+    } else if ("REJECTED_CLOSED".equals(outcome)) {
+      if (!response.has("searchId")
+          || !response.isNull("searchId")
+          || !java.util.Set.of("INVALID_TIME", "STALE_NAVIGATION")
+              .contains(response.getString("reason")))
+        throw new IllegalStateException("INVALID_RECONCILIATION");
+    } else throw new IllegalStateException("INVALID_RECONCILIATION");
+    // Persist acknowledgement and original intent together before releasing the write barrier.
+    JSONArray history = next.optJSONArray("searchReconciliations");
+    if (history == null) history = new JSONArray();
+    JSONObject receipt =
+        new JSONObject()
+            .put("state", outcome)
+            .put("mode", "MOCK")
+            .put("resolvedAt", response.getString("resolvedAt"))
+            .put("searchId", response.get("searchId"))
+            .put("reason", response.get("reason"));
+    history.put(
+        new JSONObject().put("command", new JSONObject(pending.toString())).put("result", receipt));
+    next.put("searchReconciliations", history);
+    next.remove("pending");
+    persist(next);
+    state = next;
   }
 
   public void search(int adults, int children, boolean parking) throws Exception {

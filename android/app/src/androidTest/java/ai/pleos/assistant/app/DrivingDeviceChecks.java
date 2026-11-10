@@ -15,6 +15,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
   private boolean narrow;
   private boolean previewBoundary;
   private boolean recoveryFailure;
+  private String searchRecovery;
   private float expectedFontScale;
 
   @Override
@@ -24,6 +25,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
     previewBoundary = "true".equals(arguments.getString("previewBoundary"));
     expectedFontScale = Float.parseFloat(arguments.getString("fontScale", "0"));
     recoveryFailure = "true".equals(arguments.getString("recoveryFailure"));
+    searchRecovery = arguments.getString("searchRecovery", "");
     start();
   }
 
@@ -31,6 +33,13 @@ public final class DrivingDeviceChecks extends Instrumentation {
   public void onStart() {
     Bundle result = new Bundle();
     try {
+      if (!searchRecovery.isEmpty()) {
+        SearchRecoveryDeviceChecks.run(this, "restart".equals(searchRecovery));
+        result.putString(
+            "stream", "PASS: existing installation search recovery " + searchRecovery + "\n");
+        finish(Activity.RESULT_OK, result);
+        return;
+      }
       if (recoveryFailure) {
         RecoveryDeviceChecks.run(this);
         result.putString("stream", "PASS: injected recovery transport and UI checks\n");
