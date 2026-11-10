@@ -1,5 +1,11 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 VOICE-01 Telkit 채택 (#3)
+
+- 전화 회선은 Telkit으로 결정했습니다. 연동 조건·한도·요금·약관과 서버 계약 영향은 [업체 검토](../docs/calls/VENDOR_REVIEW.md#0-결정-telkit-채택-2026-11-10), 흐름은 [전화예약 에이전트 계획](../docs/PHONE_RESERVATION_AGENT_PLAN.md)을 따릅니다.
+- 다음 작업은 Telkit 계정 준비(본인인증·카드 등록·070 번호, 계정당 1개)와 LiveKit 프로젝트 설정의 실행 제안 작성입니다. 실제 번호 구매·발신은 대상·목적·예상 비용·상한 승인 후에만 합니다. 발신 표시 번호와 `telkit_call_id` 연결 방법을 PoC에서 확인합니다.
+- 이번 변경은 문서만입니다. 계정·번호·발신·비용 0회, Gradle 재실행 없음.
+
 ## 2026-11-10 #35/#38 통합과 #42 CI·문서 이력 복구
 
 - 사용자 승인으로 #35는4d65c01, #38은9ea227d에 squash merge됐고 #34/#37은 독립 검증/코드 준비 범위로 종료됐습니다. 실제 공급자 채택·기기/ETA·전화/유료 실행 인수는 별도입니다.
@@ -181,7 +187,7 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 2. 빌드 SDK와 debug APK는 준비됨. Pleos 계정/SDK 신청, Android Studio와 Pleos Emulator/Virtual Console 확보 후 probe 설치·실행. 실제 콜백/권한·초기화 실패 후 재실행·종료 중 늦은 콜백 등 수명 경계도 기기에서 확인.
 3. ETA 단위는 확인됐으므로 시간 기준·갱신 주기·권한·백그라운드·도착 이벤트 증거 확보, 변환 adapter+테스트.
 4. Android 제품 UI/후보 선택/명시적 예약 승인/변경 미확인 안내, CarUxRestrictions, Gleo 또는 STT/TTS. 현재 probe는 제출용 앱 아님.
-5. 장소 사업자와 시범 지역, 전화 업체 선택. Twilio/CLOVA/KT 비교와 검증 계획은 INTEGRATIONS. 계정·협의 번호·예상 비용/상한·명시적 승인 없이는 실발신 금지.
+5. 장소 사업자와 시범 지역 선택. 전화 회선은 Telkit으로 결정(2026-11-10), 조건은 docs/calls/VENDOR_REVIEW.md. 계정·협의 번호·예상 비용/상한·명시적 승인 없이는 실발신 금지.
 6. LIVE 전 인증/사용자 소유권·승인 증빙·allowlist·비용/횟수 제한·웹훅 서명·outbox/timeout·UNKNOWN 대조 해결 구현.
 7. 운영 DB는 팀 경험 확인 후 결정. 지속 ETA 지연 감지/자동 변경/학습은 후속 범위. 현재 변경 API는 모의 수동 명령.
 8. release APK·시연 영상·접수양식/개별 서명·심사용 접근 확인. 현재 진단 debug APK만 있고 release 앱/영상/서명/제출 없음.
