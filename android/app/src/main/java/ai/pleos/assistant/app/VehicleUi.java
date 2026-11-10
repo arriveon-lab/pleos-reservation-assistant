@@ -61,7 +61,7 @@ final class VehicleUi {
     background.addState(
         new int[] {-android.R.attr.state_enabled}, buttonShape(c, R.color.ui_disabled));
     background.addState(
-        new int[] {}, buttonShape(c, primary ? R.color.ui_accent : R.color.ui_disabled));
+        new int[] {}, buttonShape(c, primary ? R.color.ui_accent : R.color.ui_surface));
     b.setBackgroundTintList(null);
     b.setBackground(
         new android.graphics.drawable.RippleDrawable(
@@ -74,7 +74,9 @@ final class VehicleUi {
   private static GradientDrawable buttonShape(Context context, int color) {
     GradientDrawable shape = new GradientDrawable();
     shape.setColor(context.getColor(color));
-    shape.setCornerRadius(dp(context, 8));
+    shape.setCornerRadius(dp(context, 16));
+    if (color == R.color.ui_surface)
+      shape.setStroke(dp(context, 1), context.getColor(R.color.ui_outline));
     return shape;
   }
 

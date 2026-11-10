@@ -178,8 +178,40 @@ public final class ReservationActivity extends ComponentActivity {
     field.setMinHeight(dp(72));
     VehicleUi.input(field);
     field.setEnabled(model.canWrite());
-    content.addView(field);
+    LinearLayout row = new LinearLayout(this);
+    row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+    int minimum = label == R.string.adults ? 1 : 0;
+    int maximum = label == R.string.adults ? 8 : 6;
+    Button minus = new Button(this);
+    minus.setText(R.string.home_minus);
+    minus.setContentDescription(getString(R.string.home_decrease, getString(label)));
+    VehicleUi.button(minus, false);
+    minus.setEnabled(model.canWrite());
+    field.setGravity(android.view.Gravity.CENTER);
+    Button plus = new Button(this);
+    plus.setText(R.string.home_plus);
+    plus.setContentDescription(getString(R.string.home_increase, getString(label)));
+    VehicleUi.button(plus, false);
+    plus.setEnabled(model.canWrite());
+    minus.setOnClickListener(v -> adjustNumber(field, -1, minimum, maximum));
+    plus.setOnClickListener(v -> adjustNumber(field, 1, minimum, maximum));
+    row.addView(minus, new LinearLayout.LayoutParams(dp(80), dp(80)));
+    row.addView(field, new LinearLayout.LayoutParams(0, -2, 1));
+    row.addView(plus, new LinearLayout.LayoutParams(dp(80), dp(80)));
+    content.addView(row);
     return field;
+  }
+
+  private void adjustNumber(EditText field, int delta, int minimum, int maximum) {
+    if (!model.canWrite()) return;
+    try {
+      int value = Integer.parseInt(field.getText().toString());
+      field.setText(
+          String.format(
+              java.util.Locale.ROOT, "%d", Math.max(minimum, Math.min(maximum, value + delta))));
+    } catch (NumberFormatException invalid) {
+      field.setError(getString(R.string.invalid_input));
+    }
   }
 
   private void render() {
@@ -209,24 +241,60 @@ public final class ReservationActivity extends ComponentActivity {
     scroll.addView(content);
     setContentView(scroll);
     JSONObject state = model.snapshot();
+    LinearLayout page = content;
     text(getString(R.string.ui_brand), 32);
-    text(R.string.ui_mock);
-    text(R.string.ui_trip);
+    text(getString(R.string.ui_mock), 20);
+    LinearLayout columns = new LinearLayout(this);
+    boolean wide =
+        getResources().getConfiguration().screenWidthDp >= 1100
+            && getResources().getConfiguration().fontScale <= 1.3f;
+    columns.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+    page.addView(columns, new LinearLayout.LayoutParams(-1, -2));
+    LinearLayout conditionPanel = new LinearLayout(this);
+    conditionPanel.setOrientation(LinearLayout.VERTICAL);
+    LinearLayout mainPanel = new LinearLayout(this);
+    mainPanel.setOrientation(LinearLayout.VERTICAL);
+    LinearLayout.LayoutParams left =
+        new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 0.42f : 0);
+    left.setMargins(0, 0, wide ? dp(24) : 0, 0);
+    columns.addView(conditionPanel, left);
+    columns.addView(mainPanel, new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 0.58f : 0));
+    content = conditionPanel;
+    LinearLayout destinationCard = VehicleUi.card(this);
+    content.addView(destinationCard);
+    content = destinationCard;
+    text(getString(R.string.home_destination_label), 20);
+    text(getString(R.string.home_destination), 32);
+    text(getString(R.string.home_eta_value), 44);
+    text(getString(R.string.home_eta_unavailable), 20);
     JSONObject searchState = state.optJSONObject("search");
     JSONObject request = searchState == null ? null : searchState.optJSONObject("request");
-    String eta = request == null ? "" : request.optJSONObject("navigation").optString("eta");
+    JSONObject navigation = request == null ? null : request.optJSONObject("navigation");
+    String eta = navigation == null ? "" : navigation.optString("eta");
     text(
         eta.isEmpty()
             ? getString(R.string.ui_trip_pending)
             : getString(R.string.ui_trip_time, time(eta)),
-        22);
+        20);
+    content = mainPanel;
+    LinearLayout journey = VehicleUi.card(this);
+    content.addView(journey);
+    content = journey;
+    text(getString(R.string.home_journey), 20);
+    text(stageLabel(state));
+    text(getString(R.string.home_journey_steps), 20);
+    content = mainPanel;
+    LinearLayout connection = VehicleUi.card(this);
+    content.addView(connection);
+    content = connection;
     text(
         getString(
-            R.string.ui_party,
-            request == null ? adultsInput : request.optJSONObject("party").optString("adults"),
-            request == null ? childrenInput : request.optJSONObject("party").optString("children")),
-        22);
-    text(stageLabel(state));
+            model.busy()
+                ? R.string.home_connecting
+                : model.failed()
+                    ? R.string.home_recovery
+                    : model.connected() ? R.string.home_ready : R.string.home_connect),
+        26);
     if (!model.restriction().allowsInput()) {
       text(drivingLabel(), 22);
       button(R.string.driving_retry, true, v -> retryDriving());
@@ -237,21 +305,48 @@ public final class ReservationActivity extends ComponentActivity {
       content.addView(progress, new LinearLayout.LayoutParams(dp(40), dp(40)));
       text(R.string.busy);
     }
-    if (model.failed())
+    if (model.failed() && !model.busy())
       text(
           "AUTH_CREATE_REQUIRED".equals(model.failureCode())
               ? R.string.auth_create_notice
               : R.string.auth_recovery_notice);
-    if (model.canCreateIdentity())
+    if (!model.busy() && model.canCreateIdentity())
       button(
           R.string.auth_create,
           !model.busy() && model.restriction().allowsInput(),
           v -> model.run(MockRepository::createIdentity));
-    else if (!model.connected() || model.failed()) {
+    else if (!model.busy() && (!model.connected() || model.failed())) {
       button(R.string.connect, !model.busy(), v -> model.run(MockRepository::connect));
-      button(
-          R.string.auth_refresh, model.canWrite(), v -> model.run(MockRepository::renewIdentity));
     }
+    if (model.connected() && !model.busy() && !model.failed())
+      text(getString(R.string.home_ready_hint), 20);
+    content = mainPanel;
+    LinearLayout progressCard = VehicleUi.card(this);
+    content.addView(progressCard);
+    content = progressCard;
+    text(getString(R.string.home_phone), 24);
+    JSONObject phone = state.optJSONObject("call");
+    text(
+        phone == null
+            ? getString(R.string.home_phone_idle)
+            : getString(R.string.home_phone_status, label(phone.optString("status"))),
+        20);
+    text(getString(R.string.home_booking), 24);
+    JSONObject booking = state.optJSONObject("reservation");
+    text(
+        booking == null
+            ? getString(R.string.home_booking_idle)
+            : getString(
+                R.string.home_booking_status,
+                getString(
+                    switch (booking.optString("status")) {
+                      case "CONFIRMED" -> R.string.status_confirmed;
+                      case "PENDING" -> R.string.status_pending;
+                      case "REJECTED" -> R.string.status_rejected;
+                      default -> R.string.status_unknown;
+                    })),
+        20);
+    content = mainPanel;
     JSONObject activeCall = state.optJSONObject("call");
     JSONObject reservationState = state.optJSONObject("reservation");
     String stage =
@@ -313,8 +408,12 @@ public final class ReservationActivity extends ComponentActivity {
             });
       }
       if (!state.has("reservationId") && (!state.has("search") || showConditions)) {
-        text(R.string.conditions);
-        text(R.string.synthetic_trip);
+        content = conditionPanel;
+        LinearLayout conditionsCard = VehicleUi.card(this);
+        content.addView(conditionsCard);
+        content = conditionsCard;
+        text(getString(R.string.conditions), 28);
+        text(getString(R.string.home_conditions_hint), 20);
         adults = number(R.string.adults, adultsInput);
         children = number(R.string.children, childrenInput);
         parking = new CheckBox(this);
@@ -324,6 +423,8 @@ public final class ReservationActivity extends ComponentActivity {
         parking.setMinHeight(dp(72));
         VehicleUi.text(parking, 24);
         content.addView(parking);
+        text(getString(R.string.home_pet), 24);
+        text(getString(R.string.home_pet_unavailable), 20);
         button(
             R.string.search,
             model.canWrite() && !unresolvedCall,
@@ -338,11 +439,21 @@ public final class ReservationActivity extends ComponentActivity {
                 text(R.string.invalid_input);
               }
             });
+        content = mainPanel;
       }
       if (activeCall != null || state.has("reservation") || state.has("pending"))
         button(R.string.refresh, !model.busy(), v -> model.run(MockRepository::refresh));
       if (state.has("search") && !state.has("reservationId")) candidates(state);
+      if (!state.has("search") && !state.has("reservation")) {
+        LinearLayout empty = VehicleUi.card(this);
+        content.addView(empty);
+        content = empty;
+        text(getString(R.string.home_results_title), 28);
+        text(getString(R.string.home_results_hint), 22);
+        content = mainPanel;
+      }
       button(R.string.preview_open, model.canWrite(), v -> model.openPreview());
+      content = page;
       diagnostics();
 
     } catch (Exception malformed) {
@@ -452,7 +563,7 @@ public final class ReservationActivity extends ComponentActivity {
     if (candidates.length() == 0) text(R.string.empty);
     LinearLayout listRoot = content;
     LinearLayout row = new LinearLayout(this);
-    boolean wide = getResources().getConfiguration().screenWidthDp >= 1100;
+    boolean wide = false; // Dashboard already reserves a separate conditions column.
     row.setOrientation(wide ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
     listRoot.addView(row);
     for (int i = 0; i < Math.min(3, candidates.length()); i++) {

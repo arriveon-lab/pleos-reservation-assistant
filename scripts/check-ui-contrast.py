@@ -39,7 +39,7 @@ def main():
         colors = {node.attrib["name"]: rgb(node.text) for node in ET.parse(path).getroot()}
         for foreground, background in PAIRS:
             check(colors[foreground], colors[background], f"{mode}/{foreground}/{background}")
-        for foreground, background in (("ui_on_accent", "ui_accent"), ("ui_text", "ui_disabled")):
+        for foreground, background in (("ui_on_accent", "ui_accent"), ("ui_text", "ui_surface")):
             alpha = 0x22 / 255
             pressed = tuple(a * alpha + b * (1 - alpha)
                             for a, b in zip(colors["ui_outline"], colors[background]))

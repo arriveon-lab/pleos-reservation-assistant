@@ -1,5 +1,40 @@
 # UX-04 차량 화면 개선·동일 APK 검증 (#39 / #25)
 
+## 2026-11-10 목적지·내 조건·전화·예약 대시보드 재구성
+
+사용자가 공유한 긴 단일 폼을 재설계했다. 공식 [기본 원칙](https://document.pleos.ai/docs/connect/guide/docs-design/Introduction/intro), [레이아웃](https://document.pleos.ai/docs/connect/guide/docs-design/getting-started/layout), [기본 버튼](https://document.pleos.ai/docs/connect/guide/docs-design/components/actions/basic-button)을 참고했다. 공식 인증/전체 가이드 적합성 평가를 완료했다는 뜻은 아니다.
+
+### 사용자에게 보이는 변화
+
+- 넓은 창: 왼쪽 목적지·도착 시간·내 조건, 오른쪽 진행 단계·전화 문의·예약 상태·추천 후보. 1100dp 미만 또는 글꼴130% 초과는 한 열로 전환한다.
+- 성인·아이 인원은 80dp `− / +`와 직접 입력을 함께 제공한다. 주차 필수와 반려견 동반 영역을 구분한다. 강조 버튼은 `내 조건으로 후보 찾기`, 보조 버튼은 표면색/테두리로 표시한다.
+- `도착까지 — / 차량 도착 시간 연결 전`과 예약 연습 시각을 분리한다. 실제 TripInfo ETA를 변환하지 않는다. 반려견은 현 예약 API에 적용되지 않아 선택 가능한 체크박스로 만들지 않고 `아직 적용되지 않아요`로 표시한다(#54 후속 연결).
+- 전화 문의·예약을 첫 화면에서 소개하고 상태를 표시한다. 예약은 명시 승인 후 요청·수락 전 미확정을 유지한다. 후보는 좁아진 오른쪽 열에서 읽을 수 있도록 세로 카드로 비교한다.
+- 처리 중에는 입력을 차단하고 이전 실패 문구/복구 버튼을 동시에 보여주지 않는다. 연결·개발 설정은 접힌 영역을 유지한다. API·인증·원 요청/journal·주행 제한 판정·예약 권한은 변경하지 않았다.
+
+### 실제 실행과 한계
+
+제품 APK SHA256 `a54c096b1a23b0311e8df53c338d33dac4501874456e39980752f461e01543fb`. 기존 `ai.pleos.assistant.mock.jointvalidation`에 `install -r`, user10, Pleos Connect2.1.0/API34/density160. 앱 데이터 삭제·새 인증 주체 발급 없이 기존 MOCK Docker 서버a5ae15e(18082)에 연결했다. 모든 아래 화면 검사는 같은 최종 제품 APK다.
+
+| 절차 | 기대 결과 | 실제 결과 |
+| --- | --- | --- |
+| 넓은 창 야간·주간에서 dashboard instrumentation | 목적지/ETA 미연결/전화/예약/반려견 안내, 인원+1 및 복원 | PASS; PNG 직접 확인 |
+| 처리 중+이전 실패 fixture | 오래된 오류 안내 숨김, 인원 버튼 비활성 | PASS; night-loading.png |
+| 840dp 창·fontScale1.5 | 한 열 전환, 입력/버튼72dp 이상, 글자 잘림 없음 | PASS; 좁은 창 하단은 세로 스크롤 |
+| 기본 DrivingDeviceChecks, 840dp·1.5 | 승인창/결과 상태, 재생성 입력 보존, 제한 시 승인 닫기·늦은 클릭 차단 | PASS |
+
+대시보드 준비/처리 화면은 **기기 위 UI fixture**다. 실제 서버 연결 후 메모리 snapshot만 비우거나 busy/failed를 주입하고 마지막에 복원한다. 새 검색/전화/예약 명령을 보내지 않았다. 같은 기기에서 실제 CarUx 초기 상태 읽기·종료/재연결은 검사했으나 주행 제한/실패와 예약 결과 상태는 주입이다. 실제 moving callback·차량 서비스 장애·전화/예약 전체 공동 시연·새 UI의 실제 검색부터 변경까지 전체 흐름은 이번에 미실행이다.
+
+초기 계측은 render 직후 측정하여 높이0으로 실패해 idle/레이아웃 대기를 추가했다. 첫 글꼴/창 전환에서 label assertion 1회 실패했고 재실행·최종 APK에서는 재현되지 않았다. 정확한 최초 원인은 미확정이며 제품 결함 해소로 단정하지 않는다.
+
+- 실행: `./gradlew -PincludeAndroid=false format`, `./gradlew -PincludeAndroid=true verifyAll`, `python3 scripts/smoke-test.py` PASS. 서버/UX JVM은 UP-TO-DATE, Android NO-SOURCE를 새 테스트 건수로 세지 않는다. smoke 외부 호출0.
+- 새 Lint unused resource/숫자 표시 경고를 정리했다. 기존 경고4개(PrivateApi1, 의존성2, v26폴더1)는 #25의 기존 후속으로 유지하며 새 억제 없음.
+- 로컬 증거: `captures/ux39-redesign/{night-ready,night-loading,day-ready,narrow-ready}.png`, `manifest.json`; 로그·고정 APK: `work/ux39-redesign/`. 모두 Git 제외이며 GitHub 이미지 업로드 완료가 아니다.
+- 검증 후 fontScale1.0/야간 yes/8080→18080 복원, 이번 Docker 서버만 종료(볼륨 보존). 기존 앱의 저장 기록을 지우지 않았다.
+
+#39/#25 OPEN·PR #46 Draft 유지. 실제 ETA(#1), 반려견을 포함한 새 추천 연결(#54), 실제 차량/다른 창 이미지(#25), 공동 문의→예약 시연(#40)은 별도다.
+
+
 2026-11-09. 구현 `9ce4571`(요약)·`762f5a3`(UI)·`27d2cf1`(기기 검사). #36 `7e24482` 인증·미리보기와 #44 `86cd1db` 실제 차량 제한 연결을 보존했다. 기본 MOCK, 일반 앱 토큰의 운영자 권한 없음, 별도 미리보기의 문의/예약 전환 없음은 그대로다. 이번 기록은 **로컬 Pleos 검증**이며 #40 공동 예약 시연이나 #16/#26 공동 인수 완료가 아니다.
 
 ## 공식 기준과 적용

@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Explicit device check: requires automotive baseline and a connected MOCK test installation. */
 public final class DrivingDeviceChecks extends Instrumentation {
   private boolean narrow;
+  private boolean dashboard;
   private boolean previewBoundary;
   private boolean recoveryFailure;
   private String searchRecovery;
@@ -26,6 +27,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
     expectedFontScale = Float.parseFloat(arguments.getString("fontScale", "0"));
     recoveryFailure = "true".equals(arguments.getString("recoveryFailure"));
     searchRecovery = arguments.getString("searchRecovery", "");
+    dashboard = "true".equals(arguments.getString("dashboard"));
     start();
   }
 
@@ -83,6 +85,12 @@ public final class DrivingDeviceChecks extends Instrumentation {
       ReservationViewModel model = (ReservationViewModel) field(activity, "model");
       await(() -> model.canWrite());
       waitForIdleSync();
+      if (dashboard) {
+        DashboardChecks.run(this, activity, model);
+        result.putString("stream", "PASS: dashboard layout, states and input checks\n");
+        finish(Activity.RESULT_OK, result);
+        return;
+      }
       runOnMainSync(() -> VehicleUiChecks.layout(activity.getWindow().getDecorView()));
       runOnMainSync(() -> VehicleUiChecks.resultStates(activity, model));
       waitForIdleSync();

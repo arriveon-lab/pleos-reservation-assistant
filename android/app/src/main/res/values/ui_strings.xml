@@ -1,17 +1,15 @@
 <resources>
-  <string name="ui_brand">ArriveOn · 가상 예약</string>
-  <string name="ui_mock">MOCK · 실제 전화·예약 없음</string>
-  <string name="ui_trip">가상 성수 목적지 · 실제 ETA 미연결</string>
-  <string name="ui_trip_pending">연습 도착 시각: 검색 시점 + 1시간</string>
-  <string name="ui_trip_time">연습 도착 시각: %1$s</string>
-  <string name="ui_party">성인 %1$s · 아동 %2$s · 최대 대기 15분</string>
+  <string name="ui_brand">ArriveOn</string>
+  <string name="ui_mock">MOCK 체험 · 실제 전화와 예약은 진행되지 않습니다</string>
+  <string name="ui_trip_pending">예약 연습 · 검색 시점 + 1시간</string>
+  <string name="ui_trip_time">예약 연습 시각 · %1$s</string>
   <string name="ui_stage_conditions">조건 입력 → 후보 검색</string>
   <string name="ui_stage_candidates">후보 비교 → 누락 정보 문의</string>
   <string name="ui_stage_approval">문의 결과 확인 → 예약 내용 확인</string>
   <string name="ui_stage_wait">응답 대기 · 최신 상태를 조회하세요</string>
   <string name="ui_stage_unknown">결과 미확인 · 대조 필요, 재발신 금지</string>
   <string name="ui_stage_result">예약 결과 확인</string>
-  <string name="ui_diagnostics">개발 진단 열기</string>
+  <string name="ui_diagnostics">연결 및 개발 설정</string>
   <string name="ui_diagnostics_close">개발 진단 닫기</string>
   <string name="ui_diagnostics_notice">MOCK 개발 전용 · 제한 추가와 연결 진단</string>
   <string name="ui_review">검토 대상 · 필수 정보 확인 필요</string>
@@ -33,4 +31,31 @@
   <string name="ui_preview_conditions_close">검색 조건 접기</string>
   <string name="ui_preview_eta">실제 목적지·ETA 미연결 · 아래 가상 조건으로 검색</string>
   <string name="ui_estimated">추정: %1$s</string>
+  <string name="home_destination_label">목적지</string>
+  <string name="home_destination">성수동 · 가상 목적지</string>
+  <string name="home_eta_value">도착까지 —</string>
+  <string name="home_eta_unavailable">차량 도착 시간 연결 전</string>
+  <string name="home_journey">오늘의 예약</string>
+  <string name="home_journey_steps">후보 찾기  →  전화 문의  →  예약 확인</string>
+  <string name="home_connecting">요청 처리 중</string>
+  <string name="home_recovery">이전 기록을 확인해 주세요</string>
+  <string name="home_ready">준비됐어요</string>
+  <string name="home_connect">연결이 필요해요</string>
+  <string name="home_ready_hint">내 조건으로 후보를 찾아보세요.</string>
+  <string name="home_phone">전화 문의</string>
+  <string name="home_phone_idle">후보를 고르면 누락 정보를 모의 문의할 수 있어요.</string>
+  <string name="home_phone_status">모의 문의 · %1$s</string>
+  <string name="home_booking">예약</string>
+  <string name="home_booking_idle">내용을 확인하고 승인한 뒤 요청해요. 수락 전에는 미확정입니다.</string>
+  <string name="home_booking_status">모의 예약 상태 · %1$s</string>
+  <string name="home_conditions_hint">가상 인원으로 연습해 보세요 · 최대 대기 15분</string>
+  <string name="home_pet">반려견 동반</string>
+  <string name="home_pet_unavailable">이 예약 연습에는 아직 적용되지 않아요.</string>
+  <string name="home_results_title">어떤 곳을 찾으세요?</string>
+  <string name="home_results_hint">아이 동행과 주차 조건으로 후보를 비교하세요.
+확인되지 않은 정보는 문의로 확인할 수 있어요.</string>
+  <string name="home_minus">−</string>
+  <string name="home_plus">+</string>
+  <string name="home_decrease">%1$s 줄이기</string>
+  <string name="home_increase">%1$s 늘리기</string>
 </resources>
