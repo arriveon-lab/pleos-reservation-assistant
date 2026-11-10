@@ -159,3 +159,33 @@
 - #16/#26: 검색 명령이 INVALID_TIME으로 거절됐을 때 동일 인증·키로 처리 여부를 확정하고 원 요청을 보존하면서 종료할 공식 절차/응답이 필요하다. 앱은 키·시각 변경, pending 삭제, 새 주체 발급으로 우회하지 않는다. 이번 변경은 진단/안내 개선이며 기존 요청 해결·새 입력 해제는 미완료다.
 - #16/#17: 만료 후 PREVIEW_NOT_FOUND가 정리 완료와 같은 의미인지, 없어진/다른 소유자/재시작을 구분할 수 있는지 계약 확인이 필요하다. 합의 전 성공 처리하지 않는다.
 - 이번 제품 변경으로 실제300초·실제 서버 공동 시나리오를 다시 수행하지 않았다. 앞선 기록은 당시 APK의 증거다. 실제 차량 moving/장애, #40 시연, #1/#11 및 공동 인수는 계속 미완료다. 이슈 OPEN/PR Draft 유지, 병합 없음.
+
+
+## 2026-11-10 서버 답변 반영·기존 설치의 검색 요청 복구 (#26)
+
+서버 담당 [답변6759809676](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6759809676)과 #19 `a5ae15ed9fedd9bcd7755a75f384020f2d5a2731`의 `docs/REC05_SEARCH_RECOVERY.md`/OpenAPI/예제를 대조했다. 핵심1.1.0의 추가 기능이며 main 서버에 있다고 가정하지 않는다. 서버 코드/계약은 변경하지 않고 앱 호출자를 연결했다. 앞선 “답변 대기·기존 요청 복구 미완료”는 당시 이력이다.
+
+### 구현
+
+- pending이 원 `/searches`/searchId 대상일 때만 명시적 “이전 검색 확인·종료” 버튼을 제공한다. 같은 인증·원 body/key로 `/searches/reconcile`을 호출하며 자동 대조/새 검색/전화/예약은 없다.
+- COMPLETED는 searchId UUID·응답 상태/시각/필드·MOCK를 검사하고 GET의 동일 ID/모드를 확인한 뒤 저장한다. REJECTED_CLOSED는 허용 사유2종과 null searchId를 검사한다.
+- 원 명령과 허용된 최소 응답을 `searchReconciliations`에 함께 저장하고 pending 제거를 같은 journal 저장으로 처리한다. 저장 성공 전에는 메모리도 교체하지 않는다. 기존 기록·tripId·authBinding을 보존하며 저장 실패·응답 유실·401/404/409/503·해석 오류는 pending 해제 근거가 아니다. 이후 명시 새 검색은 같은 tripId/새 키/현재 입력이다.
+- 404/PREVIEW_NOT_FOUND는 정리 성공이 아니라는 서버 확인에 따라 기존 미확인 안내를 유지했다. 만료/재시작/타인 소유를 추정하지 않는다.
+
+### 검증 수준과 결과
+
+| 수준 | 절차 | 기대/실제 |
+| --- | --- | --- |
+| JVM 새13건 | 종료 저장·재시작·명시 새 검색, 응답 유실·저장 실패 후 동일 대조, COMPLETED GET 실패/성공,401/404/409/503, 잘못된 필드5종, 제한/다른 명령 차단 | PASS. 전체 UX80개 실패/오류/skip0 |
+| 실제 Pleos·최신 Docker | 기존 jointvalidation 설치를 데이터 삭제 없이 install-r → 실제 복구 버튼 | reconcile401 → 동일 주체 refresh200 → reconcile200 REJECTED_CLOSED. 새 인증 발급0·복구 중 검색0 |
+| 원본 보존 | 검사 전 원 pending/authBinding/tripId 해시와 종료 journal 비교 | 원 명령은 history.command에 그대로 보존, 인증 바인딩/여정 일치, 종료 영수증+pending 해제 확인 |
+| 실제 프로세스 재시작 | force-stop → 재실행 → 명시 검색 버튼 | 영수증 복원/입력 허용, 검색POST200 1회·GET200, 종료 원본 보존 |
+| 로컬 | format·verifyAll·MOCK smoke | PASS. verifyAll에는 Android Lint/APK가 포함되며 기존 cache/UP-TO-DATE는 신규 실행 건수가 아님 |
+
+실제 기기 응답 유실/디스크 저장 실패·COMPLETED 분기는 이번에 주입하지 않았으며 위 JVM 회귀와 구분한다. 실제 기기는 기존 미처리 오래된 요청의 REJECTED_CLOSED 경로를 검증했다. 종료를 최초400 이력 복원으로 해석하지 않는다. 서버의385개/재시작 원장 검사 전체를 이번에 재실행하지 않았으며 서버 담당 증거와 구분한다.
+
+고정 조합: Pleos Connect2.1.0/API34/emulator-5554/user10, 앱 `ai.pleos.assistant.mock.jointvalidation`. 실제 설치 APK를 pull해 얻은 SHA256 `db49a7ac3b82fea7dbf5ed35e242c77e7b1f3e717a459e6d2d43be9e2d8c97bd`, 서버a5ae15e image `sha256:0cfada768a42546680725c446e4acac71c0e81473c6c9f7762a614649b17456b`/linux-arm64/RESULTS, 기존 ux16-device 인증 volume 유지. 새 주체로 우회하지 않았다.
+
+증거: 로컬 `captures/ux26-reconcile/manifest.json`, search-reconciled.png·search-after-restart.png, `work/ux26-reconcile/device-initial.log`·device-restart.log·http.jsonl·verifyAll.log·final-verifyAll.log·smoke.log. HTTP 무변조 중계는 상태/연산만 기록하며 토큰/원문/ID는 출력하지 않았다. 원본 비교는 해시로 수행했고 원 journal을 삭제하거나 바꿔치기하지 않았다. 기기 검사는 instrumentation이 실제 버튼 listener를 호출한 것이며 수동 터치 품질 인수와 구분한다.
+
+종료 후 테스트 앱/중계/Compose 종료,8080→18080 복원, 인증 volume/원 요청 종료 기록/새 검색 참조 보존. 실제 외부 장소/전화/예약/유료 호출0회. 서버 담당의 최신 APK 결과 검토·공동 인수 확정, 실제 차량 moving/장애·#40·#1/#11은 남으며 OPEN/Draft·병합 없음 유지.

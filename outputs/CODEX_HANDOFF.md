@@ -1,5 +1,10 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 #26 서버 대조 API·기존 pending 복구
+
+#16 새 답변/#19 a5ae15e에 맞춰 명시적 검색 확인·종료를 연결했다. 원 요청+대조 결과의 원자적 journal 저장 후에만 pending 해제, COMPLETED GET 검증·실패 시 차단 유지. UX80개·format/verifyAll/MOCK smoke PASS. 기존 jointvalidation 실제 Pleos에서 같은 인증 refresh→REJECTED_CLOSED→원 명령 보존→force-stop 재실행→명시 새 검색1회 성공했다. 고정 APK/image와 증거는 docs/UX16_DOCKER_ACCEPTANCE.md 최신 절 참조. 기존 요청 복구 미완료/서버 답변 대기라는 아래 기록은 과거 이력이다.404 미확인 안내는 서버 합의에 따라 유지. 응답 유실/저장 실패/COMPLETED는 JVM 회귀, 실제 기기는 REJECTED_CLOSED 분기다. 서버 담당의 최종 결과 검토·공동 인수 확정·실제 차량/#40/#1/#11은 남아 OPEN/Draft 유지.
+
+
 ## 2026-11-10 #26 오래된 검색 요청·만료404 안내 보완
 
 #16의 추가 서버 답변은 아직 없다(#19 d415ef7 유지). 앱 오류 코드만 안전하게 전달하고400 INVALID_TIME/STALE_NAVIGATION을 원 pending에 보존해 재시작 후 안내한다. 원 요청/인증·새 검색 차단은 유지했다. 정확한404/PREVIEW_NOT_FOUND는 정리 미확인 안내로 구분하며 성공으로 바꾸지 않는다. UX67개·format/verifyAll/MOCK smoke·Pleos 오류 주입/안내 검사 PASS. 기존 두 설치 journal 해시 일치,8080→18080 복원. 상세 절차·고정 APK·증거는 docs/UX16_DOCKER_ACCEPTANCE.md의 최신 절을 따른다. 기존 요청의 실제 복구/입력 해제·서버404 의미 합의·공동 인수는 미완료, #16/#26 OPEN과 PR Draft 유지.
