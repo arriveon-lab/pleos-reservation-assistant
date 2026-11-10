@@ -1,5 +1,6 @@
 package ai.pleos.assistant;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.HashSet;
@@ -22,10 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 class DestinationRecommendationController {
   record StartRequest(
       UUID viewId,
-      long generation,
+      @JsonProperty(required = true) long generation,
       Model.Destination destination,
       Model.Party party,
-      int maxWaitMinutes,
+      @JsonProperty(required = true) int maxWaitMinutes,
       Set<String> requiredFeatures,
       Set<String> preferredCuisines) {}
 
@@ -61,6 +62,8 @@ class DestinationRecommendationController {
           || input.destination() == null
           || input.destination().name() == null
           || input.destination().name().isBlank()
+          || input.destination().name().length() > 100
+          || input.destination().name().codePoints().anyMatch(Character::isISOControl)
           || input.destination().latitude() == null
           || input.destination().longitude() == null
           || input.requiredFeatures() == null

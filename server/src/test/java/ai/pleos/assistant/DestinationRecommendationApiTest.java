@@ -67,6 +67,14 @@ class DestinationRecommendationApiTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsBytes(request)))
         .andExpect(status().isUnauthorized());
+    var missingWait = new java.util.HashMap<>(request);
+    missingWait.remove("maxWaitMinutes");
+    http.perform(
+            post(BASE)
+                .header("Authorization", "Bearer " + first)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsBytes(missingWait)))
+        .andExpect(status().isBadRequest());
     String started =
         http.perform(
                 post(BASE)
