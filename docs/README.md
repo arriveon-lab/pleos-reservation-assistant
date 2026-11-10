@@ -18,8 +18,8 @@
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
 | [PLAN](PLAN.md) | 전체 범위·일정·5명 역할·통합 순서 | 기존 개발 계획 |
 | [전화예약 에이전트 개발 계획](PHONE_RESERVATION_AGENT_PLAN.md) | 송수신·회신·변경, 사용자·동승자 조건과 예약 사본, P01~P11 일정·인수 | 팀 검토용 제안, API/DB·실전화 미적용 |
-| [전화예약 로컬 프로토타입](../prototypes/phone_agent/README.md) | 사용자·동승자 조건, 가상 예약·회신·변경 승인, 독립 실행·테스트 | MOCK 기본 + 선택형 Telkit·LiveKit, 실제 발신 7회·대기 처리 관측·STT 단절 1회, 예약 UNKNOWN·청취 끊김/미인식 잔존, 제품 미통합 |
-| [전화 프로토타입 서버 배포](../prototypes/phone_agent/deploy/README.md) | Docker·영속 DB·SSH 접속·worker 시작/중단 | EC2 MOCK 기동·Linux 95개 검사·LIVE 차단, 서버 실전화 품질 미검증 |
+| [전화예약 로컬 프로토타입](../prototypes/phone_agent/README.md) | 사용자·동승자 조건, 가상 예약·회신·변경 승인, 독립 실행·테스트 | MOCK 기본 + 선택형 Telkit·LiveKit, 실제 발신 8회·첫 EC2 SDK 오류 0·AI 중단 메시지 3, 예약 UNKNOWN·청취 끊김 잔존, 제품 미통합 |
+| [전화 프로토타입 서버 배포](../prototypes/phone_agent/deploy/README.md) | Docker·영속 DB·SSH 접속·worker 시작/중단 | EC2 기동·Linux 95개 검사·실전화 1회 UNKNOWN, 청취 끊김 잔존·LIVE 차단 |
 | [전화 에이전트 소음·예외 대응](PHONE_AGENT_RELIABILITY.md) | 공식 근거, 현재 구현 차이, 복구/대기/중단 설계와 검증 시나리오 | 2026-11-10 NC/adaptive·대기·장애 처리 적용, 92개 로컬 검사·대기 처리 관측·전체 청취 품질 미통과 |
 | [ISSUE_GUIDE](ISSUE_GUIDE.md) | 각 이슈의 입력/출력·파일 경계·완료 조건 | 작업 해설, 이슈 상태는 GitHub가 기준 |
 | [REC-01 상세 계획](REC01_PLAN.md) | #2 기반 PR과 후속 #11–13의 범위·브랜치·계약·검증 | PR #10 통합·#2 CLOSED, 실연동 미완료 |

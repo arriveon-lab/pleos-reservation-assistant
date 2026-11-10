@@ -96,3 +96,5 @@ docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
 95개 로컬 검사는 전화/모델 요청 없이 LIVE 시작 차단, 기존 예약 상태·소유권·중복·장애 처리, VAD 재사용을 확인합니다. 컨테이너에서도 같은 검사를 실행합니다. 배포·readiness·MOCK 검증과 실제 한국어 음질 검증은 별개이며, 서버에서의 실통화 품질은 승인된 시험 전까지 미검증입니다.
 
 근거: [Docker host network](https://docs.docker.com/engine/network/drivers/host/), [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/), [LiveKit prewarm](https://docs.livekit.io/agents/server/options/), [LiveKit 이미지 빌드](https://docs.livekit.io/deploy/agents/builds/).
+
+2026-11-10 첫 EC2 실전화는 36초·48원, SDK 모델/연결 오류 0개였으나 사용자 청취 끊김과 AI 중단 메시지 3개가 남았습니다. UNKNOWN 저장 후 worker를 중단했습니다. 스피커폰 에코 여부와 실제 음질 개선은 확정하지 않았으며 [STATUS](../../../docs/STATUS.md)를 따릅니다.
