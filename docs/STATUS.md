@@ -269,6 +269,147 @@
 - verifyAll·smoke 통과: UX26개(실제 JAR 인증12 + test-only 운영자 업무14), 서버268개(최초 실행 후 UP-TO-DATE). 별도 package의 Pleos 실제 발급/검색/갱신/force-stop GET·저장 유실 차단과 기존 앱의 레거시 차단을 확인했습니다. 실제 차량 제한/미리보기/유료 변경/release는 미완료입니다.
 - 원격 CI의 캐시된 서버 테스트에서 추천 예제 JSON이 복원되지 않는 실패를 확인했습니다. Test output 선언으로 수정하고 파일 삭제→FROM-CACHE 복원→추천 계약 검사 및 `smoke-test.py --check-contract`를 로컬에서 통과했습니다. 제품 서버 로직/계약 변경 없음.
 - 상세 계약·검증 수준·증거·제한: [UX-03 인수 기록](UX26_AUTH_HANDOFF.md). #5/#26 OPEN, PR Draft, 외부 장소/전화/AI/유료 호출0회, 병합 없음.
+## 2026-11-10 PR #47 main 통합·문서 충돌 해소
+
+사용자 요청으로 공유된 feat/1-navi-probe에 main abd9aa4를 통합했습니다. 기존487e55c를 재작성하지 않고 merge로 이력을 보존하며 force push는 사용하지 않습니다. android/README.md·STATUS·CODEX_HANDOFF의 충돌에서 양쪽 신규 기록을 모두 보존했고, API1.1.0 Navigation/Pleos 차단 조건을 다시 대조했습니다. 제품 adapter/ETA 변환은 추가하지 않았습니다.
+
+통합 후 verifyAll은 서버268개 중267개 통과/1개 실패로 종료했습니다. 기존 PlacePreviewDemoTest의 Files.setPosixFilePermissions Windows 미지원 UnsupportedOperationException(218행)이며 서버 코드를 바꾸거나 테스트를 비활성화하지 않았습니다. 별도 verifyAndroid는19초 성공(대부분 UP-TO-DATE, 이전 실제 실행6개 테스트 결과 재사용), Lint0건입니다. OpenAPI 계약 검사는 기존 venv/PYTHONUTF8=1로 성공했고 최초 기본 Python의 jsonschema 누락/기본 cp949 읽기 실패와 구분합니다. 양쪽 문서 추가 행 보존 검사·명명·diff 검사 통과. 기기/smoke는 재실행하지 않았습니다.
+
+이 통합은 PR47 작업 브랜치만 갱신하며 main 병합·Issue 종료·Draft 해제·리뷰가 아닙니다. #1 미완료와 기기/ETA 제한은 유지하고 원격 필수 CI 결과는 별도 확인합니다.
+
+
+## 2026-11-10 승인 전 검증·PR 정리
+
+현재 feat/1-navi-probe/HEAD9518b6a, 새 커밋0개이며 변경은 미커밋입니다. 원격 API의 main abd9aa4는4커밋 앞서 있으나 작업을 보존하기 위해 통합하지 않았습니다. Android verifyAndroid는 첫 daemon 연결 실패 후 호스트 권한 재시도에서22초 성공했습니다(대부분 UP-TO-DATE). 별도 testDebugUnitTest --rerun-tasks는24초/6개/실패0/오류0/skip0로 실제 재실행 성공, Lint XML0건/APK 해시 동일을 확인했습니다. 서버·기기는 이번에 재실행하지 않았습니다.
+
+기존 #1/#16/#26/#25/#39/#40 및 관련 PR을 대조해 신규 Issue는0개를 권고합니다. #1은 미완료여서 Draft PR의 필수 Closes #1 연결이 완료 선언이 되지 않도록 병합 금지·미검증을 명시했습니다. 제목/브랜치·diff 검사 통과. 승인용 PR 본문과 전체 보고는 Git 제외 outputs/VEH01_PR_DRAFT.md, outputs/VEH01_REVIEW_REPORT.md에 준비했습니다. commit/stage/push/PR/Issue 변경·리뷰·병합·브랜치 삭제 없이 승인을 기다립니다.
+
+
+## 2026-11-09 Issue #1 앱 인수 코멘트 반영
+
+GitHub API로 [추가 코멘트](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1#issuecomment-6739718159)와 #16/#26 본문을 확인했습니다. [차량 데이터 앱 인수안](VEH01_APP_HANDOFF.md)에 목적지/ETA/관측 시각·가용성, 변경/취소/도착/오래됨/권한/미지원/단절/늦은 콜백 상태, Navigation 변환 차단 조건과 공동 인수 시나리오를 정리했습니다. 상태명·유효기간·제품 adapter는 협의/미구현이며 공통 계약을 변경하지 않았습니다. ETA 원시값 수신을 앱 연결 완료로 세지 않고 서버 PLEOS 차단·기존 예약/비용 승인 경계를 유지합니다.
+
+실제 Navigation/probe 설치 버전 조회는 adb emulator-5554 부재로 실패했습니다. 내비 버전은 미확인, probe 버전은 Gradle 설정과 APK hash 근거로 구분했습니다. 기기를 새로 시작하거나 기존 데이터를 변경하지 않았습니다. ETA 기준/주기·도착·실패 조합·공동 기기 인수는 남아 #1 OPEN 유지 대상입니다. 이번 변경은 문서만이며 GitHub 댓글 게시·commit/push/PR/merge는 없습니다.
+
+
+## 2026-11-09 공식 문의 초안 검토
+
+[공식 문의 초안](../outputs/VEH01_PLATFORM_SUPPORT_DRAFT.md)을 최신 격리 시험과 대조해 정리했습니다. 안정 관측131초의 완료 콜백 미수신과 별도 Watchdog 시험을 분리하고, 후속 Trip 원시값666·ETA 기준·응답 연관성·Navigation 상태별 콜백 조건을 질문에 포함했습니다. 공식 Routes 문서를 재확인했지만 시간 기준/완료 보장을 추가로 확정하지 않았습니다. 일반 공식 연락처의 기술 지원 전용 여부는 미확인입니다. 외부 발송·제품 코드/공통 API 변경·테스트 재실행·commit/push/PR은 없습니다.
+
+
+## 2026-11-09 격리 두 번째 부팅 — 재탐색 완료 콜백 미관측
+
+사용자 수동 설치 Success 후 앱 실행 Status: ok, 두 권한 허용과 SDK 초기화를 확인했습니다. 공개 길안내 시작 후 routeStarted(11:03:44.037310Z), 명시적 조회 VALID_FIELDS(11:04:10.363953Z), reRouteRequested 1회(11:04:41.361257Z)를 같은 세션에서 수신했습니다. 요청 시 revision=2/목적지 사용 가능=false로 무효화됐고 약1.323초 뒤 STOPPED/내비 전면 전환, 11:05:16.535357Z에 HOT 복귀했습니다. 복귀 화면에서 Trip/재탐색 버튼은 비활성이었습니다.
+
+요청 전후 system_server 시작 횟수는1로 유지됐고 요청 후 최소131초 관측 창에 reRouteEnded는0건입니다. 앞선 Watchdog로 중단된 원본 데이터 시험과 구분합니다. 완료/SDK 실패/미지원으로 단정하지 않습니다. 11:06:56.771035Z 수동 재조회 후 11:06:57.806926Z VALID_FIELDS로 회복했습니다. UIAutomator와 재탐색 반복 요청은 사용하지 않았습니다. ETA 시간 기준/응답 연관성과 도착·자동 이탈 재탐색은 계속 미검증이며 #1은 미완료입니다.
+
+비식별 증거: captures/veh01-clean-second-reroute-20261109-live.jsonl, veh01-clean-second-reroute-result.json. 화면은 Git 제외 work/veh01/clean-reroute-return.png에만 보관했습니다. 코드 변경/테스트 재실행/commit/push/PR/외부 문의 발송은 없습니다.
+
+
+## 2026-11-09 재탐색 요청 1회·플랫폼 Watchdog 비교 — 격리 기기 설치·SDK 초기화 확인
+
+- 사용자가 직접 공개 목적지 길안내를 시작한 기기에서 새 세션을 초기화했습니다. 목적지 VALID_FIELDS(18:53:07.386 KST), 두 권한 허용과 재탐색 버튼 활성 후 reRouteRequested 1회(18:53:16.701 KST / 09:53:16.701Z)를 확인했습니다. 요청 직전 목적지 사용 가능=false/revision=1, 약1.058초 뒤 STOPPED/내비 전면 전환이 관측됐습니다. 이후 직접 화면은18:54/남은12분/3.1km/도착19:05/속도0km/h였습니다. 요청 후 probe 버튼 목록이 빈 것은 다른 화면 전환으로 구분하며 완료/버튼 비활성의 기기 증거로 쓰지 않습니다.
+- 복귀 시험에서 UIAutomator137/UiAutomation 연결 timeout, Activity 없음이 발생했습니다. 시스템 사용자0 RUNNING_LOCKED/사용자10 미실행, system_server 시작 횟수5→6→종료직전9, 반복 boot_progress를 확인했습니다. Watchdog 헤더는 main 스레드66–67초 지연으로 시스템 서버 종료를 명시했고 최신 해당 스택은 CountDownLatch.await → UserManagerService$LocalService.getBootUser → HsumBootUserInitializer.systemRunning이었습니다. SystemUI DeadSystemException은 후속 증상입니다. 원인을 GPU/HVAC/SDK 재탐색으로 확정하지 않으며 완료 콜백0은 플랫폼 재시작 때문에 판정 불가입니다.
+- 원본 데이터는 보존하고 공식 -datadir/-data 옵션으로 D:/Android/Avd/VEH01_clean_data_20261109를 분리했습니다. 첫 격리 부팅은 시작1회/사용자10 준비 후2회로 증가했고 android.fg73초 지연 Watchdog가 있었습니다. UIAutomator 없이 probe 설치도 Package Manager Broken pipe(32)로 실패했고 SDK 초기화는 하지 못했습니다. 이후 약3분 이상2회를 유지해 초기화된 같은 데이터의 두 번째 부팅을1회 추가 확인했습니다. 마지막 관측은 boot_completed=1/시작1회/사용자10 RUNNING_UNLOCKED/currentUser10입니다. 이 두 번째 부팅의 장기 안정성은 미확정입니다.
+- 두 번째 격리 부팅의 자동 준비 조회는 timeout으로 설치 전 중단됐고, 직접 APK 설치 명령과 허용된1회 재시도는 모두 자동 승인 검토 deadline 초과로 실행되지 않았습니다. 이를 기기 설치 실패나 안전성 거절로 세지 않습니다. 이후 사용자가 PowerShell 설치 Success를 확인했고, adb 실행 Status: ok/currentUser10/system_server 시작1회를 확인했습니다. 격리 두 번째 부팅에서 두 권한 허용과 NaviHelper 초기화(11:00:13.799958Z), 목적지 MISSING_OR_INVALID 응답을 실제 수신했습니다. 새 안전 로그는 captures/veh01-clean-second-reroute-20261109-live.jsonl이며 길안내·재탐색 완료와 장기 안정성은 아직 미검증입니다.
+- 진단 정정: ADB 미연결/Activity 없음만으로 qemu 종료나 앱 삭제를 단정할 수 없습니다. 실제 프로세스·로컬 포트·AAOS 사용자 상태를 대조했습니다. am start는 종료코드0에도 Error type3을 출력할 수 있어 로컬 도우미가 stdout/stderr와 Status:ok를 검사하도록 수정했습니다. 해상도 축소는 도움말 확인에서 중단돼 적용되지 않았고 AVD 잠금/사용자 계정/권한을 우회하지 않았습니다.
+- 원본 userdata3개 파일의 크기·수정시각은 격리 시험 후에도 동일합니다(내용 전체 해시 비교는 아님). 원본 삭제/-wipe-data/잠금 삭제/공통 API·서버 변경은 없습니다. 이번 단계에서 제품 코드·빌드/단위 테스트를 다시 변경/실행하지 않았으며 이전6개 테스트/Lint0/APK 성공과 구분합니다. 비식별 스냅샷 누적111건. 실제 경로/위치/이름을 공유 자료에 추가하지 않았습니다.
+- 증거는 captures/veh01-reroute-recovery-summary.json, veh01-reroute-platform-instability.json, veh01-clean-data-recovery.json, veh01-reroute-user-started-20261109-live.jsonl(12건), work/veh01/reroute-request-result.png에 있습니다. [공식 문의 초안](../outputs/VEH01_PLATFORM_SUPPORT_DRAFT.md)은 미발송입니다. 명시적 요청은 부분 확인됐지만 완료·도착·자동 이탈 재탐색·ETA 기준/연관성·실패 조합 등은 미완료이며 #1 종료/commit/push/PR/merge는 하지 않았습니다.
+
+## 2026-11-09 공식 재탐색 API 확인·진단 버튼 추가 — 기기 완료 미검증
+
+- 공식 [Routes](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/routes)와 NaviHelper3.0.5 AAR javap에서 requestReRoute()를 확인했습니다. [권한 문서](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/NaviHelper/declaring-permissions)와 AAR @RequiresPermission은 NAVI_ROUTE_SEARCH를 요구합니다. 표준 GPS 이동 재생과 별도로 명시적 재탐색 요청 경로가 있으므로 미확인 API를 만들지 않고 probe에 버튼을 추가했습니다.
+- Activity/strings/manifest만 기능 변경했습니다. 목적지 유효 필드·helper·수명·NAVI_ROUTE_SEARCH 허용을 확인한 경우에만 개발자가 1회 요청할 수 있습니다. 호출 전 목적지/Trip/재탐색 버튼을 무효화하고 reRouteRequested를 기록하며 기존 reRouteEnded의 재조회 경로를 유지합니다. 권한 상태 naviRouteSearchGranted도 비식별 로그에 추가했습니다. 권한 승인 UI/pm grant는 실행하지 않았습니다. SDK 타입은 Activity 안에 유지하고 서버/API 계약은 바꾸지 않았습니다.
+- 첫 verifyAndroid는 NAVI_ROUTE_SEARCH 선언 누락을 Lint가 검출해 실패했습니다. manifest와 실행 시 권한 확인을 보완한 뒤 D드라이브 JDK21/SDK/작업 전용 Gradle 캐시에서 `gradlew.bat -PincludeAndroid=true --offline --no-daemon --max-workers=2 "-Dorg.gradle.jvmargs=-Xmx1024m -Dfile.encoding=UTF-8" spotlessApply verifyAndroid`가 24초에 성공했습니다. 상태 단위 테스트 6개 실패/오류/skip=0, Lint 0건, debug APK 생성 확인. 새 APK SHA256: 05222c17a137ec5277563b5178a181d801ad4a90a31fff4dbc177fdf9534b864. 초기 실패/수정 후 로그는 work/veh01/verify-reroute.log, verify-reroute-permission.log에 따로 보존합니다.
+- 기기 install -r는 Success, NAVI_ROUTE와 NAVI_ROUTE_SEARCH 모두 granted=true였습니다. host 4GB/임시 2GB 헤드리스 시도는 ColorBuffer 오류/프로세스 소실로 시험이 이어지지 않았고, 임시 SwiftShader/Vulkan 비활성/2GB/헤드리스에서는 새 APK initialized(07:33:48.448231Z), 초기 MISSING_OR_INVALID와 두 요청 버튼 비활성을 확인했습니다. 기존 공개 경로의 계속 안내를 선택했으나 내비가 빈 화면/로딩에 머물렀습니다. 후속 destinationRequested 이후 유효 응답을 얻지 못해 스크립트가 비활성 재탐색 버튼에서 중단됐습니다. reRouteRequested=0/reRouteEnded=0이며 API 실행 성공이나 권한 거부 시험으로 기록하지 않습니다.
+- 현재 기기 시간대는 다시 America/Los_Angeles로 관측했습니다. 이전 Asia/Seoul 기록은 당시 GPS 주입 이후 관측이며 이후 실행까지 고정하지 않습니다. 임시 메모리/렌더러/창 옵션은 영구 AVD/실행 파일에 반영하지 않았고 시험 후 정상 종료했습니다. 2GB 실행을 권장 4GB 환경 안정성 검증으로 세지 않습니다.
+- 로컬 Git 제외 증거: captures/veh01-sdk-reroute-20261109-summary.json, veh01-sdk-reroute-20261109-live.jsonl(12건), work/veh01/sdk-reroute-ready.png/route.png/blocked.png 및 실행 로그. 비식별 스냅샷 누적 99건. 다음은 정상 활성 경로 확보 후 명시적 재탐색 1회와 실제 완료/오류/무응답 관측입니다. 도착/이탈에 따른 자동 재탐색용 공식 위치 재생, ETA 기준/연관성, 늦은 이전 응답·실패 조합도 남았습니다. 문의 초안만 갱신했으며 외부 발송·commit/push/PR/merge는 없습니다.
+
+## 2026-11-09 도착·재탐색 재현 시도 — 미확인
+
+- 공개 테스트 목적지로 길안내를 시작하고 초기 목적지 VALID_FIELDS/TripInfo rawEtaSeconds=648(07:02:35.284734Z)을 받았습니다. 기본 host/Vulkan 비활성 임시 실행이며 SDK 코드는 변경하지 않았습니다.
+- 공식 [Android 콘솔](https://developer.android.com/studio/run/emulator-console?hl=en)의 geo fix와 [Pleos Virtual Console 안내](https://document.pleos.ai/en/docs/pleos-only/app-test-guide/virtual-console-guide)를 확인했습니다. Android GPS와 Pleos 차량 위치 전달 경로를 동일하다고 가정하지 않습니다. 공식 Virtual Console 가이드에서는 내비 도착/재탐색용 위치 재생 절차를 확인하지 못했습니다.
+- 공공 위치 자료에서 만든 합성 경로 이탈 지점과 공개 역 인근 지점에 geo fix를 총 7회 보냈고 콘솔 OK를 확인했습니다. 마지막 지점은 Android dumpsys location의 GPS 좌표와 반올림 허용 범위에서 일치했습니다. 단순 문자열 검색은 반올림 때문에 latitude=false였으므로 공급자 미반영 근거로 쓰지 않고 숫자 비교 결과를 따릅니다. 실제 사용자 위치 기록/주행 경로는 사용하지 않았습니다.
+- 그럼에도 내비는 기존 80m 안내·남은 11분/3.1km·속도 0 km/h를 유지했고 새 위치로 이동했는지 확인하지 못했습니다. probe 복귀/명시적 목적지 재조회 후에도 VALID_FIELDS였고 destinationArrived/reRouteEnded/routingCompleted는 수집 구간에 0건이었습니다. 도착·재탐색 성공/SDK 미지원/콜백 버그로 단정하지 않습니다. 연속 도로 주행 재생이나 정확한 목적지 진입 조건을 검증한 시험도 아닙니다.
+- 위치 주입 전 기기 표시 23:03에서 이후 16:05로 바뀌었고 07:07:02Z 조회에서 persist.sys.timezone=Asia/Seoul, 기기 2026-11-09T16:07:02+0900을 확인했습니다. 시각/시간대 설정을 수동 변경하지 않았으며 자동 위치 기반 변경 가능성만 기록합니다. 이후 시험은 America/Los_Angeles로 고정 가정하지 말고 시간대를 다시 읽어야 합니다. UTC observedAt/단조 시간과 UI 시각을 분리하고 이 표시 변경을 ETA 의미 검증으로 세지 않습니다.
+- 호스트 GPU는 Win32 조회에서 NVIDIA GeForce MX450 2GB/Intel Iris Xe였습니다. [최신 공식 구성 안내](https://document.pleos.ai/en/docs/connect/guide/getting-started/application-development/configure-pleos-connect-emulator)의 최소 예시는 RTX 3060 Laptop 6GB 또는 RX 6600M/RX 6700S 8GB 이상입니다. 현재 하드웨어가 이 예시보다 낮음을 기록하되 기존 ColorBuffer 오류/내비 위치 정체의 원인으로 확정하지 않습니다.
+- Git 제외 증거: captures/veh01-arrival-gps-attempt.json, veh01-arrival-reroute-20261109-summary.json, veh01-arrival-reroute-20261109-live.jsonl(17건), veh01-arrival-baseline-20261109-observation.json, work/veh01/arrival-gps-after.png. 스냅샷 누적 87건이며 이전 자료는 보존했습니다. AVD 정상 종료, 제품/서버/API·권한/보안 변경 없음, 빌드/단위 테스트 재실행·commit/push/PR/merge 없음. 도착/재탐색은 계속 미검증이고 공급자 확인 초안은 VEH01_VALIDATION에만 있으며 외부 발송하지 않았습니다.
+
+## 2026-11-09 목적지 변경 직접 검증
+
+- 같은 AVD를 host/Vulkan 비활성 임시 옵션으로 실행해 같은 probe 세션을 유지한 채 공개 테스트 목적지 A에서 B로 변경했습니다. 실제 화면의 목적지 교체와 안내 시작을 확인했고 위치·이름·주소·POI는 공유 로그에 보존하지 않았습니다.
+- 변경 전 목적지 VALID_FIELDS, TripInfo rawEtaSeconds=4196(06:48:15.528781Z)을 받았습니다. 이후 캡처 구간은 기기 22:48:20–22:48:23-0800으로 약 4–8초 뒤이며 화면은 남은 1시간 8분/도착 23:55/시계 22:48/속도 0 km/h였습니다. 화면의 분 단위 시각과 정확한 일치를 선언하지 않습니다.
+- 두 번째 목적지 선택 후 probe 복귀에서 STARTED(06:52:48.264319Z), routeCancelled(06:52:48.271795Z), MISSING_OR_INVALID 목적지(06:52:48.289233Z), routeStarted(06:52:48.527935Z)를 관측했습니다. 취소 시 사용 가능=false/revision=2, 새 시작 시 false/revision=3이었고 수동 재조회 전 실제 Trip 버튼 disabled를 확인했습니다. 이번 변경에서는 destinationChanged/routingCompleted/reRouteEnded 콜백을 관측하지 않았습니다. 콜백은 복귀 후 진입한 기록이며 UI 변경 즉시/백그라운드 전달로 해석하지 않습니다.
+- 명시적 새 조회 후 VALID_FIELDS(06:53:53.419357Z), TripInfo rawEtaSeconds=648(06:54:03.902082Z)을 받았습니다. 응답 지연 약 225ms. 캡처 구간 기기 22:54:21–22:54:42-0800은 응답 약 17–38초 뒤이고 화면은 남은 11분/도착 23:05/시계 22:54/속도 0 km/h였습니다. 이전 목적지 정보로 추가 요청하는 버튼은 차단됐지만 새 SDK 응답과 현재 목적지의 강한 연관성을 증명하지 않습니다.
+- 이전 Trip 응답은 변경 전에 이미 수신된 상태였습니다. 따라서 변경 중 지연된 이전 유효 응답/요청 중첩은 재현하지 못했습니다. 이 항목과 ETA 시간 기준·도착·재탐색·권한 거부/미지원/단절 등은 계속 미검증이며 #1은 미완료입니다. responseAssociation/etaTimeBasis UNVERIFIED와 서버 PLEOS 차단을 유지합니다.
+- Git 제외 증거: captures/veh01-destination-change-20261109-live.jsonl, veh01-destination-change-20261109-summary.json, veh01-change-before-20261109-observation.json, change-after 대응 파일, veh01-change-controls-before-refresh.json. 스냅샷 누적은 70건이며 기존 자료는 보존했습니다. AVD는 시험 후 정상 종료했고 영구 설정·제품 코드·API·서버는 변경하지 않았습니다. 빌드/단위 테스트 재실행·commit/push/PR/merge 없음.
+
+## 2026-11-09 같은 경로 반복 조회·취소 재검증
+
+- 중단 후 기기가 없어 기존 AVD를 재실행했습니다. host 프로세스 종료와 ColorBuffer/texture 오류를 관측했고, SwiftShader/Vulkan 비활성 시험에서는 부팅·SDK 초기화 후 내비 전환 시간 초과가 발생했습니다. 호스트 여유 RAM 281MB/총 8GB를 확인해 정상 종료했습니다. 사용자가 다른 앱을 닫은 뒤 여유 약 3.7GB에서 host/Vulkan 비활성으로 재실행했습니다. 부팅 약 37초, 부팅 후 여유 약 920MB였으며 ColorBuffer 오류는 남아 있어 원인 해결/장기 안정화로 판단하지 않습니다. 영구 AVD/실행 파일 설정은 변경하지 않았습니다.
+- 새 세션에서 초기 목적지 MISSING_OR_INVALID와 Trip 비활성을 확인한 후 공개 테스트 목적지를 직접 설정했습니다. 같은 세션 목적지 VALID_FIELDS 후 수동 TripInfo 두 번은 06:36:52.118095Z와 06:38:10.437564Z에 모두 rawEtaSeconds=4227이었습니다. 단조 시간 간격 78.319초이며 응답 지연은 각각 약 466/467ms입니다. 자동 콜백 주기를 측정한 결과가 아닙니다.
+- 각 응답 약 5–10초 뒤 직접 캡처는 기기 22:36/남은 1시간 8분/도착 23:44, 22:38/남은 1시간 8분/도착 23:46, 속도 0 km/h였습니다. 원시 4227초는 수치상 70분 27초로 UI 68분과 일치하지 않습니다. 시간 기준·현재 안내 경로와 requestTrip 계산 결과 연관성을 확정하지 않고 서버 PLEOS 차단을 유지합니다. 정차 관측을 주행 검증으로 세지 않습니다.
+- 안내 종료를 직접 누른 뒤 06:39:20.022802Z 백그라운드 routeCancelled에서 목적지 사용 가능=false/revision=2, 약 50ms 뒤 MISSING_OR_INVALID 콜백을 확인했습니다. 같은 세션 STARTED 복귀와 실제 Trip 버튼 disabled/목적지 재조회 enabled도 확인했습니다. 취소 후 늦은 유효 응답·도착·재탐색·권한 거부/단절은 이번에 검증하지 않았습니다.
+- 로컬 Git 제외 증거는 captures/veh01-followup-route-a-20261109-observation.json, route-b 대응 파일, veh01-followup-cancel-controls.json, veh01-followup-20261109-summary.json입니다. 실시간 비식별 JSONL을 추가 기록했고 스냅샷 누적은 48건입니다. 이전 3686/603 자료는 덮어쓰지 않았습니다. 내비 화면은 work/veh01/에만 보존합니다.
+- 시험 후 AVD를 정상 종료해 메모리를 회복했습니다. 다음 실행은 기본 host 설정이며 Vulkan 비활성은 이번 명령의 임시 옵션입니다. 제품 코드/서버/API 변경·빌드/단위 테스트 재실행·commit/push/PR/merge는 없습니다. #1은 ETA 기준/응답 연관성·실패/도착 등 미검증 때문에 계속 미완료입니다.
+
+## 2026-11-09 내비 복구 후 긴 경로 추가 관측
+
+- 임시 software GPU 실행에서 crash 버퍼의 SystemUI HVAC 처리 `CarPropertyConfig.getAreaType()` NullPointerException 반복을 확인했습니다. 빈 화면과의 인과관계는 미확정입니다. 기기 가용 메모리 약 1.8GB, 호스트 여유 약 700MB/총 8GB를 관측했으며 메모리 부족을 원인으로 확정하지 않습니다.
+- 내비 앱만 force-stop/relaunch한 뒤 AVD를 정상 종료하고 기존 데이터 그대로 원래 host GPU로 재실행했습니다. boot_completed=1, 검색·공개 역 검색 결과·길안내 화면을 직접 확인했습니다. 재부팅 후 조회한 crash 버퍼에서 당시 새 충돌 출력은 없었으나 장기 안정성을 보증하지 않습니다. 현재 실행은 host GPU이며 아래 software 실행/새 경로 미확보 기록은 복구 전 이력입니다.
+- 새 공개 테스트 경로를 직접 설정했습니다. 새 probe 세션에서 목적지 VALID_FIELDS(2026-11-09T04:41:27.045258Z), Trip 요청(04:41:43.518116Z), rawEtaSeconds=3686(04:41:45.334648Z)을 확인했습니다. SDK 응답까지 약 1.817초였습니다.
+- 내비 캡처 구간은 기기 2026-11-08T20:42:05–20:42:24-0800으로 SDK 관측 약 20–39초 후입니다. 화면은 현재 20:42/남은 1시간 0분/도착 21:42/속도 0 km/h였습니다. 원시 3686초는 수치상 61분 26초이며 UI와 정확 일치하지 않습니다. 이전 짧은 경로 603초와 구분되는 관측으로만 보존하고 etaTimeBasis/responseAssociation UNVERIFIED, 서버 PLEOS 차단을 유지합니다.
+- Git 제외 증거: captures/veh01-long-route-20261109-observation.json, work/veh01/navigation-long-after-trip-20261109.png, host-recovery.out.log/err.log. 누적 비식별 로그는 덮어쓰기 없이 8건 추가해 26건입니다. 새 수집 스크립트는 고유 파일명과 수집 시작 이후 Trip 콜백 검사로 이전 결과 재사용을 막았습니다.
+- 이번 단계는 기존 APK 기기 실행·관측과 문서 갱신입니다. 빌드/단위 테스트 재실행은 없고 앱/AVD 데이터 삭제, 권한·계정·보안 변경, commit/push/PR/merge도 없습니다. 남은 검증은 시간 기준/동일 시점 대조, 변경 중 지연 응답, 도착·재탐색·자정·단절 등이며 #1 완료로 처리하지 않습니다.
+
+## 2026-11-09 중단 후 재개
+
+- 후속 직접 진행: boot_completed=1/activity 서비스 존재와 내비 Activity 실행 ok를 재확인했습니다. 초기 로딩 후 기본 지도/검색 입력 영역을 한 번 관측했으나 검색 조작 뒤 검은 화면이 반복됐고, 지원 geo Intent로 공개 목적지 검색을 열어도 검색 결과/경로 설정은 확인하지 못했습니다. 앱 종료 사유 조회에서는 원인을 확정할 항목을 얻지 못했습니다.
+- 원인 분리를 위해 emulator 공식 `-help-gpu`를 확인하고, 테스트 기기를 정상 종료한 뒤 동일 AVD 데이터를 보존해 `-gpu software`로 한 번 재실행했습니다. 부팅과 내비 실행은 성공했으나 로딩 후 내비 영역이 빈 화면으로 남았습니다. 따라서 host GPU만의 문제로 확정하지 않습니다. 영구 GPU 설정/보안/계정/권한/앱 데이터는 변경하지 않았으며 새 경로/ETA 수집 성공으로 기록하지 않습니다.
+- 로컬 Git 제외 증거: work/veh01/navigation-search.png, navigation-search-open.png, navigation-geo-search.png, software-navigation-ready.png 및 software-gpu.out.log/err.log. 현재 실행은 임시 software GPU 모드이며 기본 Start-Pleos.cmd의 host 설정은 그대로입니다. 다음은 내비 화면/검색 정상화 원인 확인입니다. SDK/API 변환이나 서버 코드를 이 현상 때문에 바꾸지 않았습니다.
+
+- 이전 짧은 경로 603초 비교·보존 한계 문서가 저장돼 있음을 확인했습니다. 원시 스냅샷 11건은 중복/민감 필드가 없었고 이전 비교 JSON과 화면은 별도 로컬 복사본으로 보존했습니다.
+- 연결이 없어 기존 D드라이브 AVD를 재실행했습니다. boot_completed=1, probe COLD/Status ok, 새 세션 SDK initialized와 목적지 MISSING_OR_INVALID를 확인했습니다. Trip 버튼 비활성으로 요청 스크립트가 중단됐고 새 ETA를 임의 생성하지 않았습니다. 누적 수집기는 7건을 추가해 18건을 보존했습니다.
+- 이어 공개 목적지 검색을 열려 했으나 activity 서비스 없음/boot completed 이전 broadcast 오류가 발생했습니다. Android 프레임워크 준비 상태가 다시 불안정해 새 경로 설정 성공으로 기록하지 않습니다. 이전 603초는 11월 8일 증거이며 새 세션 결과가 아닙니다. 기기 안정화 후 재검증해야 합니다. commit/push/PR/merge 없음.
+
+## 2026-11-08 짧은 경로 추가 비교·로그 보존 수정
+
+- 사용자의 직접 진행 요청 후 현재 내비에 표시된 10분 경로를 추가 비교 대상으로 사용했습니다. 초기 화면은 기기 04:58/도착 05:08 AM/이동 10분, 속도 0 km/h였습니다. 새 목적지를 생성했다고 기록하지 않으며 이미 열려 있던 공개 테스트 경로를 재조회했습니다. Android 패키지 정보로 실제 내비 Activity를 확인하고 실행했습니다. 계정·권한·기기 시각은 변경하지 않았습니다.
+- 같은 probe 세션에서 목적지 재조회 VALID_FIELDS(22:08:10 KST), Trip 요청(22:08:28.538) 후 **rawEtaSeconds=603**을 받았습니다(22:08:29.182). 이후 내비 직접 화면은 05:09/이동 11분/도착 05:20 AM/속도 0 km/h였습니다. 603초는 수치상 10분 3초로 앞선 25분대 원시값 1541/1538보다 작으며 이동 시간 계열 가설에 부합하는 관측입니다. 시간 기준·분 단위 반올림 규칙·현재 경로와 TripInfo 응답 연관성을 확정하지 않습니다.
+- 기기 응답 지연으로 화면 캡처 전후 시각은 05:09:27–05:10:39-0800이었습니다. SDK 관측보다 약 58–130초 뒤의 캡처 구간이며 동일 순간의 정확한 대조 성공으로 세지 않습니다. 원시값·관측 시각·UI 표시 시각을 각각 보존했습니다. SDK 코드를 수정하거나 서버 PLEOS 차단을 해제하지 않았습니다.
+- **보존 한계와 수정:** logcat 순환 후 스냅샷 수집기가 같은 JSONL을 덮어써 최초 원시 로그 20건의 전체본이 남아 있지 않습니다. 첫 두 Trip 샘플과 당시 이벤트 요약은 `captures/veh01-20261108-summary.json`에 남아 있습니다. 새 스냅샷 11건은 `captures/veh01-20261108-short-route-snapshot.jsonl`, 짧은 경로 메타데이터는 `captures/veh01-short-route-observation.json`으로 별도 보존했습니다. 수집기는 이후 중복 제거·추가 기록으로 바꿨으며 이미 logcat에서 사라진 원본을 복구했다고 보고하지 않습니다. 장시간 관측은 실시간 수집이 추가로 필요합니다. 아래 “최종 로그 20건 보존”은 당시 수집 시점 기록이며 현재 보존 상태는 이 항목이 우선합니다.
+- 위치·주소·POI·이름은 공유 로그/문서에 추가하지 않았습니다. 내비 화면 원본은 로컬 Git 제외 work/에만 있고 공개 산출물이 아닙니다. 이번 단계는 기존 APK 실행·관측·문서 갱신이며 빌드/단위 테스트를 새로 실행한 결과가 아닙니다. #1의 시간 기준·도착/재탐색·자정·실제 거부/미지원/단절·늦은 유효 응답 검증은 남아 있습니다.
+
+## 2026-11-08 Pleos probe 설치·실행·최초 SDK 수신
+
+- 사용자가 Pleos 홈 화면과 공개 테스트 목적지 길안내 시작을 확인했습니다. 연결 대상은 emulator-5554, Android 14/API 34/Pleos Connect v2.1.0입니다. 기존 debug APK(SHA-256 `bf6f2870b29978ea173f186e62a9f4ee33a87ca482dda1e5aff53d15fe3c8e9e`)를 `adb install -r`로 설치해 Success, `am start -W`의 COLD/Status ok와 probe STARTED 로그를 확인했습니다. 앱 복귀는 HOT이며 같은 probeSessionId를 유지했습니다.
+- **실제 SDK 수신:** NAVI_ROUTE granted=true(21:28:43 KST), NaviHelper 3.0.5 initialized(21:28:45), 목적지 콜백 MISSING_OR_INVALID. 길안내 시작 후 명시적 재조회에서 VALID_FIELDS와 TripInfo 버튼 활성화를 확인했습니다(21:33:25). 초기 콜백이 유효하지 않았다는 사실만 확인했으며 구체적인 누락 필드나 원인은 단정하지 않습니다.
+- **백그라운드 관측:** onStop에 해당하는 STOPPED 21:30:32 이후 `routeStarted` 21:31:19가 foregroundAtProcessing=false로 도착했고, 복귀 STARTED 21:32:39를 확인했습니다. 이 한 시나리오가 장시간/프로세스 종료 후 백그라운드 수신을 보장하지 않습니다. 이 구간에서 목적지 변경/탐색 완료 콜백을 자동 갱신 근거로 확보하지 못해 명시적으로 재조회했습니다.
+- **최초 TripInfo:** 21:34:06.930 KST 요청, 21:34:07.530 수신, `rawEtaSeconds=1541`, POSITIVE. ETA 시간 기준·응답 연관성은 UNVERIFIED이고 서버 절대 시각으로 변환하지 않았습니다. 아래에서 두 번째 샘플·사용자 UI 보고·취소를 추가 확인했으나, 동시 UI 대조·다른 길이의 경로·자정 경계·도착·거부/단절/늦은 유효 응답은 추가 검증 대상입니다. #1은 아직 미완료입니다.
+- 개인정보 없는 필드만 추출한 로컬 증거는 Git 제외 `captures/veh01-20261108-probe.jsonl`입니다. 이름/주소/좌표/POI/다른 앱 로그를 포함하지 않습니다. logcat 접두 시각은 기기 시간대에 의존하므로 기록은 JSON observedAt(UTC)과 monotonic elapsedRealtimeMs를 기준으로 합니다. 코드 변경 없이 APK 설치·실행과 실제 관측을 수행했으며 이번 단계에서 단위 테스트를 새로 재실행한 결과는 아닙니다. 아래 “APK/SDK 수신 미검증”은 이전 단계 이력입니다.
+- **비교·두 번째 샘플:** 사용자 보고는 기기 화면 04:37, 이동 25분, 도착 05:02 AM입니다. ADB로 `persist.sys.timezone=America/Los_Angeles`와 04:39:22-0800을 확인했고 시각 설정은 바꾸지 않았습니다. 두 번째 수신은 21:41:00.431 KST에 rawEtaSeconds=1538, 첫 응답에서 412.901초 후였습니다. UI는 동일 순간의 직접 관측이 아니며 경과 412.901초에 원시값은 3초 감소했으므로 단순 카운트다운/시간 기준을 확정하지 않습니다. 명시적 수동 요청/응답 2회이며 자동 갱신 주기의 증거가 아닙니다.
+- **취소 기기 확인:** 사용자가 길안내 종료 후 21:42:45.548 KST에 foregroundAtProcessing=false인 routeCancelled를 받았고 목적지를 무효화했습니다. 이어 MISSING_OR_INVALID 목적지 콜백을 받았으며, 21:43:38 HOT 복귀 후에도 TripInfo 버튼 disabled를 확인했습니다. 취소 후 새 Trip 요청은 하지 않았습니다. 최종 비식별 로그 20건과 `captures/veh01-20261108-summary.json`을 보존했습니다. ETA 시간 기준·다른 경로·자정·변경 중 늦은 응답·도착·권한 거부·미지원·단절은 아직 미검증이며 #1을 닫지 않습니다.
+
+## 2026-11-08 D드라이브 환경 설치·Pleos 부팅
+
+- 사용자의 직접 설치 요청과 Pleos/Google SDK 약관 각각의 명시 동의를 받아 JDK 21을 `D:\Java\temurin-21.0.13+9`, SDK/Pleos 이미지/AVD를 `D:\Android`에 준비했습니다. 통계 전송 선택은 사용자가 직접 처리했습니다. [설치 기록·실행 파일](ANDROID_SETUP.md#2026-11-08-windows-d드라이브-설치)을 참고합니다.
+- 공식 Pleos ZIP 4,087,751,964 bytes/SHA-1 대조 후 설치했고, Studio에서 Pleos 하드웨어 프로필의 AVD를 생성했습니다. API 34, Cold boot, RAM 4GB, 4 core, host GPU입니다. 이미지와 AVD 실제 경로가 D드라이브임을 config.ini에서 확인했습니다. 배포 XML과 ZIP 원본의 package path/revision 차이는 위 설치 기록에 남겼습니다.
+- 기존 SDK 구성은 보존하고 D드라이브 복사본을 사용합니다. Studio 초기 설정에서 Emulator 37.2.13/Platform-Tools 37.0.1을 설치했습니다. 새 Studio 캐시/로그·실행 임시폴더와 AVD 저장소는 D드라이브로 설정했습니다. 프로젝트 로컬 SDK/JDK 파일은 Git 제외이며 공통 Gradle/API/서버 소스 변경은 없습니다.
+- **실제 기기 부팅 확인:** `adb devices -l`의 emulator-5554=device, `sys.boot_completed=1`, Android 14/API 34, `RELEASE.release_connect_v2.1.0 test-keys`, 제조사 42dot. 재실행 부팅 로그는 약 40초입니다. 화면 캡처 도구는 반복 시간 초과여서 그래픽 홈 화면을 시각 확인한 결과로 세지 않습니다. 부팅 확인 후 emulator를 종료했고 D드라이브 실행 파일을 준비했습니다.
+- APK 설치·probe 앱 실행·목적지/TripInfo·ETA 시간 기준·백그라운드·실제 권한/단절 시나리오는 여전히 미검증이며 #1은 미완료입니다. 첫 실행의 ADB 경로/unauthorized 상태와 재실행 후 device/부팅 확인을 구분합니다. ADB 키 복사·보안 승인 우회·Windows 보안 설정 변경은 없습니다. 아래 “Pleos AVD 없음”은 설치 전 이력입니다.
+- D드라이브 JDK/SDK에서 최종 `gradlew.bat --offline -PincludeAndroid=true verifyAndroid` 성공(28초, 54개 태스크 중 5개 실행/49개 UP-TO-DATE). Lint 오류/경고 0, APK와 기존 테스트 6개 성공 산출물을 확인했으며 테스트 태스크 자체는 UP-TO-DATE입니다. 최초 제한 환경의 daemon 접속 실패 후 승인된 실행으로 재검증했습니다. 로그: `work/veh01/verify-d-drive-approved.log`. 재실행 부팅 로그: `work/veh01/pleos-emulator-final.out.log`. native emulator 원 로그에는 호스트 식별자 등이 있어 그대로 공개 공유하지 않습니다.
+
+## 2026-11-08 VEH-01 Windows 작업
+
+- 실제 GitHub #1 본문을 확인했습니다. 깨끗한 main `9518b6a`와 fetch한 origin/main이 동일했고 `feat/1-navi-probe`를 생성했습니다. commit/push/PR/merge는 실행하지 않았습니다.
+- [VEH-01 검증 기록](VEH01_VALIDATION.md)에 SDK 계약·환경·완료 조건·팀 인계·기기 시나리오를 정리했습니다. NaviHelper 3.0.5 AAR/javap, navi-data 3.0.4 sources와 실제 Gradle 의존성을 대조했습니다. eta는 int/초, 시간 기준과 응답 연관성은 미확인입니다. deprecated `onRouteEnded`는 여정 종료로 해석하지 않고 `onRoutingCompleted`를 사용합니다.
+- 콜백 진입 시각 채집, main thread 상태 처리, 목적지 필드 검증, 변경/탐색/도착/취소 시 무효화, 종료 후 콜백 방어, 권한/불명확 실패 로그, 명시적 목적지 재조회와 상태 단위 테스트를 추가했습니다. SDK 식별자가 없어 새 조회 뒤 구응답을 완전히 식별할 수 없으며 모든 응답의 `responseAssociation=UNVERIFIED`를 유지합니다. Instant 변환·서버 전송·PLEOS 허용은 추가하지 않았습니다.
+- 기본 Java 17 대신 Git 제외 작업 폴더에 Temurin 21.0.13+9를 체크섬 대조 후 확보해 실행 셸에만 적용했습니다. SDK Platform 35/Build Tools 35.0.0/Emulator 실행 파일은 발견했습니다. 현재 사용자 AVD/연결 기기는 없고 SDK 내 Pleos 이미지도 발견하지 못했습니다. Studio Sync, APK 설치/실행, 실제 callback·권한 거부·미지원·단절·백그라운드·ETA 시간 기준은 **미검증**입니다.
+- `gradlew.bat -PincludeAndroid=false format` 성공. 최종 `gradlew.bat -PincludeAndroid=true verifyAndroid` 성공: **Android 단위 테스트 6개, 실패/오류/skip 0**, Lint 오류/경고 0, debug APK 생성. 최종 54개 태스크 중 14개 실행/40개 UP-TO-DATE. 이전 Mac의 NO-SOURCE 이력과 구분합니다.
+- `gradlew.bat -PincludeAndroid=true verifyAll`은 **실패**: 서버 200개 중 199개 통과/1개 실패, 실패는 기존 `PlacePreviewDemoTest.privateKeyFilesMustBeOwnerOnlyAndCannotBeSymlinkedOrEchoTheirContents`의 `Files.setPosixFilePermissions` Windows 미지원(`UnsupportedOperationException`, 218행)입니다. Android 검증은 위 별도 실행으로 완료했으며 다른 담당자 서버 코드는 수정하지 않았습니다.
+- `smoke-test.py --check-contract`는 **실패**: UTF-8/작업 폴더 설정 후 MOCK HTTP 흐름과 교환 스키마 대조는 PASS였으나 재시작 후 예약 GET이 HTTP 404였습니다. Windows 프로세스 종료/DB 영속화 원인은 미확정이며 #4 확인이 필요합니다. 재시작 영속화/LIVE 차단 단계까지 통과한 결과로 세지 않습니다. 앞선 실패는 sandbox 임시폴더 권한과 기본 cp949 JSON 디코딩이었고 셸 설정으로 재실행했습니다.
+- 로컬 증거는 Git 제외 `work/veh01/verify-all.log`, `verify-android.log`(의존성 포함), `verify-android-final.log`, `smoke-contract-final.log` 및 Gradle XML/HTML 보고서입니다. 기존 Mac 통합 검증 기록은 아래에 보존합니다. **#1은 기기 증거 부족으로 미완료**입니다. 실제 장소/전화/예약·유료 API 실행은 없습니다.
+- 별도 `check-contract.py`는 OpenAPI 3.1 문서/검색 예제 PASS, `check-conventions.py --branch feat/1-navi-probe`와 `git diff --check`도 PASS입니다. 최종 APK SHA-256은 `bf6f2870b29978ea173f186e62a9f4ee33a87ca482dda1e5aff53d15fe3c8e9e`입니다. debug APK 생성은 기기 실행·release 검증이 아닙니다.
 
 ## 2026-11-09 REC-09 #32 공공데이터 독립 검증
 
@@ -457,3 +598,5 @@ GitHub 업로드 직전 로컬 `verifyAll` 및 `smoke-test.py --check-contract`�
 - Registry 18개 + H2 추가 1개를 더해 총 **188개 실행, 실패/오류/skip 0**입니다. 기존 H2 비차단/DB 미저장 테스트도 Registry 경로에서 통과했습니다. format/verify와 JAR MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단 통과. 로컬 증거는 Git 제외 `work/rec03-registry-results.json`, `work/rec03-registry-verify.log`, `work/rec03-registry-smoke.log`에 있습니다. 초기 테스트 helper 컴파일 오류는 수정했고 초기 로그도 따로 보관했습니다.
 - 로그인 인증·외부 요청의 owner 검증은 아직 미구현이며, Owner는 trusted caller가 공급할 내부 scope입니다. 만료는 요청/명시적 reap 시 정리하고 자동 정리 스케줄은 아직 없습니다. Registry 재생성/다중 인스턴스를 넘는 누적 예산·영속 claim·불확실한 실행 대조도 미완료입니다.
 - 공개 REST API·Spring bean·기존 WorkflowService 연결·Model/migration/의존성 변경 없음. navigation freshness/ETA 재검증, #4/#5 계약·공개 API/화면, 실제 인증/복구는 다음 작업입니다. #12는 OPEN·PR #14는 Draft로 유지하며 실제 Kakao 조회·전화·비용은 0회입니다.
+
+후속 복구 확인: 11:07:51.902254Z에 TripInfo rawEtaSeconds=666/POSITIVE를 수신했습니다. 이는 원시값 수신 확인이며 남은 시간/도착 시각으로 변환하지 않습니다.

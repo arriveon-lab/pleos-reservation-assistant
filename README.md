@@ -2,7 +2,7 @@
 
 목적지·ETA·동행자의 필수 조건으로 식당을 비교하고, 누락 정보 문의에서 예약 결과 확인까지 연결하는 차량용 서비스입니다.
 
-현재 **로컬 MOCK 서버**를 실행하고 **SDK 진단용 debug APK**를 빌드할 수 있습니다. 성수동 이름을 사용한 가상 식당 3곳이며 실제 장소 검색·AI 모델·전화·예약이 아닙니다. `app.mode=LIVE`는 서버 시작 단계에서 차단됩니다. Pleos 기기 실행은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)은 Telkit·LiveKit과 EC2를 연결해 발신 시험 11회를 진행했습니다. 아홉 번째 스피커폰 시험에서 청취 개선을 보고받았지만, 후속 시험에서 중단 후 재생 대기와 입력 무음이 확인돼 전체 음질은 미통과입니다. 짧은 수락 판정·승인 이름 소개를 보완하고, 무음의 위치를 확인할 선택형 음량 계측을 추가했습니다. 로컬 116개 검사 통과이며 최근 결과는 UNKNOWN입니다. LIVE와 worker는 꺼 두었고 제품 통합·실수신·변경 재확인·새 계측의 실전화 효과는 미검증입니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
+현재 **로컬 MOCK 서버**와 **SDK 진단용 debug APK**를 빌드할 수 있습니다. Pleos emulator에서 probe 초기화·목적지·TripInfo 수신을 확인했지만 ETA 시간 기준은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)은 Telkit·LiveKit 발신 시험을 진행했으나 제품 앱·추천 서버와 통합되지 않았고 최근 결과는 UNKNOWN입니다. 기본 서버의 `app.mode=LIVE`는 시작 단계에서 차단됩니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
 
 [GitHub 저장소](https://github.com/arriveon-lab/pleos-reservation-assistant) · [작업 이슈](https://github.com/arriveon-lab/pleos-reservation-assistant/issues) · [CI 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)
 
@@ -54,7 +54,7 @@ python3 scripts/smoke-test.py
 ```text
 server/       Java 21 / Spring Boot 3.5.16 / Flyway / H2
 api/          버전 명시 OpenAPI, 예제, 상태 의미
-android/      NaviHelper 원시값 수집용 probe (debug APK·Lint 확인, 기기 미검증)
+android/      NaviHelper 원시값 수집용 probe (APK·Lint·최초 SDK 수신 확인, ETA 기준 미검증)
 scripts/      로컬 MOCK 시연·패키지 실행 검증·계약 검증
 docs/         상태·팀 계획·연동 조사·조직 준비
 .github/      CI와 Issue/PR 템플릿
