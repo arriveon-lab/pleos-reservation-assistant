@@ -1,0 +1,38 @@
+{
+  "checkedDateKst": "2026-11-09",
+  "publisher": "행정안전부 / 공공데이터활용지원센터",
+  "version": "공공데이터 제공 표준 20차 (2025.10)",
+  "noticeUrl": "https://www.data.go.kr/bbs/rcr/selectRecsroom.do?originId=PDS_0000000001252",
+  "noticePublished": "2025-11-17",
+  "noticeModified": "2026-03-03",
+  "attachmentUrl": "https://www.data.go.kr/cmm/cmm/fileDownload.do?atchFileId=FILE_000000003528776&fileDetailSn=1",
+  "attachmentBytes": 2664887,
+  "attachmentSha256": "7c34f3e7d28313bd2e596cfd8eb6b64483297faa081bc90905e3363ddbd3f964",
+  "section": 127,
+  "sectionTitle": "일반음식점",
+  "administrativeStatus": {
+    "01": "영업/정상",
+    "02": "휴업",
+    "03": "폐업",
+    "04": "취소/말소/만료/정지/중지"
+  },
+  "detailedStatus": {
+    "01": "영업",
+    "02": "폐업"
+  },
+  "closureDateMeaning": "일반음식점이 폐업한 일자; 선택 항목",
+  "rowTimes": {
+    "LASTMODTS": "최종수정시점",
+    "UPDATEDT": "데이터갱신일자",
+    "documentedFormat": "YYYY-MM-DD HH24:MI:SS",
+    "timezone": "UNVERIFIED",
+    "notDatasetSnapshot": true
+  },
+  "coordinateReferenceDifference": {
+    "genericStandard": "EPSG:2097",
+    "datasetSpecificCatalog": "EPSG:5174",
+    "selectedForOA18655": "EPSG:5174",
+    "basis": "Dataset-specific catalog and underlying source catalog take precedence; no measured location accuracy claim"
+  },
+  "derivation": "Code/field metadata only; no reference examples, merchant rows, contacts or coordinates copied"
+}

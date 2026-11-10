@@ -18,6 +18,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.flywaydb:flyway-core")
+    implementation("org.jsoup:jsoup:1.24.1")
     runtimeOnly("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -32,6 +33,8 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+    // The contract checker also consumes this fictional plan when tests are restored from cache.
+    outputs.file(layout.buildDirectory.file("rec08/mock-recommendation-plan.json"))
     // These apply to the isolated test JVM, not the Gradle daemon or developer's global settings.
     jvmArgs("-Djdk.httpclient.disableRetryConnect=true", "-Djdk.httpclient.redirects.retrylimit=1")
     systemProperty("placeTestClasspath", sourceSets.test.get().runtimeClasspath.asPath)
@@ -56,4 +59,33 @@ tasks.register<JavaExec>("placePreview") {
     providers.gradleProperty("placePreviewKeyFile").orNull?.let { args(it) }
 }
 
+tasks.register<JavaExec>("recommendationPlan") {
+    group = "verification"
+    description = "Print a fictional listing shortlist and UNKNOWN inquiry plan; no external calls."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "ai.pleos.assistant.RecommendationPlanDemo"
+    workingDir = rootProject.projectDir
+}
+
+tasks.register<JavaExec>("placeDetails") {
+    group = "verification"
+    description =
+        "Print fictional GPT citation discovery and matched website details; no external calls."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "ai.pleos.assistant.PlaceDetailDemo"
+    workingDir = rootProject.projectDir
+}
+
 spotless { java { googleJavaFormat("1.28.0") } }
+
+// Local test harness only. This file and test classes are never included in bootJar.
+val smokeClasspath by
+    tasks.registering {
+        dependsOn(tasks.testClasses)
+        val destination = layout.buildDirectory.file("smoke-classpath.txt")
+        outputs.file(destination)
+        inputs.files(sourceSets.test.get().runtimeClasspath)
+        doLast { destination.get().asFile.writeText(sourceSets.test.get().runtimeClasspath.asPath) }
+    }
+
+tasks.named("check") { dependsOn(smokeClasspath) }

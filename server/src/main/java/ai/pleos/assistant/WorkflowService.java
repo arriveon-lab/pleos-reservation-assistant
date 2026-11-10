@@ -34,8 +34,9 @@ public class WorkflowService {
   }
 
   @Transactional
-  public Search search(String key, SearchRequest request) {
+  public Search search(RequestActor actor, String key, SearchRequest request) {
     return store.command(
+        actor,
         "search",
         key,
         request,
@@ -58,43 +59,50 @@ public class WorkflowService {
           s.candidates =
               candidates.create(places.search(PlaceQuery.forDestination(n.destination())));
           recommendations.select(s);
-          store.insertSearch(s);
+          store.insertSearch(actor, s);
           return s;
         });
   }
 
   @Transactional(readOnly = true)
-  public Search getSearch(String id) {
+  public Search getSearch(RequestActor actor, String id) {
+    store.requireOwner(actor, "searches", id);
     Search s = store.get("searches", id, Search.class);
     recommendations.rank(s); // Expiration is evaluated on every read, not only on writes.
     return s;
   }
 
   @Transactional(readOnly = true)
-  public Reservation getReservation(String id) {
+  public Reservation getReservation(RequestActor actor, String id) {
+    store.requireOwner(actor, "reservations", id);
     return store.get("reservations", id, Reservation.class);
   }
 
   @Transactional(readOnly = true)
-  public CallTask getCall(String id) {
+  public CallTask getCall(RequestActor actor, String id) {
+    store.requireOwner(actor, "calls", id);
     return store.get("calls", id, CallTask.class);
   }
 
   @Transactional(readOnly = true)
-  public List<CallTask> getCalls(String searchId) {
+  public List<CallTask> getCalls(RequestActor actor, String searchId) {
+    store.requireOwner(actor, "searches", searchId);
     store.get("searches", searchId, Search.class);
     return store.bySearch("calls", searchId, CallTask.class);
   }
 
   @Transactional
-  public CallTask inquire(String searchId, String key, InquiryRequest request) {
+  public CallTask inquire(RequestActor actor, String searchId, String key, InquiryRequest request) {
+    store.lock();
+    store.requireOwner(actor, "searches", searchId);
     return store.command(
+        actor,
         "inquiry:" + searchId,
         key,
         request,
         CallTask.class,
         () -> {
-          Search s = getSearch(searchId);
+          Search s = getSearch(actor, searchId);
           Candidate c = candidate(s, request.candidateId());
           requireFuture(s.request.navigation().eta());
           if (!c.eligible) throw ApiError.conflict("INELIGIBLE_CANDIDATE", "필수 조건에 맞지 않는 후보입니다.");
@@ -110,14 +118,17 @@ public class WorkflowService {
   }
 
   @Transactional
-  public Reservation book(String searchId, String key, BookingRequest request) {
+  public Reservation book(RequestActor actor, String searchId, String key, BookingRequest request) {
+    store.lock();
+    store.requireOwner(actor, "searches", searchId);
     return store.command(
+        actor,
         "booking:" + searchId,
         key,
         request,
         Reservation.class,
         () -> {
-          Search s = getSearch(searchId);
+          Search s = getSearch(actor, searchId);
           Candidate c = candidate(s, request.candidateId());
           requireFuture(request.requestedTime());
           if (!request.allowBooking())
@@ -131,7 +142,7 @@ public class WorkflowService {
               && (request.changePolicy().latestTime() == null
                   || request.changePolicy().latestTime().isBefore(request.requestedTime())))
             throw ApiError.bad("INVALID_CHANGE_POLICY", "변경 허용 종료 시각은 예약 시각 이후여야 합니다.");
-          for (Reservation existing : store.byTrip(s.request.navigation().tripId())) {
+          for (Reservation existing : store.byTrip(actor, s.request.navigation().tripId())) {
             if (existing.status != ReservationStatus.REJECTED)
               throw ApiError.conflict(
                   "ACTIVE_RESERVATION", "이 여정에 진행·확정·미확인 예약이 있습니다. 재발신하지 않습니다.");
@@ -151,14 +162,18 @@ public class WorkflowService {
   }
 
   @Transactional
-  public Reservation change(String reservationId, String key, ChangeRequest request) {
+  public Reservation change(
+      RequestActor actor, String reservationId, String key, ChangeRequest request) {
+    store.lock();
+    store.requireOwner(actor, "reservations", reservationId);
     return store.command(
+        actor,
         "change:" + reservationId,
         key,
         request,
         Reservation.class,
         () -> {
-          Reservation r = getReservation(reservationId);
+          Reservation r = getReservation(actor, reservationId);
           if (r.status != ReservationStatus.CONFIRMED || r.pendingChangeCallId != null)
             throw ApiError.conflict("CHANGE_BLOCKED", "확정된 예약이고 진행·미확인 변경이 없어야 합니다.");
           requireFuture(request.requestedTime());
@@ -177,7 +192,7 @@ public class WorkflowService {
             throw ApiError.conflict("CHANGE_COOLDOWN", "변경 요청 간격은 최소 10분입니다.");
           CallTask call =
               createCall(
-                  getSearch(r.searchId),
+                  getSearch(actor, r.searchId),
                   r.candidateId,
                   r.id,
                   Purpose.CHANGE,
@@ -192,9 +207,10 @@ public class WorkflowService {
   }
 
   @Transactional
-  public CallTask outcome(String callId, OutcomeRequest event) {
+  public CallTask outcome(RequestActor actor, String callId, OutcomeRequest event) {
+    actor.requireMockOperator();
     store.lock();
-    CallTask call = getCall(callId);
+    CallTask call = getCall(actor, callId);
     if (!store.recordEvent(callId, event)) return call;
     if (call.status != CallStatus.PENDING)
       throw ApiError.conflict("CALL_FINALIZED", "이미 종료된 통화입니다. 미확인은 별도 대조 절차가 필요합니다.");
@@ -211,7 +227,7 @@ public class WorkflowService {
         throw ApiError.bad("FACTS_WITHOUT_ANSWER", "확인되지 않은 통화에서는 사실을 반영하지 않습니다.");
       call.status = CallStatus.valueOf(event.outcome().name());
       if (event.facts() != null) {
-        Search s = getSearch(call.searchId);
+        Search s = getSearch(actor, call.searchId);
         recommendations.apply(
             candidate(s, call.candidateId),
             event.facts(),
@@ -240,7 +256,7 @@ public class WorkflowService {
           accepted
               ? "EXPLICIT_MATCHING_ACCEPTANCE"
               : rejected ? "EXPLICIT_REJECTION" : "UNCONFIRMED_OR_MISMATCH";
-      Reservation r = getReservation(call.reservationId);
+      Reservation r = getReservation(actor, call.reservationId);
       if (call.purpose == Purpose.BOOKING) {
         r.status =
             accepted
