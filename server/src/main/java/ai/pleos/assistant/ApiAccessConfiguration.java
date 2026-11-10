@@ -52,7 +52,7 @@ class ApiAccessConfiguration {
                 chain.doFilter(request, response);
               }
             });
-    registration.addUrlPatterns("/api/v1/*");
+    registration.addUrlPatterns("/api/v1/*", "/api/experimental/web-recommendations/*");
     // Same boundary as #16: the authentication adapter must establish Principal before this guard.
     registration.setOrder(Ordered.LOWEST_PRECEDENCE - 10);
     registration.setAsyncSupported(true);

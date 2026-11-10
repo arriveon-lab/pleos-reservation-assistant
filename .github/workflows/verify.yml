@@ -30,6 +30,7 @@ jobs:
       - run: python scripts/seoul-place-quality.py --pilot-screening
       - run: python scripts/check-recommendation-plan.py
       - run: python scripts/smoke-test.py --check-contract
+      - run: python scripts/check-web-recommendation.py
   android:
     name: Android checks
     runs-on: ubuntu-24.04
