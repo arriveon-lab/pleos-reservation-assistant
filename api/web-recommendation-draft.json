@@ -645,6 +645,7 @@
           "identitySourceUrl",
           "fit",
           "assessments",
+          "reviews",
           "remainingQuestions",
           "identityVerified",
           "bookable",
@@ -683,6 +684,13 @@
             "maxItems": 4,
             "items": {
               "$ref": "#/components/schemas/Assessment"
+            }
+          },
+          "reviews": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
             }
           },
           "remainingQuestions": {
@@ -772,7 +780,7 @@
           },
           "failureReason": {
             "type": ["string", "null"],
-            "enum": ["CREDENTIAL_MISSING", "HTTP_REJECTED", "INVALID_RESPONSE", "TRANSPORT_ERROR", null],
+            "enum": ["CREDENTIAL_MISSING", "HTTP_BAD_REQUEST", "HTTP_UNAUTHORIZED", "HTTP_RATE_LIMITED", "HTTP_REJECTED", "INCOMPLETE_RESPONSE", "MISSING_WEB_SEARCH", "MISSING_OUTPUT_TEXT", "UNMATCHED_IDENTITY_SOURCE", "INVALID_SOURCE_METADATA", "INVALID_OUTPUT_SHAPE", "INVALID_CANDIDATE", "INVALID_REVIEW", "INVALID_REPORT", "INVALID_RESPONSE", "TRANSPORT_ERROR", null],
             "description": "Safe diagnostic only for FAILED; MOCK results use null."
           }
         }

@@ -28,11 +28,13 @@ public final class WebListingRecommendationJoiner {
       int straightLineDistanceMeters,
       WebRecommendation.Fit fit,
       List<WebRecommendation.Assessment> assessments,
+      List<WebRecommendation.Evidence> reviews,
       List<WebRecommendation.Need> remainingQuestions,
       boolean bookable,
       boolean inquiryDispatchAllowed) {
     public Candidate {
       assessments = List.copyOf(assessments);
+      reviews = List.copyOf(reviews);
       remainingQuestions = List.copyOf(remainingQuestions);
     }
   }
@@ -104,6 +106,7 @@ public final class WebListingRecommendationJoiner {
               (int) Math.round(PlaceRecommendationPlanner.distance(query, place)),
               report.fit(),
               report.assessments(),
+              report.reviews(),
               report.remainingQuestions(),
               false,
               false));

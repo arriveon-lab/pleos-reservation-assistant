@@ -93,7 +93,7 @@ class WebRecommendationParserTest {
     var annotations = (ArrayNode) message.path("annotations");
     var sources = json.createArrayNode();
     for (var annotation : annotations)
-      sources.addObject().put("type", "url").put("url", annotation.path("url").asText());
+      sources.addObject().put("url", annotation.path("url").asText());
     ((ObjectNode) root.at("/output/0"))
         .putObject("action")
         .put("type", "search")
@@ -102,7 +102,7 @@ class WebRecommendationParserTest {
     ((ArrayNode) root.path("output"))
         .addObject()
         .put("type", "web_search_call")
-        .put("status", "completed")
+        .put("status", "searching")
         .putObject("action")
         .put("type", "open_page");
     var result = parse(root, content(root));
@@ -116,6 +116,11 @@ class WebRecommendationParserTest {
                   .allSatisfy(
                       assessment -> assertThat(assessment.verdict()).isEqualTo(Verdict.UNKNOWN));
             });
+    assertThat(result.candidates().getFirst().reviews()).hasSize(1);
+    assertThat(result.candidates().getFirst().assessments())
+        .anySatisfy(
+            assessment ->
+                assertThat(assessment.evidence().getFirst().condition()).contains("가상 안내"));
   }
 
   @Test
@@ -203,11 +208,14 @@ class WebRecommendationParserTest {
   }
 
   @Test
-  void missingCitedIdentityExtraFieldsAndInvalidTypesFailRatherThanEmpty() throws Exception {
+  void uncitedIdentityIsSkippedAndMalformedReportsRemainUnknown() throws Exception {
     var root = response();
     var content = content(root);
     ((ObjectNode) content.at("/candidates/0"))
         .put("identitySourceUrl", "https://unseen.example/source");
+    assertThat(parse(root, content).candidates()).hasSize(2);
+    for (var candidate : content.get("candidates"))
+      ((ObjectNode) candidate).put("identitySourceUrl", "https://unseen.example/source");
     assertThat(parse(root, content).state()).isEqualTo(State.FAILED);
     root = response();
     content = content(root);
@@ -216,7 +224,14 @@ class WebRecommendationParserTest {
     root = response();
     content = content(root);
     report(content, 0, 0).put("answer", true);
-    assertThat(parse(root, content).state()).isEqualTo(State.FAILED);
+    assertThat(parse(root, content).state()).isEqualTo(State.RESULTS);
+    assertThat(
+            parse(root, content).candidates().stream()
+                .filter(c -> c.name().endsWith("1"))
+                .findFirst()
+                .orElseThrow()
+                .remainingQuestions())
+        .contains(Need.PET_FRIENDLY);
   }
 
   @Test

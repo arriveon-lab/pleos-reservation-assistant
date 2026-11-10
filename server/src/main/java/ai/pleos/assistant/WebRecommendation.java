@@ -54,7 +54,19 @@ public final class WebRecommendation {
   /** Safe provider diagnostics; never contains a response body, URL, credential, or user data. */
   public enum FailureReason {
     CREDENTIAL_MISSING,
+    HTTP_BAD_REQUEST,
+    HTTP_UNAUTHORIZED,
+    HTTP_RATE_LIMITED,
     HTTP_REJECTED,
+    INCOMPLETE_RESPONSE,
+    MISSING_WEB_SEARCH,
+    MISSING_OUTPUT_TEXT,
+    UNMATCHED_IDENTITY_SOURCE,
+    INVALID_SOURCE_METADATA,
+    INVALID_OUTPUT_SHAPE,
+    INVALID_CANDIDATE,
+    INVALID_REVIEW,
+    INVALID_REPORT,
     INVALID_RESPONSE,
     TRANSPORT_ERROR
   }
@@ -166,12 +178,39 @@ public final class WebRecommendation {
       URI identitySourceUrl,
       Fit fit,
       List<Assessment> assessments,
+      List<Evidence> reviews,
       List<Need> remainingQuestions,
       boolean identityVerified,
       boolean bookable,
       boolean inquiryDispatchAllowed) {
+    public Candidate(
+        int ordinal,
+        String name,
+        String address,
+        URI identitySourceUrl,
+        Fit fit,
+        List<Assessment> assessments,
+        List<Need> remainingQuestions,
+        boolean identityVerified,
+        boolean bookable,
+        boolean inquiryDispatchAllowed) {
+      this(
+          ordinal,
+          name,
+          address,
+          identitySourceUrl,
+          fit,
+          assessments,
+          List.of(),
+          remainingQuestions,
+          identityVerified,
+          bookable,
+          inquiryDispatchAllowed);
+    }
+
     public Candidate {
       assessments = List.copyOf(assessments);
+      reviews = List.copyOf(reviews);
       remainingQuestions = List.copyOf(remainingQuestions);
       if (identityVerified || bookable || inquiryDispatchAllowed)
         throw new IllegalArgumentException("Web reports cannot authorize actions");

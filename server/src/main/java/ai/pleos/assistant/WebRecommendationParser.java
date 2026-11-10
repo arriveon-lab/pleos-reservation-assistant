@@ -12,7 +12,6 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,6 +39,7 @@ public final class WebRecommendationParser {
 
   public Result parse(
       String response, Request request, Mode mode, Instant observedAt, Instant validUntil) {
+    FailureReason stage = FailureReason.INVALID_RESPONSE;
     try {
       if (response == null || response.length() > 1_048_576 || !validUntil.isAfter(observedAt))
         return empty(mode, State.FAILED);
@@ -50,14 +50,15 @@ public final class WebRecommendationParser {
       Map<URI, String> citations = new HashMap<>();
       Set<URI> consulted = new HashSet<>();
       var texts = new ArrayList<String>();
+      stage = FailureReason.INVALID_SOURCE_METADATA;
       for (JsonNode output : root.path("output")) {
         if ("web_search_call".equals(output.path("type").asText())) {
-          if (!"completed".equals(output.path("status").asText())) return empty(mode, State.FAILED);
+          if (!"search".equals(output.path("action").path("type").asText())
+              || !"completed".equals(output.path("status").asText())) continue;
           searches++;
           for (JsonNode source : output.path("action").path("sources")) {
-            if (!"url".equals(source.path("type").asText())) continue;
-            URI url = URI.create(required(source, "url", 2048));
-            if (safeCitation(url)) consulted.add(url);
+            URI url = safeUri(source.path("url"));
+            if (url != null) consulted.add(url);
             if (consulted.size() > 64) return empty(mode, State.FAILED);
           }
         }
@@ -71,8 +72,9 @@ public final class WebRecommendationParser {
           texts.add(text.textValue());
           for (JsonNode annotation : content.path("annotations")) {
             if (!"url_citation".equals(annotation.path("type").asText())) continue;
-            URI url = URI.create(required(annotation, "url", 2048));
-            if (safeCitation(url)) citations.put(url, required(annotation, "title", 200));
+            URI url = safeUri(annotation.path("url"));
+            String title = annotation.path("title").asText(null);
+            if (url != null && text(title, 200)) citations.put(url, title.strip());
             if (citations.size() > 64) return empty(mode, State.FAILED);
           }
         }
@@ -80,6 +82,7 @@ public final class WebRecommendationParser {
       // One Responses request may contain search plus page-open actions. It is still one API call.
       if (searches < 1 || searches > 3 || texts.size() != 1) return empty(mode, State.FAILED);
       JsonNode content = json.readTree(texts.getFirst());
+      stage = FailureReason.INVALID_OUTPUT_SHAPE;
       shape(content, Set.of("candidates"));
       JsonNode input = content.path("candidates");
       if (!input.isArray() || input.size() > 8) return empty(mode, State.FAILED);
@@ -87,58 +90,100 @@ public final class WebRecommendationParser {
         return new Result(mode, State.EMPTY, observedAt, validUntil, List.of(), 0);
       Map<String, Draft> distinct = new LinkedHashMap<>();
       for (JsonNode candidate : input) {
-        shape(candidate, Set.of("name", "address", "identitySourceUrl", "reports"));
+        stage = FailureReason.INVALID_CANDIDATE;
+        boolean hasReviews = candidate.has("reviews");
+        shape(
+            candidate,
+            hasReviews
+                ? Set.of("name", "address", "identitySourceUrl", "reports", "reviews")
+                : Set.of("name", "address", "identitySourceUrl", "reports"));
         String name = required(candidate, "name", 150),
             address = required(candidate, "address", 250);
-        URI identityUrl = URI.create(required(candidate, "identitySourceUrl", 2048));
-        if (!citations.containsKey(identityUrl) && !consulted.contains(identityUrl))
-          return empty(mode, State.FAILED);
+        URI identityUrl = safeUri(candidate.path("identitySourceUrl"));
+        if (identityUrl == null) continue;
+        if (!citations.containsKey(identityUrl) && !consulted.contains(identityUrl)) continue;
         String key =
             PlaceDetailEnricher.canonical(name) + "\u0000" + PlaceDetailEnricher.canonical(address);
         Draft draft =
             distinct.computeIfAbsent(key, ignored -> new Draft(name, address, identityUrl));
+        if (hasReviews) {
+          stage = FailureReason.INVALID_REVIEW;
+          JsonNode reviews = candidate.path("reviews");
+          if (!reviews.isArray() || reviews.size() > 3) return empty(mode, State.FAILED);
+          for (JsonNode review : reviews) {
+            shape(review, Set.of("summary", "sourceUrl"));
+            URI url = safeUri(review.path("sourceUrl"));
+            if (url == null) continue;
+            if (!citations.containsKey(url) && !consulted.contains(url)) continue;
+            String summary = review.path("summary").asText(null);
+            if (!text(summary, 240)) continue;
+            draft.reviews.add(
+                new Evidence(
+                    url,
+                    citations.getOrDefault(url, "웹검색 출처"),
+                    SourceType.VISITOR_REVIEW,
+                    observedAt,
+                    null,
+                    validUntil,
+                    summary.strip(),
+                    "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION",
+                    Model.Scope.GENERAL,
+                    null));
+          }
+        }
+        stage = FailureReason.INVALID_REPORT;
         JsonNode reports = candidate.path("reports");
         if (!reports.isArray() || reports.size() > 32) return empty(mode, State.FAILED);
         for (JsonNode report : reports) {
-          shape(
-              report,
-              Set.of("need", "answer", "condition", "sourceUrl", "sourceType", "sourceUpdatedAt"));
-          Need need = Need.valueOf(required(report, "need", 40));
-          Verdict answer = Verdict.valueOf(required(report, "answer", 20));
-          if (answer == Verdict.CONFLICT) return empty(mode, State.FAILED);
-          if (!request.requiredNeeds().contains(need)) continue;
-          URI url = URI.create(required(report, "sourceUrl", 2048));
-          if (!citations.containsKey(url) && !consulted.contains(url)) continue;
-          boolean inlineCited = citations.containsKey(url);
-          SourceType type =
-              inlineCited
-                  ? SourceType.valueOf(required(report, "sourceType", 30))
-                  : SourceType.OTHER;
-          Instant updated =
-              report.path("sourceUpdatedAt").isNull()
-                  ? null
-                  : Instant.parse(required(report, "sourceUpdatedAt", 40));
-          if (updated != null
-              && (updated.isAfter(observedAt)
-                  || updated.isBefore(observedAt.minus(Duration.ofDays(180))))) continue;
-          var evidence =
-              new Evidence(
-                  url,
-                  inlineCited ? citations.get(url) : "웹검색 출처",
-                  type,
-                  observedAt,
-                  inlineCited ? updated : null,
-                  validUntil,
-                  inlineCited ? required(report, "condition", 240) : "직접 인용 근거 없음",
-                  "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION",
-                  Model.Scope.GENERAL,
-                  null);
-          draft
-              .reports
-              .computeIfAbsent(need, ignored -> new ArrayList<>())
-              .add(new Report(inlineCited ? answer : Verdict.UNKNOWN, evidence));
+          try {
+            shape(
+                report,
+                Set.of(
+                    "need", "answer", "condition", "sourceUrl", "sourceType", "sourceUpdatedAt"));
+            Need need = Need.valueOf(required(report, "need", 40));
+            Verdict answer = Verdict.valueOf(required(report, "answer", 20));
+            if (answer == Verdict.CONFLICT || !request.requiredNeeds().contains(need)) continue;
+            URI url = safeUri(report.path("sourceUrl"));
+            if (url == null || (!citations.containsKey(url) && !consulted.contains(url))) continue;
+            boolean inlineCited = citations.containsKey(url);
+            SourceType type =
+                inlineCited
+                    ? SourceType.valueOf(required(report, "sourceType", 30))
+                    : SourceType.OTHER;
+            String condition = report.path("condition").asText(null);
+            if (!text(condition, 240)) continue;
+            Instant updated = null;
+            if (!report.path("sourceUpdatedAt").isNull()) {
+              String date = report.path("sourceUpdatedAt").asText(null);
+              if (date == null || date.length() > 40) continue;
+              updated = Instant.parse(date);
+            }
+            if (updated != null
+                && (updated.isAfter(observedAt)
+                    || updated.isBefore(observedAt.minus(Duration.ofDays(180))))) continue;
+            var evidence =
+                new Evidence(
+                    url,
+                    inlineCited ? citations.get(url) : "웹검색 출처",
+                    type,
+                    observedAt,
+                    inlineCited ? updated : null,
+                    validUntil,
+                    condition.strip(),
+                    "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION",
+                    Model.Scope.GENERAL,
+                    null);
+            draft
+                .reports
+                .computeIfAbsent(need, ignored -> new ArrayList<>())
+                .add(new Report(inlineCited ? answer : Verdict.UNKNOWN, evidence));
+          } catch (RuntimeException invalidReport) {
+            // A malformed report cannot establish a feature; retain the place as UNKNOWN.
+          }
         }
       }
+      if (distinct.isEmpty()) return empty(mode, State.FAILED);
+      stage = FailureReason.INVALID_CANDIDATE;
       var ranked = new ArrayList<Candidate>();
       int excluded = 0;
       for (Draft draft : distinct.values()) {
@@ -179,15 +224,12 @@ public final class WebRecommendationParser {
                 draft.identityUrl,
                 remaining.isEmpty() ? Fit.POTENTIAL_MATCH : Fit.NEEDS_CONFIRMATION,
                 assessments,
+                draft.reviews.stream().distinct().limit(3).toList(),
                 remaining,
                 false,
                 false,
                 false));
       }
-      ranked.sort(
-          Comparator.comparingInt((Candidate c) -> c.remainingQuestions().size())
-              .thenComparing(Candidate::name)
-              .thenComparing(Candidate::address));
       var shortlist = new ArrayList<Candidate>();
       for (Candidate c : ranked.stream().limit(3).toList())
         shortlist.add(
@@ -198,6 +240,7 @@ public final class WebRecommendationParser {
                 c.identitySourceUrl(),
                 c.fit(),
                 c.assessments(),
+                c.reviews(),
                 c.remainingQuestions(),
                 false,
                 false,
@@ -210,7 +253,7 @@ public final class WebRecommendationParser {
           shortlist,
           excluded);
     } catch (Exception invalid) {
-      return empty(mode, State.FAILED);
+      return failed(mode, stage);
     }
   }
 
@@ -220,6 +263,7 @@ public final class WebRecommendationParser {
     final String name, address;
     final URI identityUrl;
     final Map<Need, List<Report>> reports = new EnumMap<>(Need.class);
+    final List<Evidence> reviews = new ArrayList<>();
 
     Draft(String name, String address, URI identityUrl) {
       this.name = name;
@@ -233,6 +277,16 @@ public final class WebRecommendationParser {
     if (!value.isTextual() || !text(value.textValue(), length))
       throw new IllegalArgumentException("Invalid web response shape");
     return value.textValue().strip();
+  }
+
+  private static URI safeUri(JsonNode value) {
+    if (!value.isTextual() || !text(value.textValue(), 2048)) return null;
+    try {
+      URI url = URI.create(value.textValue().strip());
+      return safeCitation(url) ? url : null;
+    } catch (IllegalArgumentException invalid) {
+      return null;
+    }
   }
 
   private static void shape(JsonNode node, Set<String> fields) {

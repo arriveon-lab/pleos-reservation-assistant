@@ -39,6 +39,12 @@ public final class MockWebRecommendationGateway implements WebRecommendationServ
       candidate.put("name", "가상 웹추천 식당 " + i);
       candidate.put("address", "가상 서울숲 시험주소 " + i);
       candidate.put("identitySourceUrl", url);
+      var reviews = candidate.putArray("reviews");
+      if (i < 4) {
+        var review = reviews.addObject();
+        review.put("summary", "가상 방문 후기: 음식 경험 언급");
+        review.put("sourceUrl", url);
+      }
       var reports = candidate.putArray("reports");
       for (Need need : Need.values()) {
         var report = reports.addObject();
@@ -68,6 +74,7 @@ public final class MockWebRecommendationGateway implements WebRecommendationServ
     var call = output.addObject();
     call.put("type", "web_search_call");
     call.put("status", "completed");
+    call.putObject("action").put("type", "search");
     var message = output.addObject();
     message.put("type", "message");
     message.put("role", "assistant");

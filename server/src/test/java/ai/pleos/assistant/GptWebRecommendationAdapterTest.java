@@ -51,7 +51,16 @@ class GptWebRecommendationAdapterTest {
               assertThat(data.path("tool_choice").asText()).isEqualTo("required");
               assertThat(data.path("store").asBoolean()).isFalse();
               assertThat(data.path("max_tool_calls").asInt()).isEqualTo(1);
+              assertThat(data.at("/text/format/type").asText()).isEqualTo("json_schema");
+              assertThat(data.at("/text/format/strict").asBoolean()).isTrue();
+              assertThat(
+                      data.at(
+                              "/text/format/schema/properties/candidates/items/properties/reviews/type")
+                          .asText())
+                  .isEqualTo("array");
               assertThat(data.path("max_output_tokens").asInt()).isEqualTo(3072);
+              assertThat(data.at("/reasoning/effort").asText()).isEqualTo("low");
+              assertThat(body.length()).isLessThanOrEqualTo(8192);
               assertThat(data.path("instructions").asText()).contains("도로명주소");
               assertThat(data.path("instructions").asText()).contains("about 1 km");
               assertThat(body)
@@ -64,8 +73,9 @@ class GptWebRecommendationAdapterTest {
             () -> "fixture-key");
     var permit =
         new GptWebRecommendationAdapter.Permit(request, "explicit-test-model", NOW.plusSeconds(30));
-    assertThat(adapter.search(request, permit, NOW.plusSeconds(60), () -> true).state())
-        .isEqualTo(State.RESULTS);
+    var result = adapter.search(request, permit, NOW.plusSeconds(60), () -> true);
+    assertThat(result.state()).isEqualTo(State.RESULTS);
+    assertThat(result.candidates().getFirst().reviews()).hasSize(1);
     assertThat(adapter.search(request, permit, NOW.plusSeconds(60), () -> true).state())
         .isEqualTo(State.APPROVAL_REQUIRED);
     assertThat(calls.get()).isEqualTo(1);
@@ -85,7 +95,7 @@ class GptWebRecommendationAdapterTest {
     var permit =
         new GptWebRecommendationAdapter.Permit(request, "explicit-test-model", NOW.plusSeconds(30));
     assertThat(adapter.search(request, permit, NOW.plusSeconds(30), () -> true).failureReason())
-        .isEqualTo(FailureReason.HTTP_REJECTED);
+        .isEqualTo(FailureReason.HTTP_RATE_LIMITED);
     assertThat(adapter.search(request, permit, NOW.plusSeconds(30), () -> true).state())
         .isEqualTo(State.APPROVAL_REQUIRED);
     assertThat(calls.get()).isEqualTo(1);
@@ -104,7 +114,42 @@ class GptWebRecommendationAdapterTest {
                     NOW.plusSeconds(30),
                     () -> true)
                 .failureReason())
-        .isEqualTo(FailureReason.INVALID_RESPONSE);
+        .isEqualTo(FailureReason.MISSING_WEB_SEARCH);
+
+    var incomplete =
+        new GptWebRecommendationAdapter(
+            clock,
+            (body, key, timeout) ->
+                new GptPlaceSourceDiscovery.Response(200, "{\"status\":\"incomplete\"}"),
+            () -> "fixture-key");
+    assertThat(
+            incomplete
+                .search(
+                    request,
+                    new GptWebRecommendationAdapter.Permit(
+                        request, "explicit-test-model", NOW.plusSeconds(30)),
+                    NOW.plusSeconds(30),
+                    () -> true)
+                .failureReason())
+        .isEqualTo(FailureReason.INCOMPLETE_RESPONSE);
+
+    var noText =
+        new GptWebRecommendationAdapter(
+            clock,
+            (body, key, timeout) ->
+                new GptPlaceSourceDiscovery.Response(
+                    200, "{\"status\":\"completed\",\"output\":[{\"type\":\"web_search_call\"}]}"),
+            () -> "fixture-key");
+    assertThat(
+            noText
+                .search(
+                    request,
+                    new GptWebRecommendationAdapter.Permit(
+                        request, "explicit-test-model", NOW.plusSeconds(30)),
+                    NOW.plusSeconds(30),
+                    () -> true)
+                .failureReason())
+        .isEqualTo(FailureReason.MISSING_OUTPUT_TEXT);
   }
 
   @Test
