@@ -1,5 +1,8 @@
 # REC-02 MVP 데이터 흐름과 실제 연동 진입 조건
 
+2026-11-10 통합 상태: #35의 [독립 품질 진단](REC10_SEOUL_PILOT_VALIDATION.md)과 #38의 [웹 상세정보 코드 준비](REC11_PLACE_DETAILS.md)는 main에 병합됐습니다. 아래 OA-18655를 다음 검증 후보로 둔 기록은 당시 단계입니다. 후속 진단/코드가 운영 공급 경로·저장/전화/AI 제공 조건의 최종 채택을 뜻하지 않으며 #11/PR #23은 OPEN/Draft입니다. 이번 main 반영에서는 문의/데이터를 재조회하지 않았고 새로운 정책 허용을 가정하지 않습니다.
+
+
 결정일: 2026-11-09 KST. 담당 `tiemo0708`, [#11](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11), [Draft PR #23](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/23). 사용자의 진행 지시에 따라 **현재 개발 경계**와 **다음 공급 경로 검증 순서**를 정합니다. 사업자의 별도 사용 허가·팀 인수·실제 예약 공급자 최종 채택을 대신하지 않습니다. 문서 변경이며 런타임 API/DB에는 적용하지 않았습니다.
 
 ## 오늘 확인한 근거

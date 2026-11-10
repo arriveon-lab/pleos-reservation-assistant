@@ -1,0 +1,162 @@
+{
+  "mode": "PUBLIC_SAMPLE",
+  "requestAttempts": 1,
+  "maxRows": 5,
+  "automaticRetries": 0,
+  "rawRowsSaved": false,
+  "contactValuesSaved": false,
+  "paidCalls": 0,
+  "state": "PROFILED",
+  "profile": {
+    "service": "LOCALDATA_072404_SD",
+    "dataset": "OA-18655",
+    "mode": "PUBLIC_SAMPLE",
+    "observedAt": "2026-11-09T06:41:09.764211+00:00",
+    "state": "PROFILED",
+    "rows": 5,
+    "sampleScope": "INPUT_BATCH_ONLY_NOT_POPULATION_COVERAGE",
+    "schema": {
+      "state": "OBSERVED",
+      "requiredFields": [
+        "MGTNO",
+        "BPLCNM",
+        "SITETEL",
+        "RDNWHLADDR",
+        "TRDSTATEGBN",
+        "TRDSTATENM",
+        "LASTMODTS",
+        "UPDATEDT",
+        "X",
+        "Y"
+      ]
+    },
+    "checks": {
+      "LASTMODTSFuture": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "LASTMODTSInvalid": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "LASTMODTSMissing": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "UPDATEDTFuture": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "UPDATEDTInvalid": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "UPDATEDTMissing": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "conflictingId": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "duplicateId": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "invalidCoordinates": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "missingAddress": {
+        "count": 3,
+        "denominator": 5,
+        "rate": 0.6
+      },
+      "missingCoordinates": {
+        "count": 2,
+        "denominator": 5,
+        "rate": 0.4
+      },
+      "missingId": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "missingName": {
+        "count": 0,
+        "denominator": 5,
+        "rate": 0.0
+      },
+      "validCoordinates": {
+        "count": 3,
+        "denominator": 5,
+        "rate": 0.6
+      },
+      "withinPilot1030m": {
+        "count": 2,
+        "denominator": 5,
+        "rate": 0.4
+      }
+    },
+    "phoneKinds": {
+      "MISSING": 0,
+      "MOBILE_REVIEW": 0,
+      "PLACEHOLDER": 0,
+      "SYNTAX_ONLY": 5,
+      "UNRECOGNIZED": 0
+    },
+    "phoneKindDenominator": 5,
+    "recognizedPhoneGroups": 5,
+    "sharedRecognizedPhoneGroups": 0,
+    "administrativeStatusLabels": {
+      "영업/정상": 1,
+      "폐업": 4
+    },
+    "rowModifiedRange": {
+      "min": "2001-09-24T15:00:00+00:00",
+      "max": "2025-07-31T02:01:31+00:00"
+    },
+    "rowTimezoneAssumption": "Asia/Seoul (UTC+09:00), upstream timezone unverified",
+    "snapshotFreshness": {
+      "state": "UNKNOWN",
+      "snapshotAsOf": null,
+      "ageDays": null,
+      "diagnosticMaxAgeDays": 7,
+      "basis": "EXPLICIT_SOURCE_SNAPSHOT_ONLY_NOT_ROW_MODIFICATION_OR_FETCH_TIME"
+    },
+    "coordinateCheck": {
+      "sourceCrs": "EPSG:5174",
+      "targetCrs": "EPSG:4326",
+      "axisOrder": "X_EASTING_Y_NORTHING_TO_LONGITUDE_LATITUDE",
+      "pyprojVersion": "3.7.2",
+      "projVersion": "9.5.1",
+      "operation": "axis order change (2D) + Inverse of Korea Modified Central Belt + Korean 1985 to WGS 84 (1) + axis order change (2D)",
+      "operationAccuracyMeters": 1.0,
+      "networkEnabled": false,
+      "allowBallpark": false
+    },
+    "adoptionReady": false,
+    "bookable": false,
+    "inquiryDispatchAllowed": false,
+    "externalCallsByProfiler": 0,
+    "rawRowsExported": false,
+    "contactValuesExported": false
+  },
+  "source": {
+    "publisher": "서울특별시 성동구",
+    "datasetTitle": "서울시 성동구 일반음식점 인허가 정보",
+    "catalogUrl": "https://data.seoul.go.kr/dataList/OA-18655/A/1/datasetView.do",
+    "license": "KOGL_TYPE_1_ATTRIBUTION",
+    "licenseUrl": "https://www.kogl.or.kr/info/licenseType1.do",
+    "derivation": "Batch quality aggregates only; coordinates transformed in memory; no merchant rows/contacts/IDs exported"
+  }
+}
