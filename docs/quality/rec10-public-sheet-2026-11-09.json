@@ -1,0 +1,276 @@
+{
+  "dataset": "OA-18655",
+  "source": "https://data.seoul.go.kr/dataList/dataView.do",
+  "channel": "PUBLIC_SHEET_HTTPS_NOT_KEYED_OPENAPI",
+  "filter": {
+    "TRDSTATEGBN": "01"
+  },
+  "maxRows": 1000,
+  "maxBytes": 2097152,
+  "requestAttempts": 1,
+  "automaticRetries": 0,
+  "additionalPages": 0,
+  "credentialUsed": false,
+  "costKrw": 0,
+  "rawRowsStored": false,
+  "capturedAt": "2026-11-09T07:31:20.940005+00:00",
+  "explicitAdditionalRequestApproval": true,
+  "httpStatus": 200,
+  "contentType": "text/html;charset=UTF-8",
+  "responseBytes": 882166,
+  "page": {
+    "pageNo": 1,
+    "totalCount": 3959,
+    "pageSize": null,
+    "reportedPageCount": 40
+  },
+  "profile": {
+    "service": "LOCALDATA_072404_SD",
+    "dataset": "OA-18655",
+    "mode": "LOCAL_INPUT",
+    "observedAt": "2026-11-09T07:34:11.151915+00:00",
+    "state": "PROFILED",
+    "rows": 1000,
+    "sampleScope": "INPUT_BATCH_ONLY_NOT_POPULATION_COVERAGE",
+    "schema": {
+      "state": "OBSERVED",
+      "requiredFields": [
+        "MGTNO",
+        "BPLCNM",
+        "SITETEL",
+        "RDNWHLADDR",
+        "TRDSTATEGBN",
+        "TRDSTATENM",
+        "LASTMODTS",
+        "UPDATEDT",
+        "X",
+        "Y"
+      ]
+    },
+    "checks": {
+      "LASTMODTSFuture": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "LASTMODTSInvalid": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "LASTMODTSMissing": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "UPDATEDTFuture": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "UPDATEDTInvalid": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "UPDATEDTMissing": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "conflictingId": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "duplicateId": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "invalidCoordinates": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "missingAddress": {
+        "count": 3,
+        "denominator": 1000,
+        "rate": 0.003
+      },
+      "missingCoordinates": {
+        "count": 82,
+        "denominator": 1000,
+        "rate": 0.082
+      },
+      "missingId": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "missingName": {
+        "count": 0,
+        "denominator": 1000,
+        "rate": 0.0
+      },
+      "validCoordinates": {
+        "count": 918,
+        "denominator": 1000,
+        "rate": 0.918
+      },
+      "withinPilot1030m": {
+        "count": 441,
+        "denominator": 1000,
+        "rate": 0.441
+      }
+    },
+    "phoneKinds": {
+      "MISSING": 719,
+      "MOBILE_REVIEW": 0,
+      "PLACEHOLDER": 1,
+      "SYNTAX_ONLY": 273,
+      "UNRECOGNIZED": 7
+    },
+    "phoneKindDenominator": 1000,
+    "recognizedPhoneGroups": 272,
+    "sharedRecognizedPhoneGroups": 1,
+    "administrativeStatusLabels": {
+      "영업/정상": 1000
+    },
+    "rowModifiedRange": {
+      "min": "2001-10-11T15:00:00+00:00",
+      "max": "2026-11-05T05:04:06+00:00"
+    },
+    "rowTimezoneAssumption": "Asia/Seoul (UTC+09:00), upstream timezone unverified",
+    "snapshotFreshness": {
+      "state": "UNKNOWN",
+      "snapshotAsOf": null,
+      "ageDays": null,
+      "diagnosticMaxAgeDays": 7,
+      "basis": "EXPLICIT_SOURCE_SNAPSHOT_ONLY_NOT_ROW_MODIFICATION_OR_FETCH_TIME"
+    },
+    "coordinateCheck": {
+      "sourceCrs": "EPSG:5174",
+      "targetCrs": "EPSG:4326",
+      "axisOrder": "X_EASTING_Y_NORTHING_TO_LONGITUDE_LATITUDE",
+      "pyprojVersion": "3.7.2",
+      "projVersion": "9.5.1",
+      "operation": "axis order change (2D) + Inverse of Korea Modified Central Belt + Korean 1985 to WGS 84 (1) + axis order change (2D)",
+      "operationAccuracyMeters": 1.0,
+      "networkEnabled": false,
+      "allowBallpark": false,
+      "sourceCrsBasis": "OA18655_DATASET_CATALOG",
+      "genericStandardReferenceCrs": "EPSG:2097",
+      "crsEvidenceState": "DATASET_SPECIFIC_RULE_DIFFERS_FROM_GENERIC_STANDARD"
+    },
+    "adoptionReady": false,
+    "bookable": false,
+    "inquiryDispatchAllowed": false,
+    "externalCallsByProfiler": 0,
+    "rawRowsExported": false,
+    "contactValuesExported": false,
+    "pilotScreening": {
+      "state": "DIAGNOSTIC_ONLY",
+      "statusRule": {
+        "verification": "DOCUMENTED_STANDARD_20_GENERAL_RESTAURANTS",
+        "source": "https://www.data.go.kr/bbs/rcr/selectRecsroom.do?originId=PDS_0000000001252",
+        "section": 127,
+        "fields": [
+          "TRDSTATEGBN",
+          "TRDSTATENM",
+          "DTLSTATEGBN",
+          "DTLSTATENM",
+          "DCBYMD"
+        ],
+        "normalTuple": [
+          "01",
+          "영업/정상",
+          "01",
+          "영업"
+        ],
+        "rowConformanceScope": "INPUT_BATCH_ONLY_NOT_REAL_TIME_OPERATION",
+        "closureValueMustBeExplicitlyEmpty": true
+      },
+      "statusKinds": {
+        "MISSING": 0,
+        "UNRECOGNIZED_CODE": 0,
+        "CODE_LABEL_CONFLICT": 0,
+        "STATE_CONFLICT": 0,
+        "CLOSURE_PRESENT": 0,
+        "NORMAL_STATUS": 1000,
+        "CLOSED": 0,
+        "NOT_NORMAL": 0
+      },
+      "statusKindDenominator": 1000,
+      "cumulativeCounts": {
+        "input": 1000,
+        "uniqueId": 1000,
+        "normalStatus": 1000,
+        "validCoordinates": 918,
+        "within1000m": 433,
+        "phoneSyntaxOnly": 116,
+        "nameAndRoadAddress": 115
+      },
+      "firstExclusionCounts": {
+        "missingId": 0,
+        "duplicateId": 0,
+        "statusNotNormalOrUnknown": 0,
+        "missingCoordinates": 82,
+        "invalidCoordinates": 0,
+        "boundary1000To1030m": 8,
+        "outside1030m": 477,
+        "phoneNotSyntaxOnly": 317,
+        "missingNameOrRoadAddress": 1
+      },
+      "countDenominator": 1000,
+      "duplicateIdGroups": 0,
+      "conflictingIdGroups": 0,
+      "screenedRecords": 115,
+      "productionCandidateCount": null,
+      "radiusMeters": 1000,
+      "boundaryUpperMeters": 1030,
+      "boundaryIncluded": false,
+      "distanceMeaning": "SPHERICAL_STRAIGHT_LINE_NOT_ROAD_DISTANCE_OR_ETA",
+      "grain": "INPUT_ADMINISTRATIVE_RECORD_NOT_UNIQUE_PHYSICAL_MERCHANT",
+      "coverage": "INPUT_BATCH_ONLY_NOT_REPRESENTATIVE_OR_COMPLETE",
+      "readyForRecommendation": false
+    }
+  },
+  "state": "PROFILED",
+  "mode": "ACTUAL_READ_ONLY_VALIDATION",
+  "publisher": "서울특별시 성동구 / 서울 열린데이터광장",
+  "datasetTitle": "서울시 성동구 일반음식점 인허가 정보",
+  "catalogUrl": "https://data.seoul.go.kr/dataList/OA-18655/A/1/datasetView.do",
+  "sheetMetadataUrl": "https://data.seoul.go.kr/dataList/sheetView.do?infId=OA-18655&srvType=S",
+  "license": "KOGL_TYPE_1_ATTRIBUTION",
+  "licenseUrl": "https://www.kogl.or.kr/info/licenseType1.do",
+  "timeSemantics": {
+    "capturedAt": "REQUEST_START_TIME",
+    "profileObservedAt": "LOCAL_ASSESSMENT_TIME",
+    "sourceSnapshot": "UNKNOWN"
+  },
+  "execution": {
+    "dataRequestsThisStep": 2,
+    "initialRequest": {
+      "httpStatus": 200,
+      "responseBytes": 882435,
+      "state": "FAILED_STRICT_JSON_PARSE",
+      "rawStored": false
+    },
+    "additionalRequestApproved": true,
+    "additionalRequests": 1,
+    "automaticNetworkRetries": 0,
+    "additionalPages": 0,
+    "setupImportFailureDataRequests": 0
+  },
+  "coverage": {
+    "returnedRows": 1000,
+    "reportedFilteredTotal": 3959,
+    "reportedPageCount": 40,
+    "reportedPageSize": null,
+    "representative": false,
+    "complete": false,
+    "populationGrain": "ADMINISTRATIVE_RECORDS_NOT_DISTINCT_PHYSICAL_MERCHANTS"
+  },
+  "derivation": "Aggregate quality counts only; original rows held in memory during parsing and discarded; no merchant row/contact/ID/coordinate/hash exports"
+}

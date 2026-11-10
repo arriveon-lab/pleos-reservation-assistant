@@ -79,7 +79,10 @@ class TokenAuthenticationConfiguration {
                     response);
               }
             });
-    registration.addUrlPatterns("/api/v1/*", "/api/experimental/place-previews/*");
+    registration.addUrlPatterns(
+        "/api/v1/*",
+        "/api/experimental/place-previews/*",
+        "/api/experimental/web-recommendations/*");
     registration.setOrder(Ordered.LOWEST_PRECEDENCE - 20);
     registration.setAsyncSupported(true);
     return registration;
