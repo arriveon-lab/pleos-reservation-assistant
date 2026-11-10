@@ -1,5 +1,10 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 #16 두 취향·인원 경계·실제5분 만료
+
+사용자가 승인한 별도 boundaryvalidation 설치에서 한식+양식·인원2/1·1/0·20/10 정상3건,21/10·20/11·0/0의 앱 입력 차단/검색HTTP0을 확인했다. 서버 원본TTL300초 동안 실제 대기해 만료 전 유지·만료 후UI/결과 제거·자동query0을 확인했다. 정리404도 기록했다. [고정 APK·절차·증거](../docs/UX16_DOCKER_ACCEPTANCE.md) 참조. 제품/API 변경 없이 기기 instrumentation 추가, format·verifyAll·MOCK smoke 성공. 기존 jointvalidation의 INVALID_TIME 검색 pending은 보존했고 복구 완료가 아니다. 공동 결과 검토·실제 주행 장애·#40 시연·#1/#11은 미완료, Draft 유지.
+
+
 ## 2026-11-10 #16 Docker 서버·Pleos 앱 측 인수 검증
 
 main4d65c01 및 후속2e873bc 충돌은 양측 STATUS/HANDOFF 기록을 보존한 merge로 해결했다. Android/UX 소스 변경 없음. 통합 후 verifyAll·MOCK smoke·격리 venv 품질40개/MOCK 성공. 원격 CI는 최신 PR head 기준으로 확인한다.

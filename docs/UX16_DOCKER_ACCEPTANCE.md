@@ -84,3 +84,46 @@
 통합 후 verifyAll 성공(112 tasks,7 executed/105 up-to-date), MOCK smoke 성공. Python 품질 검사는 최초 pyproj 미설치로 import 실패했고, 격리 `work/ux16-joint/quality-venv`에 requirements-quality를 설치한 뒤40개 가상 테스트와 MOCK pilot-screening 성공. 전역 Python 변경·실제 데이터 추가 조회는 없다. 로그는 integrated-verifyAll.log/integrated-smoke.log/integrated-quality-retry.log다. 원격 최신 head CI는 PR에서 별도로 보고하며 이전 cf35ead 성공을 최신 성공으로 표시하지 않는다.
 
 통합 작업 중 main이 다시2e873bc로 갱신돼 #38 내부 웹 상세정보 모듈(9ea227d)과 전화 개발 계획 문서가 추가됐다. 두 번째 merge에서도 STATUS/HANDOFF 양측 이력을 보존했다. 최신 통합 후 verifyAll(112 tasks,13 executed/99 up-to-date)·MOCK smoke 성공. Android/UX·루트 빌드 설정은 여전히 cf35ead 대비 변경 없다. #38 모듈은 main에 들어왔지만 미리보기 공개 필드/제품 앱 채택 합의와 실제 GPT 호출은 별개이며 이번에 연결하지 않았다. 로그 latest-main-verifyAll.log/latest-main-smoke.log.
+
+## 2026-11-10 두 취향·인원 경계·실제 만료 추가 검증
+
+이전 미검증 중 두 취향/인원 경계와 실제5분 만료를 추가 검사했다. 제품 코드/API 변경 없이 `PreviewBoundaryChecks`와 runner의 `-e previewBoundary true` 모드를 추가했다. Android instrumentation이 실제 EditText에 가상 값을 설정하고 화면의 검색 버튼 listener를 실행한다. 실제 Android transport/Keystore/서버 응답/화면을 사용하며 수동 한글 키패드 입력 품질 검사와 구분한다.
+
+### 기존 요청 보존과 사용자 승인
+
+기존 jointvalidation 설치에 `/searches` pending이 있어 새 명령이 차단됐다. 초기 instrumentation은 사전조건 시간 초과로 종료했다. 같은 키/본문 재전송에서401→동일 주체 refresh200 후400 INVALID_TIME을 확인했다. 기존 기록/인증/요청을 삭제하거나 시간·키를 바꿔 재전송하지 않았다. 사용자에게 이 상태를 설명했고 **“별도 검증 설치로 진행하고 기존 요청은 보존”** 승인을 받은 뒤에만 boundaryvalidation을 별도 설치·명시 인증했다. 기존 요청이 복구됐다고 보고하지 않는다. 과거 시각으로 확정 거절된 검색의 사용자 복구 흐름은 #26 후속으로 남는다.
+
+### 고정 조합과 방법
+
+- 제품 소스5dc9cb1(기존 cf35ead 대비 제품 Android/UX 변경 없음), 별도 `ai.pleos.assistant.mock.boundaryvalidation`.
+- 실제 APK SHA256 `d67bdfb43814f07eb11c9b3c64bbad584b3928f0a07ffd2db1fe152d4af4e3bf`.
+- 서버d415ef7, image `sha256:c83f423444e53b415b0551e5d7229a505fb684624245e94ab10b987752df80dc`, linux/arm64, 기존 ux16-device 인증 volume 유지. RESULTS fixture.
+- 같은 Pleos2.1.0/API34/user10/1682×1210dp 창. 전화/실예약/외부 장소/GPT/유료 호출0.
+- host18083의 무변조 loopback 중계→Docker18082. HTTP 본문·시각·기한을 수정하지 않고 토큰/ID 없이 operation/status/가상 인원·취향/원본 fetchedAt·expiresAt만 관측했다.
+- 성인/아동·취향 외에는 목적지A/반경1000m/최대대기15분/주차·아동 필수다. 두 취향은 `한식,양식`이며 응답 배열은 순서가 아닌 집합으로 비교한다.
+
+| 입력/절차 | 기대 결과 | 실제 결과·증거 |
+| --- | --- | --- |
+| 성인2/아동1·한식+양식 | 두 취향 수신, 후보3 | 응답 요구조건 일치·후보3·bookable/inquiryDispatchAllowed=false / 01-two-preferences |
+| 성인21/아동10 | 상한 초과를 앱에서 차단 | INVALID_INPUT·결과null·검색 HTTP0 / 02-adults21 |
+| 성인20/아동11 | 아동 상한 초과 차단 | INVALID_INPUT·결과null·검색 HTTP0 / 03-children11 |
+| 성인0/아동0 | 성인 하한 미달 차단 | INVALID_INPUT·결과null·검색 HTTP0 / 04-adults0 |
+| 성인1/아동0·두 취향 | 정상 하한 수용 | 요구조건1/0·후보3 / 05-lower-boundary |
+| 성인20/아동10·두 취향 | 정상 상한 수용 | 요구조건20/10·후보3 / 06-upper-boundary |
+| 실제 서버 유효기간 | fetchedAt→expiresAt 정확히300초 | fetchedAt=2026-11-10T04:25:30.132010261Z, expiresAt=2026-11-10T04:30:30.132010261Z. UTC 원본이며 시각 변경 없음 |
+
+만료 약15초 전(대기 시작 후284.196초)에 실제 RESULTS 화면을 확인·캡처했다. 만료 후 약2초 시점(대기 시작 후301.905초)의 실제 UI에서 EXPIRED 안내와 이전 결과 제거를 확인했다. `previewView()` 호출로 만료를 유발하기 전에 먼저 렌더된 UI 문구를 검사했다. 이후5초에도 EXPIRED를 유지했고 추가 query는0회였다. 서버 원본 시각/기한·시스템 시계·경과 시간을 조작하지 않았다. 테스트 중 화면 켜짐 flag만 임시 적용하고 finally에서 제거했다. 증거07-before-real-expiry/08-real-expired.
+
+만료 후 cancel/close는404 PREVIEW_NOT_FOUND를 반환했고 앱은 정리 확인 실패 안내도 표시했다. 결과는 계속 숨겼으며 이를 서버 정리 성공이나 실제 공급자 장애로 보고하지 않는다. #16/#17의 수명·정리 안내 검토에 연결한다.
+
+유효하지 않은 인원은 앱에서 전송 전에 거절하므로 이번 기기 시험에서 서버400 응답을 받았다는 뜻은 아니다. 서버의20/10 수용·21/11 거절은 이전 서버 담당 HTTP 증거와 구분한다. 정상 검색 HTTP는2/1·1/0·20/10 총3회, 각 취향2개·RESULTS3이다.
+
+최초 동일 설치 검사 실패는 기존 pending 사전조건 문제다. 실행 중 별도 uiautomator dump는 instrumentation과 충돌해137로 종료돼 성공 증거에서 제외했다. 기기 검사 프로세스와 HTTP 관측은 유지됐고, 유효 캡처는 instrumentation에서 생성한 PNG만 사용한다.
+
+### 검증 수준과 남은 범위
+
+- format·테스트 APK 빌드·verifyAll·MOCK smoke 성공. 기존 JVM cache/UP-TO-DATE와 Android JVM NO-SOURCE를 새 실행 건수로 세지 않는다. 기기 instrumentation은 CI가 아닌 로컬 Pleos에서 실행한다.
+- PNG/해시·원본 TTL·요청 집계는 로컬 `captures/ux16-boundary/`, 로그/무변조 관측 도구/APK는 `work/ux16-boundary/`. 이미지 GitHub 업로드와 구분한다.
+- 이 결과도 앱 측 실행이며 서버 담당 검토/공동 인수 완료는 별도다. 실제 moving/권한 거부/서비스 단절, #40 전체 예약 시연, #1 실제 ETA/#11 데이터 인수와 기존 jointvalidation의 INVALID_TIME pending은 남는다.
+
+재현 명령: `adb shell am instrument -w -e previewBoundary true ai.pleos.assistant.mock.boundaryvalidation.test/ai.pleos.assistant.app.DrivingDeviceChecks`. 별도 RESULT fixture와 사전에 명시 인증된 설치가 필요하며 실행은 약5분 이상 걸린다. 정상/잘못된 입력의 실제 HTTP 수는 별도 무변조 관측 로그로 대조한다. 기기 테스트를 CI에서 실행했다고 주장하지 않는다.
