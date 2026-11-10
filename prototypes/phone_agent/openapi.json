@@ -16,7 +16,7 @@
         "summary": "Get owner-scoped state and bootstrap a session cookie",
         "responses": {
           "200": {
-            "description": "Owner-scoped bookings/events, MOCK or LIVE mode, externalCalls, and secret-free voice readiness; may set HttpOnly SameSite=Strict session cookie"
+            "description": "Owner-scoped bookings/events, MOCK or LIVE mode, externalCalls, and secret-free voice readiness (including audioHandling.noiseSuppression and audioHandling.interruptionMode); may set HttpOnly SameSite=Strict session cookie"
           }
         }
       }

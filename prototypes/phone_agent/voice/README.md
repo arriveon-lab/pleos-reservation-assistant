@@ -65,7 +65,7 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 
 ## 모델과 검증 상태
 
-의존성은 `livekit-agents[silero]==1.8.11`, `livekit-api==1.2.2`입니다. LiveKit Inference의 AssemblyAI Universal 3.6 Pro(ko) → Google Gemma 4 31B → Cartesia Sonic 3(ko)를 사용합니다. OpenAI API 키는 이 경로에 필요하지 않습니다. 공급자와 모델·음성 ID는 `.env.example`에서 바꿀 수 있습니다.
+의존성은 `livekit-agents[silero]==1.8.11`, `livekit-api==1.2.2`, `livekit-plugins-noise-cancellation==0.3.3`입니다. NC 플러그인은 LiveKit Cloud용이며 패키지 라이선스는 LiveKit 서비스 약관을 참조합니다. 공급자 바이너리를 저장소에 복사하지 않습니다. LiveKit Inference의 AssemblyAI Universal 3.6 Pro(ko) → Google Gemma 4 31B → Cartesia Sonic 3(ko)를 사용합니다. OpenAI API 키는 이 경로에 필요하지 않습니다. 공급자와 모델·음성 ID는 `.env.example`에서 바꿀 수 있습니다.
 
 2026-11-09 실제 발신 1회: Telkit 연결 46초·60원 차감, 잔액 2,940원·추가 카드 결제 0원. 번호 1개 구매에는 기존 크레딧 7,000원이 사용됐으며 30일마다 갱신됩니다. LiveKit은 무료 Build 프로젝트로 시험했고 유료 플랜 전환은 하지 않았습니다. 시험 후 LiveKit 콘솔의 Build 플랜·다음 청구액 $0.00을 확인했습니다. 사용량 집계는 지연될 수 있습니다.
 
@@ -84,15 +84,15 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 
 다섯 번째 실전화는 첫 안내가 잘 들렸다는 피드백을 받았지만 약한 끊김과 반복 질문이 남았습니다. 입력 1,030프레임/51.5초·STT 최종 6개·오류/timeout 0개·중단 메시지 1개, Telkit 53초·72원, 잔액 2,688원·누적 5회/312원입니다. 도구의 UNKNOWN과 음성의 예약 완료 안내가 달라 실제 결과는 UNKNOWN을 유지했습니다. 같은 통화의 이름 포함 예약 요청 직후 명시적 수락을 제한적으로 인정하고, 결과 저장 뒤 고정 종료 음성과 StopResponse로 후속 모델 안내를 대신하도록 수정했습니다. 로컬 67개 테스트를 통과했으며 후속 수정의 실전화 효과는 미검증입니다. LIVE 비활성화·worker 종료 상태이며 자동 재발신하지 않았습니다.
 
-2026-11-10 여섯 번째 시험은 Telkit 39초·48원, 잔액 2,640원·누적 6회/360원입니다. 첫 안내·이름 전달 후 비용 질문이 중단됐고 입력 767프레임/38.35초·STT 최종 10개·모델 오류/전사 timeout 0개·중단 메시지 4개입니다. 조건 확인과 결과 도구 호출 전 SIP 연결이 종료돼 UNKNOWN입니다. 따라서 문맥 수락/저장 결과 기반 종료의 실전화 효과는 미검증입니다. 현재는 production VAD 기반 중단이며 전용 소음 억제/주화자 분리와 adaptive 기능은 추가하지 않았습니다. 실행은 다시 비활성화했고 worker·활성 room을 종료했습니다.
+2026-11-10 여섯 번째 시험은 Telkit 39초·48원, 잔액 2,640원·누적 6회/360원입니다. 첫 안내·이름 전달 후 비용 질문이 중단됐고 입력 767프레임/38.35초·STT 최종 10개·모델 오류/전사 timeout 0개·중단 메시지 4개입니다. 조건 확인과 결과 도구 호출 전 SIP 연결이 종료돼 UNKNOWN입니다. 따라서 문맥 수락/저장 결과 기반 종료의 실전화 효과는 미검증입니다. 이 여섯 번째 통화 당시에는 production VAD 기반 중단이었고 전용 소음 억제/주화자 분리와 adaptive 기능을 추가하기 전이었습니다. 실행은 다시 비활성화했고 worker·활성 room을 종료했습니다.
 
 실제 수신·변경 재확인과 전체 계획 인수는 미검증입니다. 제품 연동·운영 배포·Pleos 기기 검증과 분리합니다. 모델 품질을 가상 SDK 테스트 통과로 대체하지 않습니다.
 
 ```bash
-work/voice-venv/bin/python -m unittest prototypes.phone_agent.voice.test_voice -v
+work/voice-venv/bin/python -m unittest prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience -v
 ```
 
-CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 31개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
+CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 56개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
 
 공식 근거: [Telkit LiveKit 연결](https://telkit.io/docs/connect/livekit.md), [번호·요금](https://telkit.io/docs/numbers/pricing.md), [LiveKit 음성 에이전트](https://docs.livekit.io/agents/start/voice-ai/), [SIP 참가자](https://docs.livekit.io/reference/telephony/sip-participant/), [Cartesia 한국어 Jiwoo](https://www.cartesia.ai/voices/library/jiwoo-service-specialist-15628352-2ede-4f1b-89e6-ceda0c983fbc).
 
@@ -105,7 +105,7 @@ CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 31개 테스트를 실�
 | 답변 길이 | [LiveKit prompting](https://docs.livekit.io/agents/start/prompting/) | 기본 한 문장·질문 하나, 틀린 항목만 재확인·반복 축소 지침 |
 | 이름 인식 | [AssemblyAI keyterms](https://docs.livekit.io/agents/models/stt/assemblyai/), [편향 주의](https://www.assemblyai.com/blog/when-keyterm-prompting-backfires) | 현재 통화의 승인된 이름 1개만 STT 힌트. 이름 강제 치환·전역 목록 없음 |
 | 종료 시 끊김 | [Speech playout](https://docs.livekit.io/agents/multimodality/audio/) | 도구 이전 발화 재생 완료→종료 안내 완료→room 삭제 순서, 가짜 SDK 순서 검사 |
-| 중간 끊김 | [Turn tuning](https://docs.livekit.io/agents/logic/turns/tuning/) | interrupted 메시지 수 추가. 실제 바지인/전송 손실 구분 후 조정, 유료 adaptive 미활성화 |
+| 중간 끊김 | [Turn tuning](https://docs.livekit.io/agents/logic/turns/tuning/) | 중단·오감지·응답 지연 계측. 2026-11-10 후속 적용은 아래 항목 참고 |
 | AI 이름 발음 | [Cartesia 사전](https://docs.cartesia.ai/build-with-cartesia/capability-guides/custom-pronunciations), [IPA 범위](https://docs.cartesia.ai/build-with-cartesia/capability-guides/phonemes) | 요청 시 실제 이름의 한글 음절 재확인. 한국어 IPA/사전 효과는 미검증, 사전 생성·추가 합성 없음 |
 
 원본 통화 음성을 보관하지 않아 실제 발음과 STT 오류를 녹음으로 비교할 수는 없습니다. 진단/인식 텍스트만으로 모든 중간 끊김의 원인을 단정하지 않습니다. 테스트 상한은 다음 실전화 승인 시에도 별도로 유지합니다.
@@ -117,10 +117,19 @@ CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 31개 테스트를 실�
 
 결과 도구가 저장을 마치면 저장 상태에 맞는 짧은 고정 음성→재생 완료→종료 순서를 사용합니다. [LiveKit StopResponse](https://docs.livekit.io/reference/python/livekit/agents/llm/)로 도구 뒤 모델이 UNKNOWN을 성공으로 바꾸어 안내하는 경로를 차단합니다. 저장 실패는 재확인할 수 있게 반환하고 자동 종료하지 않습니다. 다섯 번째 통화 후 코드/가짜 SDK 검증까지이며 실제 효과는 다음 승인된 시험에서 확인해야 합니다.
 
-## 끼어들기와 주변 소음의 후속 검증
+## 소음·대기·장애 처리 — 2026-11-10 적용
 
-여섯 번째 실전화의 4회 중단은 발화 이벤트 기준입니다. 실제 사용자의 끼어들기, 주변 말소리, 전달 손실의 원인을 모두 구분한 증거는 아닙니다. 현재 production worker는 VAD 기반이며 최소 발화 0.5초·최소 단어 0개 기본값을 씁니다. 무전사 오감지 복구 기본값은 켜져 있지만 주변 말이 실제 단어로 인식되면 그 경로와 다릅니다.
+- 입력에 Krisp **NC**를 연결하고 Silero 기준을 0.3에서 플러그인 기본 0.5로 조정했습니다. `PHONE_NOISE_SUPPRESSION=false`로 필터 없이 비교할 수 있습니다. 유료 주화자 분리 모델은 사용하지 않습니다.
+- `PHONE_INTERRUPTION_MODE=adaptive`를 기본으로 명시합니다. 맞장구/끼어들기는 공급자 판별을 사용하고, 단순 “네” 문자열을 버리지 않습니다. `vad`로 비교·복귀할 수 있습니다. 현재 Build 프로젝트의 개발 허용량 안에서 시험하며 유료 플랜으로 자동 전환하지 않습니다. [한도](https://docs.livekit.io/deploy/admin/quotas-and-limits/)를 실행 전에 확인해야 합니다.
+- 최소 중단 발화 0.5초/최소 단어 0개, 무전사 오감지 복구 2초, 발화 경계 보호를 명시합니다. 발화 종료 판단의 audio TurnDetector와 끼어들기는 별개입니다. endpointing 최소 0.5초/최대 3초로 늦은 전사를 기다리고, 선행 생성을 끄고 사용자 턴 검사 후 응답을 만듭니다. 이 값의 실제 효과는 아직 미검증입니다.
+- 짧은 AI 소개만 중단 불가로 하고 입력 음성은 보존합니다. 예약 질문은 중단할 수 있어 정정을 들을 수 있습니다. 중단된 조각은 완료 발화 상한에 포함하지 않고, 완료 발화 최대 12개와 기존 통화 시간/비용 상한을 함께 적용합니다.
+- 완결된 “잠시만요/확인하고 올게요” 요청에는 모델 응답을 막고 한 번 대기 안내합니다. 20초 후 한 번 확인하고 이후 12초 무응답이면 종료합니다. 정정이 섞인 발화는 이 필터로 버리지 않습니다. 일반 무응답은 12초 후 한 번 재안내하고 다음 무응답에서 종료합니다. 말하는 중에는 재안내하지 않습니다.
+- STT/LLM/TTS SDK 재시도는 최대 1회로 제한합니다. 최종 STT/LLM 오류에 대해 통화당 한 번만 복구합니다. STT는 세션의 agent를 갱신해 스트림을 다시 만들고, LLM은 부분 응답이나 도구를 재실행하지 않고 다시 말해 달라고 안내합니다. 두 번째 최종 오류나 TTS 오류는 사전 준비 음성으로 종료합니다.
+- [안내 WAV](audio/README.md)는 개인정보 없는 로컬 합성 음성입니다. TTS 없이 PCM을 재생하며, 확정/실패를 임의로 선언하지 않습니다. 재생 실패에도 room 종료를 시도하고 저장된 예약 결과는 보존합니다. 미디어 연결 자체가 끊기면 안내 전달은 보장할 수 없습니다.
+- 명확한 음성사서함/ARS 문구와 통화 거부 표현은 제한된 문장 규칙으로 감지해 미확인 종료합니다. **LLM 기반 AMD·자동 DTMF 메뉴 탐색 구현은 아닙니다.** 직원의 정상 문장을 오분류하지 않는지 한국어 실전화 검증이 필요합니다.
+- 발화 저장·결과 도구의 SQLite 작업을 단일 작업 스레드에 순서대로 보내 오디오 이벤트 루프에서 분리했습니다. 식당 발화 저장 뒤 결과 검증이 실행되고 종료 작업은 대기 중 저장 뒤에 정리합니다. 통신 실패는 구조화된 SIP 코드만 남기며 통화 중/무응답/음성 조건 불일치/공급자 한도를 구분합니다. 원문 오류·번호·헤더를 진단에 저장하지 않습니다.
+- 진단에 구성요소별 오류·복구 시도·대기·무응답 안내·오감지·응답 지연을 추가했습니다. RTP 패킷 손실·지터 분석, 운영 공급자 결과 자동 대조는 여전히 후속입니다.
 
-[공식 조정 문서](https://docs.livekit.io/agents/logic/turns/tuning/)의 중단 길이/단어 기준과 맞장구 판별, [소음 처리 문서](https://docs.livekit.io/transport/media/noise-cancellation/)의 비음성 잡음 억제와 주화자 분리를 구분해 후속 평가합니다. 현재 전용 필터 미연결이며 이 문서는 활성화나 품질 보장을 뜻하지 않습니다. 필터별 적용 위치·호환·비용을 확인한 뒤 별도 승인된 실제 시험으로 검증합니다.
+검증: 기본 36개 + 선택형 음성 56개, 총 92개 로컬 테스트를 통과했습니다. 실제 SDK 생성자·NC 옵션·WAV 디코딩도 네트워크 없이 확인했습니다. CI는 두 음성 테스트 모듈을 실행합니다. **추가 실전화/모델 호출은 없고 LIVE는 비활성 상태입니다.** 소음 제거 효과·한국어 맞장구 정확도·음질/지연은 다음 승인된 청취 시험에서 확인해야 합니다.
 
-상황별 구현 차이·우선순위·한국어/잡음/장애 검증안은 [소음·예외 대응 검토](../../../docs/PHONE_AGENT_RELIABILITY.md)를 참고합니다. 발화 종료 판단의 기본 audio TurnDetector와 production의 VAD 기반 끼어들기는 별개입니다.
+[소음·예외 대응 검토](../../../docs/PHONE_AGENT_RELIABILITY.md)는 적용 전 근거와 후속 검증 시나리오를 함께 보존합니다.

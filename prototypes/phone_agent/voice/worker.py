@@ -4,13 +4,15 @@ import json
 import os
 
 from livekit import agents, api, rtc
-from livekit.agents import Agent, AgentServer, AgentSession, RunContext, StopResponse, function_tool, inference
+from livekit.agents import Agent, AgentServer, AgentSession, APIConnectOptions, RunContext, StopResponse, function_tool, inference
 from livekit.agents.llm import ChatMessage
+from livekit.agents.voice import SessionConnectOptions
 from livekit.plugins import silero
 
 from ..service import DomainError, ReservationService
 from .config import VoiceConfig, load_env_file
-from .diagnostics import AudioDiagnostics, reprompt_if_unheard
+from .diagnostics import AudioDiagnostics
+from .resilience import CallSupervisor, SerializedStore, room_options, turn_options
 from .workflow import LiveWorkflow
 
 load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
@@ -51,6 +53,11 @@ INSTRUCTIONS = """너는 한국어 식당 예약 비서다. 짧고 자연스러�
 변경 요청을 저장한 뒤에는 사용자에게 확인하고 다시 연락하겠다고 말한다. 현 통화에서 임의 확정하지 않는다.
 CHANGE_CONFIRMATION은 이미 사용자가 승인한 변경을 식당에 재확인하는 목적이다. 원 시간을 먼저 밝힌다.
 결과 도구로 저장한 뒤 추가 요약·질문을 하지 않는다. 결과를 저장하지 못한 통화만 finish_call로 마친다.
+질문이 중단됐으면 상대의 답과 정정을 먼저 반영하고 답이 없는 항목만 다시 묻는다.
+상대의 '네'를 모든 항목의 승인으로 넓히지 않는다. 바로 앞 질문에 대한 답으로만 해석한다.
+잠시 확인하거나 담당자를 부르겠다는 말에는 기다리고 질문을 반복하지 않는다.
+ARS나 음성사서함은 예약 수락이 아니다. 메시지를 남겼다고 확정하지 않는다.
+통화가 어렵거나 나중에 연락하라는 요청에는 짧게 마치고 자동 재발신을 약속하지 않는다.
 """
 
 
@@ -68,13 +75,29 @@ def create_stt(config, context):
     name = context.get("reservationName")
     if config.stt_model.startswith("assemblyai/") and isinstance(name, str) and name:
         options["keyterms_prompt"] = [name]
-    return inference.STT(model=config.stt_model, language="ko", extra_kwargs=options)
+    return inference.STT(model=config.stt_model, language="ko", extra_kwargs=options,
+                         conn_options=APIConnectOptions(max_retry=1, retry_interval=0.5, timeout=6))
+
+
+def create_session(config, context):
+    return AgentSession(
+        stt=create_stt(config, context),
+        llm=inference.LLM(model=config.llm_model, extra_kwargs={"max_completion_tokens": 250}),
+        tts=inference.TTS(model=config.tts_model, voice=config.tts_voice, language="ko",
+                          conn_options=APIConnectOptions(max_retry=1, retry_interval=0.5, timeout=6)),
+        vad=silero.VAD.load(activation_threshold=0.5), turn_handling=turn_options(config),
+        conn_options=SessionConnectOptions(
+            stt_conn_options=APIConnectOptions(max_retry=1, retry_interval=0.5, timeout=6),
+            llm_conn_options=APIConnectOptions(max_retry=1, retry_interval=0.5, timeout=6),
+            tts_conn_options=APIConnectOptions(max_retry=1, retry_interval=0.5, timeout=6)))
 
 
 class BookingVoiceAgent(Agent):
-    def __init__(self, workflow, call_id, context, close_call, diagnostics=None):
+    def __init__(self, workflow, call_id, context, close_call, diagnostics=None, supervisor=None, store=None):
         self.workflow, self.call_id, self.close_call = workflow, call_id, close_call
         self.diagnostics = diagnostics or AudioDiagnostics()
+        self.supervisor, self.store = supervisor, store
+        self.user_turns = 0
         super().__init__(instructions=INSTRUCTIONS + "\n이번 통화의 서버 확인 정보(JSON):\n" + json.dumps(context, ensure_ascii=False))
 
     async def stt_node(self, audio, model_settings):
@@ -86,9 +109,23 @@ class BookingVoiceAgent(Agent):
             self.diagnostics.speech_event(event)
             yield event
 
-    def _tool(self, operation):
+    async def on_user_turn_completed(self, turn_ctx, new_message):
+        if not new_message.text_content:
+            raise StopResponse()
+        self.user_turns += 1
+        if self.supervisor and (self.supervisor.terminal or self.supervisor.closing):
+            raise StopResponse()
+        operation = lambda: self.workflow.transcript(self.call_id, "restaurant", new_message.text_content)
+        if self.store:
+            await self.store.run(operation)
+        else:
+            operation()
+        if self.supervisor:
+            await self.supervisor.user_turn(new_message.text_content)
+
+    async def _tool(self, operation):
         try:
-            return operation()
+            return await self.store.run(operation) if self.store else operation()
         except DomainError as error:
             return {"saved": False, "code": error.code, "message": error.message}
 
@@ -96,7 +133,7 @@ class BookingVoiceAgent(Agent):
     async def identify_booking(self, context: RunContext, reservation_name: str,
                                date: str, current_time: str) -> dict:
         """회신 상대가 직접 말한 예약자 이름·날짜·기존 시간으로 한 예약을 확인한다."""
-        return self._tool(lambda: self.workflow.identify(self.call_id, reservation_name, date, current_time))
+        return await self._tool(lambda: self.workflow.identify(self.call_id, reservation_name, date, current_time))
 
     @function_tool()
     async def save_reservation_result(self, context: RunContext, explicitly_accepted: bool,
@@ -108,12 +145,14 @@ class BookingVoiceAgent(Agent):
         confirmed_requirements에는 서버가 제공한 requiredConditions 중 실제 확인한 항목만 넣는다.
         불명확한 답변이나 추가 비용을 수락으로 제출하지 않는다.
         """
-        result = self._tool(lambda: self.workflow.record_outcome(
+        result = await self._tool(lambda: self.workflow.record_outcome(
             self.call_id, accepted=explicitly_accepted, day=confirmed_date, time=confirmed_time,
             reservation_name=confirmed_reservation_name, people=people, additional_cost=additional_cost_krw,
             confirmed_requirements=confirmed_requirements, evidence=restaurant_evidence))
         if not result.get("saved"):
             return result
+        if self.supervisor:
+            self.supervisor.closing = True
         # Speak the stored outcome directly; do not let a model reinterpret UNKNOWN as success.
         closing = {
             "CONFIRMED": "예약 확인 감사합니다. 통화를 마치겠습니다.",
@@ -127,11 +166,13 @@ class BookingVoiceAgent(Agent):
     @function_tool()
     async def save_change_request(self, context: RunContext, proposed_time: str, reason: str) -> dict:
         """식당이 요청한 새 시간과 사유를 저장한다. 사용자 승인이나 변경 완료를 뜻하지 않는다."""
-        return self._tool(lambda: self.workflow.request_change(self.call_id, proposed_time, reason))
+        return await self._tool(lambda: self.workflow.request_change(self.call_id, proposed_time, reason))
 
     @function_tool()
     async def finish_call(self, context: RunContext) -> dict:
         """마무리 안내 후 통화를 종료한다. 결과를 저장하지 못하면 UNKNOWN으로 보존한다."""
+        if self.supervisor:
+            self.supervisor.closing = True
         await context.wait_for_playout()
         await context.session.say("안내 감사합니다. 통화를 마치겠습니다.", allow_interruptions=False)
         await self.close_call("agent_finished")
@@ -147,8 +188,17 @@ async def reservation_agent(ctx: agents.JobContext):
     room_name = ctx.job.room.name
     deadline = None
     reminder = None
+    supervisor = None
+    store = SerializedStore()
     diagnostics = AudioDiagnostics()
     ended = False
+
+    def persist_end(reason, snapshot):
+        # One queued operation: cancellation of its await cannot skip finish after diagnostics.
+        try:
+            workflow.record_diagnostics(call_id, snapshot)
+        finally:
+            workflow.finish(call_id, reason)
 
     async def close_call(reason):
         nonlocal ended
@@ -157,8 +207,8 @@ async def reservation_agent(ctx: agents.JobContext):
         ended = True
         try:
             if call_id:
-                workflow.record_diagnostics(call_id, diagnostics.snapshot())
-                workflow.finish(call_id, reason)
+                snapshot = diagnostics.snapshot()
+                await store.run(lambda: persist_end(reason, snapshot))
         finally:
             try:
                 await ctx.api.room.delete_room(api.DeleteRoomRequest(room=room_name))
@@ -174,10 +224,12 @@ async def reservation_agent(ctx: agents.JobContext):
             deadline.cancel()
         if reminder:
             reminder.cancel()
+        if supervisor:
+            await supervisor.stop()
         if call_id and not ended:
-            workflow.record_diagnostics(call_id, diagnostics.snapshot())
-            workflow.finish(call_id, reason)
-        service.close()
+            snapshot = diagnostics.snapshot()
+            await store.run(lambda: persist_end(reason, snapshot))
+        await store.close(service.close)
 
     ctx.add_shutdown_callback(shutdown)
     try:
@@ -209,13 +261,8 @@ async def reservation_agent(ctx: agents.JobContext):
             await close_call("answer_timeout")
             return
         booking_context = workflow.context(call_id)
-        session = AgentSession(
-            stt=create_stt(config, booking_context),
-            llm=inference.LLM(model=config.llm_model, extra_kwargs={"max_completion_tokens": 250}),
-            tts=inference.TTS(model=config.tts_model, voice=config.tts_voice, language="ko"),
-            vad=silero.VAD.load(activation_threshold=0.3))
-
-        assistant_turns = 0
+        session = create_session(config, booking_context)
+        supervisor = CallSupervisor(session, close_call, diagnostics, lambda: ended, store)
 
         @session.on("user_transcription_timeout")
         def transcription_timeout(event):
@@ -223,34 +270,55 @@ async def reservation_agent(ctx: agents.JobContext):
 
         @session.on("error")
         def model_error(event):
-            diagnostics.errors += 1
+            supervisor.error(event)
+
+        @session.on("user_state_changed")
+        def user_state(event):
+            diagnostics.user_state(event)
+            if event.new_state == "speaking":
+                supervisor.activity()
+
+        @session.on("agent_state_changed")
+        def agent_state(event):
+            diagnostics.agent_state(event)
+            supervisor.activity()
+
+        @session.on("agent_false_interruption")
+        def false_interruption(event):
+            diagnostics.false_interruptions += 1
+
+        @session.on("close")
+        def session_closed(event):
+            if not ended:
+                supervisor.spawn(close_call("session_closed"))
 
         @session.on("conversation_item_added")
         def store_conversation(event):
-            nonlocal assistant_turns
             if ended:
                 return
             if isinstance(event.item, ChatMessage) and event.item.role == "assistant" and event.item.interrupted:
                 diagnostics.interrupted_messages += 1
-            if store_conversation_item(workflow, call_id, event.item):
-                assistant_turns += 1
-                if assistant_turns >= 8:
-                    asyncio.create_task(close_call("turn_limit"))
+            # User evidence is persisted in the hook before the LLM can call a tool.
+            if isinstance(event.item, ChatMessage) and event.item.role == "assistant" and event.item.text_content:
+                store.enqueue(lambda: store_conversation_item(workflow, call_id, event.item))
+                supervisor.assistant_message(event.item)
 
         @ctx.room.on("participant_disconnected")
         def disconnected(participant_left):
             if participant_left.identity == participant.identity:
                 diagnostics.disconnect_reason = participant_left.disconnect_reason
-                asyncio.create_task(close_call("sip_disconnected"))
+                supervisor.spawn(close_call("sip_disconnected"))
 
-        agent = BookingVoiceAgent(workflow, call_id, booking_context, close_call, diagnostics)
-        await session.start(room=ctx.room, agent=agent)
-        # Protect the short opening request from early backchannels; later turns stay interruptible.
-        await session.generate_reply(
-            instructions="AI 예약 비서라고 짧게 소개하고 이번 통화 목적에 맞는 질문 하나만 한다. "
-                         "새 예약이라면 날짜·시간·인원을 한 질문에 포함한다. 두 문장 이내로 말하고 답을 기다린다.",
-            allow_interruptions=False)
-        reminder = asyncio.create_task(reprompt_if_unheard(session, diagnostics, lambda: ended))
+        agent = BookingVoiceAgent(workflow, call_id, booking_context, close_call, diagnostics, supervisor, store)
+        await session.start(room=ctx.room, agent=agent, room_options=room_options(config))
+        reminder = supervisor.spawn(supervisor.watch())
+        # Only the short identity statement is protected; buffered user audio is preserved.
+        await session.say("안녕하세요, AI 예약 비서입니다.", allow_interruptions=False)
+        if not ended and not supervisor.terminal and agent.user_turns == 0:
+            await session.generate_reply(
+                instructions="소개는 이미 했다. 이번 통화 목적에 맞는 질문 하나만 한다. "
+                             "새 예약이면 날짜·시간·인원을 포함해 예약 가능한지 한 문장으로 묻는다.",
+                allow_interruptions=True)
     except Exception:
         await close_call("worker_error")
 

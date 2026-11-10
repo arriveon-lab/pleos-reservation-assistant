@@ -4,6 +4,23 @@ import json
 from .workflow import LiveWorkflow
 
 
+def failure_reason(error):
+    """Keep structured SIP categories, never provider messages/headers/phone numbers."""
+    metadata = getattr(error, "metadata", {})
+    try:
+        sip_code = int(metadata.get("sip_status_code", 0)) if isinstance(metadata, dict) else 0
+    except (TypeError, ValueError):
+        sip_code = 0
+    reason = {403: "sip_forbidden", 404: "sip_not_found", 408: "sip_no_answer",
+              480: "sip_unavailable", 486: "sip_busy", 488: "sip_media_rejected",
+              503: "sip_service_unavailable", 603: "sip_declined"}.get(sip_code)
+    if reason:
+        return reason
+    if getattr(error, "code", None) == "resource_exhausted":
+        return "provider_capacity"
+    return "dispatch_uncertain"
+
+
 async def dial_booking(service, config, owner, booking_id, version, request_id, client=None):
     from google.protobuf.duration_pb2 import Duration
     from livekit import api
@@ -24,9 +41,9 @@ async def dial_booking(service, config, owner, booking_id, version, request_id, 
             participant_name="Restaurant", wait_until_answered=True,
             ringing_timeout=Duration(seconds=30), max_call_duration=Duration(seconds=config.max_seconds)))
         return {"id": call["id"], "requested": True}
-    except Exception:
+    except Exception as error:
         # A timeout is not proof that no INVITE went out. Do not redial an uncertain call.
-        workflow.finish(call["id"], "dispatch_uncertain")
+        workflow.finish(call["id"], failure_reason(error))
         try:
             await client.room.delete_room(api.DeleteRoomRequest(room=call["room"]))
         except Exception:

@@ -235,6 +235,23 @@ class LiveWorkflowTest(unittest.TestCase):
         workflow=LiveWorkflow(self.service,replace(self.config,daily_calls=1))
         with self.assertRaises(DomainError):workflow.reserve(self.owner,self.prepare(),2,"over-budget")
 
+    def test_sip_failure_categories_are_saved_without_provider_message_or_redial(self):
+        from livekit import api
+        from .transport import dial_booking
+        for code, reason in [(486, "sip_busy"), (408, "sip_no_answer"), (488, "sip_media_rejected")]:
+            client = SimpleNamespace(agent_dispatch=SimpleNamespace(create_dispatch=AsyncMock()),
+                sip=SimpleNamespace(create_sip_participant=AsyncMock(side_effect=api.TwirpError(
+                    "unavailable", "private provider content", status=503,
+                    metadata={"sip_status_code": str(code), "extra": "private"}))),
+                room=SimpleNamespace(delete_room=AsyncMock()))
+            booking = self.prepare()
+            result = asyncio.run(dial_booking(self.service, self.config, self.owner, booking, 2, str(code), client))
+            again = asyncio.run(dial_booking(self.service, self.config, self.owner, booking, 2, str(code), client))
+            self.assertTrue(again["reused"])
+            self.assertEqual(1, client.sip.create_sip_participant.await_count)
+            self.assertEqual("UNKNOWN", self.get_booking(booking)["status"])
+            self.assertEqual(reason, self.workflow._find(result["id"])[1]["endReason"])
+
 
 class ConfigurationAndSDKTest(unittest.TestCase):
     def test_saved_outcome_controls_closing_and_prevents_model_success_rewrite(self):
