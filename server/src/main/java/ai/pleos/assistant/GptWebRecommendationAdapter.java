@@ -69,7 +69,7 @@ public final class GptWebRecommendationAdapter {
           || key.isBlank()
           || key.length() > 1000
           || !key.chars().allMatch(c -> c >= 33 && c <= 126))
-        return empty(Mode.WEB_SEARCH, State.FAILED);
+        return failed(Mode.WEB_SEARCH, FailureReason.CREDENTIAL_MISSING);
       String body = requestJson(request, permit.model, permit.maxOutputTokens);
       Instant now = clock.instant(),
           until = deadline.isBefore(permit.expiresAt) ? deadline : permit.expiresAt;
@@ -83,10 +83,14 @@ public final class GptWebRecommendationAdapter {
       if (!current.getAsBoolean()) return empty(Mode.WEB_SEARCH, State.CANCELLED);
       now = clock.instant();
       if (!now.isBefore(until)) return empty(Mode.WEB_SEARCH, State.EXPIRED);
-      Result result =
-          response.status() == 200
-              ? parser.parse(response.json(), request, Mode.WEB_SEARCH, now, now.plusSeconds(300))
-              : empty(Mode.WEB_SEARCH, State.FAILED);
+      Result result;
+      if (response.status() != 200) {
+        result = failed(Mode.WEB_SEARCH, FailureReason.HTTP_REJECTED);
+      } else {
+        result = parser.parse(response.json(), request, Mode.WEB_SEARCH, now, now.plusSeconds(300));
+        if (result.state() == State.FAILED)
+          result = failed(Mode.WEB_SEARCH, FailureReason.INVALID_RESPONSE);
+      }
       if (!current.getAsBoolean()) return empty(Mode.WEB_SEARCH, State.CANCELLED);
       if (!clock.instant().isBefore(until)) return empty(Mode.WEB_SEARCH, State.EXPIRED);
       return result;
@@ -94,7 +98,7 @@ public final class GptWebRecommendationAdapter {
       Thread.currentThread().interrupt();
       return empty(Mode.WEB_SEARCH, State.CANCELLED);
     } catch (Exception failure) {
-      return empty(Mode.WEB_SEARCH, State.FAILED);
+      return failed(Mode.WEB_SEARCH, FailureReason.TRANSPORT_ERROR);
     }
   }
 

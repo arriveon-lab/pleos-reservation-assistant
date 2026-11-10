@@ -29,6 +29,7 @@ public final class DestinationRecommendationService implements AutoCloseable {
   public record Recommendation(
       PlaceRecommendationPlanner.Plan listing,
       WebRecommendation.State webState,
+      WebRecommendation.FailureReason webFailureReason,
       WebListingRecommendationJoiner.Result matches) {}
 
   public record SourceInfo(
@@ -136,14 +137,18 @@ public final class DestinationRecommendationService implements AutoCloseable {
           if (!(listing instanceof PlaceSearchResult.Success found)
               || plan.state() != PlaceRecommendationPlanner.State.RESULTS)
             return current.getAsBoolean()
-                ? new Recommendation(plan, WebRecommendation.State.EMPTY, null)
+                ? new Recommendation(plan, WebRecommendation.State.EMPTY, null, null)
                 : null;
           Set<WebRecommendation.Need> needs = webNeeds(requirements.requiredFeatures());
           var request = new WebRecommendation.Request(viewId, generation, area, needs, false);
           var webResult = web.search(request, clock.instant().plusSeconds(30), current);
           if (!current.getAsBoolean()) return null;
           if (webResult == null)
-            return new Recommendation(plan, WebRecommendation.State.FAILED, null);
+            return new Recommendation(
+                plan,
+                WebRecommendation.State.FAILED,
+                WebRecommendation.FailureReason.TRANSPORT_ERROR,
+                null);
           var matches =
               webResult.state() == WebRecommendation.State.RESULTS
                   ? joiner.join(destinationWindow, found, provider, webResult, needs)
@@ -178,7 +183,7 @@ public final class DestinationRecommendationService implements AutoCloseable {
               }
             }
           }
-          return new Recommendation(plan, webResult.state(), matches);
+          return new Recommendation(plan, webResult.state(), webResult.failureReason(), matches);
         });
   }
 

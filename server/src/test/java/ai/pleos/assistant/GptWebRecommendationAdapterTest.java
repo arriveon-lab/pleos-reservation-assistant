@@ -70,6 +70,42 @@ class GptWebRecommendationAdapterTest {
   }
 
   @Test
+  void failedProviderReportsOnlySafeReasonAndConsumesPermit() {
+    var calls = new AtomicInteger();
+    var adapter =
+        new GptWebRecommendationAdapter(
+            clock,
+            (body, key, timeout) -> {
+              calls.incrementAndGet();
+              return new GptPlaceSourceDiscovery.Response(429, null);
+            },
+            () -> "fixture-key");
+    var permit =
+        new GptWebRecommendationAdapter.Permit(request, "explicit-test-model", NOW.plusSeconds(30));
+    assertThat(adapter.search(request, permit, NOW.plusSeconds(30), () -> true).failureReason())
+        .isEqualTo(FailureReason.HTTP_REJECTED);
+    assertThat(adapter.search(request, permit, NOW.plusSeconds(30), () -> true).state())
+        .isEqualTo(State.APPROVAL_REQUIRED);
+    assertThat(calls.get()).isEqualTo(1);
+
+    var malformed =
+        new GptWebRecommendationAdapter(
+            clock,
+            (body, key, timeout) -> new GptPlaceSourceDiscovery.Response(200, "{}"),
+            () -> "fixture-key");
+    assertThat(
+            malformed
+                .search(
+                    request,
+                    new GptWebRecommendationAdapter.Permit(
+                        request, "explicit-test-model", NOW.plusSeconds(30)),
+                    NOW.plusSeconds(30),
+                    () -> true)
+                .failureReason())
+        .isEqualTo(FailureReason.INVALID_RESPONSE);
+  }
+
+  @Test
   void lowerCostPermitLimitsOutputTokensWithoutChangingDefault() throws Exception {
     var adapter = new GptWebRecommendationAdapter(clock, (b, k, t) -> null, () -> "fixture-key");
     var limited =

@@ -51,6 +51,14 @@ public final class WebRecommendation {
     ALREADY_REQUESTED
   }
 
+  /** Safe provider diagnostics; never contains a response body, URL, credential, or user data. */
+  public enum FailureReason {
+    CREDENTIAL_MISSING,
+    HTTP_REJECTED,
+    INVALID_RESPONSE,
+    TRANSPORT_ERROR
+  }
+
   public enum Mode {
     MOCK,
     WEB_SEARCH
@@ -181,11 +189,24 @@ public final class WebRecommendation {
       Instant observedAt,
       Instant validUntil,
       List<Candidate> candidates,
-      int excludedCandidates) {
+      int excludedCandidates,
+      FailureReason failureReason) {
+    public Result(
+        Mode mode,
+        State state,
+        Instant observedAt,
+        Instant validUntil,
+        List<Candidate> candidates,
+        int excludedCandidates) {
+      this(mode, state, observedAt, validUntil, candidates, excludedCandidates, null);
+    }
+
     public Result {
       candidates = List.copyOf(candidates);
       if (candidates.size() > 3 || excludedCandidates < 0)
         throw new IllegalArgumentException("Invalid shortlist");
+      if (failureReason != null && state != State.FAILED)
+        throw new IllegalArgumentException("Failure reason requires FAILED state");
     }
 
     @Override
@@ -206,6 +227,10 @@ public final class WebRecommendation {
 
   static Result empty(Mode mode, State state) {
     return new Result(mode, state, null, null, List.of(), 0);
+  }
+
+  static Result failed(Mode mode, FailureReason reason) {
+    return new Result(mode, State.FAILED, null, null, List.of(), 0, reason);
   }
 
   static boolean text(String value, int max) {

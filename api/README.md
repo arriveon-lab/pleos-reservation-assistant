@@ -4,6 +4,8 @@
 
 웹 후보가 Kakao 음식점 카테고리 첫 페이지에 없으면 상호만 키워드 검색으로 최대 3회 재조회하고, 상호·주소·목적지 반경이 일치하는 지점만 `result.matches.candidates`에 합칩니다. `result.listing.candidates`는 초기 목록 진단이며 최종 추천으로 표시하지 않습니다. 인용 주석 없는 웹 출처는 지점 식별에만 사용하고 조건은 UNKNOWN으로 남깁니다.
 
+`result.webState=FAILED`이면 `result.webFailureReason`이 자격 증명 누락·HTTP 거절·응답 형식 오류·전송 오류를 구분합니다. 공급자 응답 본문이나 키는 이 계약에 포함되지 않습니다. 승인된 가상 서울숲 실호출에서는 Kakao 목록 3곳만 반환되고 웹 단계가 실패해 실제 검증된 추천은 0곳이었습니다. 추가 GPT 실호출은 새 승인이 필요합니다.
+
 [REC-13 실험 계약](../docs/REC13_WEB_RECOMMENDATION.md) — #50의 기본 비활성 MOCK 실험 API와 사용자 입력/직접 평가 전용 V5 테이블입니다. 기존 v1·앱 계약/아래 논리 ERD 제안을 대체하지 않습니다.
 [REC-12 로컬 catalog 계약](../docs/REC12_PUBLIC_CATALOG.md) — #48의 오프라인 코드 준비이며 제품 HTTP/DB/실제 발신 연결은 아닙니다.
 

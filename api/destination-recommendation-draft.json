@@ -151,6 +151,7 @@
         "properties": {
           "listing": { "$ref": "#/components/schemas/Plan" },
           "webState": { "type": "string", "enum": ["RESULTS", "EMPTY", "FILTERED", "FAILED", "CANCELLED", "EXPIRED", "APPROVAL_REQUIRED", "ALREADY_REQUESTED"] },
+          "webFailureReason": { "type": ["string", "null"], "enum": ["CREDENTIAL_MISSING", "HTTP_REJECTED", "INVALID_RESPONSE", "TRANSPORT_ERROR", null], "description": "Coarse diagnostic only when webState=FAILED. No provider body or credential is exposed." },
           "matches": {
             "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/WebMatches" }],
             "description": "Only independently searched web results matched to a transient listing. Null until web approval/search succeeds."
