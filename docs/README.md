@@ -18,6 +18,8 @@
 | 문서 | 확인할 내용 | 상태 |
 | --- | --- | --- |
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
+| [REC-05 공동 인수·MOCK fixture](REC05_JOINT_ACCEPTANCE.md) | #16/#26 필드·인원 합의, 직접4상태 재현과 격리 시험 명령, 웹 상세정보 다음 협의안 | 서버 준비/HTTP 검증, 공동 기기 실행 대기 |
+| [REC-05 Docker 실행](REC05_DOCKER.md) | 각 PC의 Compose 기동·4상태·인증 DB 유지·기기 포트 연결/복구 | 개발용 MOCK 이미지, Docker 실행 검증/기기 인수 구분 |
 | [PLAN](PLAN.md) | 전체 범위·일정·5명 역할·통합 순서 | 기존 개발 계획 |
 | [전화예약 에이전트 개발 계획](PHONE_RESERVATION_AGENT_PLAN.md) | 송수신·회신·변경, 사용자·동승자 조건과 예약 사본, P01~P11 일정·인수 | 팀 검토용 제안, API/DB·실전화 미적용 |
 | [전화예약 로컬 프로토타입](../prototypes/phone_agent/README.md) | 사용자·동승자 조건, 가상 예약·회신·변경 승인, 독립 실행·테스트 | MOCK 기본 + 선택형 Telkit·LiveKit, 실제 발신 8회·첫 EC2 SDK 오류 0·AI 중단 메시지 3, 예약 UNKNOWN·청취 끊김 잔존, 제품 미통합 |
@@ -29,11 +31,14 @@
 | [REC-04 실제 검색 시연](REC04_LIVE_SEARCH.md) | #13 저장 없는 독립 1회 장소 조회·키/무료 설정·표시·실행 기록 | 실제 1회·3곳 표시/쿼터 확인, 제품 예약과 분리 |
 | [REC-01 서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md) | 미리보기/예약 분리·IO/중복·출처/모드·후속 인수 조건 | 팀 합의 전 제안, API/DB 미적용 |
 | [REC-03 세션 관리와 실행 경계](REC03_PREVIEW.md) | #12 소유 scope·수명/상한·동시 합류·취소·H2 경계 | 전체 188개 검증, 인증/제품 API 미연결 |
+| [REC-05 화면 연결 인수안](REC05_UI_HANDOFF.md) | #16/#26 조건 포함 미리보기·추천 근거/질문·화면 수명·공동 확인 항목 | MOCK HTTP 연결 검증, 화면 담당 합의/기기 인수 대기 |
 | [REC-08 후보 추천·질문 계획](REC08_RECOMMENDATION_PLAN.md) | 최대3개 후보·근거·기본 정보 누락·UNKNOWN 질문·가상 실행/계약 | 서버268개 검증, 제품 HTTP/화면 연결 전 |
 | [REC-11 웹 상세정보와 GPT 출처 검색](REC11_PLACE_DETAILS.md) | 매장 일치·구조화 웹 정보·출처/시각·남은 질문·일회성 GPT 연동 코드 | 가상 검증, 실제 유료/웹 호출과 제품 화면 연결 전 |
 | [REC-09 공공데이터 검증](REC09_SEOUL_DATA_VALIDATION.md) | #32 공식 명세39필드·전화/좌표/시각 검사·공개 표본5건·독립 도구 | 가상 테스트15개·공개 샘플 집계, 제품 공급자 채택 전 |
 | [REC-10 시범 지역 교차 검사](REC10_SEOUL_PILOT_VALIDATION.md) | #34 공식 상태 사전·HTTPS실제1000행·동일 행/중복/반경·취득 조건 | 가상40개, 실제 진단115행·원문 미저장, 제품 공급자 채택 전 |
 | [추천·장소 후속 작업](REC_FOLLOWUPS.md) | #12/#13 완료 범위와 #11/#16–18 담당·의존성·인수 조건 | 검증한 기반과 미완료 제품 연결 구분 |
+| [REC-05 HTTP 계약 초안](REC05_PREVIEW_API.md) | #16 기본 비활성 MOCK 실험 API·가상 인증 HTTP 통합 | 244개 검증, 실제 로그인/차량 화면 미연결 |
+| [REC-05 토큰 연동 검토](REC05_TOKEN_INTEGRATION.md) | #21 후보 인증 PR·개발용 호출자·임시 통합 증거 | 단독 244/Python 7·임시 통합 271·실제 토큰 HTTP 16건, main 미병합 |
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |
@@ -58,3 +63,5 @@
 - 편집 가능한 관계도 소스: [erd/ERD.mmd](erd/ERD.mmd)
 - 107개 컬럼과 15개 FK를 포함한 가져오기 표기: [erd/ERDCLOUD_IMPORT.sql](erd/ERDCLOUD_IMPORT.sql)
 - [ERDCloud 편집본](https://www.erdcloud.com/d/GLtbN3YfiazAMYi6X)은 비공개입니다. GitHub 게시가 ERDCloud 접근 권한을 변경하지는 않습니다. UNIQUE 5개의 가져오기 누락과 필요한 업무 제약은 [ERD](ERD.md)에 기록했습니다.
+
+- [REC-05 오래된 검색 복구·정리404 계약](REC05_SEARCH_RECOVERY.md): 원 요청 대조/영속 종료·화면 연결 기준과 검증 경계.

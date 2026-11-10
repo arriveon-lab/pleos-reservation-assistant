@@ -1,0 +1,9 @@
+{
+  "generation": 1,
+  "query": {
+    "latitude": 37.544,
+    "longitude": 127.055,
+    "radiusMeters": 1000,
+    "limit": 3
+  }
+}

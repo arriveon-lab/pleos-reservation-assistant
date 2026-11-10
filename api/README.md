@@ -8,6 +8,14 @@
 
 요청의 boolean·정수 필드는 OpenAPI `required`에 따라 0/false도 명시합니다. null이나 누락을 암묵적으로 승인/기본값으로 바꾸지 않습니다. 알 수 없는 필드, 정수에 소수/문자열을 보내는 요청도 거부합니다.
 
+## 실험 중인 장소 미리보기 계약
+
+2026-11-09: #21이 병합된 main `1b37bc2`를 반영했습니다. 미리보기는 실제 발급 Bearer 토큰과 안정적인 Principal을 사용하며 현재 v1 계약은 1.1.0입니다. `scripts/preview-session-demo.py`와 `scripts/preview-token-smoke.py`로 loopback MOCK의 발급·미리보기·갱신·폐기를 검증합니다. 인증 구현은 main 그대로 유지합니다.
+
+[#16의 OpenAPI 초안](place-preview-draft.json)은 `/api/experimental`의 별도 MOCK 계약입니다. 기본 비활성(404)이고 명시적으로 켜도 검증된 서버 Principal이 없으면 401입니다. 익명 토큰 인증은 main과 연결했고 차량 화면·navigation 연결은 별도입니다. 위 v1 경로와 인증 계약 1.1.0을 유지합니다. [구현 범위와 화면 의미](../docs/REC05_PREVIEW_API.md), [가상 요청 예제](examples/place-preview-query.json)를 참고합니다. 이 초안을 팀 합의된 제품 API로 취급하지 않습니다.
+
+`verify` 후 `python scripts/check-contract.py --preview-exchanges`로 테스트가 생성한 가상 HTTP 교환을 초안과 대조합니다. `smoke-test.py --check-contract`는 이 대조와 JAR의 기본 404/opt-in 무인증 401도 검사합니다. 기존 v1 POST의 Idempotency-Key/snapshot 의미를 실험 경로에 그대로 적용하지 않습니다.
+
 | 메서드 | 경로 | 응답 |
 | --- | --- | --- |
 | GET | `/status` | 실행 모드·계약 버전·외부 발신 차단 상태 |
@@ -104,3 +112,9 @@ Windows에서는 `.venv\Scripts\python`을 사용합니다. 전화 업체별 raw
 스모크 테스트는 배포 JAR의 무인증·위조 헤더 차단, 실제 토큰 발급·소유권·권한·갱신 재시도·폐기·재시작을 검증합니다. 이어 `src/test` 전용 운영자 주체로 예약 수락·UNKNOWN·변경 흐름을 검증합니다. 이 테스트 권한은 배포 JAR에 포함되지 않습니다. `verify`가 테스트 실행 classpath 파일을 생성하므로 스모크 전에 실행합니다.
 
 #16 통합 후 실제 Bearer 토큰으로 미리보기를 검증하려면 opt-in 루프백 서버에서 `.venv/bin/python scripts/preview-token-smoke.py --base-url http://127.0.0.1:8080`을 실행합니다. #16의 별도 초안 명세가 필요하며, 발급·갱신·미리보기 4개 연산·타인 접근·폐기 응답을 검사합니다. 테스트 토큰은 로그나 파일로 출력하지 않습니다.
+
+#16의 미리보기 초안은 `0.2.0-draft`이며 기존 v1 계약 `1.1.0`과 별도입니다. 선택적 `requirements`가 있으면 `recommendationPlan`을 함께 반환합니다. [조건 포함 요청](examples/place-preview-recommendation-query.json)·[가상 응답](examples/place-preview-recommendation-result.json)·[화면 인수안](../docs/REC05_UI_HANDOFF.md)을 대조합니다. 기존 요청은 계획 null을 반환하고, 취소·실패·늦은 응답에도 계획을 반환하지 않습니다. 확정 제품 계약/화면 연결이 아니며 기본 비활성 MOCK 경계를 유지합니다.
+
+## #16 오래된 검색 대조 추가 연산
+
+`POST /api/v1/searches/reconcile`은 같은 인증·원 Idempotency-Key·원 SearchRequest로 이미 처리된 검색(COMPLETED/searchId)을 찾거나 미처리·오래된 요청(REJECTED_CLOSED)을 영속 종료합니다. 새 검색은 실행하지 않으며 미래 입력/본문 불일치/오류는 해제 근거가 아닙니다. 핵심 호환 표식1.1.0은 기존 앱을 위해 유지합니다. [화면 저장·재시작·실패 처리 계약](../docs/REC05_SEARCH_RECOVERY.md)과 [종료 예제](examples/search-reconciliation-rejected-closed.json)를 대조하세요. 미리보기404/PREVIEW_NOT_FOUND는 취소/종료 성공이 아닙니다.

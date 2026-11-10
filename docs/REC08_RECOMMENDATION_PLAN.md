@@ -1,5 +1,7 @@
 # REC-08: 미저장 후보 추천 근거와 추가 확인 계획
 
+2026-11-09 #16 연결 후속: main의 이 순수 평가기를 [미리보기 초안 0.2.0](REC05_UI_HANDOFF.md)에 연결했습니다. 조건을 명시한 요청에만 추천 계획을 반환하고, 세대·취소·만료와 함께 검사합니다. PR #19의 MOCK 구현이며 화면 합의/기기 검증·main 병합은 별도입니다. 아래 #28 구현 이력과 이번 HTTP 연결을 구분합니다.
+
 기준: 2026-11-09 KST. 담당 [#28](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/28), tiemo0708. 최신 인증 main `1b37bc2`에서 `feat/28-recommendation-inquiry-plan`으로 분리했습니다. 순수 평가기와 가상 호출 예제의 구현이며 제품 화면·실제 식당/전화 연결 완료가 아닙니다.
 
 ## 무엇을 반환하는가

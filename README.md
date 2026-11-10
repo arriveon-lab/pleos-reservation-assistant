@@ -8,7 +8,13 @@
 
 목적지 주변 장소의 독립 조회 도구는 [REC-04 시연 안내](docs/REC04_LIVE_SEARCH.md)를 따릅니다. 기본은 가상 화면이며, 실제 조회는 명시적 실행 모드·무료 설정·키 확인 후 1회 시연으로 진행합니다. 제품 서버의 실제 예약 연동과 구분합니다.
 
+[#16의 장소 미리보기 HTTP 초안](docs/REC05_PREVIEW_API.md)은 기본 비활성 MOCK sandbox입니다. 가상 인증 주체를 주입한 통합 테스트로 생성/검색/취소/종료를 검증했으며 실제 로그인·차량 화면 연결은 아직 없습니다.
+
+[#21 후보 인증과의 연동 검토](docs/REC05_TOKEN_INTEGRATION.md)에는 실제 서버 발급 토큰을 사용하는 개발용 호출자와 임시 통합 검증 결과를 기록했습니다. 인증 PR은 미병합이며 이 브랜치의 기본 실행 상태와 구분합니다.
+
 ## 빠른 시작
+
+팀원의 화면 인수용 MOCK 서버는 [Docker Compose 실행 안내](docs/REC05_DOCKER.md)를 권장합니다. Docker가 실행 중인 환경에서 저장소 루트의 `docker compose up --build --detach --wait`로 시작합니다. 네 가지 가상 상태·인증 DB 유지·에뮬레이터 연결/복구를 안내하며 실제 공급자/전화/GPT 연동이나 운영 배포가 아닙니다. 아래는 Java/Gradle 직접 실행 방식입니다.
 
 필수: JDK 21, Python 3.9+, 인터넷(첫 의존성 다운로드). 서버와 Android는 루트의 Gradle Wrapper 8.11.1 / Kotlin DSL을 공유합니다. 시스템 Gradle 설치는 필요 없습니다. 서버만 개발할 때 Android SDK는 필요 없습니다.
 

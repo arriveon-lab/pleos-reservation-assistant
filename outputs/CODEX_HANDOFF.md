@@ -98,6 +98,61 @@
 - [LiveKit 중단 조정](https://docs.livekit.io/agents/logic/turns/tuning/)과 [소음 처리](https://docs.livekit.io/transport/media/noise-cancellation/)에 따라 비음성 잡음 억제와 경쟁 화자 분리를 구분합니다. 발화 길이/단어 기준 강화는 반응 지연과 교환 관계이며, 맞장구와 실제 끼어들기는 별도 판별 대상입니다. 이번에는 설정·의존성·유료 기능을 추가하거나 실제 음성 호출을 더 실행하지 않았습니다.
 - 구현 코드 변경 없이 실제 결과·비공개 중단 상태·문서를 갱신했습니다. 기존 로컬 67개 테스트와 해당 코드의 원격 Offline/Voice/Android/naming 성공 증거를 유지합니다. 전체 Server and contract CI 실패는 별도이며 전체 CI 통과로 보고하지 않습니다. 실수신·변경 재확인·OpenAI A/B·제품 통합은 후속입니다.
 
+## 2026-11-10 #16 검색 복구 절차·main 충돌 해결
+
+- main2e873bc를 공유 이력 보존 merge로 반영했습니다. 문서/CI/계약 캐시·org.json/jsoup 의존성 양측 내용을 보존했습니다. #19의 최종 head/원격 CI는 별도로 확인합니다.
+- `POST /api/v1/searches/reconcile`에 원 키/본문·같은 주체를 보내 완료 검색 ID 대조 또는 오래된 미처리 요청의 영속 종료를 수행합니다. 검색/전화 실행 없이 기존 commands 원장과 잠금을 사용합니다. 재시작·중복·소유권·키 충돌·동시성·rollback·경계를 검증했으며 새 migration/원 payload 변경은 없습니다. [앱 연결 계약](../docs/REC05_SEARCH_RECOVERY.md)을 따릅니다.
+- PREVIEW_NOT_FOUND는 만료·미존재·제거·재시작·타인을 구분하지 않으며 정리 성공이 아닙니다. 앱26e80cf의 후보 선제 제거/정리 미확인 안내를 유지합니다. 최신 앱 소스를 pin해4fixture의 host core HTTP52/schema48을 대조했습니다. 기존 기기 담당의 실제300초/인원 경계 보고를 검토했으며 새 기기 실행/새 복구 UI 검증으로 세지 않습니다.
+- Java385개 실패/오류/skip0, 패키징 JAR 계약/MOCK·UNKNOWN·H2 재시작/LIVE 차단, 실제 macOS arm64 Docker4fixture previewHTTP26/authHTTP35를 통과했습니다. 증거는 Git 제외 work/rec05-recovery-*.log입니다. 실제 장소/GPT/전화/유료 호출0, 기존 앱/Keystore/journal/인증 DB/adb 변경0입니다.
+- 새 복구 버튼·원 명령과 종료 결과의 원자적 journal 저장/입력 해제·응답 유실/저장 실패·기존 설치 복구는 #26 연결 후 같은 최종 서버/APK로 확인해야 합니다. #16/#26 OPEN·#19 Draft를 유지하고 그 검증 전 병합하지 않습니다. #1/#11/#17/#40 전체 범위가 완료된 것은 아닙니다.
+
+
+## 2026-11-10 REC-05 Docker 전달 방식 추가
+
+- 사용자가 Docker로 실행 환경을 넘기고 코멘트를 수정하도록 요청했습니다. [REC05_DOCKER](../docs/REC05_DOCKER.md)의 Compose 기동/4상태·H2 volume 유지·기기8080→자기 PC18082 연결/복구를 우선합니다. 이전07b0a43에는 Docker 설정이 없어 새 전달 commit을 사용해야 합니다. 원격 공유 서버·registry push나 실제 기기 인수는 아닙니다.
+- pinned Temurin21 index digest·multi-stage builder, src/test의 지정한 실행체/healthcheck만 담는 distribution, context 허용 목록, host loopback publish·UID10001/읽기전용 root를 추가했습니다. 로컬 직접 실행은loopback을 유지하고 명시적 --container만 내부0.0.0.0을 씁니다. 내부 전용 network는 host publish가 비어 로컬 접속이 실패해 bridge+loopback publish로 실제 검증했습니다. 외부 통신 방화벽으로 주장하지 않습니다.
+- 실제 macOS arm64 Docker에서4fixture·preview HTTP22/인증HTTP23, 컨테이너/H2 재생성 뒤 기존 토큰/소유권·갱신 재시도/폐기·일반 토큰403·health/비root/readonly/port 검증 통과. 로그는 Git 제외 work/rec05-docker-build.log·rec05-docker-smoke.log·rec05-docker-gradle.log입니다. 자동 검사는 고유 project/volume만 정리합니다. GitHub Docker job은 Linux amd64의 별도 결과로 기록합니다. 실외부 장소/GPT/전화/비용0회, 앱/기기/adb·기존 DB 변경0회입니다.
+
+## 2026-11-10 로컬 서버로 각자 실행·비동기 인수
+
+- [REC-05 진행 절차](../docs/REC05_JOINT_ACCEPTANCE.md)를 보완했습니다. 화면 담당이 자기 PC에서 서버07b0a43을 별도 checkout으로 실행하고, 자기 기기의8080을 그 PC의18082로 reverse해 최종 APK/4fixture를 확인합니다. 원격 공유 서버/터널은 없고 두 사람의 동시 접속이나 추천 담당 Mac 상시 실행은 필요하지 않습니다.
+- 서버 commit·최종 APK SHA·시험 조건·증거를 고정하고 양측이 검토한 뒤 인수합니다. PC별 토큰/세션/DB를 공유하거나 별도 실행만으로 공동 인수 완료를 표시하지 않습니다. 기존 reverse 조회/복구와 앱/DB 보존을 문서화했으며 실제 연결·설치·배포·API/전화/유료 작업은 수행하지 않았습니다. 이번 변경은 문서뿐이며 새 Gradle/기기 실행 결과로 세지 않습니다.
+
+## 2026-11-10 REC-05 #16 앱 core와 실제 MOCK 서버 호환
+
+- [직접 호환 검증](../docs/REC05_JOINT_ACCEPTANCE.md)에서 앱cf35ead의 실제 AuthSession/MockRepository/PreviewController 세 소스를 읽기용 checkout에서 미수정 상태로 컴파일했습니다. Java17 대상/host JVM, memory vault·제한 wire를 사용해4fixture의 앱 HTTP52건과 기존 스키마 HTTP48건을 대조했습니다. 앱/서버 공개 계약은1.1.0/0.2.0-draft 그대로이며 다른 담당 브랜치는 변경하지 않았습니다.
+- 명시 인증 발급1회/검색2회씩·인원2/1 및20/10·조건 집합·refresh 후 기존 preview 정리·allow(false)/편집 시 결과 제거·cancel/close/폐기 통과. Android HTTP/Keystore/화면/CarUx/APK·실제5분 경과 검증은 아닙니다. 새 화면 답변과 실행 중 adb 기기가 없는 상태에서 준비한 독립 서버 측 증거이며 공동 인수 완료로 표시하지 않습니다.
+- `./gradlew -PincludeAndroid=false verify` 뒤 `scripts/check-preview-app-compatibility.py --app-root <cf35ead의 읽기용 checkout>`으로 실행합니다. script가 HEAD와 세 파일의 미수정을 검사하고 결과/토큰 본문을 출력하지 않습니다. JVM JSON은 별도 previewClientJson20240303/lockfile에 고정해 제품/Spring test runtime과 분리했고 배포 JAR 제외도 검증합니다. CI도 동일 app pin을 checkout합니다. 새 APK/commit을 검토·pin 갱신해 실행하기 전에는 최신 앱 호환으로 주장하지 않습니다.
+- 증거는 Git 제외 work/rec05-app-verify.log·rec05-app-compatibility.log이며 공용 앱·기기·adb/Keystore/DB를 변경하지 않았습니다. #16/#26 OPEN·#19 Draft·#1 ETA/#11 정책과 PR #38 웹 필드 협의는 남아 있습니다. 실제 외부 장소/GPT/웹 수집/전화/유료 실행0회입니다. 기존 기기 담당 결과/이전 CI와 이번 host 검증을 구분합니다.
+- 서버329개를 재실행해 실패/오류/skip0, 가상 계약 JSON의 산출물 선언과 FROM-CACHE137건 동일 hash 복원/계약 검사까지 통과했습니다. 캐시 증거는 work/rec05-app-cache-proof.json·rec05-app-cache-restore.log입니다. 읽기용 앱 worktree는 변경 없이 정상 제거했고 원래 작업 브랜치는 feat/16-place-preview-integration입니다. 원격 CI는 최신 PR head에서 별도 확인합니다.
+
+## 2026-11-10 REC-05 #16 공동 인수 fixture 전달 준비
+
+- #26/#39 담당의 [최신 인수 요청](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185)과 앱cf35ead의 입력 범위/집합 비교/미리보기 수명을 소스로 대조했습니다. 화면 인수 문서의 과거1–8/0–6 설명을 미리보기1–20/0–10과 기존 예약 연습 범위로 구분했습니다. [재현 명령·4상태·인수표·웹 필드 후속안](../docs/REC05_JOINT_ACCEPTANCE.md)을 우선합니다. 공동 기기 실행 완료가 아닙니다.
+- 기존 `feat/16-place-preview-integration`에 test 전용 PreviewAcceptanceApplication·previewAcceptance Gradle task·Python HTTP 검증을 추가했습니다. fixture RESULTS/EMPTY/FILTERED/FAILED, 127.0.0.1만 수신, 별도 work 아래 인증 DB, 실제 발급 토큰 사용이며 MOCK_OPERATOR/가상 Principal을 공급하지 않습니다. 기본 제품/공개 API·Android·다른 담당 브랜치는 변경하지 않았습니다. 배포 JAR 제외를 검증하며 CI에도 가상 검사만 추가합니다.
+- Java329개/실패·오류·skip0, 직접4상태의 계약 HTTP48건/무인증401·인원21/11 거절 및20/10 수용·배열 순서·완료 반복/조건 충돌·같은 주체 갱신 후 close를 검증했습니다. 기존 JAR 인증/MOCK/UNKNOWN·H2 재시작·LIVE 차단·preview 토큰HTTP16건도 재검증했습니다. 정상 후보/질문은 가상이고 실제 OpenAI/장소/매장 웹/전화/비용 실행은0회입니다. 증거는 Git 제외 work/rec05-acceptance-verify.log·rec05-acceptance-http.log·rec05-acceptance-smoke.log입니다. 원격 CI는 최신 PR #19 결과를 별도 확인합니다.
+- 앱 담당이 최종 APK SHA256/서버 commit·기기·fixture를 고정해 표시/화면 이탈·늦은 응답·주행 제한을 함께 대조해야 합니다. 기존 앱/Keystore/DB/adb 연결은 자동 변경하지 않았습니다. #16/#26 OPEN·#19 Draft, #1 ETA·#11 정책·#17 운영 수명은 유지합니다. PR #38 새 웹 필드는 미합의이며 기존0.2.0 계약에 포함하지 않습니다. 실제 GPT 검증은 대상/모델/가격/전송 데이터·횟수·비용의 별도 승인 후 진행합니다.
+
+## 2026-11-09 #16 화면 담당 정적 검토·최신 main 반영
+
+- #26 담당의 [정적 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)을 확인하고 인수 문서에 반영했습니다. 현재 초안0.2.0 필드로 진행 가능하며 앱 복귀 시 완료 결과를 비운 상태에서 명시적 새 검색을 기다립니다. ordinal을 예약ID로 변환하거나 발신 승인으로 사용하는 API는 없습니다. 정적 합의를 Android 구현/공동 기기 인수 완료로 세지 않습니다.
+- main abd9aa4를 공유 이력 보존으로 반영하고 CI/PLAN/STATUS/HANDOFF 충돌을 양쪽 내용 유지로 해소했습니다. PR #35의 미병합 코드를 가져오지 않았습니다. 기존 REC-08 계약 JSON의 캐시 복원을 위해 Gradle test 산출물을 선언했습니다.
+- Java329개·Python 호출자7개/품질15개·가상HTTP137건/위험변형5개·추천계약2개·JAR 토큰HTTP16건/기존MOCK/H2재시작/LIVE차단 검증을 통과했습니다. 외부 장소/웹상세정보/전화/AI/유료 요청은0회이며 Android 코드/화면/기기는 미검증입니다.
+- 웹 상세정보 보강은 하위 #37에서 별도 공통 모듈로 구현하고 #16에 연결합니다. 기존0.2.0/1.1.0 필드를 변경하지 않으며 실제 데이터 조건은 #11, 화면 구현/기기 인수는 #26, ETA는 #1에 남아 #16 OPEN/PR #19 Draft를 유지합니다.
+
+## 2026-11-09 #16 추천·질문 응답과 #26 화면 인수
+
+- 사용자 요청으로 화면 담당에게 전달할 [공통 인수안](../docs/REC05_UI_HANDOFF.md)과 조건 포함 요청/가상 응답을 준비하고, 최신 main `35e22a8`의 순수 평가기를 opt-in MOCK 미리보기 HTTP에 연결했습니다. 공유 브랜치 feat/16-place-preview-integration / Draft PR #19에서 진행하며 force push·main 직접 push·다른 담당 코드 변경은 없습니다.
+- 초안0.2.0은 선택적 requirements를 받으며 추천 계획/목록을 같은 후보·순서로 제공합니다. 같은 세대의 조건 변경은 충돌로 거절하고 취소·종료·시간 초과·늦은 결과에 추천을 싣지 않습니다. 질문은 모두 UNKNOWN, bookable/inquiryDispatchAllowed=false이며 ordinal로 예약/전화를 호출할 수 없습니다. v1은1.1.0, 기본 비활성/실제 발신 차단/서버 source=PLEOS 거부를 유지합니다.
+- Java329개·가상 HTTP137건·계약 예제/위험 변형5건·Python7개, 배포 JAR 토큰HTTP16건·새 호출자8요청/가상검색1회/후보3/질문12·기존 예약/UNKNOWN·H2 재시작·LIVE 차단을 통과했습니다. 위치/음성/전화/장소 실제 외부 요청은 없고 Android 기기 검증을 이번 결과에 포함하지 않습니다.
+- 다음은 #26에서 응답/오류/UI 필드 합의 → 각자 구현 → 세대/취소/만료·인증·주행 제한의 공동 기기 확인입니다. #16의 서버 산출물이 화면 담당의 수락/전체 완료를 뜻하지 않으며 #1/#11/#17 조건도 남아 있습니다. 실제 공개 댓글·원격 CI 결과는 #16과 PR #19에서 확인하고, 인수 전에는 OPEN/Draft를 유지합니다.
+
+**PR #19 충돌 해소 (2026-11-09):** 인증 #21이 이미 병합된 main `1b37bc2`를 이 작업 브랜치에 반영했습니다. 공유 브랜치의 이력을 재작성하지 않고 main을 병합해 force push 금지를 지켰습니다. 서버272개·Python7개·가상 HTTP96건과 실제 서버 발급 토큰 HTTP16건을 통과했습니다. 새 호출자도 HTTP8회/가상검색1회/3곳·갱신/종료/폐기에 성공했습니다. 배포 JAR의 기본404/무인증·위조401, 토큰·H2 재시작·권한·LIVE 차단을 함께 보존했습니다. 미리보기 초안 metadata는 현재 인증 계약1.1.0을 반영하며 기존 v1 경로/스키마는 유지합니다. #16/#26 화면·#1 ETA·#11 데이터 인수는 남아 Draft입니다. 아래 미병합/1.0.0/이전 테스트 수는 당시 이력입니다. main 또는 타인 PR에 대한 병합/수정은 하지 않았고, 실제 외부 검색·전화·AI·유료 작업은 추가0회입니다.
+
+
+**최신 #16 후속 (2026-11-08):** [#21 인증 후보 연동과 호출자](../docs/REC05_TOKEN_INTEGRATION.md)를 먼저 읽습니다. `preview-session-demo.py`는 #21+#19가 함께 있는 loopback MOCK/1.1.0 서버용이며 토큰은 메모리에서만 사용하고 1회 가상 검색 후 갱신·종료·폐기합니다. 단독 서버244/Python7과 임시 통합 서버271·토큰HTTP16건·신규호출자8요청/가상검색1회의 성공을 구분합니다. #19 코드 `5b8e874` 원격 3개 검사 통과, #21 head `8484a04`는 실패 검사를 한 번 재실행해도 Gradle 타임아웃/504로 테스트 전 실패했습니다. #21 코드/본문·main 변경이나 병합은 없습니다. #19 자체는 여전히 기본 비활성·v1 1.0.0입니다. 인증 통합 후 status 버전 테스트는 OpenAPI를 읽어 대조합니다. #16 OPEN·PR #19 Draft, 실제 장소/전화/AI/유료 추가 실행 0회입니다.
+
+**최신 #16 첫 단계 (2026-11-07):** 브랜치 `feat/16-place-preview-integration`은 main `9518b6a` 기준입니다. [HTTP 계약 초안·MOCK 통합](../docs/REC05_PREVIEW_API.md)을 먼저 읽습니다. 기본 비활성 실험 API 4개 연산, 가상 Principal 기반 owner 대조, 서버 244개·가상 HTTP 교환 96건의 초안 대조·JAR 404/401 및 기존 smoke/계약/LIVE 차단을 확인했습니다. 실제 인증은 #4, 화면은 #5, navigation freshness/ETA는 #1과 합의 전이며 #16은 OPEN·PR Draft입니다. 기본 v1/제품 MOCK 유지, 실제 장소/전화/AI/유료 작업 추가 0회입니다. `verify` 후 `check-contract.py --preview-exchanges`, `smoke-test.py --check-contract`로 재현합니다. Android는 이번 로컬 검증 대상이 아닙니다.
 ## 2026-11-10 #35/#38 통합과 #42 CI·문서 이력 복구
 
 - 사용자 승인으로 #35는4d65c01, #38은9ea227d에 squash merge됐고 #34/#37은 독립 검증/코드 준비 범위로 종료됐습니다. 실제 공급자 채택·기기/ETA·전화/유료 실행 인수는 별도입니다.
@@ -220,7 +275,6 @@
 - 최신 main 반영 후 문서 7개·로컬 링크 79개·계획 인수 ID 10개·개행/코드 블록·개인정보 패턴·명명 규칙·diff 정적 검사를 통과했습니다. 런타임 코드는 변경하지 않았고 Gradle/기기 테스트는 로컬에서 새로 실행하지 않았습니다. 기존 OPEN PR의 검증과 이번 문서 검사를 구분합니다.
 
 **REC-08 #28 (2026-11-09):** [후보 추천·질문 계획](../docs/REC08_RECOMMENDATION_PLAN.md)의 순수 평가기·MOCK 실행 예제·별도 JSON Schema를 추가했습니다. 최대3개 후보에 추천 근거·누락 정보·UNKNOWN 질문을 반환하고 bookable/발신 승인은 false입니다. Java268개(기반228+신규40)·계약3문서·부적합변형8개·JAR 인증/MOCK/H2 재시작/LIVE 차단 검증을 통과했습니다. 당시 검증 기준은 인증 #21이 병합된 main 1b37bc2입니다. #19의 main 충돌은 2026-11-09 별도 작업에서 해소했고 #16/#26 제품 화면 연결은 별도 인수입니다. 추가 실제 검색/전화/AI/비용 작업0회이며 #11/#16–18의 완료를 의미하지 않습니다. #29는 사용자 승인 후 c482baa로 main에 병합됐고 #28은 종료됐습니다.
-
 ## BE-02 #20 작업 브랜치 — 2026-11-08 (PR 제출·미병합)
 
 - `/api/v1`에 앱 설치별 익명 주체·토큰 발급/검증/갱신/폐기를 구현했다. 사용자는 로그인하지 않는다. 갱신 후 주체는 유지하고, 같은 갱신 토큰+요청 키는 120초 내 동일 응답을 재생한다. 토큰 원문을 DB에 저장하지 않는다.

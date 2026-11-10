@@ -6,7 +6,7 @@ plugins {
 // Source checks remain available to server contributors without an Android SDK.
 spotless {
     java {
-        target("android/*/src/**/*.java")
+        target("android/*/src/**/*.java", "scripts/fixtures/*.java")
         googleJavaFormat("1.28.0")
     }
     kotlin {

@@ -1,0 +1,47 @@
+services:
+  preview:
+    build:
+      context: .
+      dockerfile: docker/preview/Dockerfile
+    image: arriveon-preview:local
+    init: true
+    user: "10001:10001"
+    command:
+      - "${PREVIEW_FIXTURE:-RESULTS}"
+      - "18082"
+      - work/preview-data/auth
+      - --container
+    ports:
+      - "127.0.0.1:${PREVIEW_PORT:-18082}:18082"
+    volumes:
+      - preview-auth:/app/work/preview-data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - preview
+    healthcheck:
+      test:
+        - CMD
+        - java
+        - -Xmx64m
+        - -cp
+        - "classes:lib/*"
+        - ai.pleos.assistant.PreviewAcceptanceHealthCheck
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+    stop_grace_period: 20s
+    restart: "no"
+
+volumes:
+  preview-auth:
+
+networks:
+  preview:
+    driver: bridge
