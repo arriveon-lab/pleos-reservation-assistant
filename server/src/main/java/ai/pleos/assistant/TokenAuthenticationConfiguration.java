@@ -82,7 +82,8 @@ class TokenAuthenticationConfiguration {
     registration.addUrlPatterns(
         "/api/v1/*",
         "/api/experimental/place-previews/*",
-        "/api/experimental/web-recommendations/*");
+        "/api/experimental/web-recommendations/*",
+        "/api/experimental/destination-recommendations/*");
     registration.setOrder(Ordered.LOWEST_PRECEDENCE - 20);
     registration.setAsyncSupported(true);
     return registration;

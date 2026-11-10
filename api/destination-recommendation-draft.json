@@ -1,0 +1,176 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Destination public catalog shortlist — experimental contract",
+    "version": "0.1.0-draft",
+    "description": "Disabled by default. Requires an explicitly supplied local public catalog; no Kakao, GPT, telephone, or booking calls. The three candidates are unconfirmed listings, never verified recommendations or reservation authority."
+  },
+  "servers": [{ "url": "http://127.0.0.1:8080" }],
+  "paths": {
+    "/api/experimental/destination-recommendations": {
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StartRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Transient task accepted; status may already have changed",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Started" } } }
+          },
+          "400": { "description": "Invalid request or stale generation" },
+          "401": { "description": "Bearer token required" },
+          "429": { "description": "In-memory task capacity reached" }
+        }
+      }
+    },
+    "/api/experimental/destination-recommendations/{id}": {
+      "get": {
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped transient poll. Polling never starts another provider request.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Snapshot" } } }
+          },
+          "401": { "description": "Bearer token required" },
+          "404": { "description": "Unknown, foreign-owner, or expired task" }
+        }
+      }
+    },
+    "/api/experimental/destination-recommendations/views/{viewId}": {
+      "delete": {
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "viewId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Invalidate this owner's current view; candidate result is cleared" },
+          "401": { "description": "Bearer token required" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer" }
+    },
+    "schemas": {
+      "StartRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["viewId", "generation", "destination", "party", "maxWaitMinutes", "requiredFeatures", "preferredCuisines"],
+        "properties": {
+          "viewId": { "type": "string", "format": "uuid" },
+          "generation": { "type": "integer", "minimum": 1 },
+          "destination": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "latitude", "longitude"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+              "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+              "longitude": { "type": "number", "minimum": -180, "maximum": 180 }
+            }
+          },
+          "party": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["adults", "children"],
+            "properties": {
+              "adults": { "type": "integer", "minimum": 1, "maximum": 20 },
+              "children": { "type": "integer", "minimum": 0, "maximum": 10 }
+            }
+          },
+          "maxWaitMinutes": { "type": "integer", "minimum": 0, "maximum": 120 },
+          "requiredFeatures": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "enum": ["childFriendly", "parking", "highChair", "stepFreeAccess"] },
+            "description": "Server always adds parking even when omitted."
+          },
+          "preferredCuisines": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 30 }
+          }
+        }
+      },
+      "Started": {
+        "type": "object",
+        "required": ["taskId", "state"],
+        "properties": {
+          "taskId": { "type": "string", "format": "uuid" },
+          "state": { "$ref": "#/components/schemas/JobState" }
+        }
+      },
+      "JobState": {
+        "type": "string",
+        "enum": ["QUEUED", "RUNNING", "RESULTS", "FAILED", "CANCELLED"]
+      },
+      "Snapshot": {
+        "type": "object",
+        "required": ["id", "state", "validUntil", "source"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "state": { "$ref": "#/components/schemas/JobState" },
+          "validUntil": { "type": "string", "format": "date-time" },
+          "result": {
+            "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/Plan" }]
+          },
+          "source": { "$ref": "#/components/schemas/Source" }
+        }
+      },
+      "Source": {
+        "type": "object",
+        "required": ["datasetId", "catalogUrl", "licenseUrl", "attribution", "acquiredAt"],
+        "properties": {
+          "datasetId": { "type": "string", "const": "OA-18655" },
+          "catalogUrl": { "type": "string", "format": "uri" },
+          "licenseUrl": { "type": "string", "format": "uri" },
+          "attribution": { "type": "string" },
+          "acquiredAt": { "type": "string", "format": "date-time" },
+          "sourceSnapshotAt": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "Plan": {
+        "type": "object",
+        "description": "PlaceRecommendationPlanner.Plan. Candidate count 0–3. Every candidate is NEEDS_CONFIRMATION and bookable=false.",
+        "required": ["state", "provider", "requirements", "scannedRecords", "rejectedRecords", "duplicateRecords", "outsideWindowRecords", "candidates"],
+        "properties": {
+          "state": { "type": "string", "enum": ["RESULTS", "EMPTY", "FILTERED", "FAILED"] },
+          "provider": { "type": "string", "const": "SEOUL_OPEN_DATA" },
+          "requirements": { "type": "object" },
+          "listingFetchedAt": { "type": ["string", "null"], "format": "date-time" },
+          "displayValidUntil": { "type": ["string", "null"], "format": "date-time" },
+          "scannedRecords": { "type": "integer" },
+          "rejectedRecords": { "type": "integer" },
+          "duplicateRecords": { "type": "integer" },
+          "outsideWindowRecords": { "type": "integer" },
+          "failure": { "type": ["string", "null"] },
+          "candidates": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "required": ["ordinal", "name", "straightLineDistanceMeters", "qualification", "bookable", "inquiryDispatchAllowed", "reasons", "missingInformation", "questions"],
+              "properties": {
+                "ordinal": { "type": "integer", "minimum": 1, "maximum": 3 },
+                "name": { "type": "string" },
+                "cuisine": { "type": ["string", "null"] },
+                "address": { "type": ["string", "null"] },
+                "straightLineDistanceMeters": { "type": "integer" },
+                "qualification": { "type": "string", "const": "NEEDS_CONFIRMATION" },
+                "bookable": { "type": "boolean", "const": false },
+                "inquiryDispatchAllowed": { "type": "boolean", "const": false },
+                "reasons": { "type": "array", "items": { "type": "string" } },
+                "missingInformation": { "type": "array", "items": { "type": "string" } },
+                "questions": { "type": "array", "items": { "type": "object" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

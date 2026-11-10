@@ -54,6 +54,10 @@ public final class PublicDestinationRecommendationService implements AutoCloseab
     jobs.invalidate(owner, viewId);
   }
 
+  public SeoulPlaceCatalog provenance() {
+    return places.provenance();
+  }
+
   @Override
   public void close() {
     jobs.close();

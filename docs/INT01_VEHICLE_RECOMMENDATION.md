@@ -55,6 +55,9 @@
 
 ## 현재 구현 진행
 
+- 목적지 공공 catalog 추천 작업의 별도 기본 비활성 HTTP 초안을 추가했다. `app.destination-recommendations.enabled=true`와 명시적 `catalog-path`가 있어야 시작하며, 기존 인증 Bearer와 소유자별 폴링·no-store를 적용한다. `POST /api/experimental/destination-recommendations`는 주차를 필수 조사 조건으로 더해 최대 3개 후보의 비동기 작업을 접수한다. `GET /{id}`는 작업 상태·미확인 후보·공공 데이터 출처/라이선스/snapshot 시각을 반환하며, `DELETE /views/{viewId}`는 결과를 즉시 무효화한다. 같은 view의 취소된 세대가 다시 접수되지 않도록 막는다. 현재 검증은 가상 catalog이고 실제 원문·GPT·전화·Android 호출은 없다. [HTTP 초안](../api/destination-recommendation-draft.json)과 [가상 요청](../api/examples/destination-recommendation-request.json)을 참고한다.
+- 이 단계의 3곳은 거리 기반 공공 **목록 후보**이며 후기·주차·아기의자·무계단이 확인된 추천이 아니다. 각 후보는 `NEEDS_CONFIRMATION`, `bookable=false`, `inquiryDispatchAllowed=false`다. 실제 목적지별 3곳과 전화 확인 후 최종 추천으로 승격하려면 #11의 공급 snapshot/전달 정책, GPT 모델·호출 승인, #43 조건 문의 결과 계약 및 #1 목적지 연관성 인수가 남아 있다.
+
 - 웹추천 요청의 `HIGH_CHAIR`·`STEP_FREE_ACCESS`를 기존 `CHILD_FRIENDLY`와 분리했다. 명시적 근거가 없으면 UNKNOWN으로 두며 전화 문의 대상이다. 실제 GPT 모델/계정 호출 검증은 하지 않았다.
 - 추천 계획·미리보기 계약도 `highChair`·`stepFreeAccess`를 별도 필수 조건과 전화 확인 질문으로 수용한다. 웹사이트 상세 정보만으로 이 두 조건을 충족 처리하지 않으며 직접 확인이 남는다.
 - GPT 웹추천의 일회성 permit에 출력 토큰 상한을 명시할 수 있게 했다(기본 3072, 허용 256~3072). 저비용 가상 검증은 1024 한도를 쓰는 요청 본문을 확인했다.

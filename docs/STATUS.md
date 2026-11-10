@@ -1,5 +1,10 @@
 # 구현·검증 현황
 
+## 2026-11-10 INT-01 목적지 목록 3곳 HTTP 초안 (#52)
+
+- PR #53에 기본 비활성 공공 catalog 작업 API(POST 접수/GET 폴링/DELETE 화면 무효화)를 추가했습니다. 명시적 로컬 catalog 경로가 없으면 활성화할 수 없고, Bearer·소유자·no-store·취소 후 구세대 재접수 차단을 적용했습니다. 주차는 항상 필수 조사 조건이며, 결과에는 공공 출처/라이선스/snapshot 시각을 포함합니다.
+- 가상 catalog 3곳의 접수/폴링/인증·소유권·무효화를 테스트했고 `./gradlew -PincludeAndroid=false format verify`를 통과했습니다. 실제 매장 데이터, 후기/GPT 조건 판정, 전화 확인·예약, 제품 Android 호출은 아직 없으므로 **실제 추천 3곳 완료로 세지 않습니다.** 실제 유료 API/전화 호출은 이번 변경에서 0회입니다.
+
 ## 2026-11-10 VOICE-01 Telkit 채택 (#3)
 
 - 팀이 전화 회선으로 Telkit을 사용하기로 결정했습니다(사용자 전달). [업체 검토](calls/VENDOR_REVIEW.md#0-결정-telkit-채택-2026-11-10)에 Telkit 공개 문서·요금·약관을 다시 확인해 LiveKit SIP 연결 조건, 계정당 번호 1개, 동시 4통·발신 하루 500통, 발신 웹훅 없음, 녹음 없음, 요금을 정리했습니다. [INTEGRATIONS](INTEGRATIONS.md#전화-사업자-비교)·ISSUE_GUIDE·PLAN·목차의 미선정 표기를 고쳤습니다.

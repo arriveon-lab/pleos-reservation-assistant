@@ -75,7 +75,9 @@ public final class RecommendationJobRegistry<T> implements AutoCloseable {
     if (jobs.size() >= MAX_JOBS) throw new IllegalStateException("RECOMMENDATION_CAPACITY");
     View view = new View(owner, viewId);
     Job<T> previous = currentByView.get(view);
-    if (previous != null && generation <= previous.generation)
+    // An invalidated view still owns its generation until the job expires. Otherwise a delayed
+    // request could resurrect the same destination after the screen has already closed.
+    if (jobs.values().stream().anyMatch(j -> j.view.equals(view) && generation <= j.generation))
       throw new IllegalArgumentException("Stale recommendation generation");
     Job<T> job = new Job<>(view, generation, clock.instant().plus(LIFETIME));
     if (previous != null) cancel(previous);

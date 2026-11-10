@@ -1,0 +1,13 @@
+{
+  "viewId": "11111111-1111-4111-8111-111111111111",
+  "generation": 1,
+  "destination": {
+    "name": "가상 서울숲",
+    "latitude": 37.544,
+    "longitude": 127.055
+  },
+  "party": { "adults": 2, "children": 1 },
+  "maxWaitMinutes": 15,
+  "requiredFeatures": ["highChair", "stepFreeAccess"],
+  "preferredCuisines": []
+}
