@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Explicit device check: requires automotive baseline and a connected MOCK test installation. */
 public final class DrivingDeviceChecks extends Instrumentation {
-  private boolean narrow;
+  private int windowWidth;
   private boolean dashboard;
   private boolean previewBoundary;
   private boolean recoveryFailure;
@@ -22,7 +22,12 @@ public final class DrivingDeviceChecks extends Instrumentation {
   @Override
   public void onCreate(Bundle arguments) {
     super.onCreate(arguments);
-    narrow = "true".equals(arguments.getString("narrow"));
+    windowWidth =
+        Integer.parseInt(
+            arguments.getString(
+                "windowWidth", "true".equals(arguments.getString("narrow")) ? "840" : "0"));
+    if (windowWidth != 0 && (windowWidth < 600 || windowWidth > 1682))
+      throw new IllegalArgumentException("Unsupported test window width");
     previewBoundary = "true".equals(arguments.getString("previewBoundary"));
     expectedFontScale = Float.parseFloat(arguments.getString("fontScale", "0"));
     recoveryFailure = "true".equals(arguments.getString("recoveryFailure"));
@@ -60,12 +65,17 @@ public final class DrivingDeviceChecks extends Instrumentation {
               .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
       ReservationActivity initial = (ReservationActivity) startActivitySync(intent);
       ReservationActivity activity;
-      if (narrow) {
+      if (windowWidth > 0
+          && initial.getResources().getConfiguration().screenWidthDp != windowWidth) {
         ActivityMonitor resize = addMonitor(ReservationActivity.class.getName(), null, false);
         try (android.os.ParcelFileDescriptor resultFd =
                 getUiAutomation()
                     .executeShellCommand(
-                        "am task resize " + initial.getTaskId() + " 1695 90 2535 1300");
+                        "am task resize "
+                            + initial.getTaskId()
+                            + " "
+                            + (2535 - windowWidth)
+                            + " 90 2535 1300");
             java.io.InputStream input =
                 new android.os.ParcelFileDescriptor.AutoCloseInputStream(resultFd)) {
           input.readAllBytes();
@@ -73,8 +83,9 @@ public final class DrivingDeviceChecks extends Instrumentation {
         activity = (ReservationActivity) waitForMonitorWithTimeout(resize, 5000);
         removeMonitor(resize);
         check(
-            activity != null && activity.getResources().getConfiguration().screenWidthDp == 840,
-            "narrow window not applied");
+            activity != null
+                && activity.getResources().getConfiguration().screenWidthDp == windowWidth,
+            "requested window width not applied");
       } else activity = initial;
       if (expectedFontScale > 0) {
         check(

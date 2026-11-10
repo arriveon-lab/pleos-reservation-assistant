@@ -1,5 +1,11 @@
 # 구현·검증 현황
 
+## 2026-11-10 현재 Pleos 창 경계 검사 완료
+
+#25/#39: 동일 최신 제품 APK에서1682/1100/1099dp 주간100%,840dp 야간100%·150%의5조합 기기 검사 PASS. BOOKING/CHANGE UNKNOWN 상태별 렌더 이후 실측 검사와 너비 인자를 기기 테스트에 추가했다. 실제 UNKNOWN 하단 조회 버튼 스크롤 접근·보관 journal 전체 동일 확인. 제품/API 변경 없음, format/verifyAll PASS; smoke는 이번 재실행 아님. 상세 해시·절차·초기 실패·증거는 docs/UX39_VEHICLE_UI.md 최신 절.
+
+현재 환경에서 가능한 위 검사는 완료. OEM 전체 Connect-S/W/실제 주행 신호/물리 회전은 미검증이며 #25 기존 협업 요청 대기, 일반 UNKNOWN 종료는 #4 서버 계약 대기다. #19 통합·#40 공동 인수와 전체 #39 완료로 확대하지 않는다. 서버/앱/원래 글꼴·주간·1682dp 창 복원, OPEN/Draft 유지.
+
 ## 2026-11-10 일반 UNKNOWN 조회 대조와 보존
 
 #26: 예약/연결 통화의 참조·목적 검증과 전체 GET/저장 성공 후 상태 교체, UNKNOWN 조회 전용·종료 미지원 안내를 구현했다. 부분 실패/404/저장 실패에 기존 상태와 pending을 보존한다. UX94개 결과·format/verifyAll/MOCK smoke·기기 dashboard PASS. Pleos 실제 CHANGE/UNKNOWN 조회/단절 복구/재실행 후 journal 전체 동일, 원21:19/요청21:34/0원 유지. BOOKING UNKNOWN·404·저장 실패 등은 fixture 검증이다.

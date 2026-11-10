@@ -133,6 +133,9 @@ final class DashboardChecks {
                                       : R.string.call_unknown))))
                 throw new AssertionError("Booking mislabeled as inquiry");
             });
+        runner.waitForIdleSync();
+        Thread.sleep(300);
+        main(runner, () -> VehicleUiChecks.layout(activity.getWindow().getDecorView()));
         capture(runner, "guidance-" + status.toLowerCase(java.util.Locale.ROOT));
       }
       main(
@@ -164,6 +167,10 @@ final class DashboardChecks {
                 || !contains(root, activity.getString(R.string.unknown_refresh)))
               throw new AssertionError("Unknown change read-only guidance missing");
           });
+      runner.waitForIdleSync();
+      Thread.sleep(300);
+      main(runner, () -> VehicleUiChecks.layout(activity.getWindow().getDecorView()));
+      capture(runner, "change-unknown");
       main(
           runner,
           () -> {

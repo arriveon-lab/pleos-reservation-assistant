@@ -190,3 +190,27 @@ format·verifyAll·MOCK smoke PASS. 서버/UX JVM은 UP-TO-DATE, NO-SOURCE는 �
 
 - [#40 시연 환경 준비](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/40#issuecomment-6741207611): 기존 OwnershipSmokeApplication은 모든 요청에 같은 운영자 주체를 주입하므로 일반 앱 인증과 운영자 분리를 그대로 검증할 수 없다. 서버 담당의 별도 테스트 운영자 연결·callId/eventId 대조·outcome 예제·시작/종료 명령이 선행한다. 문의→명시 승인→PENDING→수락→GET·UNKNOWN/중복/백그라운드/0원 변경 공동 표를 전달했다.
 - [#16 공동 인수 항목](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185): 인원 범위 문서 정합성·집합 비교·UNKNOWN/ordinal·상태별 MOCK fixture·취소/늦은 응답·동일 주체 갱신을 함께 확인한다. 서버 담당의 계약/fixture 확인과 양측 동일 버전 실행이 선행한다. 로컬 초안 검증을 공동 인수 완료로 세지 않는다.
+
+## 2026-11-10 최신 APK 창 경계·UNKNOWN 추가 기기 검사
+
+#25/#39에서 독립적으로 실행 가능한 현재 Pleos 이미지의 창 경계 검사를 마쳤다. 제품 APK는 UNKNOWN 보존 구현9d071ef와 동일하며 설치 APK SHA256 `bc59b7d3d4b0ddcedf14fbd576c725d3bd37d4f3e4bde69eae4133ff1a218c7f`를 기기에서 대조했다. 이번 변경은 기기 테스트만이다.
+
+DrivingDeviceChecks의 `-e windowWidth <dp>` 인자로 실제 Activity 너비를 검증한다(기존 narrow=true=840 호환). 이미 목표 너비이면 재생성 이벤트를 기다리지 않는다. DashboardChecks에 렌더 완료 후 BOOKING PENDING/CONFIRMED/REJECTED/UNKNOWN 및 CHANGE UNKNOWN 텍스트 실측 검사를 추가했다. 초기1682dp 검사는 동일 너비에서 불필요하게 재생성을 기다려 실패했고, 테스트를 수정한 뒤 아래 전 항목을 재실행했다.
+
+| 실제 Activity 너비/높이 | 글꼴·테마 | 기대/실제 |
+| --- | --- | --- |
+| 1682×1210dp | 100% 주간 | 두 열·입력/상태·글자/버튼 검사 PASS |
+| 1100×1210dp | 100% 주간 | 두 열 전환 경계·상태 실측 PASS |
+| 1099×1210dp | 100% 주간 | 한 열 전환 경계·상태 실측 PASS |
+| 840×1210dp | 100% 야간 | 한 열·상태 실측 PASS |
+| 840×1210dp | 150% 야간 | 확대 글꼴·상태 실측 PASS |
+
+모든 조합에서 대시보드 인원 입력·처리 중 차단·예약 단계 안내·UNKNOWN 조회/종료 미지원 안내·주입 제한/조회 실패 차단을 검사했다. UI fixture는 메모리에만 넣고 종료 시 원 상태로 복원했다. 테스트 전후 journal JSON 전체 동일. 실제 보관 CHANGE UNKNOWN의 확정21:19/요청21:34/0원을 유지했고, 840dp/150%에서 실제 창 내부 swipe 후 하단 조회 버튼(72dp) 접근을 XML/PNG로 확인했다. 기기 캡처를 직접 열어1100dp 두 열/840dp 확대 상태를 확인했다. 신규 예약·변경 POST/결과 주입/실제 전화·유료 호출 없음.
+
+환경은 Pleos Connect2.1.0/API34·user10·density160·jointvalidation 기존 설치, 표준 MOCK18082/8080 reverse다. 각 창은 shell task resize이며 OEM의 모든 Connect-S/W 창 배치 인수가 아니다. font_scale의 원래 null, 주간, 원래1682dp 창으로 복원했고 서버/앱을 실행 상태로 유지했다.
+
+재현: 기존 인증된 MOCK 설치에서 `adb shell am instrument -w -e dashboard true -e windowWidth 840 -e fontScale 1.5 ai.pleos.assistant.mock.jointvalidation.test/ai.pleos.assistant.app.DrivingDeviceChecks`. 글꼴/user10과 시스템 테마는 먼저 설정하며, 완료 후 원래 값으로 복원한다. 예상 결과 PASS이며 새 인증/업무 명령을 생성하지 않는다.
+
+증거는 로컬 Git 제외 `work/ux25-final/{matrix.json,*.log}`, `captures/ux25-final/`(각 조합 dashboard-ready/guidance-unknown/change-unknown, actual-unknown-scrolled.png). 보관 journal/기기 APK는 공개하지 않는다. format·최종 verifyAll PASS(UX94개 기존 결과는 캐시/UP-TO-DATE 포함, 기기5조합은 실제 실행). 제품/API 변경이 없어 smoke는 이번에 재실행하지 않았으며 직전 제품 검증과 구분한다. Lint 오류0·기존4경고 유지.
+
+남은 실제 moving callback/권한·서비스 장애, 다른 Connect-S/W 이미지와 OEM 전체 창 조합·물리 회전/거리 가독성은 현재 환경으로 대체 검증할 수 없다. 기존 #25 협업 요청에 새 답변은 없고 #4의 일반 UNKNOWN 종료 계약도 새 답변이 없다. #39 전체 인수 체크를 올리지 않는다. #19 서버 계약 통합·#40 공동 시연·PR 중복 정리/병합은 별개로 남는다. OPEN/Draft와 담당을 유지한다.
