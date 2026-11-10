@@ -1,0 +1,425 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "state",
+    "provider",
+    "requirements",
+    "listingFetchedAt",
+    "displayValidUntil",
+    "scannedRecords",
+    "rejectedRecords",
+    "duplicateRecords",
+    "outsideWindowRecords",
+    "failure",
+    "candidates"
+  ],
+  "properties": {
+    "state": {
+      "enum": [
+        "RESULTS",
+        "EMPTY",
+        "FILTERED",
+        "FAILED"
+      ]
+    },
+    "provider": {
+      "enum": [
+        "MOCK",
+        "KAKAO"
+      ]
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "party",
+        "maxWaitMinutes",
+        "requiredFeatures",
+        "preferredCuisines"
+      ],
+      "properties": {
+        "party": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "adults",
+            "children"
+          ],
+          "properties": {
+            "adults": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "children": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            }
+          }
+        },
+        "maxWaitMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 120
+        },
+        "requiredFeatures": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "childFriendly",
+              "parking"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "preferredCuisines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30,
+            "pattern": "\\S"
+          },
+          "minItems": 0,
+          "maxItems": 8,
+          "uniqueItems": true
+        }
+      }
+    },
+    "listingFetchedAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "displayValidUntil": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "scannedRecords": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 15
+    },
+    "rejectedRecords": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "duplicateRecords": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 15
+    },
+    "outsideWindowRecords": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 15
+    },
+    "failure": {
+      "anyOf": [
+        {
+          "enum": [
+            "AUTHENTICATION",
+            "FORBIDDEN",
+            "RATE_LIMITED",
+            "TIMEOUT",
+            "CANCELLED",
+            "UPSTREAM_UNAVAILABLE",
+            "INVALID_RESPONSE",
+            "INVALID_QUERY"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ordinal",
+          "name",
+          "cuisine",
+          "address",
+          "straightLineDistanceMeters",
+          "qualification",
+          "bookable",
+          "inquiryDispatchAllowed",
+          "reasons",
+          "missingInformation",
+          "questions"
+        ],
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cuisine": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "straightLineDistanceMeters": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20030
+          },
+          "qualification": {
+            "const": "NEEDS_CONFIRMATION"
+          },
+          "bookable": {
+            "const": false
+          },
+          "inquiryDispatchAllowed": {
+            "const": false
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "WITHIN_SEARCH_WINDOW",
+                "PREFERRED_CUISINE_MATCH"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "missingInformation": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "CUISINE",
+                "ADDRESS",
+                "PHONE"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "field",
+                "scope",
+                "certainty",
+                "arrivalTimeRequired",
+                "prompt"
+              ],
+              "properties": {
+                "field": {
+                  "enum": [
+                    "childFriendly",
+                    "parking",
+                    "arrivalWaitMinutes",
+                    "reservationAvailable"
+                  ]
+                },
+                "scope": {
+                  "enum": [
+                    "GENERAL",
+                    "ARRIVAL"
+                  ]
+                },
+                "certainty": {
+                  "const": "UNKNOWN"
+                },
+                "arrivalTimeRequired": {
+                  "type": "boolean"
+                },
+                "prompt": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "field": {
+                        "enum": [
+                          "arrivalWaitMinutes",
+                          "reservationAvailable"
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "scope": {
+                        "const": "ARRIVAL"
+                      },
+                      "arrivalTimeRequired": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "scope": {
+                        "const": "GENERAL"
+                      },
+                      "arrivalTimeRequired": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "minItems": 2,
+            "maxItems": 4
+          }
+        }
+      },
+      "minItems": 0,
+      "maxItems": 3
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REC-08 transient listing recommendation plan — draft, no product HTTP endpoint",
+  "description": "Listing-only shortlist. UNKNOWN questions never authorize calling or booking. Times describe listing receipt/display validity, not merchant fact freshness or permission to retain data.",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "RESULTS"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "candidates": {
+            "minItems": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "candidates": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "FAILED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "failure": {
+            "type": "string"
+          },
+          "listingFetchedAt": {
+            "type": "null"
+          },
+          "displayValidUntil": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "failure": {
+            "type": "null"
+          },
+          "listingFetchedAt": {
+            "type": "string"
+          },
+          "displayValidUntil": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "EMPTY"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "scannedRecords": {
+            "const": 0
+          },
+          "rejectedRecords": {
+            "const": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "FILTERED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "scannedRecords": {
+            "minimum": 1
+          },
+          "outsideWindowRecords": {
+            "minimum": 1
+          }
+        }
+      }
+    }
+  ]
+}

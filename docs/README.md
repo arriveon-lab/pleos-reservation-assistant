@@ -17,18 +17,24 @@
 | --- | --- | --- |
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
 | [PLAN](PLAN.md) | 전체 범위·일정·5명 역할·통합 순서 | 기존 개발 계획 |
+| [전화예약 에이전트 개발 계획](PHONE_RESERVATION_AGENT_PLAN.md) | 송수신·회신·변경, 사용자·동승자 조건과 예약 사본, P01~P11 일정·인수 | 팀 검토용 제안, API/DB·실전화 미적용 |
 | [ISSUE_GUIDE](ISSUE_GUIDE.md) | 각 이슈의 입력/출력·파일 경계·완료 조건 | 작업 해설, 이슈 상태는 GitHub가 기준 |
 | [REC-01 상세 계획](REC01_PLAN.md) | #2 기반 PR과 후속 #11–13의 범위·브랜치·계약·검증 | PR #10 통합·#2 CLOSED, 실연동 미완료 |
 | [REC-01 실제 연동 검토](REC01_INTEGRATION.md) | 공식 저장 제한·앱 설정 결과·HTTP 경계·재전송 제어 | 무료 쿼터 설정·HTTP loopback 검증, 실제 API 미실행 |
 | [REC-04 실제 검색 시연](REC04_LIVE_SEARCH.md) | #13 저장 없는 독립 1회 장소 조회·키/무료 설정·표시·실행 기록 | 실제 1회·3곳 표시/쿼터 확인, 제품 예약과 분리 |
 | [REC-01 서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md) | 미리보기/예약 분리·IO/중복·출처/모드·후속 인수 조건 | 팀 합의 전 제안, API/DB 미적용 |
 | [REC-03 세션 관리와 실행 경계](REC03_PREVIEW.md) | #12 소유 scope·수명/상한·동시 합류·취소·H2 경계 | 전체 188개 검증, 인증/제품 API 미연결 |
+| [REC-08 후보 추천·질문 계획](REC08_RECOMMENDATION_PLAN.md) | 최대3개 후보·근거·기본 정보 누락·UNKNOWN 질문·가상 실행/계약 | 서버268개 검증, 제품 HTTP/화면 연결 전 |
+| [REC-11 웹 상세정보와 GPT 출처 검색](REC11_PLACE_DETAILS.md) | 매장 일치·구조화 웹 정보·출처/시각·남은 질문·일회성 GPT 연동 코드 | 가상 검증, 실제 유료/웹 호출과 제품 화면 연결 전 |
+| [REC-09 공공데이터 검증](REC09_SEOUL_DATA_VALIDATION.md) | #32 공식 명세39필드·전화/좌표/시각 검사·공개 표본5건·독립 도구 | 가상 테스트15개·공개 샘플 집계, 제품 공급자 채택 전 |
+| [REC-10 시범 지역 교차 검사](REC10_SEOUL_PILOT_VALIDATION.md) | #34 공식 상태 사전·HTTPS실제1000행·동일 행/중복/반경·취득 조건 | 가상40개, 실제 진단115행·원문 미저장, 제품 공급자 채택 전 |
 | [추천·장소 후속 작업](REC_FOLLOWUPS.md) | #12/#13 완료 범위와 #11/#16–18 담당·의존성·인수 조건 | 검증한 기반과 미완료 제품 연결 구분 |
 | [REC-06 자동 정리·실행 관리](REC06_LIFECYCLE.md) | #17 자동 만료·종료·장애 차단과 원장 검토안 | 서버211개 검증, 영속/다중 서버 정책 합의 전 |
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |
 | [연동 근거](INTEGRATIONS.md) | Pleos API 정책·ETA 증거·전화 PoC 조건 | 문서/정적 확인과 실행 확인 구분 |
+| [SDK 대체·단계별 연동](SDK_FALLBACK_PLAN.md) | 위치·사용자 음성의 표준 API 우선·어댑터 경계·미지원 처리·담당/인수 조건 | 2026-11-09 설계 결정, 새 런타임/기기 검증 전 |
 | [Android 환경](ANDROID_SETUP.md), [probe 사용법](../android/README.md) | SDK·APK·Pleos emulator·관측 절차 | 빌드와 기기 실행 구분 |
 | [GitHub 설정](GITHUB_SETUP.md) | 조직·main 보호·CI·팀원 시작 절차 | 기록된 설정 기준 |
 | [에이전트·검증 환경](AGENT_HARNESS.md) | 영역별 AGENTS와 공통 검사 명령 | 사람·에이전트 공통 |
