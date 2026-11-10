@@ -122,3 +122,5 @@ CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 31개 테스트를 실�
 여섯 번째 실전화의 4회 중단은 발화 이벤트 기준입니다. 실제 사용자의 끼어들기, 주변 말소리, 전달 손실의 원인을 모두 구분한 증거는 아닙니다. 현재 production worker는 VAD 기반이며 최소 발화 0.5초·최소 단어 0개 기본값을 씁니다. 무전사 오감지 복구 기본값은 켜져 있지만 주변 말이 실제 단어로 인식되면 그 경로와 다릅니다.
 
 [공식 조정 문서](https://docs.livekit.io/agents/logic/turns/tuning/)의 중단 길이/단어 기준과 맞장구 판별, [소음 처리 문서](https://docs.livekit.io/transport/media/noise-cancellation/)의 비음성 잡음 억제와 주화자 분리를 구분해 후속 평가합니다. 현재 전용 필터 미연결이며 이 문서는 활성화나 품질 보장을 뜻하지 않습니다. 필터별 적용 위치·호환·비용을 확인한 뒤 별도 승인된 실제 시험으로 검증합니다.
+
+상황별 구현 차이·우선순위·한국어/잡음/장애 검증안은 [소음·예외 대응 검토](../../../docs/PHONE_AGENT_RELIABILITY.md)를 참고합니다. 발화 종료 판단의 기본 audio TurnDetector와 production의 VAD 기반 끼어들기는 별개입니다.
