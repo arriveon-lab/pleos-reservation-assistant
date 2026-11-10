@@ -4,6 +4,7 @@
 
 - #53에 기본 비활성 `destination-recommendations` 실험 API를 추가했다. 명시적 공공 catalog 파일을 읽어 비동기 최대 3개 목록을 만들고 Bearer 인증 주체별 폴링과 화면 무효화를 제공한다. 주차 조사 조건은 서버에서 강제하고 출처/라이선스/snapshot 시각을 응답한다. 가상 catalog HTTP 테스트와 전체 서버 verify를 통과했다.
 - 이는 실제 후기/조건 검증 추천이 아니다. 공공 실제 snapshot 입력·GPT 웹 근거/비용 승인·전화 AI 조건 문의 계약·제품 앱 호출·#1 목적지 현재 경로 연관성 증거가 남는다. 모든 후보는 예약/전화 가능으로 승격되지 않으며 이번 변경의 GPT/전화 실제 호출은 0회다.
+- `PublicWebRecommendationJoiner`는 가상 웹 근거를 공공 catalog 상호·전체 주소에 맞춰 결합한다. 다른 지점/중복 식별/만료 결과/주차 조건 누락을 배제하며 UNKNOWN과 전화·예약 불가를 유지한다. 제품 비동기 작업에 GPT gateway를 연결하지는 않았다.
 
 ## 2026-11-10 VOICE-01 Telkit 채택 (#3)
 
