@@ -10,10 +10,11 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Joins cited web reports to an independently sourced public listing. A name/address match only
- * identifies a candidate for display; it does not verify a merchant, phone number, or condition.
+ * Joins independently searched web reports to a transient place listing. Listing names, addresses
+ * and phone numbers are never sent to GPT by this class. A name/address match only identifies a
+ * candidate for display; it does not verify a merchant, phone number, or condition.
  */
-public final class PublicWebRecommendationJoiner {
+public final class WebListingRecommendationJoiner {
   public enum State {
     RESULTS,
     NO_MATCH,
@@ -44,17 +45,19 @@ public final class PublicWebRecommendationJoiner {
 
   private final Clock clock;
 
-  public PublicWebRecommendationJoiner(Clock clock) {
+  public WebListingRecommendationJoiner(Clock clock) {
     this.clock = Objects.requireNonNull(clock);
   }
 
   public Result join(
       PlaceQuery query,
       PlaceSearchResult.Success listing,
+      PlaceSummary.Provider provider,
       WebRecommendation.Result web,
       Set<WebRecommendation.Need> requiredNeeds) {
     Objects.requireNonNull(query);
     Objects.requireNonNull(listing);
+    Objects.requireNonNull(provider);
     Objects.requireNonNull(web);
     Objects.requireNonNull(requiredNeeds);
     Instant now = clock.instant();
@@ -74,7 +77,7 @@ public final class PublicWebRecommendationJoiner {
     var byIdentity = new HashMap<String, PlaceSummary>();
     var ambiguous = new HashSet<String>();
     for (PlaceSummary place : listing.places()) {
-      if (place.provider() != PlaceSummary.Provider.SEOUL_OPEN_DATA
+      if (place.provider() != provider
           || place.address() == null
           || PlaceRecommendationPlanner.distance(query, place) > query.radiusMeters() + 30)
         continue;

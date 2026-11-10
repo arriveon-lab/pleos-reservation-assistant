@@ -2,7 +2,6 @@ package ai.pleos.assistant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.servlet.http.HttpServletRequest;
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -32,24 +31,16 @@ class DestinationRecommendationController {
 
   record Started(UUID taskId, RecommendationJobRegistry.State state) {}
 
-  record Source(
-      String datasetId,
-      String catalogUrl,
-      String licenseUrl,
-      String attribution,
-      Instant acquiredAt,
-      Instant sourceSnapshotAt) {}
-
   record Polled(
       UUID id,
       RecommendationJobRegistry.State state,
       PlaceRecommendationPlanner.Plan result,
-      Instant validUntil,
-      Source source) {}
+      java.time.Instant validUntil,
+      DestinationRecommendationService.SourceInfo source) {}
 
-  private final PublicDestinationRecommendationService service;
+  private final DestinationRecommendationService service;
 
-  DestinationRecommendationController(PublicDestinationRecommendationService service) {
+  DestinationRecommendationController(DestinationRecommendationService service) {
     this.service = service;
   }
 
@@ -96,19 +87,12 @@ class DestinationRecommendationController {
             .orElseThrow(
                 () ->
                     new ApiError(HttpStatus.NOT_FOUND, "RECOMMENDATION_NOT_FOUND", "추천 작업이 없습니다."));
-    var catalog = service.provenance();
     return new Polled(
         snapshot.id(),
         snapshot.state(),
         snapshot.result(),
         snapshot.validUntil(),
-        new Source(
-            catalog.datasetId(),
-            catalog.catalogUrl(),
-            catalog.licenseUrl(),
-            catalog.attribution(),
-            catalog.acquiredAt(),
-            catalog.sourceSnapshotAt()));
+        service.source());
   }
 
   @DeleteMapping("/views/{viewId}")

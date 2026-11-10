@@ -2,9 +2,9 @@
 
 ## 2026-11-10 INT-01 목적지 목록 API 초안 (#52)
 
-- #53에 기본 비활성 `destination-recommendations` 실험 API를 추가했다. 명시적 공공 catalog 파일을 읽어 비동기 최대 3개 목록을 만들고 Bearer 인증 주체별 폴링과 화면 무효화를 제공한다. 주차 조사 조건은 서버에서 강제하고 출처/라이선스/snapshot 시각을 응답한다. 가상 catalog HTTP 테스트와 전체 서버 verify를 통과했다.
-- 이는 실제 후기/조건 검증 추천이 아니다. 공공 실제 snapshot 입력·GPT 웹 근거/비용 승인·전화 AI 조건 문의 계약·제품 앱 호출·#1 목적지 현재 경로 연관성 증거가 남는다. 모든 후보는 예약/전화 가능으로 승격되지 않으며 이번 변경의 GPT/전화 실제 호출은 0회다.
-- `PublicWebRecommendationJoiner`는 가상 웹 근거를 공공 catalog 상호·전체 주소에 맞춰 결합한다. 다른 지점/중복 식별/만료 결과/주차 조건 누락을 배제하며 UNKNOWN과 전화·예약 불가를 유지한다. 제품 비동기 작업에 GPT gateway를 연결하지는 않았다.
+- #53에 기본 비활성 `destination-recommendations` 실험 API를 추가했다. 명시적 `source=KAKAO`에서는 기존 실시간 Kakao Local adapter를, `PUBLIC_CATALOG`에서는 별도 로컬 snapshot을 사용한다. 비동기 최대 3개 목록, Bearer 주체별 폴링과 화면 무효화를 제공한다. 주차 조사 조건은 서버에서 강제하고 출처를 응답한다. 가상 HTTP 테스트와 전체 서버 검증을 통과했다.
+- 이는 실제 후기/조건 검증 추천이 아니다. GPT 웹 근거/추가 호출 승인·전화 AI 조건 문의 계약·제품 앱 호출·#1 목적지 현재 경로 연관성 증거가 남는다. Kakao 전화번호는 결과·DB·GPT·전화로 보내지 않으며 모든 후보는 예약/전화 가능으로 승격되지 않는다.
+- `WebListingRecommendationJoiner`는 **독립적으로 검색한** 가상 웹 근거를 Kakao 또는 공공 목록의 상호·전체 주소에 맞춰 결합한다. 다른 지점/중복 식별/만료 결과/주차 조건 누락을 배제하며 UNKNOWN과 전화·예약 불가를 유지한다. 제품 비동기 작업에 GPT gateway를 연결하지는 않았다.
 
 ## 2026-11-10 VOICE-01 Telkit 채택 (#3)
 
@@ -19,7 +19,7 @@
 - 추천 계획/미리보기 schema·서버가 아기의자와 계단 없는 동선을 독립 필수 조건으로 받으며 직접 확인 질문을 생성한다. Java verify, schema, JAR HTTP smoke와 해당 head의 PR #53 GitHub Actions 6개가 모두 통과했다.
 - 사용자는 기존에 전달한 키 사용을 허용했고 GPT API 호출 전 모델·호출 범위·비용을 설명하고 확인받도록 요청했다. 승인된 1회 호출에만 키를 표준입력으로 전달했으며 저장하지 않았다.
 - 웹추천에 아기의자와 계단 없는 접근 동선을 별도 필수 조건으로 추가했다. 리뷰/일반 친화 표현만으로 YES로 전환하지 않으며 UNKNOWN은 전화 질문으로 남는다. 가상 parser/loopback 계약 검사를 통과했다.
-- `PublicDestinationRecommendationService`에서 공공 catalog 후보와 작업 폴링을 내부 연결했다. 가상 3개/소유권/시범 외 실패를 확인했으며 모든 후보는 UNKNOWN·예약/문의 불가다. 실제 catalog·HTTP·앱 연결은 아직 없다.
+- `DestinationRecommendationService`에서 공공 catalog/Kakao 후보와 작업 폴링을 연결했다. 가상 3개/소유권/시범 외 실패를 확인했으며 모든 후보는 UNKNOWN·예약/문의 불가다. 실험 HTTP는 붙었고 제품 앱 연결은 아직 없다.
 - `android/app`에 Pleos 목적지 수신/무효화와 출처 미확인 표시 경계를 추가했다. 추천·예약에 아직 전달하지 않는다. 로컬 Android SDK 부재로 `verifyAndroid`는 의존성 평가에서 중단돼 컴파일·Lint·APK/기기 확인으로 세지 않는다. 새 원격 CI에서 빌드 확인 필요.
 - 서버 `RecommendationJobRegistry`의 소유자 범위·세대 무효화·폴링 중복 실행 방지를 가상 테스트로 확인했다. 제품 HTTP/실제 worker는 미연결이다. #43에 조건 문의·예약·지연 통보 API 제안 댓글을 남겼으며 담당자 합의 전이다.
 - 공공 provider enum의 공유 스키마/미리보기 초안 불일치로 PR #53의 서버 계약 CI가 한 차례 실패했다. 두 schema를 맞춘 뒤 로컬 `smoke-test.py --check-contract`와 최신 head의 원격 CI가 통과했다. 과거 실패 실행은 이력에 남는다.

@@ -55,15 +55,17 @@
 
 ## 현재 구현 진행
 
-- 목적지 공공 catalog 추천 작업의 별도 기본 비활성 HTTP 초안을 추가했다. `app.destination-recommendations.enabled=true`와 명시적 `catalog-path`가 있어야 시작하며, 기존 인증 Bearer와 소유자별 폴링·no-store를 적용한다. `POST /api/experimental/destination-recommendations`는 주차를 필수 조사 조건으로 더해 최대 3개 후보의 비동기 작업을 접수한다. `GET /{id}`는 작업 상태·미확인 후보·공공 데이터 출처/라이선스/snapshot 시각을 반환하며, `DELETE /views/{viewId}`는 결과를 즉시 무효화한다. 같은 view의 취소된 세대가 다시 접수되지 않도록 막는다. 현재 검증은 가상 catalog이고 실제 원문·GPT·전화·Android 호출은 없다. [HTTP 초안](../api/destination-recommendation-draft.json)과 [가상 요청](../api/examples/destination-recommendation-request.json)을 참고한다.
-- 이 단계의 3곳은 거리 기반 공공 **목록 후보**이며 후기·주차·아기의자·무계단이 확인된 추천이 아니다. 각 후보는 `NEEDS_CONFIRMATION`, `bookable=false`, `inquiryDispatchAllowed=false`다. 실제 목적지별 3곳과 전화 확인 후 최종 추천으로 승격하려면 #11의 공급 snapshot/전달 정책, GPT 모델·호출 승인, #43 조건 문의 결과 계약 및 #1 목적지 연관성 인수가 남아 있다.
-- `PublicWebRecommendationJoiner`는 승인된 웹검색 결과와 공공 catalog 후보의 상호·전체 주소를 정확히 대조한다. 이름만 같은 다른 지점, 공공 catalog 안의 중복 식별, 만료된 결과, 주차 조건이 빠진 결과는 추천으로 합치지 않는다. 웹 근거는 매장 전화 확인이나 예약 가능성으로 승격되지 않으며 UNKNOWN은 그대로 남는다. 실제 GPT gateway 연결 전 가상 결과로만 검증했다.
+- 목적지 목록 추천 작업의 별도 기본 비활성 HTTP 초안을 추가했다. `app.destination-recommendations.enabled=true`와 명시적 `source=KAKAO`에서는 기존 실시간 Kakao Local adapter를 환경 키로 호출할 준비를 한다. `PUBLIC_CATALOG`는 별도 옵션이며 추천의 필수 선행 조건이 아니다. 기존 인증 Bearer와 소유자별 폴링·no-store를 적용한다. `POST /api/experimental/destination-recommendations`는 주차를 필수 조사 조건으로 더해 최대 3개 후보의 비동기 작업을 접수한다. `GET /{id}`는 작업 상태·미확인 후보·출처를 반환하며, `DELETE /views/{viewId}`는 결과를 무효화한다. 같은 view의 취소된 세대 재접수를 막는다. 현재 HTTP 검증은 가상 입력이며 이번 변경에서 Kakao·GPT·전화 실제 호출은 없다. [HTTP 초안](../api/destination-recommendation-draft.json)과 [가상 요청](../api/examples/destination-recommendation-request.json)을 참고한다.
+- 이 단계의 3곳은 거리 기반 **목록 후보**이며 후기·주차·아기의자·무계단이 확인된 추천이 아니다. 각 후보는 `NEEDS_CONFIRMATION`, `bookable=false`, `inquiryDispatchAllowed=false`다. 전화번호/예약용 공공 catalog 인수는 추천 3곳의 필수 선행 조건이 아니다. GPT 추가 호출 승인과 근거 품질, #1 목적지 연관성, #43 조건 문의/예약 결과 계약은 각각 별도 인수다.
+- `WebListingRecommendationJoiner`는 Kakao 결과를 GPT에 보내지 않고 **독립적으로 검색한** 웹 근거를 Kakao/공공 목록의 상호·전체 주소에 맞춰 대조한다. 이름만 같은 다른 지점, 목록 안 중복 식별, 만료 결과, 주차 요구 누락은 추천으로 합치지 않는다. 웹 근거는 매장 전화 확인이나 예약 가능성으로 승격되지 않으며 UNKNOWN은 그대로 남는다. 실제 GPT gateway 연결 전 가상 결과로만 검증했다.
+
+Kakao 옵션은 `app.destination-recommendations.enabled=true`, `app.destination-recommendations.source=KAKAO`, 환경변수 `KAKAO_REST_API_KEY`를 명시해야 한다. 기존 HTTP adapter는 JVM 시작 시 `-Djdk.httpclient.disableRetryConnect=true`와 `-Djdk.httpclient.redirects.retrylimit=1`을 요구한다. 옵션·키가 없으면 서버 시작을 실패시키며 기본 실행에서 실제 검색을 시작하지 않는다. 가상 검증은 Kakao 서버에 요청하지 않았다.
 
 - 웹추천 요청의 `HIGH_CHAIR`·`STEP_FREE_ACCESS`를 기존 `CHILD_FRIENDLY`와 분리했다. 명시적 근거가 없으면 UNKNOWN으로 두며 전화 문의 대상이다. 실제 GPT 모델/계정 호출 검증은 하지 않았다.
 - 추천 계획·미리보기 계약도 `highChair`·`stepFreeAccess`를 별도 필수 조건과 전화 확인 질문으로 수용한다. 웹사이트 상세 정보만으로 이 두 조건을 충족 처리하지 않으며 직접 확인이 남는다.
 - GPT 웹추천의 일회성 permit에 출력 토큰 상한을 명시할 수 있게 했다(기본 3072, 허용 256~3072). 저비용 가상 검증은 1024 한도를 쓰는 요청 본문을 확인했다.
 - 사용자 승인 범위에서 `gpt-6-luna` Responses API를 가상 서울 목적지·주차 조건으로 HTTP 요청 **1회** 실행했다. `store=false`, `max_output_tokens=1024`, `max_tool_calls=1`, 웹검색 문맥 low, 재시도 없음이었다. HTTP 200/완료, 입력 13,080·출력 534토큰(추론 517), 응답 내 `web_search_call` 항목 2개였다. 이 항목 수는 청구되는 검색 횟수와 같다고 단정하지 않는다. 결과의 주차는 UNKNOWN이고 인용 주석은 0개이며 URL도 HTTP라 제품 파서는 이를 검증된 추천으로 수용하지 않는다. 실제 매장·응답 원문·API 키를 저장소에 남기지 않았다. 추가 GPT 호출은 하지 않았다.
-- 공공 catalog의 내부 목적지 검색과 비동기 폴링을 합친 `PublicDestinationRecommendationService`를 추가했다. 아직 제품 HTTP/앱·실제 catalog·GPT/전화 경로에 연결하지 않았고 시범 지역 밖은 실패로 처리한다.
+- `DestinationRecommendationService`는 공공 catalog 또는 Kakao 목록과 비동기 폴링을 연결한다. 현재 실험 HTTP는 붙었지만 제품 Android·GPT/전화 경로는 아직 연결하지 않았다. 공공 옵션은 시범 지역 밖을 실패로 처리한다.
 - 제품 Android 앱에 명시적 Pleos 목적지 조회·화면 표시·경로 이벤트 무효화 경계를 넣었다. 아직 SDK 응답 연관성 미검증으로 실제 추천/예약 입력에는 사용하지 않으며 로컬 SDK 부재로 Android 빌드/기기 검증은 미완료다.
 - 서버 `RecommendationJobRegistry`의 메모리 작업 상태·소유권·세대 취소·완료 결과 폴링 경계를 추가했다. 실제 검색 worker와 HTTP 계약은 아직 붙지 않았다. 전화 AI 계약 제안은 #43에 남겼으며 답변 전이다.
 - #48/PR #49의 로컬 공공 catalog 준비 코드를 격리 브랜치에 가져왔다. 별도 승인된 웹 출처 조사는 이 공공 출처 후보에만 허용하고 Kakao 후보는 차단하는 내부 연결을 추가했다. 실제 catalog 취득·제품 주입·유료 GPT 검색·전화 전송은 하지 않았다.

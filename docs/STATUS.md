@@ -1,10 +1,10 @@
 # 구현·검증 현황
 
-## 2026-11-10 INT-01 목적지 목록 3곳 HTTP 초안 (#52)
+## 2026-11-10 INT-01 Kakao 목적지 목록 3곳 HTTP 초안 (#52)
 
-- PR #53에 기본 비활성 공공 catalog 작업 API(POST 접수/GET 폴링/DELETE 화면 무효화)를 추가했습니다. 명시적 로컬 catalog 경로가 없으면 활성화할 수 없고, Bearer·소유자·no-store·취소 후 구세대 재접수 차단을 적용했습니다. 주차는 항상 필수 조사 조건이며, 결과에는 공공 출처/라이선스/snapshot 시각을 포함합니다.
+- PR #53에 기본 비활성 목적지 목록 작업 API(POST 접수/GET 폴링/DELETE 화면 무효화)를 추가했습니다. `source=KAKAO`를 명시하면 기존 실시간 Kakao Local adapter와 환경 키를 사용하고, `PUBLIC_CATALOG`는 별도 선택지입니다. Bearer·소유자·no-store·취소 후 구세대 재접수 차단을 적용했습니다. 주차는 항상 필수 **조사** 조건입니다. Kakao 전화번호는 응답·DB·GPT·전화로 넘기지 않습니다.
 - 가상 catalog 3곳의 접수/폴링/인증·소유권·무효화를 테스트했고 `./gradlew -PincludeAndroid=false format verify`를 통과했습니다. 실제 매장 데이터, 후기/GPT 조건 판정, 전화 확인·예약, 제품 Android 호출은 아직 없으므로 **실제 추천 3곳 완료로 세지 않습니다.** 실제 유료 API/전화 호출은 이번 변경에서 0회입니다.
-- 공공 목록과 GPT 웹 근거의 **동일 지점 대조**를 순수 평가기로 추가했습니다. 전체 상호·주소 일치만 후보로 남기고 다른 지점/중복 식별/만료 결과/주차 조건 누락을 제외합니다. 가상 테스트이며 실제 GPT 호출, 최종 추천·예약 확정은 아닙니다.
+- Kakao 또는 공공 목록과 **독립적으로 검색한** GPT 웹 근거의 동일 지점 대조를 순수 평가기로 추가했습니다. 전체 상호·주소 일치만 후보로 남기고 다른 지점/중복 식별/만료 결과/주차 조건 누락을 제외합니다. Kakao 후보를 GPT 입력으로 보내는 코드는 없습니다. 가상 테스트이며 실제 GPT 호출, 최종 추천·예약 확정은 아닙니다.
 
 ## 2026-11-10 VOICE-01 Telkit 채택 (#3)
 
@@ -18,7 +18,7 @@
 - 추천 계획과 미리보기 계약에 `highChair`·`stepFreeAccess`를 추가했다. 웹사이트 상세 정보로 두 조건을 자동 충족하지 않고 직접 확인 질문을 남긴다. Java `verify`, 추천 계획 schema, JAR HTTP/계약 smoke를 통과했다. 추가 API 호출은 사용자에게 모델·범위·비용을 설명하고 다시 확인받기 전에는 하지 않는다.
 - PR #53의 이전 schema 불일치 후 새 head의 GitHub Actions 6개가 모두 통과했다. 이전 실패 실행의 기록은 남는다.
 - 웹추천 조건에 `HIGH_CHAIR`와 `STEP_FREE_ACCESS`를 독립 필수 조건으로 추가했다. 일반 아동 친화/접근성 문구로 각각을 추론하지 않고, 근거가 부족하면 UNKNOWN과 전화 확인 질문으로 남긴다. 가상 파서 테스트와 `check-web-recommendation.py`의 loopback 계약 검사를 통과했다.
-- `PublicDestinationRecommendationService`는 로컬 공공 catalog 검색→최대3개 UNKNOWN 후보 계획→소유자별 작업 폴링을 연결한다. 가상 catalog에서 3개 후보/예약·문의 불가와 시범 지역 밖 INVALID_QUERY를 검증했다. Spring/HTTP/Android 호출자·실제 catalog 입력은 아직 없다.
+- `DestinationRecommendationService`는 로컬 공공 catalog 또는 Kakao 목록→최대3개 UNKNOWN 후보 계획→소유자별 작업 폴링을 연결한다. 가상 catalog의 3개 후보/예약·문의 불가와 시범 지역 밖 INVALID_QUERY를 검증했다. 실험 HTTP는 붙었고 Android 호출자·GPT/전화 연동은 아직 없다.
 - 제품 `android/app`에 Pleos NaviHelper 목적지 조회 경계를 추가했다. 별도 버튼으로 명시적 조회하며 목적지 변경/취소/도착/오류/화면 종료에서 기존 관측을 무효화한다. 수신값은 응답 연관성 미확인으로 표시하고 추천·예약/ETA로 자동 전환하지 않는다. 로컬 `verifyAndroid`는 Android SDK 경로가 없어 태스크 의존성 단계에서 중단됐으며 컴파일·Lint·APK·기기 검증은 새 CI에서 판정한다.
 - 서버 `RecommendationJobRegistry`는 같은 화면의 목적지 세대가 바뀌면 이전 비동기 추천 결과를 폐기하고, 소유자별 폴링에서 완료 결과만 재조회한다. 폴링은 공급자 작업을 재실행하지 않는다. 가상 지연·취소·실패·타인 조회 단위 테스트를 통과했다. 현재는 메모리 경계이며 제품 HTTP·Spring 주입·실제 검색 worker는 아직 연결하지 않았다.
 - #48 catalog의 `SEOUL_OPEN_DATA` provider를 공유 추천 계획 스키마에 추가한 뒤 미리보기 초안의 중첩 스키마가 어긋나 원격 `Server and contract`가 실패했다. 중첩 enum을 동기화하고 로컬 `smoke-test.py --check-contract`의 가상 HTTP·OpenAPI·재시작·LIVE 차단 검사와 최신 head의 원격 Actions 6개를 통과했다. 과거 실패 기록은 GitHub에 남는다.

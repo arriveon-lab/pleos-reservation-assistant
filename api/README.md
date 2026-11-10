@@ -1,6 +1,6 @@
 # API v1 — 계약 1.1.0
 
-[목적지 공공 catalog 추천 작업 초안](destination-recommendation-draft.json)과 [가상 요청](examples/destination-recommendation-request.json)은 #52의 기본 비활성 실험 API입니다. 명시적 로컬 catalog 경로와 Bearer 인증이 필요하며, POST 접수·GET 소유자별 폴링·DELETE 화면 무효화를 제공합니다. 주차를 필수 조사 조건으로 추가하고 최대 3개 **미확인** 후보와 원천 표시 정보를 돌려줍니다. 실제 공급자 입력·GPT 근거·전화 확인·예약·제품 Android 연결의 완료를 뜻하지 않습니다.
+[목적지 목록 추천 작업 초안](destination-recommendation-draft.json)과 [가상 요청](examples/destination-recommendation-request.json)은 #52의 기본 비활성 실험 API입니다. 명시적 `KAKAO` 선택 시 기존 실시간 Local adapter를, `PUBLIC_CATALOG` 선택 시 별도 로컬 snapshot을 사용합니다. Bearer 인증으로 POST 접수·GET 소유자별 폴링·DELETE 화면 무효화를 제공하며 주차를 필수 조사 조건으로 추가해 최대 3개 **미확인** 후보와 출처 정보를 돌려줍니다. Kakao 응답·전화번호는 DB/GPT/전화로 넘기지 않습니다. GPT 근거·전화 확인·예약·제품 Android 연결의 완료를 뜻하지 않습니다.
 
 [REC-13 실험 계약](../docs/REC13_WEB_RECOMMENDATION.md) — #50의 기본 비활성 MOCK 실험 API와 사용자 입력/직접 평가 전용 V5 테이블입니다. 기존 v1·앱 계약/아래 논리 ERD 제안을 대체하지 않습니다.
 [REC-12 로컬 catalog 계약](../docs/REC12_PUBLIC_CATALOG.md) — #48의 오프라인 코드 준비이며 제품 HTTP/DB/실제 발신 연결은 아닙니다.

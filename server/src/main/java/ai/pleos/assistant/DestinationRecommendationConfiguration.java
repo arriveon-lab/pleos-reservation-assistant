@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** No implicit fixture, API key, live search, GPT call or telephone dispatch. */
+/** Explicitly selected, memory-only place source. GPT and telephone dispatch are absent. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "app.destination-recommendations.enabled", havingValue = "true")
 class DestinationRecommendationConfiguration {
@@ -22,15 +22,25 @@ class DestinationRecommendationConfiguration {
   }
 
   @Bean(destroyMethod = "close")
-  PublicDestinationRecommendationService publicDestinationRecommendationService(
+  DestinationRecommendationService destinationRecommendationService(
       ObjectMapper mapper,
       Clock clock,
       @Qualifier("destinationRecommendationWorkers") ExecutorService workers,
-      @Value("${app.destination-recommendations.catalog-path:}") String catalogPath)
+      @Value("${app.destination-recommendations.source:PUBLIC_CATALOG}") String source,
+      @Value("${app.destination-recommendations.catalog-path:}") String catalogPath,
+      @Value("${KAKAO_REST_API_KEY:}") String kakaoKey)
       throws IOException {
-    if (catalogPath.isBlank()) throw new IllegalStateException("Public catalog path required");
+    if ("KAKAO".equals(source)) {
+      if (kakaoKey.isBlank()) throw new IllegalStateException("Kakao key required");
+      return new DestinationRecommendationService(
+          new KakaoPlaceSearchAdapter(kakaoKey, new KakaoPlaceMapper(mapper, clock)),
+          clock,
+          workers);
+    }
+    if (!"PUBLIC_CATALOG".equals(source) || catalogPath.isBlank())
+      throw new IllegalStateException("Explicit destination source required");
     var catalog = SeoulPlaceCatalog.load(Path.of(catalogPath), mapper);
-    return new PublicDestinationRecommendationService(
+    return new DestinationRecommendationService(
         new SeoulPlaceSearchAdapter(catalog, clock), clock, workers);
   }
 }

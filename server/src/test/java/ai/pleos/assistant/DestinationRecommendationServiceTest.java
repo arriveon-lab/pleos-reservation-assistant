@@ -12,7 +12,54 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-class PublicDestinationRecommendationServiceTest {
+class DestinationRecommendationServiceTest {
+  @Test
+  void kakao_source_uses_transient_listing_without_returning_phone_or_booking_authority() {
+    Clock clock = Clock.fixed(Instant.parse("2026-11-10T00:01:00Z"), ZoneOffset.UTC);
+    PlaceSearchAdapter adapter =
+        query ->
+            new PlaceSearchResult.Success(
+                java.util.stream.IntStream.range(0, 3)
+                    .mapToObj(
+                        n ->
+                            new PlaceSummary(
+                                PlaceSummary.Provider.KAKAO,
+                                "kakao-" + n,
+                                "가상 식당 " + n,
+                                null,
+                                37.544,
+                                127.055,
+                                "가상 주소 " + n,
+                                "0212345678",
+                                null,
+                                null))
+                    .toList(),
+                clock.instant(),
+                0);
+    try (var service =
+        new DestinationRecommendationService(
+            adapter,
+            PlaceSummary.Provider.KAKAO,
+            new DestinationRecommendationService.SourceInfo(
+                PlaceSummary.Provider.KAKAO, null, null, null, "Kakao Local", null, null),
+            clock,
+            Runnable::run)) {
+      var id =
+          service.start(
+              "owner-a",
+              UUID.randomUUID(),
+              1,
+              new PlaceQuery(37.544, 127.055, 1000, 15),
+              new PlaceRecommendationPlanner.Requirements(
+                  new Model.Party(2, 0), 15, Set.of("parking"), Set.of()));
+      var plan = service.poll("owner-a", id).orElseThrow().result();
+      assertThat(plan.provider()).isEqualTo(PlaceSummary.Provider.KAKAO);
+      assertThat(plan.candidates()).hasSize(3);
+      assertThat(plan.toString()).doesNotContain("0212345678", "kakao-");
+      assertThat(plan.candidates()).allSatisfy(c -> assertThat(c.bookable()).isFalse());
+    }
+  }
+
   @Test
   void destination_outside_public_pilot_is_failure_not_empty_recommendations() throws Exception {
     Clock clock = Clock.fixed(Instant.parse("2026-11-10T00:01:00Z"), ZoneOffset.UTC);
@@ -21,7 +68,7 @@ class PublicDestinationRecommendationServiceTest {
             Path.of("src/test/resources/places/seoul-catalog-fictional.json"),
             new ObjectMapper().findAndRegisterModules());
     try (var service =
-        new PublicDestinationRecommendationService(
+        new DestinationRecommendationService(
             new SeoulPlaceSearchAdapter(catalog, clock), clock, Runnable::run)) {
       UUID task =
           service.start(
@@ -47,7 +94,7 @@ class PublicDestinationRecommendationServiceTest {
             new ObjectMapper().findAndRegisterModules());
     var queue = new ArrayDeque<Runnable>();
     try (var service =
-        new PublicDestinationRecommendationService(
+        new DestinationRecommendationService(
             new SeoulPlaceSearchAdapter(catalog, clock), clock, queue::add)) {
       UUID view = UUID.randomUUID();
       var requirements =

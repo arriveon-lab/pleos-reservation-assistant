@@ -3,7 +3,7 @@
   "info": {
     "title": "Destination public catalog shortlist — experimental contract",
     "version": "0.1.0-draft",
-    "description": "Disabled by default. Requires an explicitly supplied local public catalog; no Kakao, GPT, telephone, or booking calls. The three candidates are unconfirmed listings, never verified recommendations or reservation authority."
+    "description": "Disabled by default. Explicit source KAKAO uses the existing real-time Local adapter with an environment key; PUBLIC_CATALOG requires a local snapshot. GPT, telephone and booking calls are absent. The three candidates are unconfirmed transient listings, never verified recommendations or reservation authority."
   },
   "servers": [{ "url": "http://127.0.0.1:8080" }],
   "paths": {
@@ -123,13 +123,14 @@
       },
       "Source": {
         "type": "object",
-        "required": ["datasetId", "catalogUrl", "licenseUrl", "attribution", "acquiredAt"],
+        "required": ["provider", "attribution"],
         "properties": {
-          "datasetId": { "type": "string", "const": "OA-18655" },
-          "catalogUrl": { "type": "string", "format": "uri" },
-          "licenseUrl": { "type": "string", "format": "uri" },
+          "provider": { "type": "string", "enum": ["KAKAO", "SEOUL_OPEN_DATA"] },
+          "datasetId": { "type": ["string", "null"] },
+          "catalogUrl": { "type": ["string", "null"], "format": "uri" },
+          "licenseUrl": { "type": ["string", "null"], "format": "uri" },
           "attribution": { "type": "string" },
-          "acquiredAt": { "type": "string", "format": "date-time" },
+          "acquiredAt": { "type": ["string", "null"], "format": "date-time" },
           "sourceSnapshotAt": { "type": ["string", "null"], "format": "date-time" }
         }
       },
@@ -139,7 +140,7 @@
         "required": ["state", "provider", "requirements", "scannedRecords", "rejectedRecords", "duplicateRecords", "outsideWindowRecords", "candidates"],
         "properties": {
           "state": { "type": "string", "enum": ["RESULTS", "EMPTY", "FILTERED", "FAILED"] },
-          "provider": { "type": "string", "const": "SEOUL_OPEN_DATA" },
+          "provider": { "type": "string", "enum": ["KAKAO", "SEOUL_OPEN_DATA"] },
           "requirements": { "type": "object" },
           "listingFetchedAt": { "type": ["string", "null"], "format": "date-time" },
           "displayValidUntil": { "type": ["string", "null"], "format": "date-time" },
