@@ -17,6 +17,7 @@
 | --- | --- | --- |
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
 | [PLAN](PLAN.md) | 전체 범위·일정·5명 역할·통합 순서 | 기존 개발 계획 |
+| [전화예약 에이전트 개발 계획](PHONE_RESERVATION_AGENT_PLAN.md) | 송수신·회신·변경, 사용자·동승자 조건과 예약 사본, P01~P11 일정·인수 | 팀 검토용 제안, API/DB·실전화 미적용 |
 | [전화예약 로컬 프로토타입](../prototypes/phone_agent/README.md) | 사용자·동승자 조건, 가상 예약·회신·변경 승인, 독립 실행·테스트 | MOCK 기본 + 선택형 Telkit·LiveKit, 실제 발신 7회·대기 처리 관측·STT 단절 1회, 예약 UNKNOWN·청취 끊김/미인식 잔존, 제품 미통합 |
 | [전화 프로토타입 서버 배포](../prototypes/phone_agent/deploy/README.md) | Docker·영속 DB·SSH 접속·worker 시작/중단 | EC2 MOCK 기동·Linux 95개 검사·LIVE 차단, 서버 실전화 품질 미검증 |
 | [전화 에이전트 소음·예외 대응](PHONE_AGENT_RELIABILITY.md) | 공식 근거, 현재 구현 차이, 복구/대기/중단 설계와 검증 시나리오 | 2026-11-10 NC/adaptive·대기·장애 처리 적용, 92개 로컬 검사·대기 처리 관측·전체 청취 품질 미통과 |
@@ -27,7 +28,9 @@
 | [REC-01 서버·화면 계약 초안](REC01_CONTRACT_DRAFT.md) | 미리보기/예약 분리·IO/중복·출처/모드·후속 인수 조건 | 팀 합의 전 제안, API/DB 미적용 |
 | [REC-03 세션 관리와 실행 경계](REC03_PREVIEW.md) | #12 소유 scope·수명/상한·동시 합류·취소·H2 경계 | 전체 188개 검증, 인증/제품 API 미연결 |
 | [REC-08 후보 추천·질문 계획](REC08_RECOMMENDATION_PLAN.md) | 최대3개 후보·근거·기본 정보 누락·UNKNOWN 질문·가상 실행/계약 | 서버268개 검증, 제품 HTTP/화면 연결 전 |
+| [REC-11 웹 상세정보와 GPT 출처 검색](REC11_PLACE_DETAILS.md) | 매장 일치·구조화 웹 정보·출처/시각·남은 질문·일회성 GPT 연동 코드 | 가상 검증, 실제 유료/웹 호출과 제품 화면 연결 전 |
 | [REC-09 공공데이터 검증](REC09_SEOUL_DATA_VALIDATION.md) | #32 공식 명세39필드·전화/좌표/시각 검사·공개 표본5건·독립 도구 | 가상 테스트15개·공개 샘플 집계, 제품 공급자 채택 전 |
+| [REC-10 시범 지역 교차 검사](REC10_SEOUL_PILOT_VALIDATION.md) | #34 공식 상태 사전·HTTPS실제1000행·동일 행/중복/반경·취득 조건 | 가상40개, 실제 진단115행·원문 미저장, 제품 공급자 채택 전 |
 | [추천·장소 후속 작업](REC_FOLLOWUPS.md) | #12/#13 완료 범위와 #11/#16–18 담당·의존성·인수 조건 | 검증한 기반과 미완료 제품 연결 구분 |
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
