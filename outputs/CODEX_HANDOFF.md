@@ -1,5 +1,10 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 #39 단계별 안내3곳 수정 완료
+
+검색/문의/예약/변경 단계별 다음 행동을 구분하고 UNKNOWN/미해결 변경을 우선한다. 새 검색·예약 뒤 과거 복구 안내를 숨기되 기록은 보존한다. 전화 요약은 문의/예약/변경 목적을 구분한다. 실제 Pleos의 기존 CONFIRMED 조회·화면과 journal 불변, 기기 fixture의 대기/거절/UNKNOWN/변경 우선 안내를 확인했다. format/verifyAll/MOCK smoke PASS, Lint 기존4개 유지. 고정 APK·증거·미검증은 docs/UX39_VEHICLE_UI.md 최신 절. 전체 인수는 미완료, OPEN/Draft 유지. 사용자 확인용 앱과 표준 MOCK18082/adb8080→18082 실행 유지.
+
+
 ## 2026-11-10 새 UI 실제 MOCK 예약 흐름 검증
 
 f854836의 기존 APK로 Pleos에서 직접 후보 검색→전화 문의→서버 ANSWERED→앱 GET→명시 예약 승인→PENDING→서버 ACCEPTED→CONFIRMED→재실행을 확인했다. UI fixture가 아닌 실제 HTTP/DB 흐름이며, 수락은 별도 로컬 합성 운영자 도구다. #40 공동 인수/배포 권한 분리 검증은 아니다. 기존 인증 연결·trip·검색 복구 기록 보존, 문의/예약 통화 각각1건, 요청/확정 시각 일치·0원 확인. 제품 코드 변경 없음. 상세 실패/증거/한계는 docs/UX39_VEHICLE_UI.md 최신 절.

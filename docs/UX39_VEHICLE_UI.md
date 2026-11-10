@@ -1,5 +1,18 @@
 # UX-04 차량 화면 개선·동일 APK 검증 (#39 / #25)
 
+## 2026-11-10 #39 단계별 안내 문구3곳 수정
+
+- 연결 성공 제목은 `연결됐어요`. 다음 행동은 후보 비교/문의 결과 확인/응답 대기/모의 수락/거절/미확인으로 구분한다. pending 명령·UNKNOWN 통화·미해결 변경을 확정 예약 안내보다 우선하며 차량 입력 제한 중에는 다음 행동 문구를 숨긴다.
+- 과거 검색 복구 안내는 pending과 새 searchId/reservationId/callId가 없는 상태에서만 노출한다. 저장된 searchReconciliations와 원 요청은 삭제하지 않는다.
+- `전화 진행` 요약은 INQUIRY/BOOKING/CHANGE 목적별 명칭과 상태를 함께 표시한다. 예약 수락을 모의 문의로 부르지 않는다.
+
+최종 APK SHA256 `858563b83b0c89836e920f55f1b892489e313dc1e65d37af169904649a9e1242`. 기존 jointvalidation에 install-r. Pleos2.1.0/API34에서 실제 서버에 저장된 CONFIRMED 예약을 다시 조회해 수락 안내·`모의 예약 요청 · 모의 수락` 표시, 검색 유도/과거 복구 안내 숨김을 확인하고 PNG를 직접 검토했다. 이전 실행의 전체 journal과 구조 비교가 동일했다. 앱/표준 MOCK18082·adb8080→18082는 직접 확인할 수 있도록 유지한다.
+
+DashboardChecks를 실제 기기에서 실행해 기존 UI/처리 중 검사와 예약 PENDING/CONFIRMED/REJECTED/UNKNOWN 안내·예약 목적 명칭·오래된 안내 숨김·변경 UNKNOWN 우선 표시를 확인했다. 이 상태 조합은 메모리 fixture이며 새 실제 예약/거절/UNKNOWN을 서버에 생성한 검사가 아니다. 실제 문의→승인→수락 전체 흐름의 증거는 이전 APK 절에 남긴다.
+
+format·verifyAll·MOCK smoke PASS. 서버/UX JVM은 UP-TO-DATE, NO-SOURCE는 신규 검사 건수가 아니다. Lint 오류0/기존 경고4·새 억제 없음. 로컬 증거 `captures/ux39-copy/confirmed-live.png`, `pending-fixture.png`, `unknown-fixture.png`; 로그/고정APK/기록 대조는 `work/ux39-copy/`. 이번 #39 문구3곳은 수정/검증 완료이며 #39 전체 인수, #25 실제 차량, #40 공동 시연은 미완료. OPEN/Draft 유지.
+
+
 ## 2026-11-10 새 UI의 실제 MOCK 검색→문의→예약 결과 실행
 
 사용자 요청으로 최종 UI APK `a54c096b1a23b0311e8df53c338d33dac4501874456e39980752f461e01543fb`(f854836)를 기존 jointvalidation 설치에서 직접 조작했다. 앞 절의 메모리 snapshot fixture와 달리, 이번에는 **UI 버튼 → 일반 Bearer HTTP → 서버 DB → 앱 GET** 흐름이다. 서버는 a5ae15e 기반 기존 Docker image, 인증1.1.0, Pleos2.1.0/API34/user10. 앱/서버 제품 코드는 변경하지 않았다.

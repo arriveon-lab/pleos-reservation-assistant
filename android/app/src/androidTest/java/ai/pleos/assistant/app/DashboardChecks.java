@@ -71,6 +71,81 @@ final class DashboardChecks {
                 .isEnabled()) throw new AssertionError("busy stepper enabled");
           });
       capture(runner, "dashboard-loading");
+      main(
+          runner,
+          () -> {
+            busy.setBoolean(model, false);
+            failed.setBoolean(model, false);
+          });
+      String[] statuses = {"PENDING", "CONFIRMED", "REJECTED", "UNKNOWN"};
+      int[] hints = {
+        R.string.home_action_wait,
+        R.string.home_action_confirmed,
+        R.string.home_action_rejected,
+        R.string.home_action_unknown
+      };
+      for (int i = 0; i < statuses.length; i++) {
+        String status = statuses[i];
+        int hint = hints[i];
+        main(
+            runner,
+            () -> {
+              JSONObject state = new JSONObject(original.toString());
+              JSONObject reservation =
+                  new JSONObject()
+                      .put("status", status)
+                      .put("originalRequestedTime", "2026-11-10T12:00:00Z")
+                      .put("confirmedTime", "2026-11-10T12:00:00Z")
+                      .put("totalAdditionalCostKrw", 0);
+              state
+                  .put("reservation", reservation)
+                  .put("reservationId", "ui-fixture")
+                  .put(
+                      "call",
+                      new JSONObject()
+                          .put("purpose", "BOOKING")
+                          .put("status", "CONFIRMED".equals(status) ? "ACCEPTED" : status));
+              snapshot.set(model, state);
+              render(activity);
+              View root = activity.getWindow().getDecorView();
+              if (!contains(root, activity.getString(hint))
+                  || contains(root, activity.getString(R.string.home_ready_hint))
+                  || contains(root, activity.getString(R.string.reconcile_search_closed)))
+                throw new AssertionError("Wrong booking guidance: " + status);
+              if (!contains(
+                  root,
+                  activity.getString(
+                      R.string.home_phone_status,
+                      activity.getString(R.string.call_booking),
+                      activity.getString(
+                          "CONFIRMED".equals(status)
+                              ? R.string.call_accepted
+                              : "PENDING".equals(status)
+                                  ? R.string.call_pending
+                                  : "REJECTED".equals(status)
+                                      ? R.string.call_rejected
+                                      : R.string.call_unknown))))
+                throw new AssertionError("Booking mislabeled as inquiry");
+            });
+        capture(runner, "guidance-" + status.toLowerCase(java.util.Locale.ROOT));
+      }
+      main(
+          runner,
+          () -> {
+            JSONObject state = new JSONObject(original.toString());
+            state.put(
+                "reservation",
+                new JSONObject()
+                    .put("status", "CONFIRMED")
+                    .put("pendingChangeCallId", "ui-change"));
+            state.put("call", new JSONObject().put("purpose", "CHANGE").put("status", "UNKNOWN"));
+            snapshot.set(model, state);
+            render(activity);
+            View root = activity.getWindow().getDecorView();
+            if (!contains(root, activity.getString(R.string.home_action_unknown))
+                || contains(root, activity.getString(R.string.home_action_confirmed)))
+              throw new AssertionError("Unknown change hidden by confirmed reservation");
+          });
     } finally {
       main(
           runner,

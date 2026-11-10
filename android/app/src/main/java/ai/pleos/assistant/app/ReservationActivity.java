@@ -318,8 +318,8 @@ public final class ReservationActivity extends ComponentActivity {
     else if (!model.busy() && (!model.connected() || model.failed())) {
       button(R.string.connect, !model.busy(), v -> model.run(MockRepository::connect));
     }
-    if (model.connected() && !model.busy() && !model.failed())
-      text(getString(R.string.home_ready_hint), 20);
+    if (model.connected() && !model.busy() && !model.failed() && model.restriction().allowsInput())
+      text(getString(nextAction(state)), 20);
     content = mainPanel;
     LinearLayout progressCard = VehicleUi.card(this);
     content.addView(progressCard);
@@ -329,7 +329,10 @@ public final class ReservationActivity extends ComponentActivity {
     text(
         phone == null
             ? getString(R.string.home_phone_idle)
-            : getString(R.string.home_phone_status, label(phone.optString("status"))),
+            : getString(
+                R.string.home_phone_status,
+                label(phone.optString("purpose")),
+                label(phone.optString("status"))),
         20);
     text(getString(R.string.home_booking), 24);
     JSONObject booking = state.optJSONObject("reservation");
@@ -383,7 +386,11 @@ public final class ReservationActivity extends ComponentActivity {
           !model.busy() && model.restriction().allowsInput(),
           v -> model.run(MockRepository::retry));
     }
-    if (!state.has("pending") && state.has("searchReconciliations")) {
+    if (!state.has("pending")
+        && !state.has("searchId")
+        && !state.has("reservationId")
+        && !state.has("callId")
+        && state.has("searchReconciliations")) {
       JSONArray history = state.optJSONArray("searchReconciliations");
       if (history != null && history.length() > 0) {
         JSONObject last = history.optJSONObject(history.length() - 1);
@@ -460,6 +467,31 @@ public final class ReservationActivity extends ComponentActivity {
       text(R.string.failure);
     }
     scroll.post(() -> scroll.scrollTo(0, restoredY));
+  }
+
+  private int nextAction(JSONObject state) {
+    if (state.has("pending")) return R.string.home_action_unknown;
+    JSONObject call = state.optJSONObject("call");
+    if (call != null) {
+      if ("UNKNOWN".equals(call.optString("status"))) return R.string.home_action_unknown;
+      if ("PENDING".equals(call.optString("status")))
+        return "CHANGE".equals(call.optString("purpose"))
+            ? R.string.home_action_change_wait
+            : R.string.home_action_wait;
+    }
+    JSONObject reservation = state.optJSONObject("reservation");
+    if (reservation != null) {
+      if (!reservation.isNull("pendingChangeCallId")) return R.string.home_action_unknown;
+      return switch (reservation.optString("status")) {
+        case "CONFIRMED" -> R.string.home_action_confirmed;
+        case "PENDING" -> R.string.home_action_wait;
+        case "REJECTED" -> R.string.home_action_rejected;
+        default -> R.string.home_action_unknown;
+      };
+    }
+    if (call != null && "ANSWERED".equals(call.optString("status")))
+      return R.string.home_action_answered;
+    return state.has("searchId") ? R.string.home_action_candidates : R.string.home_ready_hint;
   }
 
   private int stageLabel(JSONObject state) {
