@@ -18,6 +18,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.flywaydb:flyway-core")
+    implementation("org.jsoup:jsoup:1.24.1")
     runtimeOnly("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -63,6 +64,15 @@ tasks.register<JavaExec>("recommendationPlan") {
     description = "Print a fictional listing shortlist and UNKNOWN inquiry plan; no external calls."
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass = "ai.pleos.assistant.RecommendationPlanDemo"
+    workingDir = rootProject.projectDir
+}
+
+tasks.register<JavaExec>("placeDetails") {
+    group = "verification"
+    description =
+        "Print fictional GPT citation discovery and matched website details; no external calls."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "ai.pleos.assistant.PlaceDetailDemo"
     workingDir = rootProject.projectDir
 }
 
