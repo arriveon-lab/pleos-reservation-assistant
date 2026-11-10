@@ -38,5 +38,17 @@
   "liveEnabled": false,
   "actualPlaceApiCalls": 0,
   "phoneCalls": 0,
-  "paidCalls": 0
+  "paidCalls": 0,
+  "recommendationMvp": {
+    "flow": "ON_DEMAND_WEB_SEARCH",
+    "implementationIssue": 50,
+    "ownedStorage": [
+      "USER_REQUEST",
+      "USER_SELECTION_ORDINAL",
+      "DIRECT_USER_FEEDBACK"
+    ],
+    "providerOutputPersistentStorage": false,
+    "publicCatalogIsMandatory": false,
+    "actualModelCalls": 0
+  }
 }
