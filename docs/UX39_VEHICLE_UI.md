@@ -1,5 +1,34 @@
 # UX-04 차량 화면 개선·동일 APK 검증 (#39 / #25)
 
+## 2026-11-10 새 UI의 실제 MOCK 검색→문의→예약 결과 실행
+
+사용자 요청으로 최종 UI APK `a54c096b1a23b0311e8df53c338d33dac4501874456e39980752f461e01543fb`(f854836)를 기존 jointvalidation 설치에서 직접 조작했다. 앞 절의 메모리 snapshot fixture와 달리, 이번에는 **UI 버튼 → 일반 Bearer HTTP → 서버 DB → 앱 GET** 흐름이다. 서버는 a5ae15e 기반 기존 Docker image, 인증1.1.0, Pleos2.1.0/API34/user10. 앱/서버 제품 코드는 변경하지 않았다.
+
+| 실행 | 실제 결과 |
+| --- | --- |
+| 기존 인증 재연결 → 조건 편집 → 후보 찾기 | 현재 시각으로 검색 성공, 후보3개. 예약 전 정보 미확인, 예약 버튼 비활성 |
+| 가상 서울숲 파스타의 전화 문의 버튼 | INQUIRY/PENDING, 승인 없는 예약 생성 없음 |
+| 별도 로컬 응답 도구 ANSWERED → 앱 최신 상태 조회 | 주차·아이 가능, ARRIVAL 대기 추정10분, 예약 요청 가능. NOW25분과 구분 |
+| 예약 내용 확인 | 매장·성인2/아이1·시각·0원 상한·명시 승인 버튼 표시 |
+| 명시 승인 버튼 | 예약 PENDING, 확정 시각 없음 |
+| 정확한 BOOKING 통화에 ACCEPTED/explicitAcceptance=true/요청 시각 일치/0원 → 앱 GET | CONFIRMED. 화면은 `모의 수락 확인 · 실제 예약 아님`, 최초/확정 시각21:04 KST 일치·누적0원 |
+| force-stop·재실행 | 같은 예약 결과 유지, 서버 통화 INQUIRY/ANSWERED1건·BOOKING/ACCEPTED1건 |
+
+기존 authBinding·tripId·searchReconciliations가 실행 전후 동일하고 pending이 없음을 확인했다. 데이터 삭제·새 앱 주체 발급·원 요청 덮어쓰기는 하지 않았다. 사용자의 요청 범위는 결과까지로, 0원 변경은 버튼만 보였으며 이번에 실행하지 않았다.
+
+### 로컬 운영자 도구와 검증 수준
+
+#40 담당자가 제공한 일반 앱/운영자 공동 시연 환경은 아직 없다. Git 제외 `work/ux39-flow/LocalFlowApplication.java`를 기존 테스트 classpath에서만 컴파일했다. loopback18082, 별도 임시 capability로 지정된 MOCK 검색/통화 조회 및 outcome만 허용하고 서버 DB의 해당 주체를 테스트 Principal로 연결했다. 앱에는 capability/운영자 권한을 전달하지 않았다. **이 로컬 합성 운영자는 배포 인증 설계나 운영자 권한 분리 인수의 증거가 아니다.** 일반 Bearer의 outcome403 부정 검사는 이번에 별도 실행하지 않았다. 서버 제품 코드/JAR/담당자 브랜치를 수정하지 않았다.
+
+초기 서버 준비 전 연결 실패는 준비 후 같은 인증 재조회로 회복했다. 로컬 도구의 필터 순서 때문에 첫 조회401이 발생해 순서를 수정했다. 최초 수락 도구가 journal의 이전 문의callId를 선택해409로 거절됐고, 검색의 통화 목록에서 BOOKING/PENDING을 명시 선택한 뒤 수락했다. 거절된 요청을 성공으로 세지 않는다. 두 오류는 로컬 도구 보완이며 제품 변경이 아니다.
+
+검증 후 로컬 운영자 컨테이너ux39-flow는 정지하고 표준 ux16-device MOCK 서버를 같은 DB로 재시작했다. 사용자가 직접 볼 수 있도록 **앱 예약 결과 화면과 표준 서버18082, adb8080→18082를 켜둔다.** 기존18080 복원은 이번에는 하지 않았다. 데이터 볼륨은 보존한다.
+
+증거: `captures/ux39-flow/01-search.png`부터`08-left-open.png`, `manifest.json`; `work/ux39-flow/result.json`, UI XML/텍스트·도구·로그. 인증 원문/DB는 이슈에 올리지 않는다. 기존 APK를 실행했으므로 제품 빌드/전체 테스트를 재실행한 것은 아니다. 문서 diff/명명 검사만 새로 실행한다.
+
+발견한 UI 후속(#39): 예약 접수/완료에도 연결 카드의 `내 조건으로 후보를 찾아보세요`가 남음, 과거 검색 복구 안내가 새 예약 뒤에도 표시됨, BOOKING 상태를 요약에서 `모의 문의`로 표현함. 결과/승인 자체는 성공했으나 단계별 문구 정리는 남았다. 실제 전화·실제 ETA·실제 주행·거절/UNKNOWN/응답유실·0원 변경·#40 공동 인수 완료로 확대하지 않는다.
+
+
 ## 2026-11-10 목적지·내 조건·전화·예약 대시보드 재구성
 
 사용자가 공유한 긴 단일 폼을 재설계했다. 공식 [기본 원칙](https://document.pleos.ai/docs/connect/guide/docs-design/Introduction/intro), [레이아웃](https://document.pleos.ai/docs/connect/guide/docs-design/getting-started/layout), [기본 버튼](https://document.pleos.ai/docs/connect/guide/docs-design/components/actions/basic-button)을 참고했다. 공식 인증/전체 가이드 적합성 평가를 완료했다는 뜻은 아니다.
