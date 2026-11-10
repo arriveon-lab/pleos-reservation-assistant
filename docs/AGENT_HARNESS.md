@@ -28,6 +28,8 @@ python3 scripts/setup-android.py --configure
 
 계약 변경은 [api/README](../api/README.md)에 따라 Python 개발 의존성을 설치하고 `python3 scripts/smoke-test.py --check-contract`를 실행합니다. Smoke는 loopback·임시 DB·MOCK에 한정합니다. Android APK 설치와 기기 수신은 [android/README](../android/README.md)의 별도 절차이며 verifyAll이 수행하지 않습니다.
 
+REC-08 계약 검사에 쓰는 `server/build/rec08/mock-recommendation-plan.json`은 `:server:test`의 명시적 산출물입니다. 테스트가 `FROM-CACHE`여도 JSON을 함께 복원해야 합니다. 캐시 회귀를 확인할 때는 `verify --build-cache`를 실행한 뒤 `:server:clean verify --build-cache`를 실행하고, `python3 scripts/check-recommendation-plan.py`로 복원된 Java 결과까지 검증합니다. 파일이 없을 때 검사를 건너뛰거나 고정 예제로 대체하지 않습니다.
+
 SDK 설정 스크립트는 다운로드·라이선스 수락을 하지 않습니다. 개발자는 [ANDROID_SETUP](ANDROID_SETUP.md)으로 SDK를 설치한 뒤 연결합니다. 포맷 검사는 Android opt-in과 무관하게 Java/Kotlin/Gradle 소스를 포함합니다. verifyAndroid는 모듈이 꺼져 있으면 명확한 오류로 실패하며 성공처럼 skip하지 않습니다.
 
 ## 결과물과 완료 보고
@@ -35,6 +37,7 @@ SDK 설정 스크립트는 다운로드·라이선스 수락을 하지 않습니
 | 검사 | 결과 위치 | 해석 |
 | --- | --- | --- |
 | 서버 테스트 | server/build/reports/tests/test/index.html | 실행/실패/skip 건수 확인 |
+| REC-08 Java 실행 증거 | server/build/rec08/mock-recommendation-plan.json | 테스트 생성 또는 캐시 복원 후 초안 스키마·질문 의미 대조 |
 | Android Lint | android/probe/build/reports/lint-results-debug.html | error 0, warning 처리 검토 |
 | debug APK | android/probe/build/outputs/apk/debug/probe-debug.apk | 진단용 APK, release 제출용 아님 |
 | Android 단위 테스트 | android/probe/build/reports/tests/testDebugUnitTest/ | 테스트 추가 후 생성; NO-SOURCE는 실행 없음 |

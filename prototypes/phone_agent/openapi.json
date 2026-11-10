@@ -1,0 +1,196 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Local phone reservation prototype",
+    "version": "0.2.0",
+    "description": "Loopback-only MOCK harness with opt-in Telkit/LiveKit telephony, separate from the product API."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8765"
+    }
+  ],
+  "paths": {
+    "/api/state": {
+      "get": {
+        "summary": "Get owner-scoped state and bootstrap a session cookie",
+        "responses": {
+          "200": {
+            "description": "Owner-scoped bookings/events, MOCK or LIVE mode, externalCalls, and secret-free voice readiness (including audioHandling.noiseSuppression and audioHandling.interruptionMode); may set HttpOnly SameSite=Strict session cookie"
+          }
+        }
+      }
+    },
+    "/api/action": {
+      "post": {
+        "summary": "Apply an idempotent owner-scoped command",
+        "parameters": [
+          {
+            "name": "X-Prototype-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1",
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "localSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action",
+                  "requestId",
+                  "payload"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "approve_booking",
+                      "create_booking",
+                      "create_trip",
+                      "decide_change",
+                      "delete_all",
+                      "delete_profile",
+                      "receive_callback",
+                      "reconfirm_change",
+                      "run_call",
+                      "save_profile",
+                      "update_trip",
+                      "verify_booking"
+                    ]
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "payload": {
+                    "type": "object",
+                    "description": "Action-specific fields documented in README and service tests."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result identifiers and current state"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Host, Origin or session denied"
+          },
+          "404": {
+            "description": "Owner-scoped resource not found"
+          },
+          "409": {
+            "description": "State, version or idempotency conflict"
+          },
+          "413": {
+            "description": "Body over 24 KiB"
+          },
+          "415": {
+            "description": "JSON content type required"
+          }
+        }
+      }
+    },
+    "/api/live/dial": {
+      "post": {
+        "summary": "Dispatch one approved booking to an allowlisted test phone (opt-in LIVE only)",
+        "parameters": [
+          {
+            "name": "X-Prototype-Request",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "const": "1",
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "localSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "bookingId",
+                  "version",
+                  "requestId"
+                ],
+                "properties": {
+                  "bookingId": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result identifiers and current state"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Host, Origin or session denied"
+          },
+          "404": {
+            "description": "Owner-scoped resource not found"
+          },
+          "409": {
+            "description": "LIVE disabled/not configured, unapproved/stale booking, blocked target, capacity or idempotency conflict; no automatic redial"
+          },
+          "413": {
+            "description": "Body over 24 KiB"
+          },
+          "415": {
+            "description": "JSON content type required"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "localSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "phone_session"
+      }
+    }
+  }
+}
