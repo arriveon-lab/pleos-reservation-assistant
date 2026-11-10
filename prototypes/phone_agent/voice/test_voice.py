@@ -139,6 +139,7 @@ class LiveWorkflowTest(unittest.TestCase):
     def test_short_acceptance_is_bound_to_the_named_booking_request(self):
         from .workflow import acknowledged_booking_name
         for reply in ["네", "네.", "네네", "예", "넵", "아, 네.", "네, 좋습니다.", "네, 맞아요.",
+                      "오케이, 가능합니다.", "접수해 두겠습니다.",
                       "알겠습니다.", "그렇게 해드릴게요.", "네, 예약되었습니다.",
                       "예약 확정됐습니다.", "네, 알겠습니다. 이따 뵐게요."]:
             with self.subTest(reply=reply):
@@ -174,6 +175,25 @@ class LiveWorkflowTest(unittest.TestCase):
             reservation_name=name, people=4, additional_cost=0,
             confirmed_requirements=required_conditions(CONDITIONS), evidence="네")
         self.assertEqual("CONFIRMED", result["status"])
+
+    def test_natural_named_request_and_model_acceptance_can_confirm(self):
+        _, call = self.reserve()
+        self.workflow.transcript(call["id"], "agent", "김예약 님으로 예약 부탁드립니다.")
+        evidence = "오케이, 가능합니다."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        result = self.workflow.record_outcome(call["id"], accepted=True, day=DAY, time="19:00",
+            reservation_name="김예약", people=4, additional_cost=0,
+            confirmed_requirements=required_conditions(CONDITIONS), evidence=evidence)
+        self.assertEqual("CONFIRMED", result["status"])
+
+    def test_request_context_cannot_override_the_models_negative_acceptance(self):
+        _, call = self.reserve()
+        self.workflow.transcript(call["id"], "agent", "김예약 님으로 예약 부탁드립니다.")
+        self.workflow.transcript(call["id"], "restaurant", "좋아요")
+        result = self.workflow.record_outcome(call["id"], accepted=False, day=DAY, time="19:00",
+            reservation_name="김예약", people=4, additional_cost=0,
+            confirmed_requirements=required_conditions(CONDITIONS), evidence="좋아요")
+        self.assertEqual("UNKNOWN", result["status"])
 
     def test_booking_completion_reply_does_not_require_repeating_the_name(self):
         booking, call = self.reserve()

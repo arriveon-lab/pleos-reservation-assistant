@@ -104,3 +104,6 @@ docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
 
 
 짧은 수락 판정 보완 소스 `8b54619`를 후속 배포했습니다. 로컬·네트워크 차단 Linux 컨테이너 각각 110개 검사와 해당 코드의 원격 CI 5개를 통과했습니다. 배포 후 짧은 수락 함수·HTTP 상태·기존 통화 이력 9건·LIVE/AEC false·일일 상한 1·worker 중단을 확인했습니다. 실제 전화/모델 호출은 추가하지 않았습니다.
+
+
+입력 무음 진단 소스 `cc96ad4`를 배포하고 네트워크 차단 Linux에서 116개 검사를 통과했습니다. `PHONE_INPUT_LEVEL_PROBE`는 기본 false이며, 다음 승인된 진단 통화에만 선택적으로 켭니다. 최근 2회 발신의 재생 대기/입력 무음과 비용은 [STATUS](../../../docs/STATUS.md)를 따릅니다. 새 진단은 아직 실전화로 실행하지 않았습니다.

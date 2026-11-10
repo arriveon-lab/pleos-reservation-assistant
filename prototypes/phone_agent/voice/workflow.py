@@ -11,20 +11,21 @@ from .config import normalize_number
 
 
 def acknowledged_booking_name(events, evidence, name):
-    """Bind a short affirmative to its own named booking request, never another slot."""
+    """Bind the model's acceptance evidence to a named booking request.
+
+    This verifies context, not arbitrary Korean semantics. record_outcome also
+    requires the model's accepted=True and the approved booking fields to match.
+    """
     def compact(text):
         return re.sub(r"[\s,.!?~…。！？]+", "", text)
 
-    yes = r"(?:네+|예+|넵|응)"
-    acceptance = (r"(?:알겠습니다|알겠어요|좋습니다|좋아요|맞습니다|맞아요|괜찮습니다|괜찮아요|"
-                  r"그렇게(?:할게요|하겠습니다|해드릴게요|해드리겠습니다))")
-    completion = (r"예약(?:이)?(?:(?:확정|완료)(?:됐습니다|되었습니다|입니다|했습니다)|"
-                  r"됐습니다|되었습니다|해드렸습니다|해드릴게요|해드리겠습니다)")
-    courtesy = r"(?:(?:좀)?(?:이따|그때|당일에)?(?:뵐게요|뵙겠습니다))?"
-    acknowledgement = (rf"(?:아|아하)?(?:{yes}(?:{acceptance}|{completion})?|"
-                       rf"{acceptance}|{completion}){courtesy}")
     quote = compact(evidence)
-    if not re.fullmatch(acknowledgement, quote):
+    # Acceptance intent comes from the model, not a fixed list of replies.
+    # Keep a conservative veto for explicit qualifications, refusal, and pending checks.
+    if (not quote or re.search(r"다만|하지만|그런데|근데|대신|말고|됐지만|되었지만|"
+                              r"아니|불가|취소|안\s*(?:돼|되|됩)|못|잠시|잠깐|아직|"
+                              r"확인해\s*볼|확인\s*중|다른\s*(?:이름|시간|날짜)|"
+                              r"추가\s*비용.{0,8}(?:있|발생|필요)", evidence)):
         return False
     # Keep the existing recent-evidence window. Match the whole reply, so quoting
     # only '네' from '네, 다만...' cannot remove a qualification or correction.
@@ -38,7 +39,7 @@ def acknowledged_booking_name(events, evidence, name):
         prompt = request["message"]
         named_request = re.search(
             rf"(?:예약자\s*)?이름은\s*{re.escape(name)}입니다(?:[.,!\s]|$)|"
-            rf"(?<!\w){re.escape(name)}\s*이름으로\s*예약", prompt)
+            rf"(?<!\w){re.escape(name)}\s*(?:님\s*)?(?:이름|성함)?으로\s*예약", prompt)
         booking_request = re.search(
             r"예약\s*(?:을\s*)?(?:부탁(?:드립니다|드려요|드리겠습니다|드릴게요)|"
             r"(?:해|잡아)\s*주(?:세요|시겠어요|시겠습니까|실\s*수\s*있을까요))[.!?。！？\s]*$", prompt)
@@ -248,14 +249,20 @@ class LiveWorkflow:
             qualified = bool(re.search(
                 r"다만|하지만|됐지만|되었지만|그런데|근데|대신|말고|다른\s*(?:시간|날짜|이름)", evidence))
             explicit = bool(re.search(r"예약.{0,20}(확정|완료|됐|되었|해.{0,3}드)|잡아.{0,5}(드|둘)", evidence))
-            contextual = not changing and acknowledged_booking_name(events, evidence, booking["reservationName"])
-            verified = (accepted is True and (explicit or contextual) and not negative and not qualified
-                        and day == booking["date"]
-                        and reservation_name == booking["reservationName"]
-                        and (reservation_name in " ".join(recent) or contextual)
-                        and time == (booking["change"]["proposedTime"] if changing else booking["requestedTime"]) and type(people) is int
-                        and people == snapshot["partySize"] and type(additional_cost) is int and additional_cost == 0
-                        and required <= set(confirmed_requirements))
+            contextual = (accepted is True and not changing
+                          and acknowledged_booking_name(events, evidence, booking["reservationName"]))
+            checks = {"modelAccepted": accepted is True,
+                      "acceptanceEvidence": explicit or contextual,
+                      "noNegativeOrQualification": not negative and not qualified,
+                      "dateMatches": day == booking["date"],
+                      "reservationNameMatches": reservation_name == booking["reservationName"],
+                      "nameGroundedInDialogue": reservation_name in " ".join(recent) or contextual,
+                      "timeMatches": time == (booking["change"]["proposedTime"]
+                                               if changing else booking["requestedTime"]),
+                      "partySizeMatches": type(people) is int and people == snapshot["partySize"],
+                      "noAdditionalCost": type(additional_cost) is int and additional_cost == 0,
+                      "requiredConditionsConfirmed": required <= set(confirmed_requirements)}
+            verified = all(checks.values())
             status = "CONFIRMED" if verified else "DECLINED" if accepted is False and negative else "UNKNOWN"
             if changing:
                 if verified:
@@ -268,6 +275,7 @@ class LiveWorkflow:
                                notice="실제 통화에서 예약 조건을 확인했어요." if verified else "실제 통화 결과를 저장했어요. 확정되지 않은 조건은 확인이 필요해요.",
                                requirementChecks={key: "CONFIRMED" if verified else "UNKNOWN" for key in required})
             call.update(status="RESULT_SAVED", outcome=status)
+            call["confirmationChecks"] = checks  # No raw tool arguments or personal data.
             call["confirmationBasis"] = ("contextual_acknowledgement" if contextual else "explicit_statement") if verified else None
             self.service._put(owner, "booking", booking)
             self.service._put(owner, "live_call", call)
