@@ -1,5 +1,12 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 REC-05 #16 공동 인수 fixture 전달 준비
+
+- #26/#39 담당의 [최신 인수 요청](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185)과 앱cf35ead의 입력 범위/집합 비교/미리보기 수명을 소스로 대조했습니다. 화면 인수 문서의 과거1–8/0–6 설명을 미리보기1–20/0–10과 기존 예약 연습 범위로 구분했습니다. [재현 명령·4상태·인수표·웹 필드 후속안](../docs/REC05_JOINT_ACCEPTANCE.md)을 우선합니다. 공동 기기 실행 완료가 아닙니다.
+- 기존 `feat/16-place-preview-integration`에 test 전용 PreviewAcceptanceApplication·previewAcceptance Gradle task·Python HTTP 검증을 추가했습니다. fixture RESULTS/EMPTY/FILTERED/FAILED, 127.0.0.1만 수신, 별도 work 아래 인증 DB, 실제 발급 토큰 사용이며 MOCK_OPERATOR/가상 Principal을 공급하지 않습니다. 기본 제품/공개 API·Android·다른 담당 브랜치는 변경하지 않았습니다. 배포 JAR 제외를 검증하며 CI에도 가상 검사만 추가합니다.
+- Java329개/실패·오류·skip0, 직접4상태의 계약 HTTP48건/무인증401·인원21/11 거절 및20/10 수용·배열 순서·완료 반복/조건 충돌·같은 주체 갱신 후 close를 검증했습니다. 기존 JAR 인증/MOCK/UNKNOWN·H2 재시작·LIVE 차단·preview 토큰HTTP16건도 재검증했습니다. 정상 후보/질문은 가상이고 실제 OpenAI/장소/매장 웹/전화/비용 실행은0회입니다. 증거는 Git 제외 work/rec05-acceptance-verify.log·rec05-acceptance-http.log·rec05-acceptance-smoke.log입니다. 원격 CI는 최신 PR #19 결과를 별도 확인합니다.
+- 앱 담당이 최종 APK SHA256/서버 commit·기기·fixture를 고정해 표시/화면 이탈·늦은 응답·주행 제한을 함께 대조해야 합니다. 기존 앱/Keystore/DB/adb 연결은 자동 변경하지 않았습니다. #16/#26 OPEN·#19 Draft, #1 ETA·#11 정책·#17 운영 수명은 유지합니다. PR #38 새 웹 필드는 미합의이며 기존0.2.0 계약에 포함하지 않습니다. 실제 GPT 검증은 대상/모델/가격/전송 데이터·횟수·비용의 별도 승인 후 진행합니다.
+
 ## 2026-11-09 #16 화면 담당 정적 검토·최신 main 반영
 
 - #26 담당의 [정적 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)을 확인하고 인수 문서에 반영했습니다. 현재 초안0.2.0 필드로 진행 가능하며 앱 복귀 시 완료 결과를 비운 상태에서 명시적 새 검색을 기다립니다. ordinal을 예약ID로 변환하거나 발신 승인으로 사용하는 API는 없습니다. 정적 합의를 Android 구현/공동 기기 인수 완료로 세지 않습니다.

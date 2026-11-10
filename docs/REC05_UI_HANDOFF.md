@@ -2,9 +2,13 @@
 
 2026-11-09. 추천/장소 담당 `tiemo0708`, 화면 협업 `soyeong03`. [#16](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16) / [Draft PR #19](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/19)와 [#26](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/26)을 연결합니다. **서버 MOCK 계약 제안이며 화면 담당의 합의·Android 연결 완료가 아닙니다.** #19는 main에 미병합입니다.
 
-## 2026-11-09 화면 담당 정적 검토 반영
+## 2026-11-10 최신 화면 제안에 대한 서버 확인
 
-[#26 담당의 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)을 확인했습니다. 초안0.2.0-draft의 현재 필드에 추가 차단 사항은 없다는 정적 검토이며 Android 구현/공동 기기 인수는 미완료입니다. 앱 인원 범위(성인1–8/아동0–6)는 화면 정책으로 두고 서버 계약 범위와 구분합니다.
+[#26/#39의 최신 공동 시험 제안](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185)을 확인하고 앱 소스cf35ead와 대조했습니다. **미리보기 인원1–20/0–10**, 기존 예약 연습1–8/0–6의 구분과 조건 배열의 집합 비교를 서버 측에서 확인합니다. [공통 MOCK fixture·실행 명령·인수표](REC05_JOINT_ACCEPTANCE.md)를 제공합니다. 기기 공동 실행과 웹 상세정보 필드 채택은 아직 미완료입니다.
+
+## 2026-11-09 화면 담당 정적 검토 반영 (당시 이력)
+
+[#26 담당의 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)을 확인했습니다. 당시 초안0.2.0-draft의 현재 필드에 추가 차단 사항은 없다는 정적 검토입니다. 당시 앱1–8/0–6 제한은 후속 미리보기 구현에서1–20/0–10으로 확장됐으며 기존 예약 연습의 범위와 구분합니다. 기기 공동 인수는 위 최신 기준을 따릅니다.
 
 서버 측에서도 다음 두 경계를 확인합니다. 앱 복귀 시 완료 미리보기 결과를 다시 표시/복원하지 않고 비운 상태에서 사용자의 명시적 새 검색을 기다립니다. 현재 추천 후보의 ordinal을 예약 candidateId로 변환하거나 발신 승인으로 바꾸는 API는 없습니다. bookable/inquiryDispatchAllowed=false이면 문의·예약 조작을 제공하지 않습니다. 웹 상세정보 보강의 후속 구현도 이 계약에 임의 필드를 추가하거나 UNKNOWN을 발신 허가로 바꾸지 않습니다.
 

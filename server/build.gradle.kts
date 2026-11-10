@@ -79,3 +79,18 @@ val smokeClasspath by
     }
 
 tasks.named("check") { dependsOn(smokeClasspath) }
+
+// Device acceptance fixtures use real app tokens, never the synthetic smoke-test Principal.
+tasks.register<JavaExec>("previewAcceptance") {
+    group = "verification"
+    description = "Serve an explicit loopback MOCK preview fixture for joint device acceptance."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "ai.pleos.assistant.PreviewAcceptanceApplication"
+    workingDir = rootProject.projectDir
+    args(
+        providers.gradleProperty("previewFixture").getOrElse("RESULTS"),
+        providers.gradleProperty("previewPort").getOrElse("18082"),
+        providers.gradleProperty("previewDatabase").getOrElse("work/rec05-acceptance/auth"),
+    )
+}

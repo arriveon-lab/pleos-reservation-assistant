@@ -1,5 +1,12 @@
 # 구현·검증 현황
 
+## 2026-11-10 REC-05 #16 공동 화면 인수 준비
+
+- [화면 담당의 최신 요청](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185)과 앱 #46 소스cf35ead를 대조했습니다. 미리보기 인원1–20/0–10과 기존 예약 연습1–8/0–6을 구분하고 requiredFeatures/preferredCuisines의 집합 비교·최대3개/UNKNOWN/발신 차단·완료 결과 미재표시를 서버 측에서 확인했습니다. 이전 인수 문서의 앱 범위 설명을 갱신했습니다.
+- [공동 인수 fixture/절차](REC05_JOINT_ACCEPTANCE.md), test 전용 PreviewAcceptanceApplication과 `:server:previewAcceptance` task를 추가했습니다. 실제 발급 토큰 필터를 사용하고 가상 Principal/운영자 권한은 주입하지 않습니다. RESULTS3/EMPTY0/FILTERED0/FAILED0은 프록시 없이 가상 공급자로 직접 재현하며 배포 JAR에는 실행체를 넣지 않습니다. 공개 계약·제품 소스·DB migration·Android 변경은 없습니다.
+- format verify: Java329개, 실패/오류/skip0. 별도 `check-preview-acceptance.py`에서4개 격리 서버·실제 계약 HTTP48건(기동 상태 polling 제외), 무인증/인원 초과·상한/집합 순서/완료 반복·충돌/갱신 소유권과 JAR 제외를 검증했습니다. 기존 JAR 인증/MOCK/UNKNOWN·H2 재시작·LIVE 차단·preview 토큰HTTP16건도 재검증했습니다. CI에도 가상 검증만 연결합니다. 실제 공급자/기기 장애나 공동 기기 인수의 증거가 아닙니다.
+- 웹 상세정보 PR #38은 코드 준비·기존 CI3개 성공/미병합 상태이며 현행0.2.0-draft에 필드를 추가하지 않았습니다. 출처/시각·UNKNOWN/CONFLICT·남은 질문·최단 기한의 다음 협의안을 공동 인수 문서에 정리했습니다. #26 최종 APK·서버 조합 공동 실행, #1 ETA/#11 데이터 조건은 남아 #16 OPEN/#19 Draft입니다. 실제 GPT/외부 장소/웹 수집/전화/유료 호출 추가0회입니다.
+
 ## 2026-11-09 #16 화면 담당 정적 검토·최신 main 반영
 
 - #26 담당의 [정적 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6737968008)을 확인하고 인수 문서에 반영했습니다. 현재 초안0.2.0 필드로 진행 가능하며 앱 복귀 시 완료 결과를 비운 상태에서 명시적 새 검색을 기다립니다. ordinal을 예약ID로 변환하거나 발신 승인으로 사용하는 API는 없습니다. 정적 합의를 Android 구현/공동 기기 인수 완료로 세지 않습니다.
