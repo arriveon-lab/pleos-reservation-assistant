@@ -1,6 +1,6 @@
 # 추천·장소 기반 통합 범위와 후속 작업
 
-정리: 2026-11-07 KST. 사용자가 PR #14와 #15의 완료 범위를 통합하고 미완료 작업을 후속 이슈로 분리하도록 승인했습니다. 이 문서와 각 이슈의 최신 범위를 이전 진행 기록보다 우선합니다. 실제 병합 상태는 GitHub를 기준으로 확인합니다.
+정리: 2026-11-07 KST. 후속 진행 갱신: 2026-11-08 KST. 사용자가 PR #14와 #15의 완료 범위를 통합하고 미완료 작업을 후속 이슈로 분리하도록 승인했습니다. 이 문서와 각 이슈의 최신 범위를 이전 진행 기록보다 우선합니다. 실제 병합 상태는 GitHub를 기준으로 확인합니다.
 
 ## 이번 통합 범위
 
@@ -13,14 +13,14 @@
 
 ## 미완료 작업
 
-모두 담당자는 `tiemo0708`이며 기존 #1/#3/#4/#5 담당 범위를 변경하지 않습니다. 새 구현은 통합된 main에서 해당 실제 이슈 번호의 브랜치로 시작합니다. 아래 브랜치는 계획이며 아직 만들지 않았습니다.
+모두 담당자는 `tiemo0708`이며 기존 #1/#3/#4/#5 담당 범위를 변경하지 않습니다. 아래 브랜치는 main `9518b6a`에서 실제 생성해 Draft PR로 공유했습니다. 최신 구현·검증·대기는 [담당 작업 정리](REC_WORK_SUMMARY.md)를 따르며, #11/#16–18은 아직 OPEN입니다. #21 인증은 다른 담당자 작업이고 이번 잔여 정리에서 수정/재실행/병합하지 않았습니다.
 
-| 이슈 | 이관한 작업 / 협업 | 완료 조건 / 계획 브랜치 |
+| 이슈 | 이관한 작업 / 협업 | 완료 조건 / 실제 브랜치·PR |
 | --- | --- | --- |
-| [#11 REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | 데이터 수명·보관·재사용·전화/음성 공급자 제공·공급자 최종 결정 / #3/#4/#5 | 허용·금지·미확인별 공식 근거와 팀 계약. `docs/11-place-data-policy` |
-| [#16 REC-05](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16) | #12/#13의 실제 인증·공개 API·화면·navigation freshness/ETA 연결 / #1/#4/#5 | 신뢰된 인증 주체, OpenAPI·예제·호출자·통합 검증, 실제/모의 표시·수명 계약. `feat/16-place-preview-integration` |
-| [#17 REC-06](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/17) | #12의 자동 정리·프로세스 종료·재시작/다중 서버 실행·비용 상한 / #4 | 정리/종료·취소 무시·장애 시 차단 및 실행 메타데이터 계약 검증. `feat/17-preview-lifecycle` |
-| [#18 REC-07](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/18) | #13의 추가 지역 표본·누락/중복/0건·실제 IP 제한과 배포 조건 / #4/#5 | 추가 실행 범위/상한 확정, 공급자 집계 대조, 원문 미저장 품질 요약과 제품 인수. `feat/18-place-quality-validation` |
+| [#11 REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | 데이터 수명·보관·재사용·전화/음성 공급자 제공·공급자 최종 결정 / #3/#4/#5 | 허용·금지·미확인별 공식 근거와 팀 계약. `docs/11-place-data-policy` · [Draft #23](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/23) |
+| [#16 REC-05](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16) | #12/#13의 실제 인증·공개 API·화면·navigation freshness/ETA 연결 / #1/#4/#5 | 신뢰된 인증 주체, OpenAPI·예제·호출자·통합 검증, 실제/모의 표시·수명 계약. `feat/16-place-preview-integration` · [Draft #19](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/19) |
+| [#17 REC-06](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/17) | #12의 자동 정리·프로세스 종료·재시작/다중 서버 실행·비용 상한 / #4 | 정리/종료·취소 무시·장애 시 차단 및 실행 메타데이터 계약 검증. `feat/17-preview-lifecycle` · [Draft #22](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/22) |
+| [#18 REC-07](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/18) | #13의 추가 지역 표본·누락/중복/0건·실제 IP 제한과 배포 조건 / #4/#5 | 추가 실행 범위/상한 확정, 공급자 집계 대조, 원문 미저장 품질 요약과 제품 인수. `feat/18-place-quality-validation` · [Draft #24](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/24) |
 
 #16은 #4의 인증 계약·#1의 기기 증거·#11의 허용 데이터 범위와 맞춰 진행합니다. #17은 제품 실제 실행 전에 필요한 배포 범위와 실행 보호를 정합니다. #18의 일반 미저장 실시간 조회는 #11 전체 문의 답변이나 #16 전체 완료를 일괄 선행 조건으로 두지 않되, 실행 범위와 무료/유료 상태를 먼저 확인합니다.
 
