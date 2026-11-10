@@ -76,3 +76,9 @@
 2. 두 취향 조합/인원 경계 기기 확인, 실제5분 만료, 실제 주행/장애 조합은 추가 인수 범위로 남긴다. #1 ETA·#11 이용 조건·#17 운영 수명은 해당 담당 범위를 유지한다.
 3. #40 일반 앱/별도 운영자 문의→승인→예약 결과 시연은 별도다. 이번 Docker 이미지에는 운영자 주입 경로가 없어 #40 준비 완료를 뜻하지 않는다.
 4. PR #38 웹 필드는 현행 계약에 추가하지 않았다. 공개 필드 합의 후 별도 구현한다. 제품/API 수정·병합·자동 병합 없음.
+
+## 최신 main 통합과 CI 재개
+
+문서 push c14cf47 이후 원격 PR은 새 main4d65c01과 충돌해 pull_request CI가 생성되지 않았다. 공유 이력을 보존한 merge로 STATUS/HANDOFF 두 충돌에서 양측 기록을 모두 유지했다. main의 품질 도구/가상 검사/CI와 서버 test 산출물 선언을 보존했으며 Android·UX core·루트 빌드 설정은 기기 검증 소스cf35ead 대비 diff가 없다. APK는 여전히 위 cf35ead 빌드 증거이며 merge 뒤 새 APK를 재설치했다고 주장하지 않는다.
+
+통합 후 verifyAll 성공(112 tasks,7 executed/105 up-to-date), MOCK smoke 성공. Python 품질 검사는 최초 pyproj 미설치로 import 실패했고, 격리 `work/ux16-joint/quality-venv`에 requirements-quality를 설치한 뒤40개 가상 테스트와 MOCK pilot-screening 성공. 전역 Python 변경·실제 데이터 추가 조회는 없다. 로그는 integrated-verifyAll.log/integrated-smoke.log/integrated-quality-retry.log다. 원격 최신 head CI는 PR에서 별도로 보고하며 이전 cf35ead 성공을 최신 성공으로 표시하지 않는다.

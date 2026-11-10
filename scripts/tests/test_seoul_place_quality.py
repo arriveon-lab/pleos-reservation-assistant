@@ -211,5 +211,342 @@ class SeoulPlaceQualityTest(unittest.TestCase):
             )
 
 
+class SeoulPilotScreeningTest(unittest.TestCase):
+    def row(self, record_id="synthetic-id", **changes):
+        row = {**quality.fictional_rows()[0], "MGTNO": record_id, "SITETEL": "synthetic-accepted"}
+        return {**row, **changes}
+
+    def report(self, rows):
+        # Exercise a positive intersection without inventing any dialable fixture number.
+        original = quality.phone_kind
+        with patch.object(
+            quality,
+            "phone_kind",
+            side_effect=lambda value: (
+                ("SYNTAX_ONLY", None) if value == "synthetic-accepted" else original(value)
+            ),
+        ):
+            return quality.profile(rows, NOW, "MOCK", include_pilot_screening=True)
+
+    def test_same_record_must_satisfy_all_conditions_not_independent_marginals(self):
+        rows = [
+            self.row("outside", Y="451083.68283992365"),
+            self.row("no-phone", SITETEL=""),
+            self.row(
+                "closed", TRDSTATEGBN="03", TRDSTATENM="폐업", DTLSTATEGBN="02", DTLSTATENM="폐업"
+            ),
+        ]
+        result = self.report(rows)
+        self.assertGreater(result["checks"]["validCoordinates"]["count"], 0)
+        self.assertGreater(result["phoneKinds"]["SYNTAX_ONLY"], 0)
+        self.assertGreater(result["checks"]["withinPilot1030m"]["count"], 0)
+        self.assertEqual(result["pilotScreening"]["screenedRecords"], 0)
+
+    def test_positive_diagnostic_still_has_no_product_or_call_authority(self):
+        result = self.report([self.row()])
+        pilot = result["pilotScreening"]
+        self.assertEqual(list(pilot["cumulativeCounts"].values()), [1] * 7)
+        self.assertEqual(pilot["screenedRecords"], 1)
+        self.assertEqual(
+            pilot["statusRule"]["verification"], "DOCUMENTED_STANDARD_20_GENERAL_RESTAURANTS"
+        )
+        self.assertIsNone(pilot["productionCandidateCount"])
+        self.assertFalse(pilot["readyForRecommendation"])
+        self.assertFalse(
+            result["bookable"] or result["inquiryDispatchAllowed"] or result["adoptionReady"]
+        )
+        self.assertEqual(result["snapshotFreshness"]["state"], "UNKNOWN")
+        self.assertNotIn("synthetic-", json.dumps(result))
+
+    def test_missing_status_tag_and_explicit_empty_closure_are_distinct(self):
+        for field in quality.PILOT_STATUS_FIELDS:
+            row = self.row()
+            del row[field]
+            with self.subTest(field=field):
+                # Keep the base schema present elsewhere while one row has a missing tag.
+                pilot = self.report([row, self.row("schema-reference", SITETEL="")])[
+                    "pilotScreening"
+                ]
+                self.assertEqual(pilot["statusKinds"]["MISSING"], 1)
+                self.assertEqual(pilot["screenedRecords"], 0)
+        self.assertEqual(self.report([self.row()])["pilotScreening"]["screenedRecords"], 1)
+
+    def test_code_label_variants_and_closure_values_cannot_be_normalized_into_match(self):
+        for changes in (
+            {"TRDSTATEGBN": "1"},
+            {"TRDSTATENM": "정상"},
+            {"DTLSTATEGBN": "13"},
+            {"DTLSTATENM": "영업중"},
+            {"TRDSTATEGBN": "03"},
+            {"DTLSTATENM": ""},
+            {"DCBYMD": "20260101"},
+            {"DCBYMD": "unknown"},
+        ):
+            with self.subTest(changes=changes):
+                pilot = self.report([self.row(**changes)])["pilotScreening"]
+                self.assertEqual(pilot["screenedRecords"], 0)
+                self.assertEqual(pilot["firstExclusionCounts"]["statusNotNormalOrUnknown"], 1)
+
+    def test_identical_duplicate_group_is_excluded_in_full(self):
+        row = self.row()
+        pilot = self.report([row, deepcopy(row)])["pilotScreening"]
+        self.assertEqual(pilot["duplicateIdGroups"], 1)
+        self.assertEqual(pilot["conflictingIdGroups"], 0)
+        self.assertEqual(pilot["firstExclusionCounts"]["duplicateId"], 2)
+        self.assertEqual(pilot["cumulativeCounts"]["uniqueId"], 0)
+
+    def test_conflicting_detail_state_or_closure_blocks_whole_group_in_any_order(self):
+        for changes in ({"DTLSTATENM": "폐업"}, {"DCBYMD": "20260101"}):
+            rows = [self.row(), self.row(**changes), self.row("unrelated")]
+            forward = self.report(rows)["pilotScreening"]
+            self.assertEqual(forward, self.report(list(reversed(rows)))["pilotScreening"])
+            self.assertEqual(forward["conflictingIdGroups"], 1)
+            self.assertEqual(forward["screenedRecords"], 1)
+
+    def test_missing_id_never_becomes_a_candidate(self):
+        pilot = self.report([self.row("")])["pilotScreening"]
+        self.assertEqual(pilot["firstExclusionCounts"]["missingId"], 1)
+        self.assertEqual(pilot["screenedRecords"], 0)
+
+    def test_missing_invalid_and_outside_coordinates_have_distinct_exclusions(self):
+        rows = [
+            self.row("missing", X=""),
+            self.row("invalid", Y="nan"),
+            self.row("outside", Y="451083.68283992365"),
+        ]
+        pilot = self.report(rows)["pilotScreening"]
+        for name in ("missingCoordinates", "invalidCoordinates", "outside1030m"):
+            self.assertEqual(pilot["firstExclusionCounts"][name], 1)
+        self.assertEqual(pilot["screenedRecords"], 0)
+
+    def test_radius_boundary_is_diagnostic_only_and_never_rounded_into_1km(self):
+        for meters, screened, band in (
+            (0, 1, "WITHIN_1000M"),
+            (1000, 1, "WITHIN_1000M"),
+            (1000.00001, 0, "BOUNDARY_1000_TO_1030M"),
+            (1030, 0, "BOUNDARY_1000_TO_1030M"),
+            (1030.00001, 0, "OUTSIDE_1030M"),
+        ):
+            with (
+                self.subTest(meters=meters),
+                patch.object(quality, "distance", return_value=meters),
+            ):
+                self.assertEqual(quality.radius_band(meters), band)
+                pilot = self.report([self.row()])["pilotScreening"]
+                self.assertEqual(pilot["screenedRecords"], screened)
+                self.assertFalse(pilot["boundaryIncluded"])
+        for invalid in (float("nan"), float("inf"), -1, True):
+            with self.assertRaises(quality.QualityError):
+                quality.radius_band(invalid)
+
+    def test_mobile_placeholder_and_unknown_contact_need_review(self):
+        original = quality.phone_kind
+        for kind in ("MISSING", "MOBILE_REVIEW", "PLACEHOLDER", "UNRECOGNIZED"):
+            with (
+                self.subTest(kind=kind),
+                patch.object(quality, "phone_kind", return_value=(kind, None)),
+            ):
+                report = quality.profile([self.row()], NOW, "MOCK", include_pilot_screening=True)
+                self.assertEqual(report["pilotScreening"]["screenedRecords"], 0)
+                self.assertEqual(
+                    report["pilotScreening"]["firstExclusionCounts"]["phoneNotSyntaxOnly"], 1
+                )
+        self.assertEqual(original("02-0000-0000")[0], "PLACEHOLDER")
+
+    def test_basic_context_is_required_after_phone_syntax(self):
+        for field in ("BPLCNM", "RDNWHLADDR"):
+            pilot = self.report([self.row(**{field: ""})])["pilotScreening"]
+            self.assertEqual(pilot["cumulativeCounts"]["phoneSyntaxOnly"], 1)
+            self.assertEqual(pilot["firstExclusionCounts"]["missingNameOrRoadAddress"], 1)
+            self.assertEqual(pilot["screenedRecords"], 0)
+
+    def test_counts_reconcile_without_double_counting_and_do_not_claim_coverage(self):
+        rows = [
+            self.row("pass"),
+            self.row("same"),
+            self.row("same"),
+            self.row(""),
+            self.row("no-phone", SITETEL=""),
+            self.row("no-coordinate", X=""),
+            self.row("unknown-status", TRDSTATEGBN="unknown"),
+        ]
+        pilot = self.report(rows)["pilotScreening"]
+        self.assertEqual(pilot["screenedRecords"], 1)
+        self.assertEqual(sum(pilot["firstExclusionCounts"].values()) + pilot["screenedRecords"], 7)
+        self.assertEqual(sum(pilot["statusKinds"].values()), 7)
+        self.assertEqual(pilot["countDenominator"], 7)
+        counts = list(pilot["cumulativeCounts"].values())
+        self.assertEqual(counts, sorted(counts, reverse=True))
+        self.assertIn("NOT_REPRESENTATIVE_OR_COMPLETE", pilot["coverage"])
+
+    def test_empty_batch_is_unknown_coverage_and_no_production_count(self):
+        pilot = self.report([])["pilotScreening"]
+        self.assertEqual(pilot["state"], "UNKNOWN_EMPTY")
+        self.assertEqual(pilot["countDenominator"], 0)
+        self.assertIsNone(pilot["productionCandidateCount"])
+
+    def test_cli_screening_is_opt_in_mock_with_no_row_or_contact_export(self):
+        for args, expected in (([], False), (["--pilot-screening"], True)):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(quality.main(args), 0)
+            result = json.loads(output.getvalue())
+            self.assertEqual("pilotScreening" in result, expected)
+            self.assertEqual(result["mode"], "MOCK")
+            self.assertEqual(result["externalCallsByProfiler"], 0)
+            self.assertNotIn("fictional-", output.getvalue())
+            self.assertNotIn("02-0000", output.getvalue())
+
+
+class SeoulReferenceAndSheetTest(unittest.TestCase):
+    def envelope(self, rows=None, **page_changes):
+        rows = quality.fictional_rows() if rows is None else rows
+        return {
+            "result": "ok",
+            "list": rows,
+            "page": {"pageNo": 1, "pageSize": 1000, "totalCount": len(rows), **page_changes},
+        }
+
+    def parse(self, data):
+        return quality.parse_sheet_json(json.dumps(data, ensure_ascii=False).encode())
+
+    def test_documented_status_codes_and_unknown_values_are_separate(self):
+        normal = quality.fictional_rows()[0]
+        cases = [
+            ({}, "NORMAL_STATUS"),
+            (
+                {
+                    "TRDSTATEGBN": "03",
+                    "TRDSTATENM": "폐업",
+                    "DTLSTATEGBN": "02",
+                    "DTLSTATENM": "폐업",
+                },
+                "CLOSED",
+            ),
+            ({"TRDSTATEGBN": "02", "TRDSTATENM": "휴업"}, "NOT_NORMAL"),
+            ({"TRDSTATEGBN": "04", "TRDSTATENM": "취소/말소/만료/정지/중지"}, "NOT_NORMAL"),
+            ({"TRDSTATEGBN": "99"}, "UNRECOGNIZED_CODE"),
+            ({"DTLSTATEGBN": "13"}, "UNRECOGNIZED_CODE"),
+            ({"TRDSTATENM": "폐업"}, "CODE_LABEL_CONFLICT"),
+            ({"DTLSTATENM": "폐업"}, "CODE_LABEL_CONFLICT"),
+            ({"DTLSTATEGBN": "02", "DTLSTATENM": "폐업"}, "STATE_CONFLICT"),
+            ({"TRDSTATEGBN": "03", "TRDSTATENM": "폐업"}, "STATE_CONFLICT"),
+            ({"DCBYMD": "20261101"}, "CLOSURE_PRESENT"),
+        ]
+        for changes, expected in cases:
+            with self.subTest(changes=changes):
+                self.assertEqual(quality.pilot_status({**normal, **changes}), expected)
+
+    def test_generic_coordinate_reference_does_not_override_dataset_crs(self):
+        info = quality.CoordinateCheck().info()
+        self.assertEqual(info["sourceCrs"], "EPSG:5174")
+        self.assertEqual(info["genericStandardReferenceCrs"], "EPSG:2097")
+        self.assertEqual(info["sourceCrsBasis"], "OA18655_DATASET_CATALOG")
+
+    def test_sheet_roundtrip_and_partial_coverage_metadata(self):
+        rows, page = self.parse(self.envelope(totalCount=12000))
+        self.assertEqual(rows, quality.fictional_rows())
+        self.assertEqual(page, {"pageNo": 1, "pageSize": 1000, "totalCount": 12000})
+
+    def test_absent_sheet_page_size_is_unknown_not_inferred_from_page_count(self):
+        data = self.envelope(totalCount=3959, pageCount=40)
+        del data["page"]["pageSize"]
+        rows, page = self.parse(data)
+        self.assertEqual(len(rows), 3)
+        self.assertIsNone(page["pageSize"])
+        self.assertEqual(page["reportedPageCount"], 40)
+
+    def test_null_closure_is_unknown_and_numeric_code_does_not_gain_leading_zero(self):
+        row = quality.fictional_rows()[0]
+        rows, _ = self.parse(self.envelope([{**row, "DCBYMD": None, "SITETEL": None}]))
+        self.assertEqual(quality.pilot_status(rows[0]), "MISSING")
+        self.assertEqual(rows[0]["SITETEL"], "")
+        rows, _ = self.parse(self.envelope([{**row, "TRDSTATEGBN": 1}]))
+        self.assertEqual(quality.pilot_status(rows[0]), "UNRECOGNIZED_CODE")
+
+    def test_sheet_failure_is_not_an_empty_success(self):
+        rows, page = self.parse(self.envelope([]))
+        self.assertEqual(rows, [])
+        self.assertEqual(page["totalCount"], 0)
+        for data in (
+            {"result": "error", "list": [], "page": {}},
+            {"result": "ok", "list": {}, "page": {}},
+            self.envelope([], totalCount=1),
+        ):
+            with self.subTest(data=data), self.assertRaises(quality.QualityError):
+                self.parse(data)
+
+    def test_sheet_rejects_bad_page_limits_nested_rows_duplicate_keys_and_encoding(self):
+        for data in (
+            self.envelope(pageNo=True),
+            self.envelope(pageSize=1001),
+            self.envelope(pageNo=0),
+            self.envelope(totalCount=1),
+            self.envelope([{"MGTNO": {"private": "value"}}]),
+            self.envelope([{"MGTNO": True}]),
+            self.envelope([{"MGTNO": "x" * 4097}]),
+            self.envelope([{}] * (quality.MAX_ROWS + 1)),
+        ):
+            with self.assertRaises(quality.QualityError):
+                self.parse(data)
+        for raw in (
+            b'{"result":"ok","result":"error"}',
+            b'{"x":NaN}',
+            b"private-invalid-json",
+            b"\xff",
+            b"x" * (quality.MAX_BYTES + 1),
+        ):
+            with self.assertRaises(quality.QualityError):
+                quality.parse_sheet_json(raw)
+
+    def test_sheet_cli_exports_only_aggregate_and_page_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "private-source.json"
+            path.write_text(json.dumps(self.envelope(totalCount=12000)))
+            output = io.StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(
+                    quality.main(
+                        ["--input", str(path), "--input-format", "sheet-json", "--pilot-screening"]
+                    ),
+                    0,
+                )
+            report = json.loads(output.getvalue())
+            self.assertEqual(report["mode"], "LOCAL_INPUT")
+            self.assertEqual(report["sheetPage"]["totalCount"], 12000)
+            self.assertFalse(report["adoptionReady"])
+            self.assertNotIn("fictional-", output.getvalue())
+            self.assertNotIn("02-0000", output.getvalue())
+
+    def test_legacy_sheet_identifier_keys_do_not_change_strings_or_execute_values(self):
+        text = '{result:"ok",list:[{MGTNO:"synthetic-id",BPLCNM:"{fake: \\"text\\"}"}],page:{pageNo:1,pageSize:1000,totalCount:1}}'
+        rows, page = quality.parse_sheet_json(text.encode())
+        self.assertEqual(rows[0]["BPLCNM"], '{fake: "text"}')
+        self.assertEqual(page["totalCount"], 1)
+        for bad in (
+            '{result:alert("private"),list:[],page:{}}',
+            '{result:"ok",list:[],page:{}};alert("private")',
+            "{result:'ok',list:[],page:{}}",
+            '{result:"ok", /* comment */ list:[],page:{}}',
+        ):
+            with self.assertRaises(quality.QualityError):
+                quality.parse_sheet_json(bad.encode())
+
+    def test_legacy_and_quoted_duplicate_keys_are_rejected_together(self):
+        with self.assertRaisesRegex(quality.QualityError, "^DUPLICATE_JSON_KEY$"):
+            quality.parse_sheet_json(b'{result:"ok","result":"ok",list:[],page:{}}')
+
+    def test_sheet_trailing_comma_normalization_preserves_quoted_punctuation(self):
+        text = '{result:"ok",list:[{MGTNO:"synthetic,]}",},],page:{pageNo:1,pageSize:1000,totalCount:1,},}'
+        rows, _ = quality.parse_sheet_json(text.encode())
+        self.assertEqual(rows[0]["MGTNO"], "synthetic,]}")
+        for text in (
+            '{result:"ok",list:[,,],page:{}}',
+            '{result:"ok",list:[],page:{pageNo:1,pageSize:1,totalCount:0,},};evil()',
+        ):
+            with self.assertRaises(quality.QualityError):
+                quality.parse_sheet_json(text.encode())
+
+
 if __name__ == "__main__":
     unittest.main()

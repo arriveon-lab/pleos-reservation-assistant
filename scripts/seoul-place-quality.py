@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline OA-18655 XML quality profile. No HTTP, row exports, contact values or booking authority."""
+"""Offline OA-18655 XML/sheet profile. No HTTP, row/contact exports or booking authority."""
 import argparse
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -30,6 +30,17 @@ FIELDS = (
     "Y",
 )
 PILOT = (127.055, 37.544)
+PILOT_STATUS_FIELDS = ("TRDSTATEGBN", "TRDSTATENM", "DTLSTATEGBN", "DTLSTATENM", "DCBYMD")
+# Public Data Provision Standard, revision 20, section 127 (general restaurants).
+STATUS_STANDARD_URL = "https://www.data.go.kr/bbs/rcr/selectRecsroom.do?originId=PDS_0000000001252"
+ADMINISTRATIVE_STATUS = {
+    "01": "영업/정상",
+    "02": "휴업",
+    "03": "폐업",
+    "04": "취소/말소/만료/정지/중지",
+}
+DETAILED_STATUS = {"01": "영업", "02": "폐업"}
+PILOT_NORMAL_TUPLE = ("01", "영업/정상", "01", "영업")
 
 
 class QualityError(Exception):
@@ -115,6 +126,117 @@ def parse_xml(raw):
     return result
 
 
+def quote_sheet_keys(text):
+    """Normalize identifier keys/trailing commas only; never evaluate JavaScript values."""
+    decoder = json.JSONDecoder()
+    identifier = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
+    chunks, position, previous = [], 0, ""
+    while position < len(text):
+        char = text[position]
+        if char == '"':
+            _, end = decoder.raw_decode(text, position)
+            chunks.append(text[position:end])
+            position, previous = end, '"'
+            continue
+        if char in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$":
+            token = identifier.match(text, position)[0]
+            end = position + len(token)
+            lookahead = end
+            while lookahead < len(text) and text[lookahead].isspace():
+                lookahead += 1
+            is_key = previous in ("{", ",") and lookahead < len(text) and text[lookahead] == ":"
+            chunks.append(json.dumps(token) if is_key else token)
+            position, previous = end, token[-1]
+            continue
+        if char == ",":
+            lookahead = position + 1
+            while lookahead < len(text) and text[lookahead].isspace():
+                lookahead += 1
+            if lookahead < len(text) and text[lookahead] in "]}":
+                position += 1
+                continue
+        chunks.append(char)
+        if not char.isspace():
+            previous = char
+        position += 1
+    return "".join(chunks)
+
+
+def parse_sheet_json(raw):
+    """Local copy of the official HTTPS sheet envelope; no fetching or raw-value exports."""
+    if not isinstance(raw, bytes) or len(raw) > MAX_BYTES:
+        raise QualityError("INPUT_SIZE_LIMIT")
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise QualityError("DUPLICATE_JSON_KEY")
+            result[key] = value
+        return result
+
+    def reject_constant(_value):
+        raise QualityError("INVALID_JSON")
+
+    try:
+        data = json.loads(
+            quote_sheet_keys(raw.decode("utf-8-sig")),
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+    except UnicodeError:
+        raise QualityError("INVALID_ENCODING") from None
+    except (ValueError, RecursionError):
+        raise QualityError("INVALID_JSON") from None
+    if not isinstance(data, dict) or data.get("result") != "ok":
+        raise QualityError("SHEET_RESULT_NOT_SUCCESS")
+    source_rows, page = data.get("list"), data.get("page")
+    if not isinstance(source_rows, list) or not isinstance(page, dict):
+        raise QualityError("INVALID_SHEET_SHAPE")
+    if len(source_rows) > MAX_ROWS:
+        raise QualityError("ROW_LIMIT")
+    metadata = {}
+    for field in ("pageNo", "totalCount"):
+        value = page.get(field)
+        if isinstance(value, bool) or not re.fullmatch(r"\d{1,12}", str(value)):
+            raise QualityError("INVALID_PAGE_METADATA")
+        metadata[field] = int(value)
+    if not (metadata["pageNo"] >= 1 and metadata["totalCount"] >= len(source_rows)):
+        raise QualityError("INVALID_PAGE_METADATA")
+    metadata["pageSize"] = None
+    if "pageSize" in page:
+        size = page["pageSize"]
+        if isinstance(size, bool) or not re.fullmatch(r"\d{1,4}", str(size)):
+            raise QualityError("INVALID_PAGE_METADATA")
+        if not (1 <= int(size) <= MAX_ROWS and len(source_rows) <= int(size)):
+            raise QualityError("INVALID_PAGE_METADATA")
+        metadata["pageSize"] = int(size)
+    if "pageCount" in page:
+        count = page["pageCount"]
+        if isinstance(count, bool) or not re.fullmatch(r"\d{1,12}", str(count)):
+            raise QualityError("INVALID_PAGE_METADATA")
+        metadata["reportedPageCount"] = int(count)
+    if metadata["totalCount"] > 0 and not source_rows:
+        raise QualityError("UNEXPECTED_EMPTY_PAGE")
+    rows = []
+    for source_row in source_rows:
+        if not isinstance(source_row, dict):
+            raise QualityError("INVALID_ROW_SHAPE")
+        row = {}
+        for field, value in source_row.items():
+            if not isinstance(field, str) or isinstance(value, (dict, list, bool)):
+                raise QualityError("INVALID_ROW_SHAPE")
+            # A null closure value is not proof of an explicitly blank closure date.
+            if value is None and field == "DCBYMD":
+                continue
+            value = "" if value is None else str(value)
+            if len(field) > 128 or len(value) > 4096:
+                raise QualityError("FIELD_SIZE_LIMIT")
+            row[field] = value
+        rows.append(row)
+    return rows, metadata
+
+
 class CoordinateCheck:
     def __init__(self):
         # Explicitly disable PROJ downloads, including environments that set PROJ_NETWORK=ON.
@@ -157,6 +279,9 @@ class CoordinateCheck:
             "operationAccuracyMeters": self.transformer.accuracy,
             "networkEnabled": network.is_network_enabled(),
             "allowBallpark": False,
+            "sourceCrsBasis": "OA18655_DATASET_CATALOG",
+            "genericStandardReferenceCrs": "EPSG:2097",
+            "crsEvidenceState": "DATASET_SPECIFIC_RULE_DIFFERS_FROM_GENERIC_STANDARD",
         }
 
 
@@ -185,7 +310,158 @@ def distance(lon, lat):
     return 6_371_000 * 2 * math.asin(math.sqrt(min(1, a)))
 
 
-def profile(rows, now, mode, snapshot_as_of=None):
+def radius_band(meters):
+    if isinstance(meters, bool) or not math.isfinite(meters) or meters < 0:
+        raise QualityError("INVALID_DISTANCE")
+    if meters <= 1000:
+        return "WITHIN_1000M"
+    return "BOUNDARY_1000_TO_1030M" if meters <= 1030 else "OUTSIDE_1030M"
+
+
+def pilot_status(row):
+    # Missing closure tag is different from an explicitly empty closure value.
+    if any(field not in row for field in PILOT_STATUS_FIELDS):
+        return "MISSING"
+    values = tuple(row[field].strip() for field in PILOT_STATUS_FIELDS[:-1])
+    if not all(values):
+        return "MISSING"
+    code, label, detail_code, detail_label = values
+    if code not in ADMINISTRATIVE_STATUS or detail_code not in DETAILED_STATUS:
+        return "UNRECOGNIZED_CODE"
+    if label != ADMINISTRATIVE_STATUS[code] or detail_label != DETAILED_STATUS[detail_code]:
+        return "CODE_LABEL_CONFLICT"
+    if (code == "01" and detail_code != "01") or (code == "03" and detail_code != "02"):
+        return "STATE_CONFLICT"
+    if code == "01":
+        return "CLOSURE_PRESENT" if row["DCBYMD"].strip() else "NORMAL_STATUS"
+    return "CLOSED" if code == "03" else "NOT_NORMAL"
+
+
+def pilot_screening(rows, coordinates):
+    """Aggregate-only diagnostic on already validated rows; never selects or exports merchants."""
+    id_counts = Counter(row.get("MGTNO", "").strip() for row in rows)
+    signatures = {}
+    for row in rows:
+        record_id = row.get("MGTNO", "").strip()
+        if record_id:
+            signatures.setdefault(record_id, set()).add(
+                tuple(row.get(field, "").strip() for field in (*FIELDS, *PILOT_STATUS_FIELDS))
+            )
+    stages = dict.fromkeys(
+        (
+            "input",
+            "uniqueId",
+            "normalStatus",
+            "validCoordinates",
+            "within1000m",
+            "phoneSyntaxOnly",
+            "nameAndRoadAddress",
+        ),
+        0,
+    )
+    exclusions = dict.fromkeys(
+        (
+            "missingId",
+            "duplicateId",
+            "statusNotNormalOrUnknown",
+            "missingCoordinates",
+            "invalidCoordinates",
+            "boundary1000To1030m",
+            "outside1030m",
+            "phoneNotSyntaxOnly",
+            "missingNameOrRoadAddress",
+        ),
+        0,
+    )
+    status_kinds = Counter(
+        dict.fromkeys(
+            (
+                "MISSING",
+                "UNRECOGNIZED_CODE",
+                "CODE_LABEL_CONFLICT",
+                "STATE_CONFLICT",
+                "CLOSURE_PRESENT",
+                "NORMAL_STATUS",
+                "CLOSED",
+                "NOT_NORMAL",
+            ),
+            0,
+        )
+    )
+    for row in rows:
+        stages["input"] += 1
+        status = pilot_status(row)
+        status_kinds[status] += 1
+        record_id = row.get("MGTNO", "").strip()
+        if not record_id:
+            exclusions["missingId"] += 1
+            continue
+        # Exclude every member, even identical duplicates, rather than choosing the first row.
+        if id_counts[record_id] != 1:
+            exclusions["duplicateId"] += 1
+            continue
+        stages["uniqueId"] += 1
+        if status != "NORMAL_STATUS":
+            exclusions["statusNotNormalOrUnknown"] += 1
+            continue
+        stages["normalStatus"] += 1
+        x, y = row.get("X", "").strip(), row.get("Y", "").strip()
+        if not x or not y:
+            exclusions["missingCoordinates"] += 1
+            continue
+        try:
+            lon, lat = coordinates.convert(x, y)
+        except QualityError:
+            exclusions["invalidCoordinates"] += 1
+            continue
+        stages["validCoordinates"] += 1
+        band = radius_band(distance(lon, lat))
+        if band != "WITHIN_1000M":
+            exclusions[
+                "boundary1000To1030m" if band == "BOUNDARY_1000_TO_1030M" else "outside1030m"
+            ] += 1
+            continue
+        stages["within1000m"] += 1
+        if phone_kind(row.get("SITETEL", ""))[0] != "SYNTAX_ONLY":
+            exclusions["phoneNotSyntaxOnly"] += 1
+            continue
+        stages["phoneSyntaxOnly"] += 1
+        if not all(row.get(field, "").strip() for field in ("BPLCNM", "RDNWHLADDR")):
+            exclusions["missingNameOrRoadAddress"] += 1
+            continue
+        stages["nameAndRoadAddress"] += 1
+    n = len(rows)
+    return {
+        "state": "DIAGNOSTIC_ONLY" if n else "UNKNOWN_EMPTY",
+        "statusRule": {
+            "verification": "DOCUMENTED_STANDARD_20_GENERAL_RESTAURANTS",
+            "source": STATUS_STANDARD_URL,
+            "section": 127,
+            "fields": list(PILOT_STATUS_FIELDS),
+            "normalTuple": list(PILOT_NORMAL_TUPLE),
+            "rowConformanceScope": "INPUT_BATCH_ONLY_NOT_REAL_TIME_OPERATION",
+            "closureValueMustBeExplicitlyEmpty": True,
+        },
+        "statusKinds": dict(status_kinds),
+        "statusKindDenominator": n,
+        "cumulativeCounts": stages,
+        "firstExclusionCounts": exclusions,
+        "countDenominator": n,
+        "duplicateIdGroups": sum(c > 1 for key, c in id_counts.items() if key),
+        "conflictingIdGroups": sum(len(group) > 1 for group in signatures.values()),
+        "screenedRecords": stages["nameAndRoadAddress"],
+        "productionCandidateCount": None,
+        "radiusMeters": 1000,
+        "boundaryUpperMeters": 1030,
+        "boundaryIncluded": False,
+        "distanceMeaning": "SPHERICAL_STRAIGHT_LINE_NOT_ROAD_DISTANCE_OR_ETA",
+        "grain": "INPUT_ADMINISTRATIVE_RECORD_NOT_UNIQUE_PHYSICAL_MERCHANT",
+        "coverage": "INPUT_BATCH_ONLY_NOT_REPRESENTATIVE_OR_COMPLETE",
+        "readyForRecommendation": False,
+    }
+
+
+def profile(rows, now, mode, snapshot_as_of=None, include_pilot_screening=False):
     if mode not in ("MOCK", "PUBLIC_SAMPLE", "LOCAL_INPUT") or now.tzinfo is None:
         raise QualityError("INVALID_PROFILE_CONTEXT")
     if (
@@ -296,7 +572,7 @@ def profile(rows, now, mode, snapshot_as_of=None):
         key: {"count": value, "denominator": n, "rate": value / n if n else None}
         for key, value in sorted(counts.items())
     }
-    return {
+    result = {
         "service": SERVICE,
         "dataset": "OA-18655",
         "mode": mode,
@@ -325,6 +601,9 @@ def profile(rows, now, mode, snapshot_as_of=None):
         "rawRowsExported": False,
         "contactValuesExported": False,
     }
+    if include_pilot_screening:
+        result["pilotScreening"] = pilot_screening(rows, coordinates)
+    return result
 
 
 def fictional_rows():
@@ -337,6 +616,9 @@ def fictional_rows():
             "RDNWHLADDR": "가상 주소",
             "TRDSTATEGBN": "01",
             "TRDSTATENM": "영업/정상",
+            "DTLSTATEGBN": "01",
+            "DTLSTATENM": "영업",
+            "DCBYMD": "",
             "LASTMODTS": "2020-01-01 00:00:00",
             "UPDATEDT": "2026-11-06 12:00:00",
             "X": "204790.93835900025",
@@ -348,19 +630,45 @@ def fictional_rows():
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, help="Local XML only; never fetched or echoed")
+    parser.add_argument(
+        "--input", type=Path, help="Permitted local XML/sheet; never fetched or echoed"
+    )
+    parser.add_argument(
+        "--input-format",
+        choices=("xml", "sheet-json"),
+        default="xml",
+        help="Explicit format for an already permitted local input",
+    )
+    parser.add_argument(
+        "--pilot-screening",
+        action="store_true",
+        help="Aggregate cross-check; no product candidates",
+    )
     parser.add_argument(
         "--snapshot-as-of", help="Verified source snapshot timestamp with UTC offset"
     )
     args = parser.parse_args(argv)
     try:
         now = datetime.now(timezone.utc) if args.input else instant("2026-11-09T00:00:00Z")
+        page = None
         if args.input:
             with args.input.open("rb") as f:
-                rows = parse_xml(f.read(MAX_BYTES + 1))
+                raw = f.read(MAX_BYTES + 1)
+            if args.input_format == "sheet-json":
+                rows, page = parse_sheet_json(raw)
+            else:
+                rows = parse_xml(raw)
         else:
             rows = fictional_rows()
-        result = profile(rows, now, "LOCAL_INPUT" if args.input else "MOCK", args.snapshot_as_of)
+        result = profile(
+            rows,
+            now,
+            "LOCAL_INPUT" if args.input else "MOCK",
+            args.snapshot_as_of,
+            args.pilot_screening,
+        )
+        if page is not None:
+            result["sheetPage"] = page
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 0
     except Exception as error:
