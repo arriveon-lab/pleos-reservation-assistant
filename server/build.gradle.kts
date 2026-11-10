@@ -12,7 +12,11 @@ version = "0.1.0-SNAPSHOT"
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
 
+// Isolated JVM client-check dependency; never on server or Spring test runtime classpaths.
+val previewClientJson by configurations.creating
+
 dependencies {
+    previewClientJson("org.json:json:20240303")
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -34,6 +38,7 @@ tasks.test {
     useJUnitPlatform()
     // The contract checker also consumes this fictional plan when tests are restored from cache.
     outputs.file(layout.buildDirectory.file("rec08/mock-recommendation-plan.json"))
+    outputs.file(layout.buildDirectory.file("contract-exchanges/place-preview.json"))
     // These apply to the isolated test JVM, not the Gradle daemon or developer's global settings.
     jvmArgs("-Djdk.httpclient.disableRetryConnect=true", "-Djdk.httpclient.redirects.retrylimit=1")
     systemProperty("placeTestClasspath", sourceSets.test.get().runtimeClasspath.asPath)
@@ -79,6 +84,16 @@ val smokeClasspath by
     }
 
 tasks.named("check") { dependsOn(smokeClasspath) }
+
+val previewClientClasspath by
+    tasks.registering {
+        val destination = layout.buildDirectory.file("preview-client-classpath.txt")
+        inputs.files(previewClientJson)
+        outputs.file(destination)
+        doLast { destination.get().asFile.writeText(previewClientJson.asPath) }
+    }
+
+tasks.named("check") { dependsOn(previewClientClasspath) }
 
 // Device acceptance fixtures use real app tokens, never the synthetic smoke-test Principal.
 tasks.register<JavaExec>("previewAcceptance") {

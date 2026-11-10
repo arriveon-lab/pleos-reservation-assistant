@@ -1,5 +1,13 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 REC-05 #16 앱 core와 실제 MOCK 서버 호환
+
+- [직접 호환 검증](../docs/REC05_JOINT_ACCEPTANCE.md)에서 앱cf35ead의 실제 AuthSession/MockRepository/PreviewController 세 소스를 읽기용 checkout에서 미수정 상태로 컴파일했습니다. Java17 대상/host JVM, memory vault·제한 wire를 사용해4fixture의 앱 HTTP52건과 기존 스키마 HTTP48건을 대조했습니다. 앱/서버 공개 계약은1.1.0/0.2.0-draft 그대로이며 다른 담당 브랜치는 변경하지 않았습니다.
+- 명시 인증 발급1회/검색2회씩·인원2/1 및20/10·조건 집합·refresh 후 기존 preview 정리·allow(false)/편집 시 결과 제거·cancel/close/폐기 통과. Android HTTP/Keystore/화면/CarUx/APK·실제5분 경과 검증은 아닙니다. 새 화면 답변과 실행 중 adb 기기가 없는 상태에서 준비한 독립 서버 측 증거이며 공동 인수 완료로 표시하지 않습니다.
+- `./gradlew -PincludeAndroid=false verify` 뒤 `scripts/check-preview-app-compatibility.py --app-root <cf35ead의 읽기용 checkout>`으로 실행합니다. script가 HEAD와 세 파일의 미수정을 검사하고 결과/토큰 본문을 출력하지 않습니다. JVM JSON은 별도 previewClientJson20240303/lockfile에 고정해 제품/Spring test runtime과 분리했고 배포 JAR 제외도 검증합니다. CI도 동일 app pin을 checkout합니다. 새 APK/commit을 검토·pin 갱신해 실행하기 전에는 최신 앱 호환으로 주장하지 않습니다.
+- 증거는 Git 제외 work/rec05-app-verify.log·rec05-app-compatibility.log이며 공용 앱·기기·adb/Keystore/DB를 변경하지 않았습니다. #16/#26 OPEN·#19 Draft·#1 ETA/#11 정책과 PR #38 웹 필드 협의는 남아 있습니다. 실제 외부 장소/GPT/웹 수집/전화/유료 실행0회입니다. 기존 기기 담당 결과/이전 CI와 이번 host 검증을 구분합니다.
+- 서버329개를 재실행해 실패/오류/skip0, 가상 계약 JSON의 산출물 선언과 FROM-CACHE137건 동일 hash 복원/계약 검사까지 통과했습니다. 캐시 증거는 work/rec05-app-cache-proof.json·rec05-app-cache-restore.log입니다. 읽기용 앱 worktree는 변경 없이 정상 제거했고 원래 작업 브랜치는 feat/16-place-preview-integration입니다. 원격 CI는 최신 PR head에서 별도 확인합니다.
+
 ## 2026-11-10 REC-05 #16 공동 인수 fixture 전달 준비
 
 - #26/#39 담당의 [최신 인수 요청](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185)과 앱cf35ead의 입력 범위/집합 비교/미리보기 수명을 소스로 대조했습니다. 화면 인수 문서의 과거1–8/0–6 설명을 미리보기1–20/0–10과 기존 예약 연습 범위로 구분했습니다. [재현 명령·4상태·인수표·웹 필드 후속안](../docs/REC05_JOINT_ACCEPTANCE.md)을 우선합니다. 공동 기기 실행 완료가 아닙니다.

@@ -59,6 +59,36 @@ Python 환경은 `scripts/requirements-dev.txt`가 필요합니다. 기존 개�
 
 ## 양측 인수표
 
+### 2026-11-10 고정 앱 클라이언트의 직접 호환 검증
+
+화면 담당의 기기 답변을 기다리는 동안 앱 `cf35ead38408ab19d6cf2657ed597237d368d7af`의 실제 `AuthSession`, `MockRepository`, `PreviewController` 소스를 변경 없이 Java17 대상으로 컴파일하고 서버4fixture에 직접 연결했습니다. 서버 제품 소스 기준은50ce344이며 공개 계약은1.1.0/0.2.0-draft 그대로입니다.
+
+| fixture | 앱 클라이언트 요청 | 확인한 내용 |
+| --- | --- | --- |
+| RESULTS |13 | 추천3개/조건 집합·UNKNOWN·권한 false를 정상 수신 |
+| EMPTY |13 | 정상0건 수신과 빈 결과 처리 |
+| FILTERED |13 | 범위 밖0건과 기초 추천 계획 처리 |
+| FAILED |13 | 실패를 FAILED로 받고 결과를 비움 |
+
+각 행은 앱의 명시적 인증 발급1회, 검색2회(인원2/1 및 상한20/10), 토큰 갱신 뒤 같은 주체로 기존 preview 정리, `allow(false)`/편집에서 즉시 결과 제거, cancel/close 완료, 인증 폐기를 포함합니다. 앱 입력의 배열 순서와 서버 정렬이 다른 실제 응답도 통과했습니다. **앱 HTTP52건 + 기존 schema HTTP48건**이며 기동 polling은 합계에 넣지 않았습니다.
+
+host JVM에서 memory vault와 제한된 HTTP wire를 사용합니다. 앱 코드 세 파일을 읽어 사용하지만 Android의 실제 `LoopbackTransport`, Keystore, UI/Activity, CarUx, APK를 실행하지 않았습니다. 이 결과는 동일 서버 응답을 앱 core가 수용하는 호환 증거이며 **공동 기기 인수 성공이 아닙니다**. 현재 adb 기기가 없는 상태에서 검증했으며 다른 담당의 소스·브랜치·앱 저장소·adb 연결을 변경하지 않았습니다.
+
+```bash
+# 원본/다른 담당 브랜치를 전환하지 않는 별도 읽기용 checkout
+git worktree add --detach work/rec05-app-source cf35ead38408ab19d6cf2657ed597237d368d7af
+./gradlew -PincludeAndroid=false verify
+work/contract-venv/bin/python scripts/check-preview-app-compatibility.py --app-root work/rec05-app-source
+# 해당 경로에 본인 변경이 없을 때만 정상 제거
+git worktree remove work/rec05-app-source
+```
+
+검사는 checkout HEAD와 대상 세 소스의 미수정 상태를 확인합니다. app core의 기존 JVM 검사용 org.json20240303을 별도 `previewClientJson` configuration으로 고정하고 lockfile을 갱신했습니다. 서버/일반 Spring test runtime에 추가하지 않으며 앱 소스/해당 JSON JAR의 배포 JAR 제외도 검사합니다. 토큰은 메모리에서만 쓰고 출력·응답 오류 본문에 노출하지 않습니다. CI도 같은 commit을 별도 경로에 checkout해 기존48건과 함께 재현합니다. 앱 변경을 자동으로 따라가지 않으며 **새 앱 commit을 검토·pin 갱신·재실행하기 전에는 후속 APK의 호환 증거로 사용하지 않습니다**.
+
+같은 작업에서 서버 테스트329개를 다시 실행해 실패/오류/skip0을 확인했습니다. 기존 미리보기 계약 JSON도 Gradle test 산출물로 명시했습니다. 생성된 가상 JSON만 제거한 뒤 `verify`가 FROM-CACHE로137건을 동일 hash로 복원했고, 계약 검사도 통과했습니다. 이 수정은 캐시 복원 뒤 증거 파일이 없어지는 경로를 막으며 제품 API나 테스트 결과를 조작하지 않습니다.
+
+JSON 의존성의 [20240303 배포 POM](https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.pom)은 라이선스를 Public Domain으로 표기합니다. 여기서는 앱의 고정 JVM 검사 환경 재현에만 사용합니다.
+
 | 항목 | 서버 담당 | 화면 담당/공동 실행 |
 | --- | --- | --- |
 | 필드/인원/조건 집합 | 소스 대조·서버 HTTP 경계 확인 | 최종 APK의 입력/표시와 이 기준 대조 대기 |

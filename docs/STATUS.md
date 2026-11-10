@@ -1,5 +1,12 @@
 # 구현·검증 현황
 
+## 2026-11-10 REC-05 #16 고정 앱 core·서버 직접 호환
+
+- 새 화면 답변/실행 중 adb 기기가 없는 동안 앱cf35ead의 AuthSession/MockRepository/PreviewController를 수정 없이 읽어 Java17 대상으로 컴파일하고 현재 서버4fixture에 직접 연결했습니다. [호환 검증과 재현](REC05_JOINT_ACCEPTANCE.md)의 RESULTS/EMPTY/FILTERED/FAILED 모두 앱에서 수용했습니다. 다른 담당의 브랜치·Android 코드·기기/키 저장소는 변경하지 않았습니다.
+- 앱 HTTP52건(각13)·기존 계약 HTTP48건을 함께 확인했습니다. 명시 발급1회/검색2회씩, 인원2/1→20/10·조건 집합·갱신 후 같은 preview 소유권·입력 제한/편집 시 결과 제거·cancel/close·폐기를 검사했습니다. JVM memory vault/제한 wire이며 실제 Android HTTP/Keystore/UI/CarUx나 APK 실행이 아닙니다. 공동 기기/실제5분 만료·주행 전환 완료로 세지 않습니다.
+- JVM JSON20240303은 앱의 기존 검사용 버전에 맞춘 별도 configuration/lockfile로 추가했고 제품/일반 Spring test runtime과 분리했습니다. 고정 app commit·소스 미수정·배포 JAR에 앱 소스/JSON 미포함을 검사하며 CI도 같은 pin을 사용합니다. 새 앱에 대한 검증은 pin 검토/갱신 후 다시 수행해야 합니다. #16/#26 OPEN/#19 Draft와 #1 ETA/#11 데이터 조건·PR #38의 미합의 웹 필드는 유지합니다. 실제 외부 장소/GPT/웹/전화/유료 호출0회입니다.
+- format verify로 서버329개를 재실행해 실패/오류/skip0을 확인했습니다. 계약 교환 JSON을 test 산출물로 등록하고 생성 파일만 제거한 뒤 FROM-CACHE가137건을 같은 hash로 복원하는 것과 계약 검사를 확인했습니다. 원격 CI는 이번 PR head의 실제 결과로 구분합니다. 읽기용 임시 앱 worktree는 검증 후 정상 제거했습니다.
+
 ## 2026-11-10 REC-05 #16 공동 화면 인수 준비
 
 - [화면 담당의 최신 요청](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185)과 앱 #46 소스cf35ead를 대조했습니다. 미리보기 인원1–20/0–10과 기존 예약 연습1–8/0–6을 구분하고 requiredFeatures/preferredCuisines의 집합 비교·최대3개/UNKNOWN/발신 차단·완료 결과 미재표시를 서버 측에서 확인했습니다. 이전 인수 문서의 앱 범위 설명을 갱신했습니다.

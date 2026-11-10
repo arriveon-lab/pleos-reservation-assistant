@@ -53,7 +53,7 @@ def stop(process):
         process.wait(timeout=5)
 
 
-def exercise(fixture, expected_count, classpath, directory):
+def exercise(fixture, expected_count, classpath, directory, client_check=None):
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
@@ -80,6 +80,9 @@ def exercise(fixture, expected_count, classpath, directory):
                     time.sleep(0.2)
             else:
                 raise RuntimeError("Acceptance readiness deadline elapsed")
+
+            if client_check is not None:
+                client_check(base, fixture, expected_count)
 
             def api(path, body=None, token=None, method="POST", expected=200, key=None):
                 nonlocal count

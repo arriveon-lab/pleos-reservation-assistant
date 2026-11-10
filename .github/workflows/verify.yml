@@ -29,7 +29,13 @@ jobs:
       - run: python scripts/seoul-place-quality.py
       - run: python -m unittest discover -s scripts/tests -p 'test_preview_session_demo.py'
       - run: python scripts/check-recommendation-plan.py
-      - run: python scripts/check-preview-acceptance.py
+      # Read pinned app core only; do not build/modify the other owner's working branch.
+      - uses: actions/checkout@v4
+        with:
+          ref: cf35ead38408ab19d6cf2657ed597237d368d7af
+          path: work/rec05-app-source
+          persist-credentials: false
+      - run: python scripts/check-preview-app-compatibility.py --app-root work/rec05-app-source
       - run: python scripts/smoke-test.py --check-contract
   android:
     name: Android checks
