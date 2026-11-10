@@ -4,7 +4,7 @@
 
 - 서버 후보 대조에서 Kakao 카테고리 거리순 첫 페이지에 GPT가 찾은 지점이 없을 때, GPT가 찾은 상호 최대 3개를 Kakao 키워드 검색으로 재조회합니다. 주소·전화번호·웹 근거는 Kakao 질의에 넣지 않고, 돌아온 식당의 상호·전체 주소·목적지 반경이 모두 맞을 때만 웹 후보와 합칩니다. [Kakao 공식 키워드 검색 계약](https://developers.kakao.com/docs/ko/local/dev-guide)을 따르는 가상 loopback 테스트를 통과했으며 실제 Kakao 호출은 아직 없습니다.
 - OpenAI 웹검색 출력의 `web_search_call`이 검색 뒤 페이지 열기 등 여러 항목으로 나올 수 있음을 반영했습니다. `action.sources`에만 있고 본문 인용 주석이 없는 URL은 식당 식별의 단서로만 쓰고 주차·아기의자·무계단 판정은 UNKNOWN으로 보존합니다. 가상 파서 테스트 통과, 추가 유료 호출은 0회입니다.
-- #53의 Android 목적지 조회·추천 입력/폴링 화면과 UX 상태 코드는 담당 범위를 벗어나 제거했습니다. 서버의 `destination-recommendations` API, 사용자 조건 해석, Kakao 후보·독립 웹 근거 대조는 유지합니다. @soyeong03에게 Pleos 목적지 조회, 요청 접수·폴링, 취소/만료, 근거 표시, Gleo/TTS를 API 계약과 함께 인계합니다. 제품 앱 연결·기기 검증을 이 PR의 완료 증거로 세지 않습니다.
+- #53의 최종 diff에서 `android/`와 `ux/core/` 변경을 모두 제외했습니다. 서버의 `destination-recommendations` API, 사용자 조건 해석, Kakao 후보·독립 웹 근거 대조는 유지합니다. @soyeong03에게 Pleos 목적지 조회, 요청 접수·폴링, 취소/만료, 근거 표시, Gleo/TTS를 API 계약과 함께 인계합니다. 제품 앱 연결·기기 검증을 이 PR의 완료 증거로 세지 않습니다.
 - 실제 Kakao/GPT 공급자 데이터로 3곳이 채워지는지 검증하지 못했습니다. 주차 근거가 없으면 UNKNOWN이며 3곳을 임의로 채우지 않습니다. 추가 GPT 실호출은 사용자에게 모델·입력·횟수·비용을 설명하고 다시 승인받아야 합니다.
 
 ## 2026-11-10 INT-01 Kakao 목적지 목록 3곳 HTTP 초안 (#52)

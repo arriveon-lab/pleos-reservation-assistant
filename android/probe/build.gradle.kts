@@ -21,7 +21,4 @@ android {
     }
 }
 
-dependencies {
-    implementation("ai.pleos.playground:NaviHelper:3.0.5")
-    testImplementation("junit:junit:4.13.2")
-}
+dependencies { implementation("ai.pleos.playground:NaviHelper:3.0.5") }

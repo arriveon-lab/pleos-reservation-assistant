@@ -40,10 +40,7 @@ rootProject.name = "pleos-reservation-assistant"
 
 include(":server")
 
-include(":ux:core")
-
 // Server contributors and CI do not need an Android SDK or Pleos account.
 if (includeAndroid) {
     include(":android:probe")
-    include(":android:app")
 }
