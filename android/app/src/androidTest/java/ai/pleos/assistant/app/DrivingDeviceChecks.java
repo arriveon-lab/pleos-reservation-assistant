@@ -13,12 +13,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Explicit device check: requires automotive baseline and a connected MOCK test installation. */
 public final class DrivingDeviceChecks extends Instrumentation {
   private boolean narrow;
+  private boolean previewBoundary;
   private float expectedFontScale;
 
   @Override
   public void onCreate(Bundle arguments) {
     super.onCreate(arguments);
     narrow = "true".equals(arguments.getString("narrow"));
+    previewBoundary = "true".equals(arguments.getString("previewBoundary"));
     expectedFontScale = Float.parseFloat(arguments.getString("fontScale", "0"));
     start();
   }
@@ -27,6 +29,13 @@ public final class DrivingDeviceChecks extends Instrumentation {
   public void onStart() {
     Bundle result = new Bundle();
     try {
+      if (previewBoundary) {
+        PreviewBoundaryChecks.run(this);
+        result.putString(
+            "stream", "PASS: preview boundary and real five-minute expiry device checks\n");
+        finish(Activity.RESULT_OK, result);
+        return;
+      }
       Intent intent =
           new Intent(getTargetContext(), ReservationActivity.class)
               .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
