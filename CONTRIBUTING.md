@@ -100,7 +100,7 @@ python3 scripts/check-conventions.py --branch feat/12-navi-probe
 - 요청 경계에서 Bean Validation, 상태 전이는 `WorkflowService`, DB 접근은 `Store`, 후보 평가와 사실 갱신은 `RecommendationEngine`으로 분리합니다. Controller에 업무 규칙을 넣지 않습니다.
 - 변경 명령·이벤트 처리는 트랜잭션 안에서 DB lock → 중복 검사 → 상태 검증 → 저장 순서로 수행합니다. 현재 전역 mutex는 로컬 MVP용이며 다중 사용자 배포 전에 aggregate 단위로 재설계합니다.
 - 시각은 `Instant`/RFC3339, 표시만 KST. 금액은 정수 KRW. 서버 시간을 새로 붙여 오래된 관측을 최신으로 만들지 않습니다.
-- API 변경은 `api/openapi.json`, 예제, 호출자, 테스트를 같은 PR에서 갱신합니다. 호환성 깨짐은 `/api/v2`로 분리하고 계약 담당 리뷰를 받습니다.
+- API 변경은 `api/openapi.json`, 예제, 호출자, 테스트를 같은 PR에서 갱신합니다. 호환성 깨짐은 `/api/v2`로 분리하고 계약 담당 리뷰를 받습니다. 단, 첫 배포 전 BE-02(#20)의 인증·소유권 도입은 사용자 결정에 따라 `/api/v1`을 유지하고 호출자·계약·테스트를 함께 변경합니다. 이 예외가 배포 후 호환성 변경까지 허용하는 것은 아닙니다.
 - Flyway 적용 이력이 생긴 SQL은 수정하지 않고 다음 버전 migration을 추가합니다. DB 바이너리를 공유하지 않습니다.
 - `learningConsent`는 저장만 하며 현재 학습은 하지 않습니다. 예약 권한·추가 비용 승인으로 해석하지 않습니다.
 

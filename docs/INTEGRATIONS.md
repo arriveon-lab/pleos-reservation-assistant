@@ -1,5 +1,7 @@
 # 연동 증거와 확보할 입력
 
+2026-11-09 추가 결정: [표준 API 대체·단계별 SDK 연동](SDK_FALLBACK_PLAN.md)을 기준으로 위치·사용자 음성의 어댑터 경계와 기기 가용성 검사를 계획합니다. ArriveOn 프로젝트는 생성됐고 콘솔에서 NaviHelper·Vehicle State는 사용 가능, FusedLocation·STT·TTS는 준비 중으로 확인했습니다. 별도 신청 이력은 없으며 실제 기기 동작은 미검증입니다. 아래 2026-11-04/07 기록은 당시 검증 이력입니다.
+
 기준일 2026-11-04 KST. 문서/소스 확인은 실기기·계정별 실행 성공을 의미하지 않습니다.
 
 2026-11-07 장소 연동 추가 검토: [REC-01 실제 연동 검토](REC01_INTEGRATION.md)에 Kakao 저장 제한과 무료 앱 준비 절차를 기록했습니다. HTTP adapter는 loopback 가상 서버로 검증했으며 제품 검색은 MOCK입니다. 후속 사용자 동의로 ArriveOn 앱 생성·카카오맵 활성화·일간 무료 쿼터 제공·유료 API 사용 안 함을 확인했습니다. 키 값 복사·실제 데이터의 H2 저장·장소 API 요청은 수행하지 않았습니다.
@@ -41,7 +43,7 @@
 | 목적지·ETA | 기존 NaviHelper probe 유지, 기능별 권한/응답 검증 | 자동 조회 불가 표시. UX 제한이 허용하는 상황에서 MANUAL 입력, 또는 기능 보류. MOCK으로 몰래 대체하지 않음 |
 | 주행 중 UI 제한 | AAOS `CarUxRestrictionsManager`와 플랫폼 제한 상태 | 상태 미확인 시 제한이 필요한 화면을 보수적으로 잠그는 방안 검증. 속도 하나로 제한 상태 추측 금지 |
 | 속도·기어 등 표준 차량 정보 | 실제 요구가 생길 때 AAOS Car API 검토 | 기능별 지원/접근 상태 확인. 현재 MVP에 불필요한 수집·권한 추가 안 함 |
-| 차량 내 음성·위치 | 해당 Pleos SDK 가이드 및 지원 조건 대조 | 미지원/권한 거부/서비스 단절을 UI에 반영. 외부 전화 채널과 분리 |
+| 차량 내 음성·현재 위치 | Android 표준 API 가용성 우선 검증, [SDK 대체 계획](SDK_FALLBACK_PLAN.md)에 따라 Pleos 구현체 추가 검토 | 미지원/권한 거부/단절 안내, 허용된 정차 입력 또는 명시적 개발 MOCK. 외부 전화 채널과 분리 |
 
 주행 UX는 [Pleos 주행 규제 가이드](https://document.pleos.ai/docs/pleos-only/vehicle-app-developer-guide/driving-restriction-development-guide)의 `CarUxRestrictions`/`ActiveRestrictions`를 기준으로 설계합니다. 초기 상태 조회와 변경 구독, 해제 수명주기는 [AAOS CarUxRestrictionsManager](https://developer.android.com/reference/android/car/drivingstate/CarUxRestrictionsManager)의 실제 API로 검증합니다. 제조사 전용 제어가 필요하지 않은 예약 MVP에서 Vehicle SDK 제어 권한을 추가할 이유는 아직 없습니다.
 
@@ -92,7 +94,7 @@ Android probe 사용·기기 로그 수집 방법: [android/README.md](../androi
 
 | 담당 | 필요 입력 | 현재 없이 가능한 일 |
 | --- | --- | --- |
-| 차량 | Pleos 프로젝트/SDK 신청, Emulator/Virtual Console, Android SDK 35 | probe 소스·계약 준비, 서버 MOCK |
+| 차량 | ArriveOn 프로젝트 생성 완료. NaviHelper 별도 신청 불필요. Emulator/Virtual Console·기기 검증 필요, 준비 중 SDK는 상태 변경 후 신청 검토 | probe 소스·계약, 표준 위치/음성 가용성 검증 계획, 서버 MOCK |
 | 장소 | 시범 지역, 공식 API 키, 저장/재표시 조건 | 가상 후보·평가 테스트 |
 | 전화 | 업체 계정, 발신번호, 협의 수신번호, 예산/승인 | 모의 결과 정규화·실패 시나리오 |
 | 서버 | 팀 DB 경험, 운영 환경, 인증 방식 | H2 트랜잭션·중복/상태 검증 |

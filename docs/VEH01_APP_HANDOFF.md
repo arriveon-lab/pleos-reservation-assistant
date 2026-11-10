@@ -48,7 +48,7 @@
 
 ## 서버 Navigation 변환 조건
 
-현 브랜치 api/openapi.json의 Navigation은 tripId/destination/절대 RFC3339 eta/observedAt/source를 요구합니다. eta는 최대24시간 이내 미래, observedAt은5분 이내이고 PLEOS는 예약된 값이지만 시간 기준 검증 전 거절됩니다. 이 제약은 차량 데이터 유효기간을 검증했다는 뜻이 아닙니다. #16/#26의 최신 draft와 현 브랜치는 다를 수 있으므로 인수 시 정확한 계약 버전/commit을 다시 대조합니다.
+2026-11-10 main abd9aa4 통합 후 계약1.1.0의 api/openapi.json을 재대조했습니다. Navigation은 tripId/destination/절대 RFC3339 eta/observedAt/source를 요구합니다. eta는 최대24시간 이내 미래, observedAt은5분 이내이고 PLEOS는 예약된 값이지만 시간 기준 검증 전 거절됩니다. 이 제약은 차량 데이터 유효기간을 검증했다는 뜻이 아닙니다. #16/#26의 최신 draft와 현 브랜치는 다를 수 있으므로 인수 시 정확한 계약 버전/commit을 다시 대조합니다.
 
 현재 PLEOS 변환 결과는 **전송 불가**입니다. 누락 ETA를 0·현재+1시간·null·MOCK/MANUAL로 바꾸어 같은 실제 차량 입력인 것처럼 보내지 않습니다. 가상 미리보기와 사용자가 명시적으로 제공한 MANUAL 입력은 별도 출처와 기존 계약으로만 다룹니다.
 

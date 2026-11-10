@@ -27,6 +27,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:preview;DB_CLOSE_DELAY=-1")
 @Timeout(12)
 class PlacePreviewTransactionTest {
+  private static final RequestActor ACTOR = new RequestActor("test-owner", true);
   private static final PlaceQuery QUERY = new PlaceQuery(37.544, 127.055, 1000, 15);
   private static final PlaceSearchResult.Success EMPTY =
       new PlaceSearchResult.Success(List.of(), Instant.parse("2026-11-07T03:00:00Z"), 0);
@@ -88,7 +89,8 @@ class PlacePreviewTransactionTest {
 
   @Test
   void delayedPreviewDoesNotBlockAnExistingWorkflowOrPersistPlaceResponses() throws Exception {
-    workflow.search(UUID.randomUUID().toString(), request()); // Warm the real H2 workflow first.
+    workflow.search(
+        ACTOR, UUID.randomUUID().toString(), request()); // Warm the real H2 workflow first.
     List<Long> before = databaseCounts();
     CountDownLatch entered = new CountDownLatch(1);
     CountDownLatch release = new CountDownLatch(1);
@@ -112,7 +114,8 @@ class PlacePreviewTransactionTest {
         assertThat(entered.await(2, TimeUnit.SECONDS)).isTrue();
         assertThat(workerTransaction).isFalse();
         assertThat(databaseCounts()).isEqualTo(before);
-        var command = caller.submit(() -> workflow.search(UUID.randomUUID().toString(), request()));
+        var command =
+            caller.submit(() -> workflow.search(ACTOR, UUID.randomUUID().toString(), request()));
         assertThat(command.get(2, TimeUnit.SECONDS).candidates).hasSize(3);
         assertThat(preview.isDone()).isFalse();
         release.countDown();

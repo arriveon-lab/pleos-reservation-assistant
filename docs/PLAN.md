@@ -1,5 +1,9 @@
 # 전체 개발 계획과 5명 작업표
 
+**2026-11-09 REC-09 검증:** [#32 공공데이터 명세·품질 도구](REC09_SEOUL_DATA_VALIDATION.md)에서 성동구 OA-18655의39필드와 공개 샘플5건을 확인했습니다. 전화 필드는 있지만 좌표 누락·폐업 이력이 포함돼 필터/품질 인수 없이 제품에 연결하지 않습니다. 좌표 변환·누락/중복/시각·비노출은 가상 테스트15개로 검증했으며 snapshot 최신성은 미확인입니다. 현재 제품 MOCK, #11의 공급자 채택과 #3/#4/#26 인수는 별도입니다.
+
+**SDK 대체 경로 결정 (2026-11-09):** [위치·음성 SDK 단계별 연동 계획](SDK_FALLBACK_PLAN.md)을 채택합니다. NaviHelper 검증은 유지하고, 현재 위치·사용자 음성은 Android 표준 API의 기기 가용성을 먼저 확인합니다. 미지원 기능은 안내/허용된 정차 입력 또는 명시적 개발 MOCK으로 처리하며 자동으로 가상 성공을 만들지 않습니다. Pleos SDK 제공 시 요구를 비교해 adapter를 추가합니다. 이번 #30은 문서 범위이며 실제 adapter·기기 실행 완료가 아닙니다. 차량 #1, 전화 #3, UX #25/#26 담당은 유지하고 사용자 음성 런타임은 별도 담당/이슈 배정 후 구현합니다.
+
 **최신 범위 (2026-11-07):** #12의 내부 세션·Registry 기반은 PR #14로 통합했습니다. #13/PR #15는 [독립 실제 검색 시연](REC04_LIVE_SEARCH.md)의 최초 1회 성공·3곳 일시 표시·쿼터 1 / 100,000과 시연 도구를 종료 범위로 정리했습니다. 미완료 제품 인증/API/화면은 #16, 수명/운영 보호는 #17, 지역 품질/IP는 #18에서 진행합니다. #11 정책 조건은 계속 검토합니다. [담당·의존성·완료 조건](REC_FOLLOWUPS.md)이 아래 이전 계획보다 우선합니다. 일반 미저장 실시간 검색은 #11 전체 답변이나 제품 통합 전체 완료와 구분하며 이번 병합 중 추가 실제 호출·전화·예약·AI는 실행하지 않습니다.
 
 기준일 2026-11-04 KST. 담당 실명은 팀에서 배정합니다. 아래 날짜는 내부 목표이며 외부 계정 승인·기기 검증이 선행 조건입니다.
@@ -39,7 +43,7 @@
 
 | 이슈 후보 | 담당 1명 | 현재 기반 | 다음 완료 조건 | 선행 입력 |
 | --- | --- | --- | --- | --- |
-| [#1 / VEH-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1) | 차량/Pleos | `android/probe`, API 계약 | 목적지/TripInfo 원시값, 갱신 주기, 권한/백그라운드/도착 이벤트 로그 | SDK 신청·Pleos Emulator·Android SDK |
+| [#1 / VEH-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1) | 차량/Pleos | `android/probe`, API 계약 | 목적지/TripInfo 원시값, 갱신 주기, 권한/백그라운드/도착 이벤트 로그 | ArriveOn 프로젝트 생성 완료·NaviHelper 별도 신청 불필요, Pleos Emulator·Android SDK |
 | [#2 / REC-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/2) | 추천/장소 | adapter·정규화·MOCK/loopback 144개 검증 | PR #10 통합 완료·#2 CLOSED | 후속 #11/#12/#13 분리 |
 | [#11 / REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | 추천/장소 (`tiemo0708`) | 공식 저장 제한·문의 등록 | 사용/보관/제공 조건과 공급자 최종 결정 | 사업자 답변·대안 근거 |
 | [#12 / REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | 추천/장소 (`tiemo0708`), #4/#5 협업 | 서버·화면 계약 초안 | 트랜잭션 밖 IO·중복/복구·출처/모드 계약과 가상 검증 | 기반 main 통합, 실제 연결은 #11 조건 |

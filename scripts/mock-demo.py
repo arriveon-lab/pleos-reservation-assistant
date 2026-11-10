@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Run an end-to-end synthetic demo against an already running loopback MOCK server."""
+"""Run synthetic requests against a loopback MOCK test harness with trusted Principal injection.
+
+Ordinary issued tokens cannot inject mock outcomes. Use smoke-test.py for the operator harness.
+"""
 import argparse
 import json
 import urllib.error
@@ -34,6 +37,9 @@ def run(base, emit=print, validate=None):
                 status, result = response.status, json.load(response)
         except urllib.error.HTTPError as error:
             status, result = error.code, json.load(error)
+        if status == 401 and expected != 401:
+            raise RuntimeError("A trusted operator Principal is required for mock outcome injection; "
+                               "use scripts/smoke-test.py for the isolated test-only harness.")
         assert status == expected, (status, result)
         if validate is not None:
             validate(path, body, result, status)
