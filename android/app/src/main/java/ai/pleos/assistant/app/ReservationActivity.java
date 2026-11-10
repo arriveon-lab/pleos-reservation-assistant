@@ -365,6 +365,10 @@ public final class ReservationActivity extends ComponentActivity {
                 || "UNKNOWN".equals(activeCall.optString("status")));
     int restoredY = stage.equals(displayedStage) ? previousY : 0;
     displayedStage = stage;
+    boolean unknownTask =
+        activeCall != null && "UNKNOWN".equals(activeCall.optString("status"))
+            || reservationState != null && "UNKNOWN".equals(reservationState.optString("status"));
+    if (unknownTask) text(R.string.unknown_read_only);
     if (state.has("pending")) {
       JSONObject pending = state.optJSONObject("pending");
       boolean timeRejected =
@@ -449,7 +453,10 @@ public final class ReservationActivity extends ComponentActivity {
         content = mainPanel;
       }
       if (activeCall != null || state.has("reservation") || state.has("pending"))
-        button(R.string.refresh, !model.busy(), v -> model.run(MockRepository::refresh));
+        button(
+            unknownTask ? R.string.unknown_refresh : R.string.refresh,
+            !model.busy(),
+            v -> model.run(MockRepository::refresh));
       if (state.has("search") && !state.has("reservationId")) candidates(state);
       if (!state.has("search") && !state.has("reservation")) {
         LinearLayout empty = VehicleUi.card(this);

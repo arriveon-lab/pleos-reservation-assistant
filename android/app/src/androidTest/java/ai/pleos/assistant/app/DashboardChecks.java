@@ -104,6 +104,7 @@ final class DashboardChecks {
                   .put(
                       "call",
                       new JSONObject()
+                          .put("requestedTime", "2026-11-10T12:00:00Z")
                           .put("purpose", "BOOKING")
                           .put("status", "CONFIRMED".equals(status) ? "ACCEPTED" : status));
               snapshot.set(model, state);
@@ -113,6 +114,10 @@ final class DashboardChecks {
                   || contains(root, activity.getString(R.string.home_ready_hint))
                   || contains(root, activity.getString(R.string.reconcile_search_closed)))
                 throw new AssertionError("Wrong booking guidance: " + status);
+              if ("UNKNOWN".equals(status)
+                  && (!contains(root, activity.getString(R.string.unknown_read_only))
+                      || !contains(root, activity.getString(R.string.unknown_refresh))))
+                throw new AssertionError("Unknown booking read-only guidance missing");
               if (!contains(
                   root,
                   activity.getString(
@@ -139,14 +144,25 @@ final class DashboardChecks {
                 "reservation",
                 new JSONObject()
                     .put("status", "CONFIRMED")
+                    .put("originalRequestedTime", "2026-11-10T12:00:00Z")
+                    .put("confirmedTime", "2026-11-10T12:00:00Z")
+                    .put("totalAdditionalCostKrw", 0)
                     .put("pendingChangeCallId", "ui-change"));
-            state.put("call", new JSONObject().put("purpose", "CHANGE").put("status", "UNKNOWN"));
+            state.put(
+                "call",
+                new JSONObject()
+                    .put("requestedTime", "2026-11-10T12:15:00Z")
+                    .put("purpose", "CHANGE")
+                    .put("status", "UNKNOWN"));
             snapshot.set(model, state);
             render(activity);
             View root = activity.getWindow().getDecorView();
             if (!contains(root, activity.getString(R.string.home_action_unknown))
                 || contains(root, activity.getString(R.string.home_action_confirmed)))
               throw new AssertionError("Unknown change hidden by confirmed reservation");
+            if (!contains(root, activity.getString(R.string.unknown_read_only))
+                || !contains(root, activity.getString(R.string.unknown_refresh)))
+              throw new AssertionError("Unknown change read-only guidance missing");
           });
       main(
           runner,

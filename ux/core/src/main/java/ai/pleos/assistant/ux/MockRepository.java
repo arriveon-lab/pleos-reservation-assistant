@@ -150,18 +150,28 @@ public final class MockRepository {
   }
 
   public void refresh() throws Exception {
-    if (state.has("searchId"))
-      state.put("search", read("/searches/" + state.getString("searchId")));
-    if (state.has("reservationId")) {
-      JSONObject reservation = read("/reservations/" + state.getString("reservationId"));
-      state.put("reservation", reservation);
-      String callId =
-          reservation.isNull("pendingChangeCallId")
-              ? reservation.getString("bookingCallId")
-              : reservation.getString("pendingChangeCallId");
-      state.put("call", read("/calls/" + callId));
-    } else if (state.has("callId")) state.put("call", read("/calls/" + state.getString("callId")));
-    persist();
+    // Publish only after all GETs and durable-reference storage succeed. A partial read is not
+    // evidence that an UNKNOWN task was resolved, nor permission to discard a pending command.
+    JSONObject next = new JSONObject(state.toString());
+    if (next.has("searchId")) next.put("search", read("/searches/" + next.getString("searchId")));
+    if (next.has("reservationId")) {
+      String reservationId = next.getString("reservationId");
+      JSONObject reservation = read("/reservations/" + reservationId);
+      if (!reservationId.equals(reservation.getString("id"))
+          || !next.getString("searchId").equals(reservation.getString("searchId")))
+        throw new IllegalStateException("RECOVERY_REFERENCE_MISMATCH");
+      boolean change = !reservation.isNull("pendingChangeCallId");
+      String callId = reservation.getString(change ? "pendingChangeCallId" : "bookingCallId");
+      JSONObject call = read("/calls/" + callId);
+      if (!callId.equals(call.getString("id"))
+          || !reservationId.equals(call.getString("reservationId"))
+          || !next.getString("searchId").equals(call.getString("searchId"))
+          || !(change ? "CHANGE" : "BOOKING").equals(call.getString("purpose")))
+        throw new IllegalStateException("RECOVERY_REFERENCE_MISMATCH");
+      next.put("reservation", reservation).put("call", call);
+    } else if (next.has("callId")) next.put("call", read("/calls/" + next.getString("callId")));
+    persist(next);
+    state = next;
   }
 
   private void persist() throws Exception {

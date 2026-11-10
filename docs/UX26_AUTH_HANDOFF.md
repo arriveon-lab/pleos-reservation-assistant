@@ -61,3 +61,26 @@ Pleos Connect v2.1.0/API34/4GB에서 직접 adb UI 조작·PNG/XML로 검증했�
 ## 원격 CI에서 발견한 캐시 산출물 누락 수정
 
 `2b0b08d`의 Android checks/PR naming은 성공했으나 Server and contract는 추천 계약 검사가 소비하는 `server/build/rec08/mock-recommendation-plan.json` 누락으로 실패했습니다. 서버 테스트가 FROM-CACHE였고 해당 파일이 Test output에 선언되지 않은 것이 원인입니다. 서버 기능/계약은 바꾸지 않고 `server:test` 산출물로 등록했습니다. 로컬 verify 후 JSON을 삭제해 테스트를 FROM-CACHE로 복원했고 추천 스키마 검사와 JAR `--check-contract` smoke를 통과했습니다. 새 커밋의 CI는 별도 실행으로 확인합니다. 사용하지 않는 결과 주입 문자열4개도 제거해 로컬 앱 Lint는 기존 갱신 경고2개만 남습니다.
+
+## 2026-11-10 일반 예약·변경 UNKNOWN 조회 대조 (#26/#4)
+
+PR #19 `a5ae15e`의 인증 1.1.0 OpenAPI와 서버 구현, #26/#4 최신 댓글을 대조했다. GET 예약/통화는 지원하지만 일반 예약·변경 UNKNOWN을 해결·종료하는 API는 없다. `/searches/reconcile`은 검색 전용이며 `/mock/calls/{id}/outcomes`는 운영자 시험용이고 이미 종료된 UNKNOWN을 덮어쓰지 않는다. UI에서 성공·거절로 바꾸거나 기록을 삭제하는 종료 기능은 구현하지 않았다. 서버 계약 변경 없음.
+
+구현: 기존 GET으로 예약 ID·검색 ID와 연결 통화의 ID/예약 ID/검색 ID/BOOKING·CHANGE 목적을 대조한다. 모든 조회와 참조 저장 성공 뒤에만 화면 상태를 교체한다. 부분 조회 실패·404·참조 불일치·저장 실패는 이전 상태와 pending 키/본문을 유지한다. UNKNOWN에는 조회 전용 버튼과 확정·취소·종료 미지원 안내를 표시한다. 새 주체·새 요청·자동 발신 없음.
+
+| 검사 | 기대 결과 | 실제 결과 |
+| --- | --- | --- |
+| JVM 예약/변경 UNKNOWN GET·재생성 | 보관 참조/pending 유지, 쓰기 요청0 | PASS |
+| JVM 통화404·저장 실패·참조 불일치 | 부분 결과 미반영, 이전 snapshot/journal 유지 | PASS, 신규12건 |
+| Pleos 실제 보관 CHANGE/UNKNOWN 조회 | 원 확정21:19·변경 요청21:34·비용0 유지 | PASS |
+| 표준 MOCK 서버 정지→조회→재시작→조회 | 실패 안내와 이전 결과 보존, 복구 후 동일 UNKNOWN | PASS |
+| 앱 force-stop/재실행·APK 교체 | 동일 주체/여정/복구 기록 보존 | PASS, 전후 journal JSON 전체 동일 |
+| 기기 메모리 BOOKING/CHANGE UNKNOWN fixture | 조회·미지원 안내, 기존 단계 안내 | PASS |
+
+환경: Pleos Connect2.1.0/API34, user10, `ai.pleos.assistant.mock.jointvalidation`, 기존 표준 MOCK18082(8080 reverse)와 기존 DB 사용. APK SHA256 `bc59b7d3d4b0ddcedf14fbd576c725d3bd37d4f3e4bde69eae4133ff1a218c7f`. 시험 중 새 예약/변경 명령이나 운영자 결과 주입을 수행하지 않았다. 실제 전화·유료 호출0. 서버와 앱은 복구된 UNKNOWN 화면으로 유지했다.
+
+실행: `./gradlew -PincludeAndroid=false format`, `./gradlew -PincludeAndroid=true verifyAll`, `python3 scripts/smoke-test.py` PASS. UX 결과94개 실패0(신규12건 실행, 최종 반복은 캐시/UP-TO-DATE 포함). isolated init script로 debug/test APK 빌드·설치 후 `DrivingDeviceChecks -e dashboard true` PASS. 처음 기기 fixture에 필수 requestedTime 등이 없어 렌더링 검사 실패했으나 계약 필드를 보완해 재검사 성공했다. Lint 오류0, 기존 경고 유지, 새 억제 없음.
+
+로컬 증거: `captures/unknown-contract/{query,offline,restart}.png`, `work/unknown-contract/{device,verifyAll,smoke}.log`, `work/unknown-contract/tested.apk`. restart 최초 캡처는 시작 전 빈 화면이라 로딩 완료 후 다시 캡처·육안 확인했다. 민감할 수 있는 journal과 기기 파일은 Git 제외. 실제 예약 BOOKING/UNKNOWN의 서버 생성은 이번에 하지 않았고 JVM/기기 fixture 결과와 실제 CHANGE/UNKNOWN을 구분한다. 404·저장 실패·참조 불일치는 JVM 오류 주입이며 실제 서버 장애 재현과 별개다.
+
+남음: #4 서버 담당의 일반 UNKNOWN 해결/종료 계약(소유권·증빙·허용 전이·중복/응답 유실·원 예약 시각/비용·감사 기록), 이후 #26 앱 연결/공동 인수. GET 확인은 수동 해결/종료가 아니다. #5/#25/#26/#39 OPEN, PR #46 Draft 유지. 실제 주행 신호/#40 공동 시연은 이번 검증 범위 밖이다.
