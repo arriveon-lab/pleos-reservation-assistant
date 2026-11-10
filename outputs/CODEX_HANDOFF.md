@@ -1,5 +1,17 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 검색 복구·404 안내의 서버 검토 완료
+
+[서버 담당 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6760438895)에 따라 서버a5ae15e/앱f41e4dc 고정 조합의 두 항목을 완료 근거로 반영한다.
+
+- [x] 오래된 검색: 원 인증/키/본문 대조, COMPLETED GET 확인, 원 명령+종료 응답의 원자적 저장 후 pending 해제 순서를 서버 담당이 계약과 대조했다. 기존 설치의 실제 종료·재시작·명시 새 검색 증거를 앱 측 기기 증거로 수용했다.
+- [x] PREVIEW_NOT_FOUND: 정리 성공으로 바꾸지 않고 후보 숨김·미확인 안내 유지에 동의했다. 추가 서버 계약 수정 요청 없음.
+- 서버 담당이 읽기 전용 checkout에서 SearchReconciliationTest 새13개를 직접 재실행해 실패/오류/skip0을 확인했다. 이는 서버 담당의 JVM 검증이며 기기·전체 UX80/서버385 재실행이 아니다.
+- 실제 기기의 저장 실패/응답 유실/COMPLETED 분기 미실행은 유지한다. 이 두 항목의 검토 완료를 #16/#26 전체 인수·실제 차량·#40·#1/#11/#17 완료로 확대하지 않는다.
+
+이번 변경은 검토 결과와 인계 상태의 문서 반영이며 제품 코드/API/기기/인증/journal을 변경하거나 기기 검사를 재실행하지 않았다. #25/#40/#1/#50/#11 협업 요청에는 확인 시점 새 답변이 없어 각 선행 조건을 유지한다. Assignee/OPEN/Draft 유지, PR 병합 없음.
+
+
 ## 2026-11-10 #26 서버 대조 API·기존 pending 복구
 
 #16 새 답변/#19 a5ae15e에 맞춰 명시적 검색 확인·종료를 연결했다. 원 요청+대조 결과의 원자적 journal 저장 후에만 pending 해제, COMPLETED GET 검증·실패 시 차단 유지. UX80개·format/verifyAll/MOCK smoke PASS. 기존 jointvalidation 실제 Pleos에서 같은 인증 refresh→REJECTED_CLOSED→원 명령 보존→force-stop 재실행→명시 새 검색1회 성공했다. 고정 APK/image와 증거는 docs/UX16_DOCKER_ACCEPTANCE.md 최신 절 참조. 기존 요청 복구 미완료/서버 답변 대기라는 아래 기록은 과거 이력이다.404 미확인 안내는 서버 합의에 따라 유지. 응답 유실/저장 실패/COMPLETED는 JVM 회귀, 실제 기기는 REJECTED_CLOSED 분기다. 서버 담당의 최종 결과 검토·공동 인수 확정·실제 차량/#40/#1/#11은 남아 OPEN/Draft 유지.
