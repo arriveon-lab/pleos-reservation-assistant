@@ -27,6 +27,7 @@
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |
+| [차량 데이터 앱 인수안](VEH01_APP_HANDOFF.md) | #1 → #16/#26 데이터·상태·변환 차단·공동 시나리오 | 협의용, 제품 adapter/공동 기기 인수 미완료 |
 | [연동 근거](INTEGRATIONS.md) | Pleos API 정책·ETA 증거·전화 PoC 조건 | 문서/정적 확인과 실행 확인 구분 |
 | [Android 환경](ANDROID_SETUP.md), [probe 사용법](../android/README.md) | SDK·APK·Pleos emulator·관측 절차 | 빌드와 기기 실행 구분 |
 | [GitHub 설정](GITHUB_SETUP.md) | 조직·main 보호·CI·팀원 시작 절차 | 기록된 설정 기준 |
