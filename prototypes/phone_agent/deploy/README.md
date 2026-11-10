@@ -89,7 +89,7 @@ docker compose -f prototypes/phone_agent/deploy/compose.yml ps --all
 ## 검증
 
 ```bash
-PHONE_ENV_FILE=work/no-test-secrets python -m unittest prototypes.phone_agent.test_service prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience -q
+PHONE_ENV_FILE=work/no-test-secrets python -m unittest prototypes.phone_agent.test_service prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience prototypes.phone_agent.voice.test_echo -q
 docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
 ```
 

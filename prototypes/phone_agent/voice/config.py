@@ -66,6 +66,8 @@ class VoiceConfig:
     tts_model: str = "cartesia/sonic-3-2026-01-12"
     tts_voice: str = "15628352-2ede-4f1b-89e6-ceda0c983fbc"
     noise_suppression: bool = True
+    echo_cancellation: bool = False
+    echo_delay_ms: int = 200
     interruption_mode: str = "adaptive"
     database: str = "data/phone-agent-prototype.sqlite3"
     secrets_dir: str = field(default="work/telkit-private", repr=False)
@@ -90,8 +92,11 @@ class VoiceConfig:
             allowed = tuple(normalize_number(v) for v in env.get("PHONE_ALLOWED_NUMBERS", "").split(",") if v.strip())
             seconds, daily = int(env.get("PHONE_MAX_SECONDS", "180")), int(env.get("PHONE_DAILY_CALLS", "1"))
             noise = env.get("PHONE_NOISE_SUPPRESSION", "true").lower()
+            echo = env.get("PHONE_ECHO_CANCELLATION", "false").lower()
+            echo_delay = int(env.get("PHONE_ECHO_DELAY_MS", "200"))
             interruption = env.get("PHONE_INTERRUPTION_MODE", "adaptive").lower()
-            if noise not in ("true", "false") or interruption not in ("adaptive", "vad"):
+            if (noise not in ("true", "false") or echo not in ("true", "false")
+                    or not 0 <= echo_delay <= 500 or interruption not in ("adaptive", "vad")):
                 raise ValueError
             if not 30 <= seconds <= 600 or not 1 <= daily <= 10:
                 raise ValueError
@@ -114,6 +119,7 @@ class VoiceConfig:
             llm_model=env.get("PHONE_LLM_MODEL", cls.llm_model),
             tts_model=env.get("PHONE_TTS_MODEL", cls.tts_model),
             noise_suppression=noise == "true", interruption_mode=interruption,
+            echo_cancellation=echo == "true", echo_delay_ms=echo_delay,
             tts_voice=env.get("PHONE_TTS_VOICE", cls.tts_voice))
 
     def missing(self, setup=False):
@@ -152,4 +158,6 @@ class VoiceConfig:
                 "restaurantCount": len(self.restaurant_numbers), "maxSeconds": self.max_seconds,
                 "dailyCalls": self.daily_calls, "models": {"stt": self.stt_model, "llm": self.llm_model, "tts": self.tts_model},
                 "audioHandling": {"noiseSuppression": self.noise_suppression,
+                                  "echoCancellation": self.echo_cancellation,
+                                  "echoInitialDelayMs": self.echo_delay_ms,
                                   "interruptionMode": self.interruption_mode}}

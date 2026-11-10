@@ -20,7 +20,10 @@ REPEAT_TEXT = "말씀을 처리하지 못했어요. 다시 한 번 말씀해 주
 
 def room_options(config):
     return room_io.RoomOptions(audio_input=room_io.AudioInputOptions(
-        noise_cancellation=noise_cancellation.NC() if config.noise_suppression else None))
+        sample_rate=16000 if config.echo_cancellation else 24000,
+        noise_cancellation=noise_cancellation.NC() if config.noise_suppression else None),
+        audio_output=room_io.AudioOutputOptions(
+            sample_rate=16000 if config.echo_cancellation else 24000))
 
 
 def turn_options(config):

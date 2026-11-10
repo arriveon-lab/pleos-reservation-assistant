@@ -12,6 +12,7 @@ from livekit.plugins import silero
 from ..service import DomainError, ReservationService
 from .config import VoiceConfig, load_env_file
 from .diagnostics import AudioDiagnostics
+from .echo import attach_echo
 from .resilience import CallSupervisor, SerializedStore, room_options, turn_options
 from .workflow import LiveWorkflow
 
@@ -200,6 +201,7 @@ async def reservation_agent(ctx: agents.JobContext):
     store = SerializedStore()
     diagnostics = AudioDiagnostics()
     ended = False
+    echo = None
 
     def persist_end(reason, snapshot):
         # One queued operation: cancellation of its await cannot skip finish after diagnostics.
@@ -234,6 +236,8 @@ async def reservation_agent(ctx: agents.JobContext):
             reminder.cancel()
         if supervisor:
             await supervisor.stop()
+        if echo:
+            echo.clear()
         if call_id and not ended:
             snapshot = diagnostics.snapshot()
             await store.run(lambda: persist_end(reason, snapshot))
@@ -319,6 +323,7 @@ async def reservation_agent(ctx: agents.JobContext):
 
         agent = BookingVoiceAgent(workflow, call_id, booking_context, close_call, diagnostics, supervisor, store)
         await session.start(room=ctx.room, agent=agent, room_options=room_options(config))
+        echo = attach_echo(session, config, diagnostics)
         reminder = supervisor.spawn(supervisor.watch())
         # Only the short identity statement is protected; buffered user audio is preserved.
         await session.say("안녕하세요, AI 예약 비서입니다.", allow_interruptions=False)

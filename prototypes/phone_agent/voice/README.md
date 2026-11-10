@@ -91,7 +91,7 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 실제 수신·변경 재확인과 전체 계획 인수는 미검증입니다. 제품 연동·운영 배포·Pleos 기기 검증과 분리합니다. 모델 품질을 가상 SDK 테스트 통과로 대체하지 않습니다.
 
 ```bash
-work/voice-venv/bin/python -m unittest prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience -v
+work/voice-venv/bin/python -m unittest prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience prototypes.phone_agent.voice.test_echo -v
 ```
 
 CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 59개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
@@ -141,3 +141,14 @@ CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 59개 테스트를 실�
 
 
 2026-11-10 첫 EC2/여덟 번째 실전화는 36초·48원, 잔액 2,520원·누적 8회/480원입니다. SDK STT/LLM/TTS 오류 0개·입력 34.8초·STT 최종 5개·AI 중단 메시지 3개, agent_finished 종료와 UNKNOWN 저장을 확인했습니다. 사용자는 스피커폰에서 발화 중/조용히 들을 때 모두 끊김을 보고했습니다. 에코는 원인 후보이며 수화기 비교는 아직 하지 않았습니다. 컨테이너 수명 전체 최대 메모리 약 807.5MiB·OOM kill 0회였지만 CPU/네트워크/출력 지연을 배제하지 않습니다. 시험 후 LIVE=false·worker 중단이며 추가 발신은 없습니다. 상세 근거는 docs/STATUS.md의 여덟 번째 시험 기록을 따릅니다.
+
+
+## 스피커폰 에코 처리 — 실험 옵션
+
+`PHONE_ECHO_CANCELLATION=true`는 통화별 WebRTC APM을 만들고, 음성 인식과 VAD에 전달되기 전의 공통 입력에 적용합니다. 기본은 false이며 비교·복귀할 수 있습니다. 입력/출력을 mono 16 kHz로 맞추고 입력을 10ms 단위로 나눕니다. 출력 PCM은 변경하지 않고 실제 RoomIO 제출 속도에 맞춰 공급해 TTS 생성 시점이 재생 시점보다 크게 앞서는 것을 줄입니다. 중단·일시정지·재개와 재생 완료 이벤트를 전달합니다. 이미 제출한 참조는 중단 직후 돌아올 에코를 위해 잠시 유지합니다.
+
+`PHONE_ECHO_DELAY_MS=200`은 **측정된 SIP 왕복 시간이 아닌 초기 추정값**입니다(0–500ms). 서버 참조는 RoomIO에 제출한 PCM이며 상대 휴대폰의 실제 스피커 재생 시각·음량·전화망 변형은 직접 관측하지 못합니다. 이 구현만으로 완벽한 분리나 끊김 해결을 보장하지 않습니다. [SDK APM](https://docs.livekit.io/reference/python/livekit/rtc/apm.html)의 10ms 프레임·출력 참조·지연 설정을 사용하며 SDK 자체를 수정하지 않습니다.
+
+PCM 참조는 통화별 메모리에 최대 2초만 보존하고 종료 시 비웁니다. AEC용 PCM 참조는 파일로 저장하거나 별도로 외부 전송하지 않고, 처리 오류 시 원래 입력을 전달하며 해당 통화의 AEC를 중지합니다. 기존 NC·adaptive 중단 정책·모델·예약 판정은 유지합니다. 진단에는 처리 프레임 수·오류·참조 넘침·입력 시간축 차이·출력 제출 간격·최대 처리 시간·에너지 비율만 남깁니다. 이 값은 RTP 패킷 지터/손실이나 원격 청취 점수가 아닙니다.
+
+추가 오프라인 검사는 번들 가상 음성에 220ms 지연 에코를 섞어 감소를 확인하고, 다른 가상 발화가 겹칠 때 에너지가 유지되는지 검사합니다. 발화 에너지 유지는 한국어 인식 정확도·명료도 검증이 아닙니다. 실제 스피커폰 통화의 청취 결과는 별도 기록합니다.

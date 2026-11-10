@@ -23,6 +23,7 @@ class AudioDiagnostics:
         self.false_interruptions = 0
         self.user_stopped_at = None
         self.response_delays = []
+        self.echo = None
 
     def user_state(self, event):
         if event.old_state == "speaking" and event.new_state == "listening":
@@ -54,7 +55,8 @@ class AudioDiagnostics:
                 "fallbackAudioFailures": self.fallback_failures, "holdRequests": self.holds,
                 "idlePrompts": self.idle_prompts, "automatedAnswers": self.automated_answers,
                 "falseInterruptions": self.false_interruptions,
-                "responseDelaySeconds": list(self.response_delays)}
+                "responseDelaySeconds": list(self.response_delays),
+                "echoCancellation": self.echo.snapshot() if self.echo else {"enabled": False}}
 
 
 async def reprompt_if_unheard(session, diagnostics, ended, sleep=asyncio.sleep):

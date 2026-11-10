@@ -36,6 +36,6 @@ jobs:
           cache: pip
           cache-dependency-path: prototypes/phone_agent/voice/requirements.txt
       - run: pip install -r prototypes/phone_agent/voice/requirements.txt
-      - run: python -m unittest prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience -v
+      - run: python -m unittest prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience prototypes.phone_agent.voice.test_echo -v
       - run: python -m py_compile prototypes/phone_agent/voice/*.py
       - run: docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
