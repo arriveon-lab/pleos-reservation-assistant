@@ -1,6 +1,6 @@
 # API v1 — 계약 1.1.0
 
-[목적지 목록 추천 작업 초안](destination-recommendation-draft.json)과 [가상 요청](examples/destination-recommendation-request.json)은 #52의 기본 비활성 실험 API입니다. 명시적 `KAKAO` 선택 시 기존 실시간 Local adapter를, `PUBLIC_CATALOG` 선택 시 별도 로컬 snapshot을 사용합니다. Bearer 인증으로 POST 접수·GET 소유자별 폴링·DELETE 화면 무효화를 제공하며 주차를 필수 조사 조건으로 추가해 최대 3개 **미확인** 후보와 출처 정보를 돌려줍니다. Kakao 응답·전화번호는 DB/GPT/전화로 넘기지 않습니다. GPT 근거·전화 확인·예약·제품 Android 연결의 완료를 뜻하지 않습니다.
+[목적지 추천 작업 초안](destination-recommendation-draft.json)과 [가상 요청](examples/destination-recommendation-request.json)은 #52의 기본 비활성 실험 API입니다. 명시적 `KAKAO` 선택 시 실시간 Local adapter를, `PUBLIC_CATALOG` 선택 시 별도 로컬 snapshot을 사용합니다. Bearer 인증으로 POST 접수·GET 소유자별 폴링·DELETE 화면 무효화를 제공합니다. 사용자 요청의 아기의자·무계단을 별도 조건으로 해석하고 주차를 필수 조사 조건으로 추가합니다. 별도 일회성 허가가 있는 경우 독립적인 GPT 웹검색 근거를 상호·전체 주소로 대조합니다. Kakao 응답·전화번호는 DB/GPT/전화로 넘기지 않습니다. 프론트엔드 호출자는 @soyeong03에게 인계했으며 이 PR에 구현하지 않습니다. 실제 공급자 데이터의 3곳 추천·전화 확인·예약은 아직 검증/연결되지 않았습니다.
 
 [REC-13 실험 계약](../docs/REC13_WEB_RECOMMENDATION.md) — #50의 기본 비활성 MOCK 실험 API와 사용자 입력/직접 평가 전용 V5 테이블입니다. 기존 v1·앱 계약/아래 논리 ERD 제안을 대체하지 않습니다.
 [REC-12 로컬 catalog 계약](../docs/REC12_PUBLIC_CATALOG.md) — #48의 오프라인 코드 준비이며 제품 HTTP/DB/실제 발신 연결은 아닙니다.

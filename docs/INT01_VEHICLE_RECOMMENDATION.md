@@ -55,6 +55,8 @@
 
 ## 현재 구현 진행
 
+2026-11-10 담당 경계: #52/#53은 서버의 목적지 추천 계약·조건 해석·Kakao 후보·웹 근거 대조를 담당한다. 이 브랜치에서 작성했던 Android 목적지 조회/추천 화면·UX 상태 코드는 제거하고 @soyeong03에게 아래 계약을 인계한다. 앱에서는 Pleos 목적지와 사용자 요청을 접수하고 `viewId`·`generation`으로 폴링하며 경로 변경 시 화면 결과를 폐기해야 한다. 서버의 실제 3곳 추천은 실공급자 데이터로 아직 검증하지 못했다. 아래 구현 이력 중 Android/UX 완료로 적힌 항목은 현재 PR 결과가 아니다.
+
 - 목적지 목록 추천 작업의 별도 기본 비활성 HTTP 초안을 추가했다. `app.destination-recommendations.enabled=true`와 명시적 `source=KAKAO`에서는 기존 실시간 Kakao Local adapter를 환경 키로 호출할 준비를 한다. `PUBLIC_CATALOG`는 별도 옵션이며 추천의 필수 선행 조건이 아니다. 기존 인증 Bearer와 소유자별 폴링·no-store를 적용한다. `POST /api/experimental/destination-recommendations`는 주차를 필수 조사 조건으로 더해 최대 3개 후보의 비동기 작업을 접수한다. `GET /{id}`는 작업 상태·미확인 후보·출처를 반환하며, `DELETE /views/{viewId}`는 결과를 무효화한다. 같은 view의 취소된 세대 재접수를 막는다. 현재 HTTP 검증은 가상 입력이며 이번 변경에서 Kakao·GPT·전화 실제 호출은 없다. [HTTP 초안](../api/destination-recommendation-draft.json)과 [가상 요청](../api/examples/destination-recommendation-request.json)을 참고한다.
 - 이 단계의 3곳은 거리 기반 **목록 후보**이며 후기·주차·아기의자·무계단이 확인된 추천이 아니다. 각 후보는 `NEEDS_CONFIRMATION`, `bookable=false`, `inquiryDispatchAllowed=false`다. 전화번호/예약용 공공 catalog 인수는 추천 3곳의 필수 선행 조건이 아니다. GPT 추가 호출 승인과 근거 품질, #1 목적지 연관성, #43 조건 문의/예약 결과 계약은 각각 별도 인수다.
 - `WebListingRecommendationJoiner`는 Kakao 결과를 GPT에 보내지 않고 **독립적으로 검색한** 웹 근거를 Kakao/공공 목록의 상호·전체 주소에 맞춰 대조한다. 이름만 같은 다른 지점, 목록 안 중복 식별, 만료 결과, 주차 요구 누락은 추천으로 합치지 않는다. 웹 근거는 매장 전화 확인이나 예약 가능성으로 승격되지 않으며 UNKNOWN은 그대로 남는다. 실제 GPT gateway 연결 전 가상 결과로만 검증했다.
@@ -66,9 +68,9 @@ Kakao 옵션은 `app.destination-recommendations.enabled=true`, `app.destination
 - GPT 웹추천의 일회성 permit에 출력 토큰 상한을 명시할 수 있게 했다(기본 3072, 허용 256~3072). 저비용 가상 검증은 1024 한도를 쓰는 요청 본문을 확인했다.
 - 사용자 승인 범위에서 `gpt-6-luna` Responses API를 가상 서울 목적지·주차 조건으로 HTTP 요청 **1회** 실행했다. `store=false`, `max_output_tokens=1024`, `max_tool_calls=1`, 웹검색 문맥 low, 재시도 없음이었다. HTTP 200/완료, 입력 13,080·출력 534토큰(추론 517), 응답 내 `web_search_call` 항목 2개였다. 이 항목 수는 청구되는 검색 횟수와 같다고 단정하지 않는다. 결과의 주차는 UNKNOWN이고 인용 주석은 0개이며 URL도 HTTP라 제품 파서는 이를 검증된 추천으로 수용하지 않는다. 실제 매장·응답 원문·API 키를 저장소에 남기지 않았다. 추가 GPT 호출은 하지 않았다.
 - `DestinationRecommendationService`는 공공 catalog 또는 Kakao 목록과 비동기 폴링을 연결한다. 현재 실험 HTTP는 붙었지만 제품 Android·GPT/전화 경로는 아직 연결하지 않았다. 공공 옵션은 시범 지역 밖을 실패로 처리한다.
-- 제품 Android 앱에 명시적 Pleos 목적지 조회·화면 표시·경로 이벤트 무효화 경계를 넣었다. 아직 SDK 응답 연관성 미검증으로 실제 추천/예약 입력에는 사용하지 않으며 로컬 SDK 부재로 Android 빌드/기기 검증은 미완료다.
+- 제품 Android 앱의 Pleos 목적지 조회·추천 화면은 @soyeong03에게 이관했다. 현재 #53에서 해당 코드는 제거했으며 SDK 응답 연관성·기기 검증은 남았다.
 - 서버 `RecommendationJobRegistry`의 메모리 작업 상태·소유권·세대 취소·완료 결과 폴링 경계를 추가했다. 실제 검색 worker와 HTTP 계약은 아직 붙지 않았다. 전화 AI 계약 제안은 #43에 남겼으며 답변 전이다.
 - #48/PR #49의 로컬 공공 catalog 준비 코드를 격리 브랜치에 가져왔다. 별도 승인된 웹 출처 조사는 이 공공 출처 후보에만 허용하고 Kakao 후보는 차단하는 내부 연결을 추가했다. 실제 catalog 취득·제품 주입·유료 GPT 검색·전화 전송은 하지 않았다.
-- `DestinationRecommendationState`는 SDK 비의존 목적지 관측과 추천 작업 세대를 보관한다. 경로 취소/변경·재관측·새 요청 이후 이전 추천 결과를 현재 값으로 적용하지 않는 경계만 구현했으며 제품 앱과 SDK 연결은 남았다. SDK 콜백의 원 요청 연관성을 이 상태 경계만으로 보장하지 않는다.
+- 앱 쪽 `DestinationRecommendationState`는 #53에서 제거했다. 서버는 `viewId`·`generation`으로 이전 작업을 무효화한다. SDK 콜백의 원 요청 연관성과 화면 결과 폐기는 @soyeong03의 앱 구현에서 검증해야 한다.
 - #50/#43/#16/#26/#1 Draft 소스를 격리 통합 브랜치에 반영했다. 각 원래 PR의 병합이나 팀 인수를 의미하지 않는다.
 - 서버의 `DelayContactPolicy`는 검증된 절대 ETA가 확정 예약 시각보다 10분 이상 늦을 때 `ASK_USER`를 반환한다. 마지막 확인 후 10분 미만이면 새 판단을 하지 않고, 이미 물은 ETA보다 10분 미만으로 더 늦어진 같은 지연은 다시 묻지 않는다. 이 순수 판단기는 발신·저장·주기 실행을 하지 않는다.

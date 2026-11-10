@@ -1,5 +1,12 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 @soyeong03 프론트엔드 인계 (#52 / PR #53)
+
+- 이 PR에서 제가 추가했던 Android Pleos 목적지 조회, 추천 텍스트 입력·폴링·근거 표시, UX 상태 코드를 제거했습니다. 프론트엔드 구현은 @soyeong03 담당입니다. 기존 MOCK 예약 화면은 그대로 둡니다.
+- 서버 계약은 `api/destination-recommendation-draft.json`, 요청 예제는 `api/examples/destination-recommendation-request.json`입니다. Bearer 인증으로 `POST /api/experimental/destination-recommendations`에 `viewId`, 증가하는 `generation`, `userRequest`, Pleos 목적지 이름·좌표, 인원을 보냅니다. `GET /{taskId}`를 폴링하고 화면/경로 종료 때 `DELETE /views/{viewId}`로 무효화합니다. 결과의 `result.matches.candidates`는 웹 근거와 Kakao 상호·주소가 같은 최대 3곳이며 `listing.candidates`는 미확인 목록입니다. `webState=APPROVAL_REQUIRED` 또는 `matches=null`이면 검증된 추천으로 표시하지 마세요.
+- Pleos 목적지 응답의 현재 경로 연관성은 아직 기기에서 확인되지 않았습니다. 경로 변경·취소·도착·재관측 시 화면 결과를 폐기하고, 늦은 폴링 응답을 세대별로 버려야 합니다. 거리 값은 목적지 직선거리이고 ETA나 주행 시간이 아닙니다. 조건별 `assessments`의 YES/NO/UNKNOWN과 근거·출처·유효 시각을 표시해야 하며 예약/전화 버튼은 이 계약에서 허용되지 않습니다. Gleo 음성 입력/완료 TTS는 별도 앱 인수입니다.
+- 서버는 실제 Kakao/GPT 데이터로 추천 3곳 품질을 검증하지 못했습니다. 전화 AI 조건 확인·예약·지연 연락은 후속 연결입니다. 전화번호용 공공 catalog는 이 추천 단계의 필수 입력이 아닙니다.
+
 ## 2026-11-10 INT-01 목적지 목록 API 초안 (#52)
 
 - #53에 기본 비활성 `destination-recommendations` 실험 API를 추가했다. 명시적 `source=KAKAO`에서는 기존 실시간 Kakao Local adapter를, `PUBLIC_CATALOG`에서는 별도 로컬 snapshot을 사용한다. 비동기 최대 3개 목록, Bearer 주체별 폴링과 화면 무효화를 제공한다. 주차 조사 조건은 서버에서 강제하고 출처를 응답한다. 가상 HTTP 테스트와 전체 서버 검증을 통과했다.
@@ -20,11 +27,11 @@
 - 사용자는 기존에 전달한 키 사용을 허용했고 GPT API 호출 전 모델·호출 범위·비용을 설명하고 확인받도록 요청했다. 승인된 1회 호출에만 키를 표준입력으로 전달했으며 저장하지 않았다.
 - 웹추천에 아기의자와 계단 없는 접근 동선을 별도 필수 조건으로 추가했다. 리뷰/일반 친화 표현만으로 YES로 전환하지 않으며 UNKNOWN은 전화 질문으로 남는다. 가상 parser/loopback 계약 검사를 통과했다.
 - `DestinationRecommendationService`에서 공공 catalog/Kakao 후보와 작업 폴링을 연결했다. 가상 3개/소유권/시범 외 실패를 확인했으며 모든 후보는 UNKNOWN·예약/문의 불가다. 실험 HTTP는 붙었고 제품 앱 연결은 아직 없다.
-- `android/app`에 Pleos 목적지 수신/무효화와 출처 미확인 표시 경계를 추가했다. 추천·예약에 아직 전달하지 않는다. 로컬 Android SDK 부재로 `verifyAndroid`는 의존성 평가에서 중단돼 컴파일·Lint·APK/기기 확인으로 세지 않는다. 새 원격 CI에서 빌드 확인 필요.
+- Pleos 목적지 수신/무효화와 표시 경계는 #53에서 제거하고 @soyeong03에게 이관했다. 실제 기기 목적지 연관성과 앱 호출 검증은 남았다.
 - 서버 `RecommendationJobRegistry`의 소유자 범위·세대 무효화·폴링 중복 실행 방지를 가상 테스트로 확인했다. 제품 HTTP/실제 worker는 미연결이다. #43에 조건 문의·예약·지연 통보 API 제안 댓글을 남겼으며 담당자 합의 전이다.
 - 공공 provider enum의 공유 스키마/미리보기 초안 불일치로 PR #53의 서버 계약 CI가 한 차례 실패했다. 두 schema를 맞춘 뒤 로컬 `smoke-test.py --check-contract`와 최신 head의 원격 CI가 통과했다. 과거 실패 실행은 이력에 남는다.
 - #48/PR #49 공공 catalog 코드를 격리 브랜치에 가져왔다. 제품 Spring/DB/전화에 등록하지 않았고 실제 입력은 없다. 공개 데이터로 식별한 후보만 승인된 웹 출처의 일반 조건 조사 경로에 넣고 Kakao 후보는 DATA_USE_BLOCKED를 유지하는 테스트를 추가했다. PR #49는 Draft/미병합이다.
-- `ux/core`에 목적지/추천 세대 상태 경계를 추가했다. 새 관측·경로 무효화·다음 추천·종료 뒤 이전 추천 결과 적용을 막는 단위 테스트를 통과했다. 제품 SDK와 화면 연결은 미완료이며 원 SDK 응답 연관성도 검증되지 않았다.
+- 앱 쪽 목적지/추천 세대 상태 경계는 #53에서 제거했다. 서버의 작업 세대 무효화는 남고, 앱의 늦은 결과 폐기는 @soyeong03에게 인계했다.
 - 작업 브랜치 `feat/52-vehicle-recommendation-integration`은 #50/#43/#16/#26/#1 Draft 소스를 격리 통합했다. 원 PR의 병합이나 제품 인수를 의미하지 않는다.
 - `docs/INT01_VEHICLE_RECOMMENDATION.md`에 개발 순서와 전화 AI 계약을 기록했다. 지연 연락은 10분 간격 ETA 점검·예약 시각보다 10분 이상 지연·매번 사용자 승인 기준이다.
 - `DelayContactPolicy`는 순수 판단만 구현했다. 주기 실행·저장·발신·실제 GPT/기기 검증은 남았다. 채팅에 노출된 키는 저장하지 않았으며 재발급이 필요하다.

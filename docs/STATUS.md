@@ -1,5 +1,10 @@
 # 구현·검증 현황
 
+## 2026-11-10 INT-01 담당 경계 정정 (#52)
+
+- #53의 Android 목적지 조회·추천 입력/폴링 화면과 UX 상태 코드는 담당 범위를 벗어나 제거했습니다. 서버의 `destination-recommendations` API, 사용자 조건 해석, Kakao 후보·독립 웹 근거 대조는 유지합니다. @soyeong03에게 Pleos 목적지 조회, 요청 접수·폴링, 취소/만료, 근거 표시, Gleo/TTS를 API 계약과 함께 인계합니다. 제품 앱 연결·기기 검증을 이 PR의 완료 증거로 세지 않습니다.
+- 실제 Kakao/GPT 공급자 데이터로 3곳이 채워지는지 검증하지 못했습니다. 주차 근거가 없으면 UNKNOWN이며 3곳을 임의로 채우지 않습니다. 추가 GPT 실호출은 사용자에게 모델·입력·횟수·비용을 설명하고 다시 승인받아야 합니다.
+
 ## 2026-11-10 INT-01 Kakao 목적지 목록 3곳 HTTP 초안 (#52)
 
 - PR #53에 기본 비활성 목적지 목록 작업 API(POST 접수/GET 폴링/DELETE 화면 무효화)를 추가했습니다. `source=KAKAO`를 명시하면 기존 실시간 Kakao Local adapter와 환경 키를 사용하고, `PUBLIC_CATALOG`는 별도 선택지입니다. Bearer·소유자·no-store·취소 후 구세대 재접수 차단을 적용했습니다. 주차는 항상 필수 **조사** 조건입니다. Kakao 전화번호는 응답·DB·GPT·전화로 넘기지 않습니다.
@@ -19,13 +24,13 @@
 - PR #53의 이전 schema 불일치 후 새 head의 GitHub Actions 6개가 모두 통과했다. 이전 실패 실행의 기록은 남는다.
 - 웹추천 조건에 `HIGH_CHAIR`와 `STEP_FREE_ACCESS`를 독립 필수 조건으로 추가했다. 일반 아동 친화/접근성 문구로 각각을 추론하지 않고, 근거가 부족하면 UNKNOWN과 전화 확인 질문으로 남긴다. 가상 파서 테스트와 `check-web-recommendation.py`의 loopback 계약 검사를 통과했다.
 - `DestinationRecommendationService`는 로컬 공공 catalog 또는 Kakao 목록→최대3개 UNKNOWN 후보 계획→소유자별 작업 폴링을 연결한다. 가상 catalog의 3개 후보/예약·문의 불가와 시범 지역 밖 INVALID_QUERY를 검증했다. 실험 HTTP는 붙었고 Android 호출자·GPT/전화 연동은 아직 없다.
-- 제품 `android/app`에 Pleos NaviHelper 목적지 조회 경계를 추가했다. 별도 버튼으로 명시적 조회하며 목적지 변경/취소/도착/오류/화면 종료에서 기존 관측을 무효화한다. 수신값은 응답 연관성 미확인으로 표시하고 추천·예약/ETA로 자동 전환하지 않는다. 로컬 `verifyAndroid`는 Android SDK 경로가 없어 태스크 의존성 단계에서 중단됐으며 컴파일·Lint·APK·기기 검증은 새 CI에서 판정한다.
+- Pleos NaviHelper 목적지 조회 화면은 #53의 현재 작업 범위에서 제거하고 @soyeong03에게 인계했다. 목적지의 현재 경로 연관성과 기기 작동은 별도 검증이 필요하다.
 - 서버 `RecommendationJobRegistry`는 같은 화면의 목적지 세대가 바뀌면 이전 비동기 추천 결과를 폐기하고, 소유자별 폴링에서 완료 결과만 재조회한다. 폴링은 공급자 작업을 재실행하지 않는다. 가상 지연·취소·실패·타인 조회 단위 테스트를 통과했다. 현재는 메모리 경계이며 제품 HTTP·Spring 주입·실제 검색 worker는 아직 연결하지 않았다.
 - #48 catalog의 `SEOUL_OPEN_DATA` provider를 공유 추천 계획 스키마에 추가한 뒤 미리보기 초안의 중첩 스키마가 어긋나 원격 `Server and contract`가 실패했다. 중첩 enum을 동기화하고 로컬 `smoke-test.py --check-contract`의 가상 HTTP·OpenAPI·재시작·LIVE 차단 검사와 최신 head의 원격 Actions 6개를 통과했다. 과거 실패 기록은 GitHub에 남는다.
 - #43 이슈에 조건 문의·예약·지연 통보의 비동기 작업/멱등성/UNKNOWN/비용·연락처 경계 API 제안을 남겼다. 담당자 답변 전 계약 확정이나 실제 발신으로 취급하지 않는다.
 - #48/PR #49 공공데이터 로컬 catalog 두 커밋을 통합 브랜치로 가져와 원 PR의 출처와 검증 경계를 보존했다. 원 PR 자체는 Draft/미병합이다. catalog는 아직 Spring 제품 경로에 등록하지 않았고 실제 XML을 취득하지 않았다.
 - `PlaceDetailRecommendationService`가 `SEOUL_OPEN_DATA` 목록을 승인된 공공 출처로 취급해 별도로 승인된 웹 페이지의 일반 조건을 조사할 수 있게 했다. `KAKAO` 목록은 같은 READ_ONLY_WEB 경로에서 DATA_USE_BLOCKED를 유지한다. 두 경계 가상 테스트를 통과했고 결과는 예약·발신 권한이 아니다.
-- SDK 비의존 `DestinationRecommendationState`를 추가했다. 목적지 관측 후 시작한 추천은 새 추천 요청·새 관측·경로 변경/취소·종료 시 구세대가 되므로 늦게 완료돼도 현재 결과로 적용할 수 없다. 가상 목적지 단위 테스트를 통과했다. 제품 SDK callback 연결·실제 추천 호출은 아직 없다.
+- 서버 작업 레지스트리는 세대별 구결과를 차단한다. 앱 쪽 `DestinationRecommendationState`는 #53에서 제거하고 @soyeong03에게 경로 변경·취소·재관측 시 이전 결과 폐기 요구를 인계했다.
 - 이 상태 경계는 SDK 응답의 원 요청 연관성을 증명하지 않는다. ETA 시간 기준·현재 경로 연관성 미검증을 유지하고 raw ETA를 예약 시각으로 변환하지 않는다.
 - #50/#43/#16/#26/#1 Draft 브랜치의 소스를 별도 통합 브랜치에 모았다. 문서와 빌드 설정 충돌에서 양쪽 내용을 보존했다. 원 PR 병합·팀 인수·제품 실행 완료가 아니다.
 - 사용자가 선택한 정책은 예약 이후 약 10분마다 검증된 ETA를 확인하고, 확정 예약 시각보다 10분 이상 늦을 때마다 연락 여부를 사용자에게 묻는 것이다. 서버 `DelayContactPolicy`는 이 판단만 수행한다. 실제 발신·주기 실행·저장은 미구현이다.
