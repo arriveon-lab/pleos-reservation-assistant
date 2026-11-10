@@ -65,4 +65,5 @@
   <string name="reconcile_search_notice">같은 인증과 원 요청으로 서버 처리 여부를 확인합니다. 이미 처리된 검색은 조회하고, 미처리된 오래된 검색만 종료합니다. 전화·예약·새 검색을 실행하지 않습니다. 실패하면 원 요청을 유지합니다.</string>
   <string name="reconcile_search_closed">이전 검색 요청을 종료하고 원 기록을 보존했습니다. 현재 조건으로 다시 검색해 주세요. 예약 취소는 아닙니다.</string>
   <string name="reconcile_search_completed">이전 검색의 처리 결과를 확인하고 최신 검색 상태를 복구했습니다. 문의·예약은 자동 실행하지 않습니다.</string>
+  <string name="change_cooldown">변경 요청은 10분 간격으로 가능해요. %1$s 이후 최신 상태를 조회해 주세요.</string>
 </resources>

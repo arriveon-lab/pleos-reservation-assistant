@@ -91,6 +91,7 @@ final class DashboardChecks {
             runner,
             () -> {
               JSONObject state = new JSONObject(original.toString());
+              state.remove("pending");
               JSONObject reservation =
                   new JSONObject()
                       .put("status", status)
@@ -133,6 +134,7 @@ final class DashboardChecks {
           runner,
           () -> {
             JSONObject state = new JSONObject(original.toString());
+            state.remove("pending");
             state.put(
                 "reservation",
                 new JSONObject()
@@ -146,6 +148,43 @@ final class DashboardChecks {
                 || contains(root, activity.getString(R.string.home_action_confirmed)))
               throw new AssertionError("Unknown change hidden by confirmed reservation");
           });
+      main(
+          runner,
+          () -> {
+            JSONObject state = new JSONObject(original.toString());
+            state.remove("pending");
+            state.put("reservationId", "cooldown-fixture");
+            state.put(
+                "reservation",
+                new JSONObject()
+                    .put("status", "CONFIRMED")
+                    .put("originalRequestedTime", "2026-11-10T12:00:00Z")
+                    .put("confirmedTime", "2026-11-10T12:15:00Z")
+                    .put("totalAdditionalCostKrw", 0)
+                    .put("lastChangeRequestedAt", java.time.Instant.now().toString()));
+            snapshot.set(model, state);
+            render(activity);
+            if (contains(activity.getWindow().getDecorView(), activity.getString(R.string.change)))
+              throw new AssertionError("Premature change action visible");
+          });
+      runner.waitForIdleSync();
+      Thread.sleep(300);
+      main(runner, () -> VehicleUiChecks.layout(activity.getWindow().getDecorView()));
+      capture(runner, "change-cooldown");
+      main(
+          runner,
+          () -> {
+            snapshot.set(model, new JSONObject());
+            render(activity);
+            if (!model.canWrite()) throw new AssertionError("Unrestricted fixture not writable");
+            activity.debugRestriction();
+            if (model.canWrite()) throw new AssertionError("Restriction allowed input");
+            activity.debugFailure();
+            if (model.canWrite()) throw new AssertionError("Unknown failure allowed input");
+          });
+      capture(runner, "core-restriction-failure");
+      runner.runOnMainSync(activity::retryDriving);
+      runner.waitForIdleSync();
     } finally {
       main(
           runner,

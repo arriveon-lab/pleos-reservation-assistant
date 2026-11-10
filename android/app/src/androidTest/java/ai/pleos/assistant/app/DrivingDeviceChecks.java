@@ -83,7 +83,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
             "requested font scale not applied to Activity");
       }
       ReservationViewModel model = (ReservationViewModel) field(activity, "model");
-      await(() -> model.canWrite());
+      await(() -> dashboard ? model.connected() && !model.busy() : model.canWrite());
       waitForIdleSync();
       if (dashboard) {
         DashboardChecks.run(this, activity, model);

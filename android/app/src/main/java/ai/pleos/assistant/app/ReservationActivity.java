@@ -746,6 +746,17 @@ public final class ReservationActivity extends ComponentActivity {
             && "CONFIRMED".equals(value.getString("status"))
             && value.isNull("pendingChangeCallId");
     String confirmed = value.optString("confirmedTime");
+    Instant nextChange = MockRepository.nextChangeAt(value);
+    if (allowed && nextChange != null && Instant.now().isBefore(nextChange)) {
+      text(
+          getString(
+              R.string.change_cooldown,
+              DateTimeFormatter.ofPattern("MM-dd HH:mm:ss 'KST'")
+                  .withZone(ZoneId.of("Asia/Seoul"))
+                  .format(nextChange)),
+          22);
+      allowed = false;
+    }
     if (allowed) {
       String requested = Instant.parse(confirmed).plus(15, ChronoUnit.MINUTES).toString();
       button(

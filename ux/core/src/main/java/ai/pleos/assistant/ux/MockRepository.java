@@ -369,12 +369,22 @@ public final class MockRepository {
         "reservationId");
   }
 
+  /** Server contract: changes must be at least ten minutes apart; server remains authoritative. */
+  public static Instant nextChangeAt(JSONObject reservation) {
+    return reservation.isNull("lastChangeRequestedAt")
+        ? null
+        : Instant.parse(reservation.getString("lastChangeRequestedAt")).plusSeconds(600);
+  }
+
   public void change(boolean explicitApproval) throws Exception {
     JSONObject reservation = state.getJSONObject("reservation");
     if (!explicitApproval
         || !"CONFIRMED".equals(reservation.getString("status"))
         || !reservation.isNull("pendingChangeCallId"))
       throw new IllegalStateException("CHANGE_BLOCKED");
+    Instant next = nextChangeAt(reservation);
+    if (next != null && Instant.now().isBefore(next))
+      throw new IllegalStateException("CHANGE_COOLDOWN");
     command(
         "/reservations/" + state.getString("reservationId") + "/changes",
         new JSONObject()
