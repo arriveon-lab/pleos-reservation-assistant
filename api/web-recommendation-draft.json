@@ -712,7 +712,8 @@
           "observedAt",
           "validUntil",
           "candidates",
-          "excludedCandidates"
+          "excludedCandidates",
+          "failureReason"
         ],
         "properties": {
           "mode": {
@@ -768,6 +769,11 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 8
+          },
+          "failureReason": {
+            "type": ["string", "null"],
+            "enum": ["CREDENTIAL_MISSING", "HTTP_REJECTED", "INVALID_RESPONSE", "TRANSPORT_ERROR", null],
+            "description": "Safe diagnostic only for FAILED; MOCK results use null."
           }
         }
       },
