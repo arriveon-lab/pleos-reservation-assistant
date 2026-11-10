@@ -26,7 +26,8 @@
     "provider": {
       "enum": [
         "MOCK",
-        "KAKAO"
+        "KAKAO",
+        "SEOUL_OPEN_DATA"
       ]
     },
     "requirements": {
