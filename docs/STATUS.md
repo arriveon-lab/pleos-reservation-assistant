@@ -1,5 +1,10 @@
 # 구현·검증 현황
 
+## 2026-11-10 #16 Docker 서버·Pleos 앱 측 인수 검증
+
+앱cf35ead를 별도 jointvalidation APK로 빌드해 서버#19 d415ef7 Docker linux/arm64에 연결했다. 서버 직접 RESULTS/EMPTY/FILTERED/FAILED, 인증 갱신·Keystore 재실행·조건/목적지 변경·실제 STOPPED 복귀·중복 클릭 검증과 별도 늦은 응답/취소503/유실/3초 만료·개발 제한 검사를 수행했다. verifyAll·MOCK smoke PASS. 제품/API 수정 없음. [고정 APK/image·절차·증거·한계](UX16_DOCKER_ACCEPTANCE.md) 참조. 취소 실패 뒤 실제429와 HOME의 RESUMED 유지도 기록했다. 서버 담당의 결과 검토/공동 완료는 대기, 인원 경계/두 취향·실제5분 만료·실제 moving/장애·#40 예약 시연은 미완료다. OPEN/Draft 유지.
+
+
 ## 2026-11-09 공동 인수 준비·추가 글자 확대 검사
 
 #40에 일반 앱/별도 운영자 시연 환경과 상태별 공동 절차, #16에 계약·fixture·수명·인증 공동 확인 조건을 게시했다. 서버 담당 준비/확인과 공동 실행은 아직 대기다. #39 동일 제품 APK로 Pleos840dp 창 주간150%/야간130% 실제 배율·승인창·입력 보존·수명/주입 제한 검사 PASS. 테스트 APK에 배율 확인·캡처 렌더 대기를 추가했고 제품/API 변경은 없다. 초기 fixture assertion 실패와 재실행 결과, 최종 캡처를 [UI 검증 기록](UX39_VEHICLE_UI.md)에 구분했다. format·verifyAll·MOCK smoke PASS. 실제 moving/장애·전체 창/물리 회전·#40 전체 시연·release/영상은 미완료, #16/#25/#39/#40 OPEN과 Draft 유지.

@@ -1,0 +1,78 @@
+# #16 Docker MOCK 서버와 Pleos 앱 인수 검증
+
+2026-11-10 KST. [서버 담당 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6756116918)에 따라 화면 담당이 자기 Mac에서 실행했다. **앱 측 실행 증거 제출이며, 서버 담당의 결과 검토/공동 인수 완료는 대기**다. #16/#26/#25/#39 OPEN과 PR #19/#46 Draft를 유지한다. 실제 장소·GPT·웹 수집·전화·유료 호출은 하지 않았다.
+
+## 고정 버전과 격리
+
+| 항목 | 실제 실행 기준 |
+| --- | --- |
+| 앱 소스 | cf35ead38408ab19d6cf2657ed597237d368d7af, #36/#44/#39 구현 보존 |
+| 제품 APK SHA256 | bdd4f9312aa583275a28a01a6f21df8332eed95ff4b137b3a1901ef7f3183cc4 |
+| 패키지 | ai.pleos.assistant.mock.jointvalidation (별도 설치) |
+| 서버 소스 | d415ef74c0400cc49a353eea3132eedf899c59c4, 별도 detached worktree |
+| 이미지 ID | sha256:c83f423444e53b415b0551e5d7229a505fb684624245e94ab10b987752df80dc |
+| 실행 환경 | macOS arm64, Docker Engine29.6.2 / Compose5.3.1, 컨테이너 linux/arm64 |
+| 계약 | 인증1.1.0 / 미리보기0.2.0-draft |
+| 기기 | emulator-5554, Pleos Connect2.1.0/API34, user10, 2560×1440/density160, 앱 창1682×1210dp |
+| 서버/인증 저장 | Compose project ux16-device, named volume ux16-device_preview-auth, host127.0.0.1:18082 |
+
+현재 앱 소스로 새로 빌드해 hash를 직접 계산했다. 이전 d9ce757d APK를 후속 소스 증거로 재사용하지 않았다. Gradle init script는 applicationId만 jointvalidation으로 바꿨다. 기본/uxvalidation/previewvalidation 설치·기존 DB/Keystore는 지우거나 복사하지 않았다. 새 Docker DB에 대응하는 별도 시험 설치의 인증을 사용자가 누르는 버튼으로 처음 한 번 발급했다. 한도/실패를 우회하기 위한 인증 교체는 없다. 이후 네 fixture 전환·갱신·재실행은 같은 설치/volume이다.
+
+## 재현 절차
+
+1. 현재 작업 브랜치를 보존하고 `git worktree add --detach work/rec05-device-server d415ef74c0400cc49a353eea3132eedf899c59c4`로 서버를 분리한다. 기존 경로가 있으면 덮어쓰지 않는다.
+2. 서버 checkout에서 `docker compose -p ux16-device up --build --detach --wait`. 실제 healthy와 `/api/v1/status`의 MOCK/1.1.0/externalCallsEnabled=false 확인. loopback18082 publish와 위 image ID/platform 기록.
+3. 원래 reverse8080→18080을 기록한 뒤 `adb -s emulator-5554 reverse tcp:8080 tcp:18082`. 위 별도 APK 설치·실행, 실제 CarUx 초기 false/0 확인 후 명시 인증·미리보기 열기.
+4. 각 fixture마다 `PREVIEW_FIXTURE=EMPTY docker compose -p ux16-device up --detach --wait`처럼 RESULTS/EMPTY/FILTERED/FAILED로 전환하고 명시 검색한다. `down --volumes`는 사용하지 않는다.
+5. 상태 검사는 앱 기본 입력 성인2/아동1·대기15분·목적지A·반경1000m·주차/아동 필수·취향 한식으로 수행했다. 서버 인수표의 한식+양식 두 취향 조합과 차이가 있다. 두 취향/인원 상한20/10·거절21/11의 이번 기기 검사는 수행하지 않았으며 기존 서버/core 증거와 구분한다.
+6. 네 상태 직접 검증 이후에만 host18083 loopback 프록시→Docker18082를 사용했다. 기본은 무변조 전달, fault 모드에서만 지연/취소503/응답 유실/3초 만료를 주입했다. 토큰·ID·요청 본문을 로그에 저장하지 않고 operation/status/state/count만 기록했다.
+
+## 실제 실행 결과
+
+| 절차 | 기대 결과 | 실제 결과 / 캡처 |
+| --- | --- | --- |
+| 명시 인증·기본 입력 | 실제 서버 토큰/Android Keystore, 계약 인원 범위 표시 | 연결 성공, 미리보기1–20/0–10과 기존 예약1–8/0–6 구분 / 01-conditions |
+| 서버 RESULTS 직접 반환 | 최대3개, 문의/예약 실행 금지 | 후보1–3·추가 확인 필요·예약 요청 불가 / 02-results |
+| 상세 펼치기·스크롤 | 근거·누락·UNKNOWN·출처/기한, NOW/ARRIVAL 분리 | 주소/전화 미확인·UNKNOWN 질문·현재 대기를 도착 대기로 해석하지 않는 안내 / 03-details |
+| 서버 EMPTY 직접 반환 | 공급자0건 안내, 이전 후보 없음 | EMPTY/0 표시 / 04-empty |
+| 서버 FILTERED 직접 반환 | 범위 밖을 EMPTY와 구분 | FILTERED/0 표시 / 05-filtered |
+| 서버 FAILED 직접 반환 | 실패 안내, 이전 후보 없음 | FAILED 표시, 자동 재검색 없음 / 06-failed |
+| 같은 사용자 인증 갱신 | 새 인증 주체 발급 없이 갱신 후 검색 | refresh200·명시 검색 RESULTS3, 관측 구간 anonymous-sessions0 / 07-refresh-results |
+| 주차 필수 해제 | 즉시 이전 결과 제거, 자동 검색 없음 | EDITING·query 수 변화0, 명시 검색 후 RESULTS / 08-edited,09-edited-results |
+| 목적지A→B | 기존 결과 선무효화 | EDITING·이전 후보 없음 / 10-destination-edited. 이후A로 복귀 |
+| HOME·일반 설정 앱 열기 | 실제 Activity 상태에 따라 판정 | Pleos 분할창에서 앱 RESUMED/visible 유지. onStop 검증으로 세지 않음 |
+| 전체 창 설정 앱 전환→복귀 | 실제 STOPPED에서 결과 제거, 명시 검색 대기 | dumpsys STOPPED, 복귀 CLOSED/후보 없음, 새 query 없음 / 11-before-background,12-resumed |
+| 8초 늦은 응답+취소/종료503 | 실패 안내와 이전/늦은 후보 숨김 | 서버 RESULTS3을 받아도 취소 뒤 표시하지 않음 / 13-late-cancel-failure (프록시 주입) |
+| query 응답 유실 | 정상0건 아닌 실패, 자동 재검색 없음 | FAILED·후보 없음 / 14-response-loss (프록시 주입) |
+| 표시 유효기한3초 | 기한 이후 결과 제거 | EXPIRED·후보 없음 / 15-expired (프록시 주입, 실제5분 만료 검사는 아님) |
+| force-stop→재실행 | 저장 인증 복구, 완료 미리보기 미복원 | 재검색 전 후보 없음, 명시 검색 후 RESULTS3 / 16-restarted,17-restart-search |
+| 연속2회 클릭+8초 응답 지연 | 진행 중 중복 검색 차단 | LOADING·query 증가1회, 이후 RESULTS3 / 18-duplicate-loading,19-duplicate-result |
+| 개발 추가 제한·조회 실패 | 이전 결과 제거·검색 불가 | search enabled=false, 주입임을 명시 / 20-restricted,21-unknown |
+| 차량 플랫폼 재조회 | 실제 초기값 재조회 후 입력 복귀, 자동 검색 없음 | 입력 enabled=true·후보 없음 / 22-platform-recovered |
+
+네 상태는 서버 fixture 직접 반환이며 프록시가 만든 EMPTY/FILTERED/FAILED가 아니다. FAILED는 가상 공급자 UPSTREAM_UNAVAILABLE이고 실제 공급자 장애가 아니다. 출처 필드 집합/정렬의 기존 서버·core 검증과 Android 화면/HTTP/Keystore 실행을 구분한다. 예약 GET 복구는 이번 별도 미리보기 시험에서 새 예약을 만들지 않아 재검증하지 않았다. force-stop 후 완료 미리보기는 GET으로 복원하지 않는다.
+
+## 관측한 경계와 검사 수정
+
+- 첫 fixture 전환 전에 열린 세션은 컨테이너 재시작으로 사라졌다. 다음 검색에서 이전 cancel/close 확인 실패 안내가 표시됐지만 이전 후보를 다시 표시하지 않았다. 이 안내는 과거 정리 실패를 보존하므로 뒤의 정상/빈 결과 화면에도 남을 수 있다. 서버 재시작이 메모리 preview를 복구하지 않는 계약과 연결한다.
+- 취소503 시험으로 정리되지 않은 세션이 남은 뒤 새 preview 생성429를 실제 관측했다. 주체별 한도2와 비동기 정리/생성 시점에 해당하며, 기록상 이전 close200 뒤에도 경쟁 중 생성은429를 받았다. 한도 안내를 숨기거나 새 인증/서버 재시작으로 우회하지 않았다. 같은 인증으로 명시 재실행/검색은 이후 성공했다. 만료 검사는 최초429 시도를 통과로 세지 않고 기존 검색을 명시 취소·정리한 뒤 다시 실행했다. 운영 정리/한도 경계는 기존 #17 범위다.
+- HOME 뒤 후보가 남아 초기 검사 assertion이 실패했다. dumpsys에서 실제 RESUMED임을 확인한 뒤, 전체 창 전환으로 STOPPED를 발생시켜 다시 검사했다. HOME을 종료로 가정하는 잘못된 기대를 수정한 것이며 제품 수명 코드를 변경하지 않았다.
+- 임시 UI 도구의 상세 버튼/조회 실패 기대 문구가 현행 UI와 달랐던 항목은 실제 문자열로 대조 후 재실행했다. 실패한 도구 시도는 성공 증거로 세지 않는다.
+- 실제 moving/권한 거부/서비스 단절·늦은 CarUx callback은 미검증이다. 개발 제한·조회 실패를 차량 신호 검증으로 보고하지 않는다.
+
+## 검사·증거·종료
+
+- 현재 앱 소스에서 `:android:app:assembleDebug` (격리 applicationId) 성공, 위 hash의 APK 실제 설치/실행.
+- `./gradlew -PincludeAndroid=true verifyAll` 성공:112 tasks,6 executed/8 cache/98 up-to-date. 기존 JVM 테스트 캐시/UP-TO-DATE를 이번 신규 실행 건수로 세지 않는다. Lint 기존 경고와 NO-SOURCE도 이전 기록대로 구분한다.
+- `python3 scripts/smoke-test.py` 성공: 패키징 인증·MOCK/UNKNOWN·H2 재시작·LIVE 차단. 이 smoke는 앱 공동 예약 시연이 아니다.
+- #19 전체329개/서버 자동 Docker 검사를 이번에 다시 실행한 것은 아니다. 이번에는 고정 이미지 빌드/healthy와 실제 Android 연결로 확인했다.
+- PNG/XML22쌍: 로컬 Git 제외 `captures/ux16-joint/`, 해시/버전은 `manifest.json`. 실제 존재하는 파일 목록이 기준이며 최종 PNG는 01–22, 12는12-resumed이다. 원본을 GitHub에 업로드한 것은 아니다.
+- APK·빌드/검사 로그·비식별 proxy-events·시나리오 도구는 `work/ux16-joint/`. 서버 checkout `work/rec05-device-server/`. 실패 시도 로그도 보존했다.
+- 검증 후 테스트 앱·프록시 종료, Compose down(인증 volume 유지), 설정 앱은 원래 multi-window 요청으로 복귀, reverse8080→18080 복원. 기존18080 서버 MOCK/외부 호출OFF 확인. Docker Desktop은 설치된 것을 실행했으며 시스템/기존 앱 데이터 삭제 없음.
+
+## 다음 인수
+
+1. #16 서버 담당이 동일 버전 결과·기본 입력 차이·429/정리 실패 안내를 검토하고 양측 인수표를 갱신한다. 화면 담당 단독 실행을 공동 완료로 자동 체크하지 않는다.
+2. 두 취향 조합/인원 경계 기기 확인, 실제5분 만료, 실제 주행/장애 조합은 추가 인수 범위로 남긴다. #1 ETA·#11 이용 조건·#17 운영 수명은 해당 담당 범위를 유지한다.
+3. #40 일반 앱/별도 운영자 문의→승인→예약 결과 시연은 별도다. 이번 Docker 이미지에는 운영자 주입 경로가 없어 #40 준비 완료를 뜻하지 않는다.
+4. PR #38 웹 필드는 현행 계약에 추가하지 않았다. 공개 필드 합의 후 별도 구현한다. 제품/API 수정·병합·자동 병합 없음.
