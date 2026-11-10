@@ -13,7 +13,6 @@
     <string name="destination_recommendation_state">탐색 상태: %1$s</string>
     <string name="destination_recommendation_candidate">%1$s · %2$s\n목적지 직선거리 %3$d m</string>
     <string name="destination_recommendation_evidence">%1$s: %2$s</string>
-    <string name="destination_recommendation_explanation">근거 요약: %1$s\n출처: %2$s</string>
     <string name="destination_recommendation_unverified">웹 근거와 장소가 일치한 추천이 없습니다. 후보를 확정해 표시할 수 없습니다.</string>
     <string name="destination_recommendation_disclosure">웹 근거와 Kakao 장소 목록의 지점명이 일치한 후보입니다. 주차·아기 의자·무계단은 전화 확인 전까지 확정되지 않습니다. 직선거리는 주행 시간이 아닙니다. 예약은 아직 연결되지 않았습니다.</string>
   <string name="app_name">Pleos 예약 비서 · MOCK</string>

@@ -337,16 +337,6 @@ public final class ReservationActivity extends ComponentActivity {
                 assessment.optString("need"),
                 assessment.optString("verdict")),
             18);
-        JSONArray evidence = assessment.optJSONArray("evidence");
-        if (evidence == null || evidence.length() == 0) continue;
-        JSONObject first = evidence.optJSONObject(0);
-        if (first != null)
-          text(
-              getString(
-                  R.string.destination_recommendation_explanation,
-                  first.optString("condition"),
-                  first.optString("url")),
-              17);
       }
     }
     text(R.string.destination_recommendation_disclosure);
