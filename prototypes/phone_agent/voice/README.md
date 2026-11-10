@@ -102,8 +102,9 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 대기하게 됩니다. `start_sip_audio`는 수신의 session.start를 먼저 실행하고 active를
 확인합니다. 발신은 기존대로 active 확인 후 시작하며, 첫인사는 양쪽 모두 그 뒤입니다.
 단절·시간 초과·이미 종료된 통화는 다시 시작하지 않습니다. [공식 SIP 수신 소스](https://github.com/livekit/sip/blob/main/pkg/sip/inbound.go)와
-SDK 1.8.11의 출력 track 게시 코드를 대조했고 로컬 검사는 134개입니다. 수정 후 실제
-수신은 미검증이며 기본 비활성 상태를 유지합니다.
+SDK 1.8.11의 출력 track 게시 코드를 대조했습니다. 로컬과 EC2 Linux(network=none)의
+134개 검사를 통과한 `fa10d97`을 배포했습니다. 수정 후 실제 수신은 미검증이며 기본
+비활성 상태를 유지합니다.
 
 의존성은 `livekit-agents[silero]==1.8.11`, `livekit-api==1.2.2`, `livekit-plugins-noise-cancellation==0.3.3`입니다. NC 플러그인은 LiveKit Cloud용이며 패키지 라이선스는 LiveKit 서비스 약관을 참조합니다. 공급자 바이너리를 저장소에 복사하지 않습니다. LiveKit Inference의 AssemblyAI Universal 3.6 Pro(ko) → Google Gemma 4 31B → Cartesia Sonic 3(ko)를 사용합니다. OpenAI API 키는 이 경로에 필요하지 않습니다. 공급자와 모델·음성 ID는 `.env.example`에서 바꿀 수 있습니다.
 
