@@ -17,7 +17,9 @@ public final class WebRecommendation {
     PET_FRIENDLY,
     INDOOR_PET_FRIENDLY,
     PARKING,
-    CHILD_FRIENDLY
+    CHILD_FRIENDLY,
+    HIGH_CHAIR,
+    STEP_FREE_ACCESS
   }
 
   public enum Verdict {

@@ -45,7 +45,13 @@ public final class MockWebRecommendationGateway implements WebRecommendationServ
         report.put("need", need.name());
         report.put(
             "answer",
-            i == 4 ? "NO" : i == 2 && need == Need.INDOOR_PET_FRIENDLY ? "UNKNOWN" : "YES");
+            i == 4
+                ? "NO"
+                : (i == 2 && need == Need.INDOOR_PET_FRIENDLY)
+                        || need == Need.HIGH_CHAIR
+                        || need == Need.STEP_FREE_ACCESS
+                    ? "UNKNOWN"
+                    : "YES");
         report.put("condition", i == 2 ? "가상 안내: 테라스 이용 조건은 별도 확인" : "가상 안내: 해당 조건 가능 보고");
         report.put("sourceUrl", url);
         report.put("sourceType", i == 3 ? "VISITOR_REVIEW" : "MERCHANT_PAGE");

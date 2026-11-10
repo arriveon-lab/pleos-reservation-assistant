@@ -2,6 +2,7 @@
 
 ## 2026-11-10 INT-01 #52 통합 진행
 
+- 웹추천에 아기의자와 계단 없는 접근 동선을 별도 필수 조건으로 추가했다. 리뷰/일반 친화 표현만으로 YES로 전환하지 않으며 UNKNOWN은 전화 질문으로 남는다. 가상 parser/loopback 계약 검사를 통과했고 실제 GPT 호출은 없다.
 - `PublicDestinationRecommendationService`에서 공공 catalog 후보와 작업 폴링을 내부 연결했다. 가상 3개/소유권/시범 외 실패를 확인했으며 모든 후보는 UNKNOWN·예약/문의 불가다. 실제 catalog·HTTP·앱 연결은 아직 없다.
 - `android/app`에 Pleos 목적지 수신/무효화와 출처 미확인 표시 경계를 추가했다. 추천·예약에 아직 전달하지 않는다. 로컬 Android SDK 부재로 `verifyAndroid`는 의존성 평가에서 중단돼 컴파일·Lint·APK/기기 확인으로 세지 않는다. 새 원격 CI에서 빌드 확인 필요.
 - 서버 `RecommendationJobRegistry`의 소유자 범위·세대 무효화·폴링 중복 실행 방지를 가상 테스트로 확인했다. 제품 HTTP/실제 worker는 미연결이다. #43에 조건 문의·예약·지연 통보 API 제안 댓글을 남겼으며 담당자 합의 전이다.

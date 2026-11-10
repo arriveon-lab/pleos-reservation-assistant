@@ -42,6 +42,31 @@ class WebRecommendationParserTest {
   }
 
   @Test
+  void highChairAndStepFreeRequireTheirOwnEvidenceAndRemainPhoneQuestions() throws Exception {
+    var needs =
+        new Request(
+            UUID.randomUUID(),
+            1,
+            "가상 서울숲",
+            Set.of(Need.PARKING, Need.HIGH_CHAIR, Need.STEP_FREE_ACCESS),
+            false);
+    var result =
+        parser.parse(
+            MockWebRecommendationGateway.fictionalResponse(),
+            needs,
+            Mode.MOCK,
+            NOW,
+            NOW.plusSeconds(300));
+    assertThat(result.state()).isEqualTo(State.RESULTS);
+    assertThat(result.candidates().getFirst().remainingQuestions())
+        .contains(Need.HIGH_CHAIR, Need.STEP_FREE_ACCESS);
+    assertThat(result.candidates().getFirst().assessments())
+        .filteredOn(a -> a.need() == Need.HIGH_CHAIR || a.need() == Need.STEP_FREE_ACCESS)
+        .allMatch(a -> a.verdict() == Verdict.UNKNOWN);
+    assertThat(result.candidates()).allMatch(c -> !c.bookable() && !c.inquiryDispatchAllowed());
+  }
+
+  @Test
   void maximumThreeWithQualifiedYesUnknownReviewAndExcludedNo() throws Exception {
     var root = response();
     var result = parse(root, content(root));

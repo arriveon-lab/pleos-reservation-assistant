@@ -111,6 +111,8 @@ public final class GptWebRecommendationAdapter {
             + "answer is YES,NO,UNKNOWN. sourceType is MERCHANT_PAGE,VISITOR_REVIEW,OTHER, a reported source category, not verified ownership. "
             + "Use short factual paraphrases for condition, never review text. URLs must appear in citations. "
             + "PET_FRIENDLY never proves INDOOR_PET_FRIENDLY. Preserve terrace-only, size, fee, and time restrictions in condition. "
+            + "CHILD_FRIENDLY never proves HIGH_CHAIR. General accessibility never proves STEP_FREE_ACCESS; report the actual entrance and interior stair evidence or UNKNOWN. "
+            + "PARKING requires evidence for this exact branch, not a nearby public parking lot. "
             + "Do not infer pet policies from photos or general atmosphere. Never claim arrival availability, live waits or booking acceptance. "
             + "No phone numbers, personal data, reviews or extra keys in output. If evidence is missing, use UNKNOWN; if no candidates, return an empty array.");
     // Internal view/generation, consent, credentials and family/user identity are not sent.
