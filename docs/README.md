@@ -56,3 +56,5 @@
 - 편집 가능한 관계도 소스: [erd/ERD.mmd](erd/ERD.mmd)
 - 107개 컬럼과 15개 FK를 포함한 가져오기 표기: [erd/ERDCLOUD_IMPORT.sql](erd/ERDCLOUD_IMPORT.sql)
 - [ERDCloud 편집본](https://www.erdcloud.com/d/GLtbN3YfiazAMYi6X)은 비공개입니다. GitHub 게시가 ERDCloud 접근 권한을 변경하지는 않습니다. UNIQUE 5개의 가져오기 누락과 필요한 업무 제약은 [ERD](ERD.md)에 기록했습니다.
+
+- [REC-02 팀 회신 기준](REC02_TEAM_HANDOFF.md): #11 표시·폐기, #43 전화 API 지원 경계, #1 차량 입력, #50 최소 MVP 범위. 문서 결정과 런타임 구현 구분.
