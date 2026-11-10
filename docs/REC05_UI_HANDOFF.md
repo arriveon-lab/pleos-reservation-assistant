@@ -4,6 +4,8 @@
 
 ## 2026-11-10 최신 화면 제안에 대한 서버 확인
 
+팀원 전달은 [Docker Compose 안내](REC05_DOCKER.md)를 우선합니다. 전달한 Docker 포함 commit에서 `docker compose up --build --detach --wait`로 로컬 서버를 실행하고 네 상태를 바꿔 시험합니다. 앱/서버 계약과 기기 인수 조건은 그대로이며 Gradle 직접 실행도 유지합니다.
+
 실행 방식은 [각자 PC의 로컬 서버와 비동기 검토](REC05_JOINT_ACCEPTANCE.md)를 따릅니다. 원격 공유 서버는 없으며 화면 담당 PC에서 고정 서버 commit을 실행하고 그 PC의 기기/APK로 확인합니다. 양측의 동시 접속은 필수가 아니고, 최종 버전/시험 조건과 결과 검토가 필요합니다.
 
 [#26/#39의 최신 공동 시험 제안](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185)을 확인하고 앱 소스cf35ead와 대조했습니다. **미리보기 인원1–20/0–10**, 기존 예약 연습1–8/0–6의 구분과 조건 배열의 집합 비교를 서버 측에서 확인합니다. [공통 MOCK fixture·실행 명령·인수표](REC05_JOINT_ACCEPTANCE.md)를 제공합니다. 기기 공동 실행과 웹 상세정보 필드 채택은 아직 미완료입니다.

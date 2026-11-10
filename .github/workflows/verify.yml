@@ -37,6 +37,19 @@ jobs:
           persist-credentials: false
       - run: python scripts/check-preview-app-compatibility.py --app-root work/rec05-app-source
       - run: python scripts/smoke-test.py --check-contract
+  docker:
+    name: MOCK Compose checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r scripts/requirements-dev.txt
+      - run: docker compose config --quiet
+      - run: docker compose build
+      - run: python scripts/check-preview-compose.py --no-build
   android:
     name: Android checks
     runs-on: ubuntu-24.04

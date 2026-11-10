@@ -23,8 +23,11 @@ public final class PreviewAcceptanceApplication {
   }
 
   public static void main(String[] args) {
-    if (args.length != 3)
-      throw new IllegalArgumentException("Expected fixture, port, isolated DB path");
+    // Compose exposes only host loopback; this flag opens the container's own interface.
+    boolean container = args.length == 4 && "--container".equals(args[3]);
+    if (args.length != 3 && !container)
+      throw new IllegalArgumentException(
+          "Expected fixture, port, isolated DB path, optional container flag");
     var fixture = Fixture.valueOf(args[0].toUpperCase(Locale.ROOT));
     int port = Integer.parseInt(args[1]);
     if (port < 1024 || port > 65535) throw new IllegalArgumentException("Invalid local port");
@@ -34,7 +37,7 @@ public final class PreviewAcceptanceApplication {
       throw new IllegalArgumentException("Use a separate DB path under work without URL options");
     new SpringApplication(Application.class, Fixtures.class)
         .run(
-            "--server.address=127.0.0.1",
+            "--server.address=" + (container ? "0.0.0.0" : "127.0.0.1"),
             "--server.port=" + port,
             "--app.mode=MOCK",
             "--logging.level.root=WARN",

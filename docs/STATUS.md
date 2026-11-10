@@ -1,5 +1,11 @@
 # 구현·검증 현황
 
+## 2026-11-10 REC-05 #16 Docker Compose 전달
+
+- 사용자 요청에 따라 [Docker 실행 안내](REC05_DOCKER.md), pinned Java21 multi-stage 이미지·Compose·최소 context 허용 목록·시험 전용 distribution/healthcheck를 추가했습니다. 로컬 기본 bind는127.0.0.1, 명시적 container 인자만 내부0.0.0.0이며 host127.0.0.1:18082 publish입니다. named H2 volume과 실제 익명 인증을 사용하고 가상 Principal/운영자 실행체는 복사하지 않습니다.
+- macOS arm64의 실제 Docker 빌드/기동에서4fixture·preview HTTP22/인증HTTP23·컨테이너 재생성 후 토큰/소유권/재시도/폐기·일반 토큰403·healthy/비root/읽기전용 root/host 포트를 확인했습니다. 시험 전용 고유 project/volume만 생성/정리했고 기본 개발 DB/기기·adb는 변경하지 않았습니다. 서버329개·계약/bootJar 경계와 Docker CI의 실제 결과는 해당 검증 기록/PR에서 구분합니다.
+- API·Android·정식 JAR의 기본 실행은 바꾸지 않았으며 개발용 MOCK 이미지입니다. bridge의 외부 통신 방화벽이나 원격 공유 서버는 아닙니다. Dockerfiles/명령을 기존 #16 코멘트에 전달하되 #16/#26 OPEN/#19 Draft·#1 ETA/#11 데이터 조건은 유지합니다. 실제 장소/GPT/전화/유료 호출0회입니다.
+
 ## 2026-11-10 REC-05 로컬 실행·비동기 인수 절차 명확화
 
 - [인수 절차](REC05_JOINT_ACCEPTANCE.md)에 각자 PC에서 서버07b0a43 실행 → 자기 기기에8080→18082 연결 → 최종 APK/4fixture 증거 → 양측 검토를 명시했습니다. 원격 공유 서버가 없으며 담당자 동시 접속이나 추천 담당 Mac 상시 실행은 필요하지 않습니다.

@@ -109,3 +109,18 @@ tasks.register<JavaExec>("previewAcceptance") {
         providers.gradleProperty("previewDatabase").getOrElse("work/rec05-acceptance/auth"),
     )
 }
+
+// Explicit development image: real auth plus only these two test-only launch helpers.
+tasks.register<Sync>("previewAcceptanceDist") {
+    dependsOn(tasks.testClasses)
+    into(layout.buildDirectory.dir("preview-acceptance"))
+    from(sourceSets.main.get().output) { into("classes") }
+    from(sourceSets.test.get().output.classesDirs) {
+        include(
+            "ai/pleos/assistant/PreviewAcceptanceApplication*.class",
+            "ai/pleos/assistant/PreviewAcceptanceHealthCheck.class",
+        )
+        into("classes")
+    }
+    from(configurations.testRuntimeClasspath) { into("lib") }
+}

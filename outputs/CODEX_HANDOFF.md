@@ -1,5 +1,11 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 REC-05 Docker 전달 방식 추가
+
+- 사용자가 Docker로 실행 환경을 넘기고 코멘트를 수정하도록 요청했습니다. [REC05_DOCKER](../docs/REC05_DOCKER.md)의 Compose 기동/4상태·H2 volume 유지·기기8080→자기 PC18082 연결/복구를 우선합니다. 이전07b0a43에는 Docker 설정이 없어 새 전달 commit을 사용해야 합니다. 원격 공유 서버·registry push나 실제 기기 인수는 아닙니다.
+- pinned Temurin21 index digest·multi-stage builder, src/test의 지정한 실행체/healthcheck만 담는 distribution, context 허용 목록, host loopback publish·UID10001/읽기전용 root를 추가했습니다. 로컬 직접 실행은loopback을 유지하고 명시적 --container만 내부0.0.0.0을 씁니다. 내부 전용 network는 host publish가 비어 로컬 접속이 실패해 bridge+loopback publish로 실제 검증했습니다. 외부 통신 방화벽으로 주장하지 않습니다.
+- 실제 macOS arm64 Docker에서4fixture·preview HTTP22/인증HTTP23, 컨테이너/H2 재생성 뒤 기존 토큰/소유권·갱신 재시도/폐기·일반 토큰403·health/비root/readonly/port 검증 통과. 로그는 Git 제외 work/rec05-docker-build.log·rec05-docker-smoke.log·rec05-docker-gradle.log입니다. 자동 검사는 고유 project/volume만 정리합니다. GitHub Docker job은 Linux amd64의 별도 결과로 기록합니다. 실외부 장소/GPT/전화/비용0회, 앱/기기/adb·기존 DB 변경0회입니다.
+
 ## 2026-11-10 로컬 서버로 각자 실행·비동기 인수
 
 - [REC-05 진행 절차](../docs/REC05_JOINT_ACCEPTANCE.md)를 보완했습니다. 화면 담당이 자기 PC에서 서버07b0a43을 별도 checkout으로 실행하고, 자기 기기의8080을 그 PC의18082로 reverse해 최종 APK/4fixture를 확인합니다. 원격 공유 서버/터널은 없고 두 사람의 동시 접속이나 추천 담당 Mac 상시 실행은 필요하지 않습니다.

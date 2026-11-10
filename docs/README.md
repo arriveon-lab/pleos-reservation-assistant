@@ -17,6 +17,7 @@
 | --- | --- | --- |
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
 | [REC-05 공동 인수·MOCK fixture](REC05_JOINT_ACCEPTANCE.md) | #16/#26 필드·인원 합의, 직접4상태 재현과 격리 시험 명령, 웹 상세정보 다음 협의안 | 서버 준비/HTTP 검증, 공동 기기 실행 대기 |
+| [REC-05 Docker 실행](REC05_DOCKER.md) | 각 PC의 Compose 기동·4상태·인증 DB 유지·기기 포트 연결/복구 | 개발용 MOCK 이미지, Docker 실행 검증/기기 인수 구분 |
 | [PLAN](PLAN.md) | 전체 범위·일정·5명 역할·통합 순서 | 기존 개발 계획 |
 | [ISSUE_GUIDE](ISSUE_GUIDE.md) | 각 이슈의 입력/출력·파일 경계·완료 조건 | 작업 해설, 이슈 상태는 GitHub가 기준 |
 | [REC-01 상세 계획](REC01_PLAN.md) | #2 기반 PR과 후속 #11–13의 범위·브랜치·계약·검증 | PR #10 통합·#2 CLOSED, 실연동 미완료 |
