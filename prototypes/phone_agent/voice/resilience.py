@@ -27,6 +27,10 @@ def opening_text(context):
 
 def initial_reply_instructions(context):
     if context.get("purpose") == "CALLBACK":
+        if context.get("found"):
+            return ("소개는 이미 했다. 기존 예약을 서버에서 조회한 회신 전화다. "
+                    "저장된 성함·날짜·시간을 다시 묻거나 새 예약을 요청하지 않는다. "
+                    "어떤 문의나 변경으로 연락했는지 짧게 묻는다. 상대가 이미 말했으면 그 내용부터 처리한다.")
         return ("소개는 이미 했다. 식당에서 걸려온 회신 전화다. 새 예약을 요청하지 않는다. "
                 "예약을 식별하기 위해 예약자 성함을 묻는 짧은 질문 하나만 한다.")
     return ("소개는 이미 했다. 이번 통화 목적에 맞는 질문 하나만 한다. "

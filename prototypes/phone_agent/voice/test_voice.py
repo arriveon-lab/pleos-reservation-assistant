@@ -335,6 +335,111 @@ class LiveWorkflowTest(unittest.TestCase):
         with self.assertRaises(DomainError):self.workflow.begin_inbound("+821000000001", "ST_in", "room")
         with self.assertRaises(DomainError):self.workflow.begin_inbound("+821000000000", "wrong", "room")
 
+    def personal_call(self):
+        booking = self.confirmed()
+        self.workflow.bind_inbound_number(self.owner, self.config.telkit_number, "ST_in")
+        call = self.workflow.begin_inbound("+821000000000", "ST_in", "personal-room",
+                                           self.config.telkit_number)
+        return booking, call
+
+    def test_personal_number_loads_only_its_owners_existing_reservation(self):
+        from .resilience import initial_reply_instructions, opening_text
+        booking = self.confirmed()
+        other, _ = self.service.session()
+        self.service._put(other, "booking", {**self.get_booking(booking), "id": identifier()})
+        self.workflow.bind_inbound_number(self.owner, self.config.telkit_number, "ST_in")
+        call = self.workflow.begin_inbound("+821000000000", "ST_in", "personal-room",
+                                           self.config.telkit_number)
+        context = self.workflow.context(call["id"])
+        self.assertEqual(self.owner, self.workflow._find(call["id"])[0])
+        self.assertEqual(booking, call["bookingId"])
+        self.assertTrue(context["personalAssistant"])
+        self.assertEqual(("김예약", DAY, "19:00", 4),
+                         (context["reservationName"], context["date"], context["time"],
+                          context["conditions"]["partySize"]))
+        self.assertIn("김예약", opening_text(context))
+        self.assertIn("다시 묻거나 새 예약을 요청하지 않는다", initial_reply_instructions(context))
+        self.assertTrue(self.service.state(self.owner)["personalPhoneLinked"])
+        self.assertFalse(self.service.state(other)["personalPhoneLinked"])
+        self.assertEqual([], self.service.state(other)["events"])
+
+    def test_personal_number_with_multiple_reservations_never_selects_another_owner(self):
+        booking = self.confirmed()
+        second = {**self.get_booking(booking), "id": identifier(), "confirmedTime": "20:00"}
+        self.service._put(self.owner, "booking", second)
+        other, _ = self.service.session()
+        self.service._put(other, "booking", {**self.get_booking(booking), "id": identifier()})
+        self.workflow.bind_inbound_number(self.owner, self.config.telkit_number, "ST_in")
+        call = self.workflow.begin_inbound("+821000000000", "ST_in", "ambiguous-personal",
+                                           self.config.telkit_number)
+        self.assertFalse(self.workflow.context(call["id"])["found"])
+        self.assertNotIn("reservationName", self.workflow.context(call["id"]))
+        self.assertTrue(self.workflow.identify(call["id"], "김예약", DAY, "19:00")["found"])
+        self.assertEqual(booking, self.workflow._find(call["id"])[1]["bookingId"])
+
+    def test_personal_number_never_falls_back_to_foreign_or_mock_reservations(self):
+        booking = self.confirmed()
+        other, _ = self.service.session()
+        original = self.get_booking(booking)
+        self.service._put(other, "booking", {**original, "id": identifier()})
+        self.service._put(self.owner, "booking", {**original, "mode": "MOCK"})
+        self.workflow.bind_inbound_number(self.owner, self.config.telkit_number, "ST_in")
+        call = self.workflow.begin_inbound("+821000000000", "ST_in", "no-personal-match",
+                                           self.config.telkit_number)
+        self.assertFalse(self.workflow.context(call["id"])["found"])
+        self.assertFalse(self.workflow.identify(call["id"], "김예약", DAY, "19:00")["found"])
+        self.assertEqual([], self.service.state(other)["callbacks"])
+
+    def test_personal_binding_rejects_wrong_called_number_caller_and_trunk(self):
+        self.confirmed()
+        self.workflow.bind_inbound_number(self.owner, self.config.telkit_number, "ST_in")
+        for caller, trunk, called in (("+821000000000", "ST_in", None),
+                                       ("+821000000000", "ST_in", "+827000000001"),
+                                       ("+821000000001", "ST_in", self.config.telkit_number),
+                                       ("+821000000000", "wrong", self.config.telkit_number)):
+            with self.subTest(caller=caller, trunk=trunk, called=called):
+                with self.assertRaises(DomainError):
+                    self.workflow.begin_inbound(caller, trunk, "rejected", called)
+        self.assertEqual(1, len(self.workflow._calls()))
+
+    def test_binding_is_idempotent_and_cannot_transfer_ownership(self):
+        self.confirmed()
+        self.assertTrue(self.workflow.bind_inbound_number(
+            self.owner, self.config.telkit_number, "ST_in")["created"])
+        self.assertFalse(self.workflow.bind_inbound_number(
+            self.owner, self.config.telkit_number, "ST_in")["created"])
+        other, _ = self.service.session()
+        with self.assertRaises(DomainError):
+            self.workflow.bind_inbound_number(other, self.config.telkit_number, "ST_in")
+        self.assertEqual(self.owner, self.workflow._inbound_owner("ST_in", self.config.telkit_number))
+
+    def test_binding_during_an_active_call_is_rejected(self):
+        self.reserve()
+        with self.assertRaises(DomainError):
+            self.workflow.bind_inbound_number(self.owner, self.config.telkit_number, "ST_in")
+        self.assertFalse(self.service.state(self.owner)["personalPhoneLinked"])
+
+    def test_personal_callback_saves_change_without_asking_to_identify_again(self):
+        booking, call = self.personal_call()
+        snapshot = self.get_booking(booking)["approvedSnapshot"]
+        evidence = "일곱 시 반으로 변경 부탁드립니다."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        self.assertTrue(self.workflow.request_change(call["id"], "19:30", "식당 사정", evidence)["saved"])
+        context = self.workflow.context(call["id"])
+        self.assertEqual("19:00", context["time"])
+        self.assertEqual("19:30", context["pendingChange"]["proposedTime"])
+        self.assertEqual("AWAITING_USER", context["pendingChange"]["status"])
+        self.assertFalse(context["pendingChange"]["approved"])
+        self.assertEqual(snapshot, context["conditions"])
+
+    def test_personal_context_preserves_critical_review_state(self):
+        _, call = self.personal_call()
+        evidence = "예약을 받을 수 없게 됐습니다."
+        self.workflow.transcript(call["id"], "restaurant", evidence)
+        self.workflow.request_note(call["id"], "UNAVAILABLE", "예약 불가", evidence)
+        self.assertTrue(self.workflow.context(call["id"])["reviewRequired"])
+        self.assertEqual("19:00", self.workflow.context(call["id"])["time"])
+
     def test_callback_identification_and_change_then_real_reconfirmation(self):
         booking = self.confirmed()
         inbound = self.workflow.begin_inbound("+821000000000", "ST_in", "inbound-room")

@@ -148,7 +148,49 @@ class LiveWorkflow:
                     "WORKER_CONTEXT_DENIED", "통화 작업의 문맥을 확인할 수 없어요.", 403)
             return owner, call
 
-    def begin_inbound(self, caller, trunk_id, room):
+    def bind_inbound_number(self, owner, number, trunk_id):
+        """Operator-only enrollment after number ownership has been verified.
+
+        No HTTP/voice tool exposes this method. Never move a number between owners.
+        """
+        number = normalize_number(number)
+        require(number.startswith("+8270") and trunk_id == self.config.inbound_trunk_id,
+                "INVALID_PHONE_BINDING", "전용 수신 번호와 trunk 설정을 확인해 주세요.")
+        def operation():
+            rows = self.service.db.execute(
+                "SELECT owner,body FROM objects WHERE kind='phone_binding' AND id=?",
+                (number,)).fetchall()
+            require(not rows or len(rows) == 1 and rows[0][0] == owner
+                    and json.loads(rows[0][1])["trunkId"] == trunk_id,
+                    "PHONE_ALREADY_BOUND", "이미 연결된 번호를 다른 사용자나 trunk로 바꿀 수 없어요.")
+            if rows:
+                return {"bound": True, "created": False}
+            require(bool(self.service._list(owner, "booking")),
+                    "OWNER_NOT_FOUND", "기존 예약을 가진 소유 세션을 확인해 주세요.")
+            require(all(c["status"] == "ENDED" for c in self._calls()),
+                    "CALL_ACTIVE", "전용 번호 연결은 진행 중인 통화가 없을 때 설정해 주세요.")
+            self.service._put(owner, "phone_binding", {
+                "id": number, "trunkId": trunk_id, "createdAt": timestamp()})
+            return {"bound": True, "created": True}
+        return self._atomic(operation)
+
+    def _inbound_owner(self, trunk_id, called_number):
+        bindings = [(row[0], json.loads(row[1])) for row in self.service.db.execute(
+            "SELECT owner,body FROM objects WHERE kind='phone_binding'")]
+        on_trunk = [item for item in bindings if item[1]["trunkId"] == trunk_id]
+        if not called_number:
+            require(not on_trunk, "CALLED_NUMBER_REQUIRED", "수신된 서비스 번호를 확인할 수 없어요.")
+            return None
+        number = normalize_number(called_number)
+        matching = [item for item in bindings if item[1]["id"] == number]
+        if not matching:
+            require(not on_trunk, "PHONE_BINDING_MISMATCH", "전용 수신 번호가 일치하지 않아요.")
+            return None
+        require(len(matching) == 1 and matching[0][1]["trunkId"] == trunk_id,
+                "PHONE_BINDING_MISMATCH", "전용 수신 번호 연결을 확인할 수 없어요.")
+        return matching[0][0]
+
+    def begin_inbound(self, caller, trunk_id, room, called_number=None):
         self.config.require_live("inbound")
         caller = normalize_number(caller)
         require(caller in self.config.allowed_numbers and trunk_id == self.config.inbound_trunk_id,
@@ -156,12 +198,19 @@ class LiveWorkflow:
         restaurants = [key for key, number in self.config.restaurant_numbers.items() if number == caller]
         require(len(restaurants) == 1, "CALLER_UNMATCHED", "식당을 특정하지 못했어요.")
         def operation():
+            bound_owner = self._inbound_owner(trunk_id, called_number)
             self._capacity()
             call = {"id": identifier(), "direction": "inbound", "status": "ACTIVE",
-                    "purpose": "CALLBACK",
+                    "purpose": "CALLBACK", "ownerBound": bound_owner is not None,
                     "room": room, "restaurantId": restaurants[0], "bookingId": None,
                     "nonce": identifier(), "createdAt": timestamp(), "inviteRequested": False}
-            self.service._put("inbound", "live_call", call)
+            if bound_owner:
+                matches = [b for b in self.service._list(bound_owner, "booking")
+                           if b["restaurantId"] == restaurants[0] and b["status"] == "CONFIRMED"
+                           and b.get("mode") == "LIVE"]
+                if len(matches) == 1:
+                    call.update(bookingId=matches[0]["id"], bookingVersion=matches[0]["version"])
+            self.service._put(bound_owner or "inbound", "live_call", call)
             return call
         return self._atomic(operation)
 
@@ -175,11 +224,13 @@ class LiveWorkflow:
                 require(booking["reservationName"] == name and booking["date"] == day
                         and booking["confirmedTime"] == current_time,
                         "BOOKING_LOCKED", "확인한 예약을 다른 예약으로 바꿀 수 없어요.")
-                return {**self._context(booking), "purpose": "CALLBACK"}
+                return {**self._context(booking), "purpose": "CALLBACK",
+                        "personalAssistant": bool(call.get("ownerBound"))}
             matches = []
             for row in self.service.db.execute("SELECT owner,body FROM objects WHERE kind='booking'"):
                 booking = json.loads(row[1])
-                if (booking["restaurantId"] == call["restaurantId"] and booking["status"] == "CONFIRMED" and booking.get("mode") == "LIVE"
+                if ((not call.get("ownerBound") or row[0] == owner)
+                        and booking["restaurantId"] == call["restaurantId"] and booking["status"] == "CONFIRMED" and booking.get("mode") == "LIVE"
                         and booking["reservationName"] == name and booking["date"] == day
                         and booking["confirmedTime"] == current_time):
                     matches.append((row[0], booking))
@@ -195,14 +246,20 @@ class LiveWorkflow:
                                             (owner, "unidentified_call_event", event["id"]))
                     event["bookingId"] = booking["id"]
                     self.service._put(new_owner, "event", event)
-            return {**self._context(booking), "purpose": "CALLBACK"}
+            return {**self._context(booking), "purpose": "CALLBACK",
+                    "personalAssistant": bool(call.get("ownerBound"))}
         return self._atomic(operation)
 
     @staticmethod
     def _context(booking):
+        change = booking.get("change")
         return {"found": True, "reservationName": booking["reservationName"], "date": booking["date"],
                 "time": booking["confirmedTime"] or booking["requestedTime"],
                 "conditions": copy.deepcopy(booking["approvedSnapshot"]),
+                "reviewRequired": bool(booking.get("reviewRequired")),
+                "pendingChange": ({key: change[key] for key in
+                                   ("status", "originalTime", "proposedTime", "approved")}
+                                  if change else None),
                 "requiredConditions": required_conditions(booking["approvedSnapshot"])}
 
     def context(self, call_id):
@@ -210,9 +267,11 @@ class LiveWorkflow:
             owner, call = self._find(call_id)
             if not call.get("bookingId"):
                 return {"found": False, "purpose": "CALLBACK",
+                        "personalAssistant": bool(call.get("ownerBound")),
                         "today": datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()}
             context = self._context(self.service._get(owner, "booking", call["bookingId"]))
             context["purpose"] = call.get("purpose", "CALLBACK")
+            context["personalAssistant"] = bool(call.get("ownerBound"))
             if call.get("purpose") == "CHANGE_CONFIRMATION":
                 booking = self.service._get(owner, "booking", call["bookingId"])
                 context["time"] = booking["change"]["proposedTime"]

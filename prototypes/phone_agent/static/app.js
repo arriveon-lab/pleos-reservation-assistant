@@ -31,6 +31,7 @@ function render() {
   $('.mode').textContent=state.mode==='LIVE'?`LIVE · 발신 요청 ${state.externalCalls}회 · 수신 접수 ${state.inboundCalls||0}회`:'MOCK · 외부 통화 0회';
   $('#voice-status').textContent=voice.ready?'실전화 연결 설정 준비됨 · 가상 통화와 실제 발신을 구분해 실행하세요.':voice.missingRuntime?.length===0?'Telkit·LiveKit 연결 설정 완료 · 실제 통화 실행 승인 대기':`실전화 설정 대기 · ${voice.missingRuntime?.join(', ')||'설정을 확인해 주세요.'}`;
   if(voice.inboundEnabled)$('#voice-status').textContent+=' · 수신 시험 허용됨(실제 연결은 worker 실행 필요)';
+  if(state.personalPhoneLinked)$('#voice-status').textContent+=' · 이 세션의 전용 AI 번호 연결됨';
   const container=$('#bookings');container.className=state.bookings.length?'':'empty';
   container.innerHTML=state.bookings.length?state.bookings.toReversed().map((booking)=>{
     let actions='';

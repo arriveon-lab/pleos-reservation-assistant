@@ -75,7 +75,7 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 현재는 등록된 테스트 식당 번호만 받고 다른 번호·발신번호 비공개는 거절합니다.
 발신번호만으로 실제 식당 신원을 인증한 것으로 보지 않습니다.
 
-수신은 일반 AI 소개 후 예약자 성함부터 묻습니다. 상대가 제시한 이름·날짜·기존 시간과
+전용 binding이 없는 수신은 일반 AI 소개 후 예약자 성함부터 묻습니다. 상대가 제시한 이름·날짜·기존 시간과
 식당 mapping이 유일한 LIVE 확정 예약과 일치해야 연결하며 후보를 먼저 읽지 않습니다.
 동명이인·복수 후보·불일치이면 임의 선택하지 않습니다. 식별 전 전사는 별도 비공개
 영역에 통화당 최근 20개만 두고, 식별한 통화의 기록만 해당 소유자에게 옮깁니다.
@@ -105,6 +105,25 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 SDK 1.8.11의 출력 track 게시 코드를 대조했습니다. 로컬과 EC2 Linux(network=none)의
 134개 검사를 통과한 `fa10d97`을 배포했습니다. 수정 후 실제 수신은 미검증이며 기본
 비활성 상태를 유지합니다.
+
+### 1인 전용 번호의 기존 예약 문맥
+
+번호 소유권을 검증한 운영자가 `LiveWorkflow.bind_inbound_number(owner, number, trunk_id)`로
+기존 예약 소유 세션에 번호를 연결할 수 있습니다. 이 메서드는 HTTP/음성 도구로 제공하지
+않으며, 진행 중인 통화에서 새 binding을 만들거나 다른 소유자/trunk로 이전하지 않습니다.
+binding은 영속 SQLite에 저장하고 번호·소유 ID를 웹 상태에 공개하지 않습니다.
+
+수신은 [sip.trunkPhoneNumber](https://docs.livekit.io/reference/telephony/sip-participant/)의
+실제 서비스 번호와 정확한 trunk, 허용 식당 caller를 함께 확인합니다. 연결된 owner의 해당
+식당 LIVE 확정 예약이 유일하면 기존 이름·일시·인원·승인 조건을 미리 불러옵니다. 다른
+소유자나 MOCK 예약을 대신 선택하지 않습니다. 예약이 여러 건이면 같은 owner 안에서만
+식별하고 후보를 먼저 읽지 않습니다. 전용 번호 속성이 누락되거나 일치하지 않으면 거절합니다.
+
+확인된 회신에서는 기존 이름·날짜·시간을 다시 묻지 않고 문의 목적을 받습니다. STT에는
+그 예약의 이름 하나만 보정어로 전달합니다. 변경 제안·승인 상태와 확인 필요 여부도 문맥에
+포함하며 변경 완료나 사용자 확인을 주장하지 않습니다. 원 예약·동승 조건과 승인/실제
+재확인 경계는 유지합니다. 연락처 저장 이름의 자동 동기화·새 번호 구매·일반 사용자 가입
+기능은 아닙니다. 로컬 142개 검사 통과, 전용 문맥의 실제 수신은 미검증입니다.
 
 의존성은 `livekit-agents[silero]==1.8.11`, `livekit-api==1.2.2`, `livekit-plugins-noise-cancellation==0.3.3`입니다. NC 플러그인은 LiveKit Cloud용이며 패키지 라이선스는 LiveKit 서비스 약관을 참조합니다. 공급자 바이너리를 저장소에 복사하지 않습니다. LiveKit Inference의 AssemblyAI Universal 3.6 Pro(ko) → Google Gemma 4 31B → Cartesia Sonic 3(ko)를 사용합니다. OpenAI API 키는 이 경로에 필요하지 않습니다. 공급자와 모델·음성 ID는 `.env.example`에서 바꿀 수 있습니다.
 

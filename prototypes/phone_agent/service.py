@@ -140,6 +140,7 @@ class ReservationService:
             calls = self._list(owner, "live_call")
             return {"mode": "LIVE" if calls else "MOCK", "externalCalls": sum(bool(c.get("inviteRequested")) for c in calls),
                     "inboundCalls": sum(c.get("direction") == "inbound" for c in calls),
+                    "personalPhoneLinked": bool(self._list(owner, "phone_binding")),
                     "profile": profiles[0] if profiles else None,
                     "trips": self._list(owner, "trip"), "bookings": self._list(owner, "booking"),
                     "callbacks": self._list(owner, "callback"),
