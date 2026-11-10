@@ -36,8 +36,9 @@ public final class PlacePreviewContract {
   public record Requirements(
       @NotNull @Valid Party party,
       @NotNull @Min(0) @Max(120) Integer maxWaitMinutes,
-      @NotNull @Size(max = 2)
-          List<@NotNull @Pattern(regexp = "childFriendly|parking") String> requiredFeatures,
+      @NotNull @Size(max = 4)
+          List<@NotNull @Pattern(regexp = "childFriendly|parking|highChair|stepFreeAccess") String>
+              requiredFeatures,
       @NotNull @Size(max = 8) List<@NotBlank @Size(max = 30) String> preferredCuisines) {
     PlaceRecommendationPlanner.Requirements internal() {
       if (Set.copyOf(requiredFeatures).size() != requiredFeatures.size()

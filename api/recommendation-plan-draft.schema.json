@@ -70,11 +70,13 @@
           "items": {
             "enum": [
               "childFriendly",
-              "parking"
+              "parking",
+              "highChair",
+              "stepFreeAccess"
             ]
           },
           "minItems": 0,
-          "maxItems": 2,
+          "maxItems": 4,
           "uniqueItems": true
         },
         "preferredCuisines": {
@@ -257,6 +259,8 @@
                   "enum": [
                     "childFriendly",
                     "parking",
+                    "highChair",
+                    "stepFreeAccess",
                     "arrivalWaitMinutes",
                     "reservationAvailable"
                   ]
@@ -314,7 +318,7 @@
               ]
             },
             "minItems": 2,
-            "maxItems": 4
+            "maxItems": 6
           }
         }
       },

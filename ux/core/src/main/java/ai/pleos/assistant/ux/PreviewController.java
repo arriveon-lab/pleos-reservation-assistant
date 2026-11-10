@@ -303,11 +303,17 @@ public final class PreviewController implements AutoCloseable {
           c.getJSONArray("reasons"), Set.of("WITHIN_SEARCH_WINDOW", "PREFERRED_CUISINE_MATCH"));
       allowedValues(c.getJSONArray("missingInformation"), Set.of("ADDRESS", "CUISINE", "PHONE"));
       JSONArray questions = c.getJSONArray("questions");
-      if (questions.length() < 2 || questions.length() > 4) throw new IllegalStateException();
+      if (questions.length() < 2 || questions.length() > 6) throw new IllegalStateException();
       for (int n = 0; n < questions.length(); n++) {
         JSONObject q = questions.getJSONObject(n);
         String field = q.getString("field");
-        if (!Set.of("parking", "childFriendly", "arrivalWaitMinutes", "reservationAvailable")
+        if (!Set.of(
+                    "parking",
+                    "childFriendly",
+                    "highChair",
+                    "stepFreeAccess",
+                    "arrivalWaitMinutes",
+                    "reservationAvailable")
                 .contains(field)
             || !"UNKNOWN".equals(q.getString("certainty"))) throw new IllegalStateException();
         boolean arrival =

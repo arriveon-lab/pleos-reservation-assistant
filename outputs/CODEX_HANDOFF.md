@@ -2,6 +2,8 @@
 
 ## 2026-11-10 INT-01 #52 통합 진행
 
+- 추천 계획/미리보기 schema·서버가 아기의자와 계단 없는 동선을 독립 필수 조건으로 받으며 직접 확인 질문을 생성한다. Java verify, schema, JAR HTTP smoke 통과. 최신 이전 head의 PR #53 GitHub Actions 6개도 통과했으며 이번 변경은 push 후 다시 확인해야 한다.
+- 사용자는 기존에 전달한 키 사용을 허용했지만 실제 GPT API 호출 전 모델·호출 범위·비용을 설명하고 확인받도록 요청했다. 키를 저장하거나 아직 사용하지 않았다.
 - 웹추천에 아기의자와 계단 없는 접근 동선을 별도 필수 조건으로 추가했다. 리뷰/일반 친화 표현만으로 YES로 전환하지 않으며 UNKNOWN은 전화 질문으로 남는다. 가상 parser/loopback 계약 검사를 통과했고 실제 GPT 호출은 없다.
 - `PublicDestinationRecommendationService`에서 공공 catalog 후보와 작업 폴링을 내부 연결했다. 가상 3개/소유권/시범 외 실패를 확인했으며 모든 후보는 UNKNOWN·예약/문의 불가다. 실제 catalog·HTTP·앱 연결은 아직 없다.
 - `android/app`에 Pleos 목적지 수신/무효화와 출처 미확인 표시 경계를 추가했다. 추천·예약에 아직 전달하지 않는다. 로컬 Android SDK 부재로 `verifyAndroid`는 의존성 평가에서 중단돼 컴파일·Lint·APK/기기 확인으로 세지 않는다. 새 원격 CI에서 빌드 확인 필요.

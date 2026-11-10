@@ -57,6 +57,34 @@ class PlaceDetailRecommendationServiceTest {
   }
 
   @Test
+  void highChairAndStepFreeRemainDirectConfirmationQuestionsAfterWebsiteDetails() {
+    var requested =
+        new PlaceRecommendationPlanner.Requirements(
+            new Model.Party(2, 1), 15, Set.of("parking", "highChair", "stepFreeAccess"), Set.of());
+    var result =
+        service(
+                (source, deadline) ->
+                    new PlaceDetailEnricher.Page(
+                        source.url(), html(business()), NOW, PlaceDetailEnricher.Mode.MOCK))
+            .evaluate(
+                1,
+                PlaceSummary.Provider.MOCK,
+                query,
+                new PlaceSearchResult.Success(List.of(place("private-1", ID.name())), NOW, 0),
+                requested,
+                Map.of("private-1", List.of(A)),
+                () -> true);
+    assertThat(result.state()).isEqualTo(PlaceDetailRecommendationService.State.READY);
+    assertThat(result.recommendationPlan().candidates().getFirst().questions())
+        .extracting(PlaceRecommendationPlanner.Question::field)
+        .contains(
+            PlaceRecommendationPlanner.Field.HIGH_CHAIR,
+            PlaceRecommendationPlanner.Field.STEP_FREE_ACCESS);
+    assertThat(result.candidateDetails().getFirst().detailReport().remainingQuestions())
+        .contains("HIGH_CHAIR", "STEP_FREE_ACCESS");
+  }
+
+  @Test
   void approved_public_identity_can_use_approved_web_source_but_kakao_cannot() {
     var calls = new AtomicInteger();
     var svc =

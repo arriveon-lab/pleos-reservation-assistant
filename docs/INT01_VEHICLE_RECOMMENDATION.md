@@ -56,6 +56,7 @@
 ## 현재 구현 진행
 
 - 웹추천 요청의 `HIGH_CHAIR`·`STEP_FREE_ACCESS`를 기존 `CHILD_FRIENDLY`와 분리했다. 명시적 근거가 없으면 UNKNOWN으로 두며 전화 문의 대상이다. 실제 GPT 모델/계정 호출 검증은 하지 않았다.
+- 추천 계획·미리보기 계약도 `highChair`·`stepFreeAccess`를 별도 필수 조건과 전화 확인 질문으로 수용한다. 웹사이트 상세 정보만으로 이 두 조건을 충족 처리하지 않으며 직접 확인이 남는다.
 - 공공 catalog의 내부 목적지 검색과 비동기 폴링을 합친 `PublicDestinationRecommendationService`를 추가했다. 아직 제품 HTTP/앱·실제 catalog·GPT/전화 경로에 연결하지 않았고 시범 지역 밖은 실패로 처리한다.
 - 제품 Android 앱에 명시적 Pleos 목적지 조회·화면 표시·경로 이벤트 무효화 경계를 넣었다. 아직 SDK 응답 연관성 미검증으로 실제 추천/예약 입력에는 사용하지 않으며 로컬 SDK 부재로 Android 빌드/기기 검증은 미완료다.
 - 서버 `RecommendationJobRegistry`의 메모리 작업 상태·소유권·세대 취소·완료 결과 폴링 경계를 추가했다. 실제 검색 worker와 HTTP 계약은 아직 붙지 않았다. 전화 AI 계약 제안은 #43에 남겼으며 답변 전이다.

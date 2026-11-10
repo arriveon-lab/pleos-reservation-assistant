@@ -2,6 +2,8 @@
 
 ## 2026-11-10 INT-01 #52 격리 통합 진행
 
+- 추천 계획과 미리보기 계약에 `highChair`·`stepFreeAccess`를 추가했다. 웹사이트 상세 정보로 두 조건을 자동 충족하지 않고 직접 확인 질문을 남긴다. Java `verify`, 추천 계획 schema, JAR HTTP/계약 smoke를 통과했다. 실제 API 호출은 사용자에게 모델·범위·비용을 설명하고 확인받기 전에는 하지 않는다.
+- PR #53의 이전 schema 불일치 후 새 head의 GitHub Actions 6개가 모두 통과했다. 이전 실패 실행의 기록은 남는다.
 - 웹추천 조건에 `HIGH_CHAIR`와 `STEP_FREE_ACCESS`를 독립 필수 조건으로 추가했다. 일반 아동 친화/접근성 문구로 각각을 추론하지 않고, 근거가 부족하면 UNKNOWN과 전화 확인 질문으로 남긴다. 가상 파서 테스트와 `check-web-recommendation.py`의 loopback 계약 검사를 통과했다. 실제 GPT 호출은 하지 않았다.
 - `PublicDestinationRecommendationService`는 로컬 공공 catalog 검색→최대3개 UNKNOWN 후보 계획→소유자별 작업 폴링을 연결한다. 가상 catalog에서 3개 후보/예약·문의 불가와 시범 지역 밖 INVALID_QUERY를 검증했다. Spring/HTTP/Android 호출자·실제 catalog 입력은 아직 없다.
 - 제품 `android/app`에 Pleos NaviHelper 목적지 조회 경계를 추가했다. 별도 버튼으로 명시적 조회하며 목적지 변경/취소/도착/오류/화면 종료에서 기존 관측을 무효화한다. 수신값은 응답 연관성 미확인으로 표시하고 추천·예약/ETA로 자동 전환하지 않는다. 로컬 `verifyAndroid`는 Android SDK 경로가 없어 태스크 의존성 단계에서 중단됐으며 컴파일·Lint·APK·기기 검증은 새 CI에서 판정한다.
