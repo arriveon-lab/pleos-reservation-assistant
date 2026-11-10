@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-11-10",
+  "kakao": {
+    "url": "https://devtalk.kakao.com/t/local-api/152647/2",
+    "postNumber": 2,
+    "author": "C.L",
+    "staff": true,
+    "userTitle": "카카오",
+    "createdAt": "2026-11-10T01:49:44.826Z",
+    "sameUserSessionMemory": "ALLOWED_UNTIL_SESSION_END_NO_REUSE",
+    "userDirectPhoneConnection": "ALLOWED",
+    "externalPhoneVoiceProviderTransfer": "NOT_ALLOWED",
+    "longTermNamePhoneStorage": "NOT_ALLOWED",
+    "placeIdUrlStorage": "MAP_LINK_ONLY"
+  },
+  "seoul": {
+    "dataset": "OA-18655",
+    "url": "https://data.seoul.go.kr/dataList/OA-18655/A/1/datasetView.do",
+    "license": "KOGL_TYPE_1",
+    "thirdPartyCopyrightHolder": "NONE_LISTED",
+    "commercialUseAndModification": true,
+    "attributionRequired": true,
+    "externalProcessorAndPersonalDataReview": "SEPARATE_NOT_CONFIRMED"
+  },
+  "naver": {
+    "termsUrl": "https://developers.naver.com/products/terms/",
+    "termsRevision": "2026-10-07",
+    "provisions": [
+      "7.3",
+      "검색 API 2.3",
+      "검색 API 2.4"
+    ],
+    "aiInputAndThirdPartyProvision": "PROHIBITED_BY_REVIEWED_SEARCH_API_TERMS",
+    "localTelephoneReturned": false,
+    "apiHubContract": "NOT_SEPARATELY_VERIFIED"
+  },
+  "decision": "PUBLIC_DATA_FIRST_FOR_BOOKING_CONTACTS",
+  "liveEnabled": false,
+  "actualPlaceApiCalls": 0,
+  "phoneCalls": 0,
+  "paidCalls": 0
+}
