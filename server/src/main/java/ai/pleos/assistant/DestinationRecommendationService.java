@@ -3,11 +3,31 @@ package ai.pleos.assistant;
 import java.time.Clock;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executor;
+import java.util.function.BooleanSupplier;
 
-/** Destination-only transient shortlist. No GPT, telephone, booking, or persistence. */
+/**
+ * Destination-only transient shortlist. Optional one-shot web research; no telephone or booking.
+ */
 public final class DestinationRecommendationService implements AutoCloseable {
+  private static final WebGateway NO_WEB =
+      (request, deadline, current) ->
+          WebRecommendation.empty(
+              WebRecommendation.Mode.WEB_SEARCH, WebRecommendation.State.APPROVAL_REQUIRED);
+
+  @FunctionalInterface
+  public interface WebGateway {
+    WebRecommendation.Result search(
+        WebRecommendation.Request request, java.time.Instant deadline, BooleanSupplier current);
+  }
+
+  public record Recommendation(
+      PlaceRecommendationPlanner.Plan listing,
+      WebRecommendation.State webState,
+      WebListingRecommendationJoiner.Result matches) {}
+
   public record SourceInfo(
       PlaceSummary.Provider provider,
       String datasetId,
@@ -20,11 +40,19 @@ public final class DestinationRecommendationService implements AutoCloseable {
   private final PlaceSearchAdapter places;
   private final PlaceSummary.Provider provider;
   private final SourceInfo source;
+  private final Clock clock;
   private final PlaceRecommendationPlanner planner;
-  private final RecommendationJobRegistry<PlaceRecommendationPlanner.Plan> jobs;
+  private final WebListingRecommendationJoiner joiner;
+  private final WebGateway web;
+  private final RecommendationJobRegistry<Recommendation> jobs;
 
   public DestinationRecommendationService(
       SeoulPlaceSearchAdapter places, Clock clock, Executor executor) {
+    this(places, clock, executor, NO_WEB);
+  }
+
+  public DestinationRecommendationService(
+      SeoulPlaceSearchAdapter places, Clock clock, Executor executor, WebGateway web) {
     this(
         places,
         PlaceSummary.Provider.SEOUL_OPEN_DATA,
@@ -37,17 +65,24 @@ public final class DestinationRecommendationService implements AutoCloseable {
             places.provenance().acquiredAt(),
             places.provenance().sourceSnapshotAt()),
         clock,
-        executor);
+        executor,
+        web);
   }
 
   public DestinationRecommendationService(
       KakaoPlaceSearchAdapter places, Clock clock, Executor executor) {
+    this(places, clock, executor, NO_WEB);
+  }
+
+  public DestinationRecommendationService(
+      KakaoPlaceSearchAdapter places, Clock clock, Executor executor, WebGateway web) {
     this(
         places,
         PlaceSummary.Provider.KAKAO,
         new SourceInfo(PlaceSummary.Provider.KAKAO, null, null, null, "Kakao Local", null, null),
         clock,
-        executor);
+        executor,
+        web);
   }
 
   DestinationRecommendationService(
@@ -56,10 +91,23 @@ public final class DestinationRecommendationService implements AutoCloseable {
       SourceInfo source,
       Clock clock,
       Executor executor) {
+    this(places, provider, source, clock, executor, NO_WEB);
+  }
+
+  DestinationRecommendationService(
+      PlaceSearchAdapter places,
+      PlaceSummary.Provider provider,
+      SourceInfo source,
+      Clock clock,
+      Executor executor,
+      WebGateway web) {
     this.places = Objects.requireNonNull(places);
     this.provider = Objects.requireNonNull(provider);
     this.source = Objects.requireNonNull(source);
+    this.clock = Objects.requireNonNull(clock);
     planner = new PlaceRecommendationPlanner(Objects.requireNonNull(clock));
+    joiner = new WebListingRecommendationJoiner(clock);
+    this.web = Objects.requireNonNull(web);
     jobs = new RecommendationJobRegistry<>(clock, executor);
   }
 
@@ -67,8 +115,10 @@ public final class DestinationRecommendationService implements AutoCloseable {
       String owner,
       UUID viewId,
       long generation,
+      String area,
       PlaceQuery destinationWindow,
       PlaceRecommendationPlanner.Requirements requirements) {
+    if (!WebRecommendation.text(area, 80)) throw new IllegalArgumentException("Invalid area");
     Objects.requireNonNull(destinationWindow);
     Objects.requireNonNull(requirements);
     return jobs.submit(
@@ -80,11 +130,41 @@ public final class DestinationRecommendationService implements AutoCloseable {
           PlaceSearchResult listing = places.search(destinationWindow);
           if (!current.getAsBoolean()) return null;
           var plan = planner.evaluate(provider, destinationWindow, listing, requirements);
-          return current.getAsBoolean() ? plan : null;
+          if (!(listing instanceof PlaceSearchResult.Success found)
+              || plan.state() != PlaceRecommendationPlanner.State.RESULTS)
+            return current.getAsBoolean()
+                ? new Recommendation(plan, WebRecommendation.State.EMPTY, null)
+                : null;
+          Set<WebRecommendation.Need> needs = webNeeds(requirements.requiredFeatures());
+          var request = new WebRecommendation.Request(viewId, generation, area, needs, false);
+          var webResult = web.search(request, clock.instant().plusSeconds(30), current);
+          if (!current.getAsBoolean()) return null;
+          if (webResult == null)
+            return new Recommendation(plan, WebRecommendation.State.FAILED, null);
+          var matches =
+              webResult.state() == WebRecommendation.State.RESULTS
+                  ? joiner.join(destinationWindow, found, provider, webResult, needs)
+                  : null;
+          return new Recommendation(plan, webResult.state(), matches);
         });
   }
 
-  public Optional<RecommendationJobRegistry.Snapshot<PlaceRecommendationPlanner.Plan>> poll(
+  private static Set<WebRecommendation.Need> webNeeds(Set<String> features) {
+    var needs = java.util.EnumSet.of(WebRecommendation.Need.PARKING);
+    for (String feature : features) {
+      needs.add(
+          switch (feature) {
+            case "parking" -> WebRecommendation.Need.PARKING;
+            case "highChair" -> WebRecommendation.Need.HIGH_CHAIR;
+            case "stepFreeAccess" -> WebRecommendation.Need.STEP_FREE_ACCESS;
+            case "childFriendly" -> WebRecommendation.Need.CHILD_FRIENDLY;
+            default -> throw new IllegalArgumentException("Unsupported feature");
+          });
+    }
+    return Set.copyOf(needs);
+  }
+
+  public Optional<RecommendationJobRegistry.Snapshot<Recommendation>> poll(
       String owner, UUID taskId) {
     return jobs.poll(owner, taskId);
   }

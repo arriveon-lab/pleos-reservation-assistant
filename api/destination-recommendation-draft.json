@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Destination public catalog shortlist — experimental contract",
+    "title": "Destination restaurant shortlist — experimental contract",
     "version": "0.1.0-draft",
-    "description": "Disabled by default. Explicit source KAKAO uses the existing real-time Local adapter with an environment key; PUBLIC_CATALOG requires a local snapshot. GPT, telephone and booking calls are absent. The three candidates are unconfirmed transient listings, never verified recommendations or reservation authority."
+    "description": "Disabled by default. Explicit source KAKAO uses the existing real-time Local adapter with an environment key; PUBLIC_CATALOG is optional. A separately enabled, exact one-shot permit may research web evidence without forwarding Kakao responses. Telephone and booking calls are absent. Matching web and listing results remain unconfirmed and do not confer reservation authority."
   },
   "servers": [{ "url": "http://127.0.0.1:8080" }],
   "paths": {
@@ -48,6 +48,16 @@
           "401": { "description": "Bearer token required" }
         }
       }
+    },
+    "/api/experimental/destination-recommendations/views/{viewId}/close": {
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "viewId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Equivalent view invalidation for the Android transient POST client" },
+          "401": { "description": "Bearer token required" }
+        }
+      }
     }
   },
   "components": {
@@ -58,10 +68,11 @@
       "StartRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["viewId", "generation", "destination", "party", "maxWaitMinutes", "requiredFeatures", "preferredCuisines"],
+        "required": ["viewId", "generation", "userRequest", "destination", "party", "maxWaitMinutes", "requiredFeatures", "preferredCuisines"],
         "properties": {
           "viewId": { "type": "string", "format": "uuid" },
           "generation": { "type": "integer", "minimum": 1 },
+          "userRequest": { "type": "string", "minLength": 1, "maxLength": 300, "description": "Transient Korean utterance. Server maps supported needs and never stores or forwards raw text." },
           "destination": {
             "type": "object",
             "additionalProperties": false,
@@ -116,7 +127,7 @@
           "state": { "$ref": "#/components/schemas/JobState" },
           "validUntil": { "type": "string", "format": "date-time" },
           "result": {
-            "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/Plan" }]
+            "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/Recommendation" }]
           },
           "source": { "$ref": "#/components/schemas/Source" }
         }
@@ -132,6 +143,44 @@
           "attribution": { "type": "string" },
           "acquiredAt": { "type": ["string", "null"], "format": "date-time" },
           "sourceSnapshotAt": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "Recommendation": {
+        "type": "object",
+        "required": ["listing", "webState"],
+        "properties": {
+          "listing": { "$ref": "#/components/schemas/Plan" },
+          "webState": { "type": "string", "enum": ["RESULTS", "EMPTY", "FILTERED", "FAILED", "CANCELLED", "EXPIRED", "APPROVAL_REQUIRED", "ALREADY_REQUESTED"] },
+          "matches": {
+            "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/WebMatches" }],
+            "description": "Only independently searched web results matched to a transient listing. Null until web approval/search succeeds."
+          }
+        }
+      },
+      "WebMatches": {
+        "type": "object",
+        "required": ["state", "candidates"],
+        "properties": {
+          "state": { "type": "string", "enum": ["RESULTS", "NO_MATCH", "INVALID_EVIDENCE"] },
+          "validUntil": { "type": ["string", "null"], "format": "date-time" },
+          "candidates": {
+            "type": "array", "maxItems": 3,
+            "items": {
+              "type": "object",
+              "required": ["ordinal", "name", "address", "straightLineDistanceMeters", "fit", "assessments", "remainingQuestions", "bookable", "inquiryDispatchAllowed"],
+              "properties": {
+                "ordinal": { "type": "integer", "minimum": 1, "maximum": 3 },
+                "name": { "type": "string" },
+                "address": { "type": "string" },
+                "straightLineDistanceMeters": { "type": "integer" },
+                "fit": { "type": "string", "enum": ["POTENTIAL_MATCH", "NEEDS_CONFIRMATION"] },
+                "assessments": { "type": "array", "items": { "type": "object" } },
+                "remainingQuestions": { "type": "array", "items": { "type": "string" } },
+                "bookable": { "type": "boolean", "const": false },
+                "inquiryDispatchAllowed": { "type": "boolean", "const": false }
+              }
+            }
+          }
         }
       },
       "Plan": {

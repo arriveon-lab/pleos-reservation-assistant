@@ -2,7 +2,6 @@ package ai.pleos.assistant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -15,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Opt-in destination shortlist backed only by an explicitly supplied local public catalog. */
+/** Opt-in destination shortlist using an explicitly selected Kakao or public source. */
 @RestController
 @ConditionalOnProperty(name = "app.destination-recommendations.enabled", havingValue = "true")
 @RequestMapping("/api/experimental/destination-recommendations")
@@ -23,6 +22,7 @@ class DestinationRecommendationController {
   record StartRequest(
       UUID viewId,
       @JsonProperty(required = true) long generation,
+      String userRequest,
       Model.Destination destination,
       Model.Party party,
       @JsonProperty(required = true) int maxWaitMinutes,
@@ -34,7 +34,7 @@ class DestinationRecommendationController {
   record Polled(
       UUID id,
       RecommendationJobRegistry.State state,
-      PlaceRecommendationPlanner.Plan result,
+      DestinationRecommendationService.Recommendation result,
       java.time.Instant validUntil,
       DestinationRecommendationService.SourceInfo source) {}
 
@@ -61,15 +61,20 @@ class DestinationRecommendationController {
           || input.preferredCuisines() == null) {
         throw new IllegalArgumentException("Missing destination");
       }
-      var features = new HashSet<>(input.requiredFeatures());
-      // Parking is an investigation requirement for every product recommendation.
-      features.add("parking");
+      var features =
+          UserRecommendationIntent.requiredFeatures(input.userRequest(), input.requiredFeatures());
       var requirements =
           new PlaceRecommendationPlanner.Requirements(
               input.party(), input.maxWaitMinutes(), features, input.preferredCuisines());
       var query = PlaceQuery.forDestination(input.destination());
       UUID id =
-          service.start(actor.subject(), input.viewId(), input.generation(), query, requirements);
+          service.start(
+              actor.subject(),
+              input.viewId(),
+              input.generation(),
+              input.destination().name(),
+              query,
+              requirements);
       return new Started(id, service.poll(actor.subject(), id).orElseThrow().state());
     } catch (IllegalArgumentException error) {
       throw ApiError.bad("INVALID_DESTINATION_RECOMMENDATION", "추천 요청을 확인해 주세요.");
@@ -98,5 +103,11 @@ class DestinationRecommendationController {
   @DeleteMapping("/views/{viewId}")
   void invalidate(HttpServletRequest http, @PathVariable UUID viewId) {
     service.invalidate(RequestActor.from(http).subject(), viewId);
+  }
+
+  @PostMapping("/views/{viewId}/close")
+  java.util.Map<String, String> closeView(HttpServletRequest http, @PathVariable UUID viewId) {
+    invalidate(http, viewId);
+    return java.util.Map.of("state", "CLOSED");
   }
 }

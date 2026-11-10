@@ -6,13 +6,14 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Explicitly selected, memory-only place source. GPT and telephone dispatch are absent. */
+/** Explicitly selected, memory-only place source with optional approved web research. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "app.destination-recommendations.enabled", havingValue = "true")
 class DestinationRecommendationConfiguration {
@@ -26,21 +27,25 @@ class DestinationRecommendationConfiguration {
       ObjectMapper mapper,
       Clock clock,
       @Qualifier("destinationRecommendationWorkers") ExecutorService workers,
+      ObjectProvider<DestinationRecommendationService.WebGateway> webProvider,
       @Value("${app.destination-recommendations.source:PUBLIC_CATALOG}") String source,
       @Value("${app.destination-recommendations.catalog-path:}") String catalogPath,
       @Value("${KAKAO_REST_API_KEY:}") String kakaoKey)
       throws IOException {
+    var web = webProvider.getIfAvailable();
     if ("KAKAO".equals(source)) {
       if (kakaoKey.isBlank()) throw new IllegalStateException("Kakao key required");
-      return new DestinationRecommendationService(
-          new KakaoPlaceSearchAdapter(kakaoKey, new KakaoPlaceMapper(mapper, clock)),
-          clock,
-          workers);
+      var adapter = new KakaoPlaceSearchAdapter(kakaoKey, new KakaoPlaceMapper(mapper, clock));
+      return web == null
+          ? new DestinationRecommendationService(adapter, clock, workers)
+          : new DestinationRecommendationService(adapter, clock, workers, web);
     }
     if (!"PUBLIC_CATALOG".equals(source) || catalogPath.isBlank())
       throw new IllegalStateException("Explicit destination source required");
     var catalog = SeoulPlaceCatalog.load(Path.of(catalogPath), mapper);
-    return new DestinationRecommendationService(
-        new SeoulPlaceSearchAdapter(catalog, clock), clock, workers);
+    var adapter = new SeoulPlaceSearchAdapter(catalog, clock);
+    return web == null
+        ? new DestinationRecommendationService(adapter, clock, workers)
+        : new DestinationRecommendationService(adapter, clock, workers, web);
   }
 }
