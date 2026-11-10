@@ -177,7 +177,7 @@ class WebRecommendationParserTest {
                 .orElseThrow()
                 .remainingQuestions())
         .contains(Need.PET_FRIENDLY);
-    duplicate.put("address", "다른 가상 지점 주소");
+    duplicate.put("address", "다른 가상 지점 주소 99");
     assertThat(parse(root, content).excludedCandidates()).isEqualTo(2);
   }
 
@@ -232,6 +232,18 @@ class WebRecommendationParserTest {
                 .orElseThrow()
                 .remainingQuestions())
         .contains(Need.PET_FRIENDLY);
+  }
+
+  @Test
+  void placeholderOrAreaOnlyAddressCannotBecomeAPlaceRecommendation() throws Exception {
+    var root = response();
+    var content = content(root);
+    ((ObjectNode) content.at("/candidates/0")).put("address", "UNKNOWN");
+    assertThat(parse(root, content).state()).isEqualTo(State.RESULTS);
+    assertThat(parse(root, content).candidates()).hasSize(2);
+    for (var candidate : content.get("candidates"))
+      ((ObjectNode) candidate).put("address", "서울숲 근처");
+    assertThat(parse(root, content).state()).isEqualTo(State.FAILED);
   }
 
   @Test

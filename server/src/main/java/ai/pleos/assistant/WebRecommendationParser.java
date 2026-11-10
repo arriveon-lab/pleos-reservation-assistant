@@ -97,8 +97,12 @@ public final class WebRecommendationParser {
             hasReviews
                 ? Set.of("name", "address", "identitySourceUrl", "reports", "reviews")
                 : Set.of("name", "address", "identitySourceUrl", "reports"));
-        String name = required(candidate, "name", 150),
-            address = required(candidate, "address", 250);
+        String rawName = candidate.path("name").asText(null),
+            rawAddress = candidate.path("address").asText(null);
+        if (!validIdentityText(rawName, 150)
+            || !validIdentityText(rawAddress, 250)
+            || rawAddress.codePoints().noneMatch(Character::isDigit)) continue;
+        String name = rawName.strip(), address = rawAddress.strip();
         URI identityUrl = safeUri(candidate.path("identitySourceUrl"));
         if (identityUrl == null) continue;
         if (!citations.containsKey(identityUrl) && !consulted.contains(identityUrl)) continue;
@@ -287,6 +291,13 @@ public final class WebRecommendationParser {
     } catch (IllegalArgumentException invalid) {
       return null;
     }
+  }
+
+  private static boolean validIdentityText(String value, int maxLength) {
+    if (!text(value, maxLength)) return false;
+    String normalized = value.strip().toUpperCase(java.util.Locale.ROOT);
+    return !Set.of("UNKNOWN", "N/A", "NA", "TBD", "NULL", "미확인", "알 수 없음", "주소 미확인")
+        .contains(normalized);
   }
 
   private static void shape(JsonNode node, Set<String> fields) {

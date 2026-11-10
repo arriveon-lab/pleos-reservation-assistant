@@ -45,14 +45,33 @@ class DestinationWebOnlyApiTest {
 
     @Bean
     DestinationRecommendationService.WebGateway fictionalDestinationWeb(Clock clock) {
-      return (request, deadline, current) ->
-          new WebRecommendationParser()
-              .parse(
-                  MockWebRecommendationGateway.fictionalResponse(),
-                  request,
-                  WebRecommendation.Mode.WEB_SEARCH,
-                  clock.instant(),
-                  clock.instant().plusSeconds(300));
+      return (request, deadline, current) -> {
+        String response = MockWebRecommendationGateway.fictionalResponse();
+        if ("두 곳 시험".equals(request.area())) {
+          try {
+            var root =
+                (com.fasterxml.jackson.databind.node.ObjectNode)
+                    new ObjectMapper().readTree(response);
+            var body =
+                (com.fasterxml.jackson.databind.node.ObjectNode)
+                    new ObjectMapper().readTree(root.at("/output/1/content/0/text").asText());
+            ((com.fasterxml.jackson.databind.node.ObjectNode) body.at("/candidates/0"))
+                .put("address", "UNKNOWN");
+            ((com.fasterxml.jackson.databind.node.ObjectNode) root.at("/output/1/content/0"))
+                .put("text", body.toString());
+            response = root.toString();
+          } catch (Exception invalidFixture) {
+            throw new IllegalStateException(invalidFixture);
+          }
+        }
+        return new WebRecommendationParser()
+            .parse(
+                response,
+                request,
+                WebRecommendation.Mode.WEB_SEARCH,
+                clock.instant(),
+                clock.instant().plusSeconds(300));
+      };
     }
   }
 
@@ -99,5 +118,48 @@ class DestinationWebOnlyApiTest {
     assertThat(result.at("/result/webRecommendations").size()).isEqualTo(3);
     assertThat(result.at("/result/webRecommendations/0/reviews").size()).isEqualTo(1);
     assertThat(result.at("/result/webRecommendations/0/bookable").asBoolean()).isFalse();
+  }
+
+  @Test
+  void pollsTwoValidPlacesAsResultsWhenAnotherAddressIsUnknown() throws Exception {
+    String token = auth.issue().accessToken();
+    var request =
+        Map.of(
+            "viewId", UUID.randomUUID(),
+            "generation", 1,
+            "userRequest", "도착지 근처 식당 추천해줘",
+            "destination", Map.of("name", "두 곳 시험", "latitude", 37.544, "longitude", 127.055),
+            "party", Map.of("adults", 2, "children", 0),
+            "maxWaitMinutes", 15,
+            "requiredFeatures", Set.of(),
+            "preferredCuisines", Set.of());
+    var started =
+        json.readTree(
+            http.perform(
+                    post(BASE)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsBytes(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    com.fasterxml.jackson.databind.JsonNode result = null;
+    for (int attempt = 0; attempt < 100; attempt++) {
+      result =
+          json.readTree(
+              http.perform(
+                      get(BASE + "/" + started.path("taskId").asText())
+                          .header("Authorization", "Bearer " + token))
+                  .andExpect(status().isOk())
+                  .andReturn()
+                  .getResponse()
+                  .getContentAsString());
+      if (result.path("state").asText().equals("RESULTS")) break;
+      Thread.sleep(10);
+    }
+    assertThat(result).isNotNull();
+    assertThat(result.at("/result/webState").asText()).isEqualTo("RESULTS");
+    assertThat(result.at("/result/webRecommendations").size()).isEqualTo(2);
   }
 }
