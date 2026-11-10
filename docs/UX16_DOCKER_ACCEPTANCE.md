@@ -127,3 +127,35 @@
 - 이 결과도 앱 측 실행이며 서버 담당 검토/공동 인수 완료는 별도다. 실제 moving/권한 거부/서비스 단절, #40 전체 예약 시연, #1 실제 ETA/#11 데이터 인수와 기존 jointvalidation의 INVALID_TIME pending은 남는다.
 
 재현 명령: `adb shell am instrument -w -e previewBoundary true ai.pleos.assistant.mock.boundaryvalidation.test/ai.pleos.assistant.app.DrivingDeviceChecks`. 별도 RESULT fixture와 사전에 명시 인증된 설치가 필요하며 실행은 약5분 이상 걸린다. 정상/잘못된 입력의 실제 HTTP 수는 별도 무변조 관측 로그로 대조한다. 기기 테스트를 CI에서 실행했다고 주장하지 않는다.
+
+
+## 2026-11-10 오래된 검색 요청·정리404 앱 안내 보완 (#26)
+
+### 확인한 범위와 변경
+
+#16 전체 댓글을 재확인했으며 서버 담당 최신 답변은 6756116918(Docker 전달, 2026-11-10 01:18 UTC)이다. 앞선 두 취향/실제5분 결과에 대한 새 답변은 없으며 #19 head는 d415ef7 그대로다. #17에는 별도404 합의 댓글이 없다. 다른 담당 서버·공개 API를 변경하지 않았다.
+
+- Android HTTP 경계에서 오류 본문을 최대4096바이트로 제한하고 INVALID_TIME/STALE_NAVIGATION/PREVIEW_NOT_FOUND 코드만 전달한다. 서버 message/임의 코드/토큰을 표시하거나 저장하지 않는다. 없거나 깨진/큰 본문은 HTTP 상태만 유지한다.
+- `/searches` 재전송의400 INVALID_TIME/STALE_NAVIGATION은 pending에 비식별 recoveryCode만 추가한다. 원 path/body/key/target/authBinding을 유지하며 재시작 후에도 오래된 요청 안내와 새 검색 차단을 유지한다. 동일 요청의 명시 재전송은 원본 그대로다. 연결 성공을 요청 해결로 표시하지 않는다.
+- 미리보기 cancel/close의404 + PREVIEW_NOT_FOUND는 “서버에서 찾지 못해 정리 완료 미확인”으로 구분한다. 만료·재시작 원인을 추측하거나 성공으로 처리하지 않는다. 다른404/통신 실패는 기존 실패 안내다. 결과 선제 제거·자동 재검색 금지는 유지한다.
+
+### 실제 실행과 증거
+
+| 수준 | 절차 / 기대 결과 | 실제 결과 |
+| --- | --- | --- |
+| JVM 회귀 | 시간 거절2종 → 재시작 → 원 요청·인증 보존, 새 검색 차단, 명시 동일 재전송 | PASS; 새 회귀5건 포함 UX67개 실패/오류/skip0 |
+| JVM 미리보기 | 만료 후 정확한404/코드와 일반404 구분, cancel/close 시도·후보 제거·query1 유지 | PASS. 테스트 시계 기반이며 실제5분 재실행 아님 |
+| Pleos HTTP 주입 | 실제 LoopbackTransport로400/INVALID_TIME,404/PREVIEW_NOT_FOUND, 깨진404본문,4096바이트 초과503 | PASS. loopback18084 test fixture이며 서버#19 직접 인수 아님 |
+| Pleos UI 주입 | 메모리 snapshot에 시간 거절을 주입해 안내 문자열·쓰기 차단·화면 캡처 | PASS. 실제 기존 요청의 복구 성공 아님 |
+| 보존 | jointvalidation/boundaryvalidation journal 파일 검사 전후SHA256 비교 | 둘 다 byte-for-byte 일치. 원 요청 파일 내용 출력/수정 없음 |
+| 로컬 빌드/실행 | format, verifyAll, smoke-test.py | PASS. 서버 UP-TO-DATE와 JVM cache는 새 실행 수로 세지 않음 |
+
+기기: Pleos Connect2.1.0/API34/emulator-5554/user10, 별도 boundaryvalidation 기존 설치를 `install -r`로 업데이트했다. 검증 APK SHA256 `fec1442cd35400eaf0c3e5b46acb6a82698afccfb18acde144854cfd8cda4440`. 소스는 이번 복구 안내 수정본이며 이전5분 검증 APK와 다르다. `captures/ux26-recovery/recovery-time-rejected.png`와 manifest.json, `work/ux26-recovery/device.log`, build/verifyAll/smoke.log에 증거를 보관했다. 기기 검사 명령은 `am instrument -w -e recoveryFailure true ai.pleos.assistant.mock.boundaryvalidation.test/ai.pleos.assistant.app.DrivingDeviceChecks`이며 **전용 오류 fixture가 필요**하다. 캡처는 시간 거절 안내 화면1장이고404 화면 캡처/실제 서버 재검증은 수행하지 않았다.
+
+종료 후 오류 fixture·별도 앱을 종료하고8080→18080 연결을 복원했다. 기존 jointvalidation 설치/인증/요청을 그대로 두었다. MOCK만 실행했고 외부 장소/전화/예약/유료 호출0회다.
+
+### 서버 확인이 필요한 후속 / 완료하지 않은 것
+
+- #16/#26: 검색 명령이 INVALID_TIME으로 거절됐을 때 동일 인증·키로 처리 여부를 확정하고 원 요청을 보존하면서 종료할 공식 절차/응답이 필요하다. 앱은 키·시각 변경, pending 삭제, 새 주체 발급으로 우회하지 않는다. 이번 변경은 진단/안내 개선이며 기존 요청 해결·새 입력 해제는 미완료다.
+- #16/#17: 만료 후 PREVIEW_NOT_FOUND가 정리 완료와 같은 의미인지, 없어진/다른 소유자/재시작을 구분할 수 있는지 계약 확인이 필요하다. 합의 전 성공 처리하지 않는다.
+- 이번 제품 변경으로 실제300초·실제 서버 공동 시나리오를 다시 수행하지 않았다. 앞선 기록은 당시 APK의 증거다. 실제 차량 moving/장애, #40 시연, #1/#11 및 공동 인수는 계속 미완료다. 이슈 OPEN/PR Draft 유지, 병합 없음.

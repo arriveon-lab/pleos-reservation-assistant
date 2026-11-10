@@ -1,5 +1,10 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-10 #26 오래된 검색 요청·만료404 안내 보완
+
+#16의 추가 서버 답변은 아직 없다(#19 d415ef7 유지). 앱 오류 코드만 안전하게 전달하고400 INVALID_TIME/STALE_NAVIGATION을 원 pending에 보존해 재시작 후 안내한다. 원 요청/인증·새 검색 차단은 유지했다. 정확한404/PREVIEW_NOT_FOUND는 정리 미확인 안내로 구분하며 성공으로 바꾸지 않는다. UX67개·format/verifyAll/MOCK smoke·Pleos 오류 주입/안내 검사 PASS. 기존 두 설치 journal 해시 일치,8080→18080 복원. 상세 절차·고정 APK·증거는 docs/UX16_DOCKER_ACCEPTANCE.md의 최신 절을 따른다. 기존 요청의 실제 복구/입력 해제·서버404 의미 합의·공동 인수는 미완료, #16/#26 OPEN과 PR Draft 유지.
+
+
 ## 2026-11-10 #16 두 취향·인원 경계·실제5분 만료
 
 사용자가 승인한 별도 boundaryvalidation 설치에서 한식+양식·인원2/1·1/0·20/10 정상3건,21/10·20/11·0/0의 앱 입력 차단/검색HTTP0을 확인했다. 서버 원본TTL300초 동안 실제 대기해 만료 전 유지·만료 후UI/결과 제거·자동query0을 확인했다. 정리404도 기록했다. [고정 APK·절차·증거](../docs/UX16_DOCKER_ACCEPTANCE.md) 참조. 제품/API 변경 없이 기기 instrumentation 추가, format·verifyAll·MOCK smoke 성공. 기존 jointvalidation의 INVALID_TIME 검색 pending은 보존했고 복구 완료가 아니다. 공동 결과 검토·실제 주행 장애·#40 시연·#1/#11은 미완료, Draft 유지.
