@@ -53,6 +53,7 @@ public final class WebRecommendation {
 
   /** Safe provider diagnostics; never contains a response body, URL, credential, or user data. */
   public enum FailureReason {
+    BUDGET_EXHAUSTED,
     CREDENTIAL_MISSING,
     HTTP_BAD_REQUEST,
     HTTP_UNAUTHORIZED,
