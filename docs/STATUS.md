@@ -20,6 +20,10 @@
 - 이번은 충돌/통합 검증이며 실제 외부 장소/GPT/전화/유료 호출·키/IP 설정 변경·다른 담당 코드 변경은 없습니다. 아래 이전 main/병합 대기/검증 수는 당시 이력이며 최신 검증은 이 head의 결과로 구분합니다.
 - 문서8개·로컬 링크119개·근거 JSON·원본 행 보존·명명/diff 정적 검사 통과. 문서만 변경하므로 로컬 Gradle/기기 테스트를 새로 실행하지 않았으며 원격 CI는 이 head의 실제 결과를 확인합니다. 원격 검사/기기 인수와 구분하고 실제 공급자 실행을 새로 하지 않았습니다.
 
+## 2026-11-10 VOICE-01 Telkit 채택 (#3)
+
+- 팀이 전화 회선으로 Telkit을 사용하기로 결정했습니다(사용자 전달). [업체 검토](calls/VENDOR_REVIEW.md#0-결정-telkit-채택-2026-11-10)에 Telkit 공개 문서·요금·약관을 다시 확인해 LiveKit SIP 연결 조건, 계정당 번호 1개, 동시 4통·발신 하루 500통, 발신 웹훅 없음, 녹음 없음, 요금을 정리했습니다. [INTEGRATIONS](INTEGRATIONS.md#전화-사업자-비교)·ISSUE_GUIDE·PLAN·목차의 미선정 표기를 고쳤습니다.
+- 문서 확인만입니다. Telkit 계정 생성·본인인증·카드 등록·번호 구매·실제 발신·유료 API는 0회이며 제품 코드·API·DB 변경과 Gradle 재실행은 없습니다. 발신 표시 번호, `telkit_call_id` 연결, 한국어 통화 품질, 법률 검토는 미검증입니다.
 
 ## 2026-11-10 #35/#38 통합과 #42 CI·문서 이력 복구
 
@@ -114,6 +118,8 @@
 
 **실제 실행 증거:** [독립 시연](REC04_LIVE_SEARCH.md)의 Kakao 1회 성공·3곳 일시 표시·쿼터 1 / 100,000, 비용 0원·전화/예약/AI 0회입니다. 이번 병합 중 추가 실제 호출은 없으며 제품 MOCK/LIVE 차단·응답 미저장을 유지합니다. 앞선 브랜치별 188개/156개 기록과 통합 결과를 구분합니다. 아래 OPEN/Draft·병합 대기 표현은 당시 이력이며 최신 병합 상태는 GitHub가 기준입니다.
 
+**VOICE-01 업체 문서 검토 (2026-11-08, #3 `feat/3-call-normalizer`):** Vox·한국AI통신·Twilio·CLOVA AiCall의 공개 문서·약관·요금을 [업체 검토](calls/VENDOR_REVIEW.md)에 정리했습니다. Vox를 PoC 1순위 후보로 두되 업체를 선정하지 않았습니다(이후 2026-11-10 Telkit 채택). 문서 확인만이며 계정 생성·번호 구매·실제 발신·유료 API는 0회, 제품 코드·API·DB 변경과 Gradle 재실행은 없습니다. 법률 검토와 실제 한국어 통화 품질은 미검증입니다.
+
 갱신: **2026-11-07 KST**. 기준 환경: macOS arm64, Corretto OpenJDK 21.0.6, Gradle 8.11.1, Spring Boot 3.5.16, Python 3. 본 문서는 실제 실행 결과와 미검증을 구분합니다.
 
 REC-01 서버 재검증: **2026-11-07 KST**. Android·SDK 기록은 2026-11-04입니다. ERD·기능 명세의 문서/정적 검증을 제품 재실행이나 실제 연동 성공으로 세지 않습니다.
@@ -204,7 +210,7 @@ Android Studio/SDK 설치·경로 연결·Pleos 이미지 준비는 [ANDROID_SET
 1. Android Studio·Pleos Emulator/Virtual Console 확보 후 기기 probe. 빌드 SDK와 debug APK는 준비됨. `./gradlew -PincludeAndroid=true verifyAndroid`로 재현하고 기기 실행은 별도로 확인.
 2. 실제 ETA 시간 기준·콜백 주기·권한·백그라운드·목적지 변경을 확인한 뒤 변환 adapter와 테스트 추가. 지금 source=PLEOS는 서버에서 거부.
 3. 제품 Android 화면, CarUxRestrictions, Gleo/STT/TTS 연동, release 서명·시연 영상은 미구현.
-4. 성수·서울숲 시범 범위 구체화, Kakao 사용 조건 확인과 장소 adapter 구현, 전화 업체 선정. 계정·번호·허용 대상·예산 승인 전 실발신 없음.
+4. 성수·서울숲 시범 범위 구체화, Kakao 사용 조건 확인과 장소 adapter 구현. 전화는 Telkit으로 결정(2026-11-10)했으며 Telkit 계정·번호·허용 대상·예산 승인 전 실발신 없음.
 5. 실제 통화 도입 전 사용자 인증/소유권·승인 증빙, webhook 서명, outbox/timeout 대조, UNKNOWN 수동 해결 추가. 현재 API는 loopback 단일 사용자용이며 공개 배포 대상이 아님.
 6. 지속 ETA 지연 감지·자동 변경은 후속 범위. 현재는 명시적 모의 변경 명령만 지원. 학습 동의는 저장만 하며 학습 미구현.
 7. 팀 경험 확인 후 운영 DB 결정. H2 전역 lock은 단일 서버 MVP 한계가 있음.
@@ -263,3 +269,8 @@ GitHub 업로드 직전 로컬 `verifyAll` 및 `smoke-test.py --check-contract`�
 - Registry 18개 + H2 추가 1개를 더해 총 **188개 실행, 실패/오류/skip 0**입니다. 기존 H2 비차단/DB 미저장 테스트도 Registry 경로에서 통과했습니다. format/verify와 JAR MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단 통과. 로컬 증거는 Git 제외 `work/rec03-registry-results.json`, `work/rec03-registry-verify.log`, `work/rec03-registry-smoke.log`에 있습니다. 초기 테스트 helper 컴파일 오류는 수정했고 초기 로그도 따로 보관했습니다.
 - 로그인 인증·외부 요청의 owner 검증은 아직 미구현이며, Owner는 trusted caller가 공급할 내부 scope입니다. 만료는 요청/명시적 reap 시 정리하고 자동 정리 스케줄은 아직 없습니다. Registry 재생성/다중 인스턴스를 넘는 누적 예산·영속 claim·불확실한 실행 대조도 미완료입니다.
 - 공개 REST API·Spring bean·기존 WorkflowService 연결·Model/migration/의존성 변경 없음. navigation freshness/ETA 재검증, #4/#5 계약·공개 API/화면, 실제 인증/복구는 다음 작업입니다. #12는 OPEN·PR #14는 Draft로 유지하며 실제 Kakao 조회·전화·비용은 0회입니다.
+
+
+## 이전 문서 원문 보존 — 최신 결정은 상단 기록 우선
+
+4. 성수·서울숲 시범 범위 구체화, Kakao 사용 조건 확인과 장소 adapter 구현, 전화 업체 선정. 계정·번호·허용 대상·예산 승인 전 실발신 없음.
