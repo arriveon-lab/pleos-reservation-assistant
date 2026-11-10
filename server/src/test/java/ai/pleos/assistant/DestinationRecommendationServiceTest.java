@@ -116,6 +116,9 @@ class DestinationRecommendationServiceTest {
       var result = service.poll("owner-a", id).orElseThrow().result();
       assertThat(result.listing().candidates()).hasSize(1);
       assertThat(result.matches().candidates()).hasSize(3);
+      assertThat(result.webCandidateCount()).isEqualTo(3);
+      assertThat(result.identityLookupState())
+          .isEqualTo(DestinationRecommendationService.LookupState.MATCHED);
       assertThat(result.matches().candidates())
           .allSatisfy(candidate -> assertThat(candidate.bookable()).isFalse());
       assertThat(places.queries).isEqualTo(1);
@@ -208,6 +211,9 @@ class DestinationRecommendationServiceTest {
       assertThat(result.webState()).isEqualTo(WebRecommendation.State.RESULTS);
       assertThat(result.matches().state()).isEqualTo(WebListingRecommendationJoiner.State.RESULTS);
       assertThat(result.matches().candidates()).hasSize(3);
+      assertThat(result.webCandidateCount()).isEqualTo(3);
+      assertThat(result.identityLookupState())
+          .isEqualTo(DestinationRecommendationService.LookupState.NOT_RUN);
       assertThat(result.matches().candidates()).allSatisfy(c -> assertThat(c.bookable()).isFalse());
     }
   }

@@ -147,11 +147,13 @@
       },
       "Recommendation": {
         "type": "object",
-        "required": ["listing", "webState"],
+        "required": ["listing", "webState", "webCandidateCount", "identityLookupState"],
         "properties": {
           "listing": { "$ref": "#/components/schemas/Plan" },
           "webState": { "type": "string", "enum": ["RESULTS", "EMPTY", "FILTERED", "FAILED", "CANCELLED", "EXPIRED", "APPROVAL_REQUIRED", "ALREADY_REQUESTED"] },
           "webFailureReason": { "type": ["string", "null"], "enum": ["CREDENTIAL_MISSING", "HTTP_REJECTED", "INVALID_RESPONSE", "TRANSPORT_ERROR", null], "description": "Coarse diagnostic only when webState=FAILED. No provider body or credential is exposed." },
+          "webCandidateCount": { "type": "integer", "minimum": 0, "maximum": 3, "description": "Count of independently found web candidates before Kakao identity matching; no names or addresses." },
+          "identityLookupState": { "type": "string", "enum": ["NOT_RUN", "MATCHED", "EMPTY", "FAILED"], "description": "Coarse result of the bounded Kakao keyword recheck; MATCHED does not imply final recommendation." },
           "matches": {
             "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/WebMatches" }],
             "description": "Only independently searched web results matched to a transient listing. Null until web approval/search succeeds."

@@ -6,6 +6,8 @@
 
 `result.webState=FAILED`이면 `result.webFailureReason`이 자격 증명 누락·HTTP 거절·응답 형식 오류·전송 오류를 구분합니다. 공급자 응답 본문이나 키는 이 계약에 포함되지 않습니다. 승인된 가상 서울숲 실호출에서는 Kakao 목록 3곳만 반환되고 웹 단계가 실패해 실제 검증된 추천은 0곳이었습니다. 추가 GPT 실호출은 새 승인이 필요합니다.
 
+`result.webCandidateCount`와 `result.identityLookupState`는 웹 후보가 있었는지, Kakao 상호 키워드 재조회가 일치 지점을 찾았는지 구분하는 비식별 진단입니다. `MATCHED`라도 최종 추천 여부는 `result.matches.candidates`만 기준으로 판단합니다. 별도 승인 시험 두 번에서는 웹 결과가 있었지만 지점 대조 `NO_MATCH`로 끝났습니다.
+
 [REC-13 실험 계약](../docs/REC13_WEB_RECOMMENDATION.md) — #50의 기본 비활성 MOCK 실험 API와 사용자 입력/직접 평가 전용 V5 테이블입니다. 기존 v1·앱 계약/아래 논리 ERD 제안을 대체하지 않습니다.
 [REC-12 로컬 catalog 계약](../docs/REC12_PUBLIC_CATALOG.md) — #48의 오프라인 코드 준비이며 제품 HTTP/DB/실제 발신 연결은 아닙니다.
 

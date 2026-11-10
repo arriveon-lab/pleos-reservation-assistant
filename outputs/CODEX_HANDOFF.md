@@ -7,6 +7,8 @@
 - Pleos 목적지 응답의 현재 경로 연관성은 아직 기기에서 확인되지 않았습니다. 경로 변경·취소·도착·재관측 시 화면 결과를 폐기하고, 늦은 폴링 응답을 세대별로 버려야 합니다. 거리 값은 목적지 직선거리이고 ETA나 주행 시간이 아닙니다. 조건별 `assessments`의 YES/NO/UNKNOWN과 근거·출처·유효 시각을 표시해야 하며 예약/전화 버튼은 이 계약에서 허용되지 않습니다. Gleo 음성 입력/완료 TTS는 별도 앱 인수입니다.
 - 사용자 승인으로 가상 서울숲 목적지의 Kakao 목록 3곳은 조회됐지만 GPT 웹 근거 단계가 FAILED여서 실제 검증된 추천은 0곳입니다. 이후 실패에는 `result.webFailureReason`이 `CREDENTIAL_MISSING`/`HTTP_REJECTED`/`INVALID_RESPONSE`/`TRANSPORT_ERROR` 중 안전 코드로 표시됩니다. 실패 시 목록 3곳을 검증된 추천으로 표시하지 마세요. 추가 유료 호출은 새 승인이 필요합니다. 전화 AI 조건 확인·예약·지연 연락은 후속 연결이며 전화번호용 공공 catalog는 이 추천 단계의 필수 입력이 아닙니다.
 - 별도 승인된 두 번째 공급자 시험은 Kakao 목록 3곳·GPT 웹검색 결과를 받았지만 `result.matches.state=NO_MATCH`, 최종 추천 0곳이었습니다. `listing.candidates`를 승격하거나 직선거리를 ETA로 표시하지 마세요. 공급자 원문은 저장하지 않았고 추가 GPT 호출 승인은 남아 있지 않습니다.
+- 세 번째 승인 시험은 공개 지명 `서울숲`과 도로명주소 우선 지침으로 진행해도 `NO_MATCH`, 최종 추천 0곳이었습니다. 프런트엔드는 `matches.candidates`가 비어 있으면 추천 완료 화면을 띄우지 마세요. 백엔드에는 비식별 지점 대조 진단과 별도 승인된 공급자 재검증이 남아 있습니다.
+- 비식별 진단 `result.webCandidateCount`와 `result.identityLookupState`를 추가했습니다. 이는 화면에 추천 수/성공으로 표시할 값이 아니라 서버의 불일치 원인 조사 값입니다. `MATCHED`도 `matches.candidates`가 비어 있으면 추천 성공이 아닙니다.
 - 서버는 Kakao 첫 페이지에 없는 웹 후보를 상호로 최대 3회 키워드 재조회하고 주소까지 같은 지점만 `matches.candidates`에 넣습니다. 웹검색 `action.sources`만 있고 본문 인용이 없으면 조건은 UNKNOWN입니다. 앱은 UNKNOWN을 주차 가능 등의 확정 문구로 읽지 말아야 합니다.
 
 ## 2026-11-10 INT-01 목적지 목록 API 초안 (#52)

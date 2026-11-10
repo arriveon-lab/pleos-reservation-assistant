@@ -30,7 +30,16 @@ public final class DestinationRecommendationService implements AutoCloseable {
       PlaceRecommendationPlanner.Plan listing,
       WebRecommendation.State webState,
       WebRecommendation.FailureReason webFailureReason,
+      int webCandidateCount,
+      LookupState identityLookupState,
       WebListingRecommendationJoiner.Result matches) {}
+
+  public enum LookupState {
+    NOT_RUN,
+    MATCHED,
+    EMPTY,
+    FAILED
+  }
 
   public record SourceInfo(
       PlaceSummary.Provider provider,
@@ -137,7 +146,8 @@ public final class DestinationRecommendationService implements AutoCloseable {
           if (!(listing instanceof PlaceSearchResult.Success found)
               || plan.state() != PlaceRecommendationPlanner.State.RESULTS)
             return current.getAsBoolean()
-                ? new Recommendation(plan, WebRecommendation.State.EMPTY, null, null)
+                ? new Recommendation(
+                    plan, WebRecommendation.State.EMPTY, null, 0, LookupState.NOT_RUN, null)
                 : null;
           Set<WebRecommendation.Need> needs = webNeeds(requirements.requiredFeatures());
           var request = new WebRecommendation.Request(viewId, generation, area, needs, false);
@@ -148,7 +158,10 @@ public final class DestinationRecommendationService implements AutoCloseable {
                 plan,
                 WebRecommendation.State.FAILED,
                 WebRecommendation.FailureReason.TRANSPORT_ERROR,
+                0,
+                LookupState.NOT_RUN,
                 null);
+          LookupState lookupState = LookupState.NOT_RUN;
           var matches =
               webResult.state() == WebRecommendation.State.RESULTS
                   ? joiner.join(destinationWindow, found, provider, webResult, needs)
@@ -161,6 +174,7 @@ public final class DestinationRecommendationService implements AutoCloseable {
             if (!missing.isEmpty() && current.getAsBoolean()) {
               var resolved = lookup.lookup(destinationWindow, missing, current);
               if (resolved instanceof PlaceSearchResult.Success extra && current.getAsBoolean()) {
+                lookupState = extra.places().isEmpty() ? LookupState.EMPTY : LookupState.MATCHED;
                 var byId = new LinkedHashMap<String, PlaceSummary>();
                 for (PlaceSummary place : extra.places())
                   byId.putIfAbsent(place.providerPlaceId(), place);
@@ -180,10 +194,18 @@ public final class DestinationRecommendationService implements AutoCloseable {
                         provider,
                         webResult,
                         needs);
+              } else if (resolved instanceof PlaceSearchResult.Failure) {
+                lookupState = LookupState.FAILED;
               }
             }
           }
-          return new Recommendation(plan, webResult.state(), webResult.failureReason(), matches);
+          return new Recommendation(
+              plan,
+              webResult.state(),
+              webResult.failureReason(),
+              webResult.candidates().size(),
+              lookupState,
+              matches);
         });
   }
 
