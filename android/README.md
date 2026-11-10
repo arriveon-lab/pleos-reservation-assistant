@@ -51,3 +51,12 @@ adb logcat -s PleosNaviProbe:I '*:S'
 | 미실행 | 최초 조회 | — | — | — | — | 미검증 |
 
 현행 결과와 차단 사유는 [STATUS](../docs/STATUS.md)에 기록합니다. APK 생성 성공과 emulator 실행 성공은 따로 판정합니다.
+
+## 인증 1.1.0 MOCK 앱 (#26)
+
+`android/app`과 `ux/core`를 추가했습니다. [인증·인수 기록](../docs/UX26_AUTH_HANDOFF.md)의 명시 발급·Keystore 보호 저장·갱신/복구와 기존 1.0.0 데이터 차단을 확인합니다. 일반 토큰에 모의 수락 주입 권한은 없으며 실제 CarUxRestrictions/release는 미완료입니다. `verifyAll`은 앱 Lint/debug APK·UX 검사를 포함합니다.
+
+
+## 조건별 MOCK 미리보기 (#26)
+
+모의 정차·인증 연결 후 “조건별 후보 미리보기 열기”에서 가상 목적지와 인원·대기·필수 조건·취향을 입력합니다. [초안 기반 기기 검증](../docs/UX26_PREVIEW_VALIDATION.md)에 정상/오류·수명과 미검증을 구분했습니다. PR #19의 별도 0.2.0-draft 서버와 opt-in 설정이 필요하며 main 서버만으로 미리보기 성공을 기대하지 않습니다. 후보에서 문의·예약으로 전환하지 않고, 화면 종료 후 결과는 다시 표시하지 않습니다. 공동 인수·실제 CarUxRestrictions는 미완료입니다.

@@ -36,6 +36,10 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.test {
+    // The following schema check consumes this fixture even when tests are restored from cache.
+    outputs
+        .file(layout.buildDirectory.file("rec08/mock-recommendation-plan.json"))
+        .withPropertyName("recommendationPlanEvidence")
     useJUnitPlatform()
     // The REC-08 contract checker also needs this evidence when tests are restored from cache.
     outputs

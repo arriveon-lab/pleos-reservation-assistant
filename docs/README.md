@@ -65,3 +65,5 @@
 - [ERDCloud 편집본](https://www.erdcloud.com/d/GLtbN3YfiazAMYi6X)은 비공개입니다. GitHub 게시가 ERDCloud 접근 권한을 변경하지는 않습니다. UNIQUE 5개의 가져오기 누락과 필요한 업무 제약은 [ERD](ERD.md)에 기록했습니다.
 
 - [REC-05 오래된 검색 복구·정리404 계약](REC05_SEARCH_RECOVERY.md): 원 요청 대조/영속 종료·화면 연결 기준과 검증 경계.
+- [UX-03 미리보기 초안 구현·기기 검증](UX26_PREVIEW_VALIDATION.md): 조건·후보 비교·취소/수명, 오류 주입과 공동 인수 미완료 구분.
+- [UX-03 인증·미리보기 인수](UX26_AUTH_HANDOFF.md): Android 인증 1.1.0·보호 저장·복구, #19 초안 대조와 미완료 범위.
