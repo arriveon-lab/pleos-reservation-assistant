@@ -23,6 +23,9 @@ def check(schema, value):
 check({"$ref": "#/components/schemas/SearchRequest"},
       json.loads((ROOT / "api/examples/search.json").read_text()))
 print("PASS: OpenAPI 3.1 document and search example")
+for name in ("completed", "rejected-closed"):
+    check({"$ref": "#/components/schemas/SearchResolution"},
+          json.loads((ROOT / ("api/examples/search-reconciliation-" + name + ".json")).read_text()))
 
 preview_contract = json.loads((ROOT / "api/place-preview-draft.json").read_text())
 validate(preview_contract)

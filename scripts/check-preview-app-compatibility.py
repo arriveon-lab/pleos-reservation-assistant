@@ -10,7 +10,7 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-APP_COMMIT = "cf35ead38408ab19d6cf2657ed597237d368d7af"
+APP_COMMIT = "26e80cfd72182b97963171ff8ff896f198f1d2d0"
 APP_FILES = ["ux/core/src/main/java/ai/pleos/assistant/ux/" + name + ".java"
              for name in ("AuthSession", "MockRepository", "PreviewController")]
 

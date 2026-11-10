@@ -35,6 +35,10 @@ public class WorkflowService {
 
   @Transactional
   public Search search(RequestActor actor, String key, SearchRequest request) {
+    var closure =
+        store.completedCommand(actor, "search-closure", key, request, SearchResolution.class);
+    if (closure.isPresent() && closure.get().state().equals("REJECTED_CLOSED"))
+      throw ApiError.conflict("SEARCH_COMMAND_CLOSED", "종료한 검색 요청입니다. 새 검색은 새 키로 시작하세요.");
     return store.command(
         actor,
         "search",
@@ -61,6 +65,38 @@ public class WorkflowService {
           recommendations.select(s);
           store.insertSearch(actor, s);
           return s;
+        });
+  }
+
+  public record SearchResolution(
+      String state, String mode, String searchId, String reason, Instant resolvedAt) {}
+
+  /** Reconcile the original command without executing a search or changing its input. */
+  @Transactional
+  public SearchResolution reconcileSearch(RequestActor actor, String key, SearchRequest request) {
+    return store.command(
+        actor,
+        "search-closure",
+        key,
+        request,
+        SearchResolution.class,
+        () -> {
+          var completed = store.completedCommand(actor, "search", key, request, Search.class);
+          if (completed.isPresent())
+            return new SearchResolution(
+                "COMPLETED", "MOCK", completed.get().id, null, clock.instant());
+          Navigation n = request.navigation();
+          if (n.source() == NavigationSource.PLEOS)
+            throw ApiError.conflict("REQUEST_NOT_CLOSABLE", "검증되지 않은 차량 입력은 이 절차로 종료할 수 없습니다.");
+          Instant now = clock.instant();
+          // Only definitively old input can be closed. Future timestamps may become valid later.
+          String reason =
+              !n.eta().isAfter(now)
+                  ? "INVALID_TIME"
+                  : n.observedAt().isBefore(now.minusSeconds(300)) ? "STALE_NAVIGATION" : null;
+          if (reason == null)
+            throw ApiError.conflict("REQUEST_NOT_CLOSABLE", "처리 결과가 없지만 오래된 요청으로 확정할 수 없습니다.");
+          return new SearchResolution("REJECTED_CLOSED", "MOCK", null, reason, now);
         });
   }
 

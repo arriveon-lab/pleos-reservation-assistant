@@ -92,6 +92,7 @@ def main():
                 compose("build")
             token = None
             after_restart = None
+            lost_preview = None
             for fixture, count in (("RESULTS", 3), ("EMPTY", 0), ("FILTERED", 0), ("FAILED", 0)):
                 env["PREVIEW_FIXTURE"] = fixture
                 print(f"CHECK: Compose MOCK {fixture}", flush=True)
@@ -111,6 +112,15 @@ def main():
                 if after_restart is not None:
                     after_restart()
                     after_restart = None
+                if lost_preview is not None:
+                    closed = api(lost_preview + "/close", {}, token, expected=404)
+                    cancelled = api(lost_preview + "/cancel", {"generation": 1}, token, expected=404)
+                    unknown = api("/api/experimental/place-previews/" + str(uuid.uuid4()) + "/close",
+                                  {}, token, expected=404)
+                    assert closed == cancelled == unknown
+                    assert closed["code"] == "PREVIEW_NOT_FOUND"
+                    lost_preview = None
+                    print("PASS: restart-lost preview and unknown ID return same 404; not cleanup acknowledgement", flush=True)
                 session = api("/api/experimental/place-previews", {}, token)
                 path = "/api/experimental/place-previews/" + session["previewId"]
                 query = json.loads((ROOT / "api/examples/place-preview-recommendation-query.json").read_text())
@@ -127,6 +137,8 @@ def main():
                 api(path + "/close", {}, token)
                 if fixture == "RESULTS":
                     after_restart = auth.exercise(base, validate_auth)
+                    orphan = api("/api/experimental/place-previews", {}, token)
+                    lost_preview = "/api/experimental/place-previews/" + orphan["previewId"]
                 print(f"PASS: Compose {fixture}, candidates={count}, persisted token accepted", flush=True)
             api("/api/v1/anonymous-sessions/current", token=token, method="DELETE")
             print(f"PASS: Docker MOCK4, preview HTTP={requests}, auth HTTP={auth_requests}; loopback/non-root/read-only/health/DB restart/role403")

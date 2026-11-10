@@ -81,3 +81,7 @@ python3 scripts/preview-session-demo.py --base-url http://127.0.0.1:8080
 ```
 
 서버 저장소는 loopback에 한정하며 외부 전화·Kakao·AI·유료 API를 실행하지 않습니다. 호출자는 인증 발급 → 임시 미리보기 → 가상 검색 1회 → 명시적 갱신 → 취소/종료 → 인증 폐기를 수행합니다. 공동 화면 검증·#1 ETA·#11 데이터 조건 인수 전에는 #16을 닫거나 #19를 병합 준비로 바꾸지 않습니다.
+
+## 2026-11-10 원 요청 복구·정리404 후속
+
+앱26e80cf의 진단/후보 제거 동작을 서버와 대조했습니다. 새 검색 대조 API의 연결은 [REC05_SEARCH_RECOVERY](REC05_SEARCH_RECOVERY.md)를 따릅니다. 서버가 완료 기록 또는 영속 종료를 확인하고 앱이 journal 저장에 성공한 뒤에만 pending을 해소합니다.404/PREVIEW_NOT_FOUND는 정리 미확인 안내를 유지합니다. 기존 core 호환/기기 증거는 새 복구 UI의 인수가 아닙니다.

@@ -1,5 +1,14 @@
 # 구현·검증 현황
 
+## 2026-11-10 #16 검색 복구 절차·main 충돌 해결
+
+- main2e873bc를 공유 이력 보존 merge로 반영했습니다. 문서/CI/계약 캐시·org.json/jsoup 의존성 양측 내용을 보존했습니다. #19의 최종 head/원격 CI는 별도로 확인합니다.
+- `POST /api/v1/searches/reconcile`에 원 키/본문·같은 주체를 보내 완료 검색 ID 대조 또는 오래된 미처리 요청의 영속 종료를 수행합니다. 검색/전화 실행 없이 기존 commands 원장과 잠금을 사용합니다. 재시작·중복·소유권·키 충돌·동시성·rollback·경계를 검증했으며 새 migration/원 payload 변경은 없습니다. [앱 연결 계약](REC05_SEARCH_RECOVERY.md)을 따릅니다.
+- PREVIEW_NOT_FOUND는 만료·미존재·제거·재시작·타인을 구분하지 않으며 정리 성공이 아닙니다. 앱26e80cf의 후보 선제 제거/정리 미확인 안내를 유지합니다. 최신 앱 소스를 pin해4fixture의 host core HTTP52/schema48을 대조했습니다. 기존 기기 담당의 실제300초/인원 경계 보고를 검토했으며 새 기기 실행/새 복구 UI 검증으로 세지 않습니다.
+- Java385개 실패/오류/skip0, 패키징 JAR 계약/MOCK·UNKNOWN·H2 재시작/LIVE 차단, 실제 macOS arm64 Docker4fixture previewHTTP26/authHTTP35를 통과했습니다. 증거는 Git 제외 work/rec05-recovery-*.log입니다. 실제 장소/GPT/전화/유료 호출0, 기존 앱/Keystore/journal/인증 DB/adb 변경0입니다.
+- 새 복구 버튼·원 명령과 종료 결과의 원자적 journal 저장/입력 해제·응답 유실/저장 실패·기존 설치 복구는 #26 연결 후 같은 최종 서버/APK로 확인해야 합니다. #16/#26 OPEN·#19 Draft를 유지하고 그 검증 전 병합하지 않습니다. #1/#11/#17/#40 전체 범위가 완료된 것은 아닙니다.
+
+
 ## 2026-11-10 REC-05 #16 Docker Compose 전달
 
 - 사용자 요청에 따라 [Docker 실행 안내](REC05_DOCKER.md), pinned Java21 multi-stage 이미지·Compose·최소 context 허용 목록·시험 전용 distribution/healthcheck를 추가했습니다. 로컬 기본 bind는127.0.0.1, 명시적 container 인자만 내부0.0.0.0이며 host127.0.0.1:18082 publish입니다. named H2 volume과 실제 익명 인증을 사용하고 가상 Principal/운영자 실행체는 복사하지 않습니다.

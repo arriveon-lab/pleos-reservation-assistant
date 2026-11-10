@@ -108,7 +108,7 @@
             }
           },
           "404": {
-            "description": "Unknown, expired or foreign session (same error)",
+            "description": "PREVIEW_NOT_FOUND intentionally conflates unknown, expired, removed/restarted and foreign-owner IDs. It is NOT an acknowledgement of successful cancellation/closure. Hide old results; do not infer the cause, redispatch or restore them.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -283,7 +283,7 @@
             }
           },
           "404": {
-            "description": "Unknown, expired or foreign session (same error)",
+            "description": "PREVIEW_NOT_FOUND intentionally conflates unknown, expired, removed/restarted and foreign-owner IDs. It is NOT an acknowledgement of successful cancellation/closure. Hide old results; do not infer the cause, redispatch or restore them.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -469,7 +469,7 @@
             }
           },
           "404": {
-            "description": "Unknown, expired or foreign session (same error)",
+            "description": "PREVIEW_NOT_FOUND intentionally conflates unknown, expired, removed/restarted and foreign-owner IDs. It is NOT an acknowledgement of successful cancellation/closure. Hide old results; do not infer the cause, redispatch or restore them.",
             "headers": {
               "Cache-Control": {
                 "schema": {
@@ -655,7 +655,7 @@
             }
           },
           "404": {
-            "description": "Unknown, expired or foreign session (same error)",
+            "description": "PREVIEW_NOT_FOUND intentionally conflates unknown, expired, removed/restarted and foreign-owner IDs. It is NOT an acknowledgement of successful cancellation/closure. Hide old results; do not infer the cause, redispatch or restore them.",
             "headers": {
               "Cache-Control": {
                 "schema": {

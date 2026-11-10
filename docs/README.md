@@ -58,3 +58,5 @@
 - 편집 가능한 관계도 소스: [erd/ERD.mmd](erd/ERD.mmd)
 - 107개 컬럼과 15개 FK를 포함한 가져오기 표기: [erd/ERDCLOUD_IMPORT.sql](erd/ERDCLOUD_IMPORT.sql)
 - [ERDCloud 편집본](https://www.erdcloud.com/d/GLtbN3YfiazAMYi6X)은 비공개입니다. GitHub 게시가 ERDCloud 접근 권한을 변경하지는 않습니다. UNIQUE 5개의 가져오기 누락과 필요한 업무 제약은 [ERD](ERD.md)에 기록했습니다.
+
+- [REC-05 오래된 검색 복구·정리404 계약](REC05_SEARCH_RECOVERY.md): 원 요청 대조/영속 종료·화면 연결 기준과 검증 경계.

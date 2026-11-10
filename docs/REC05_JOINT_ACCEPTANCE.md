@@ -1,5 +1,14 @@
 # REC-05 · 화면 공동 인수 기준과 MOCK fixture
 
+## 2026-11-10 최신 서버 검토와 복구 계약 (이전 절차보다 우선)
+
+[앱26e80cf의 최신 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6759209219)을 검토했습니다. 보고된 두 취향·인원 경계·실제300초 만료/후보 제거·자동검색0은 **화면 담당의 기기 실행 증거**로 접수합니다. 이번 서버 담당이 원 PNG/실기기를 새로 검사했다는 뜻은 아닙니다. 기존 INVALID_TIME pending 보존,404/PREVIEW_NOT_FOUND의 정리 미확인 안내는 타당합니다.
+
+새 서버의 [원 요청 대조·영속 종료와 화면 연결 기준](REC05_SEARCH_RECOVERY.md)을 추가했습니다. 최신 앱26e80cf의 세 core 파일을 수정 없이 직접 컴파일해4fixture HTTP52+schema48을 재검증했고, 패키징 JAR와 실제 Docker에서 대조 응답/종료 기록의 H2 재시작 보존을 확인했습니다. 새 복구 UI는 아직 연결되지 않았습니다. 아래 cf35ead/d415ef7/07b0a43/APK hash는 당시 증거이며 새 조합으로 대입하지 않습니다.
+
+인수용 최신 서버는 이번 PR #19의 검증된 최종 commit을 사용합니다. main2e873bc를 반영해 충돌을 해결했고 이후 변경은 PR의 최종 head/CI로 확인합니다. 같은 인증 volume·원 journal을 유지하고 새 서버 commit/image와 최종 앱 APK SHA를 다시 고정해야 합니다. 기기 기존 요청 복구·journal 저장 실패/응답 유실·재시작의 화면 연결을 확인하기 전에는 공동 인수/병합 완료로 체크하지 않습니다. #1 ETA·#11 데이터·#17 운영 수명·#40 전체 예약 시연은 별도 범위입니다.
+
+
 2026-11-10 KST. 서버 #16/PR #19, 화면 #26 및 후속 #39/PR #46. [화면 담당의 공동 시험 제안](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6741208185)에 대한 서버 측 확인입니다. **계약/서버 재현 준비와 공동 기기 인수는 구분합니다.** 이 문서가 양측 실행·기기 검증 완료를 뜻하지 않습니다.
 
 ## 실제 진행 방식: 각자 PC의 로컬 서버와 비동기 검토
