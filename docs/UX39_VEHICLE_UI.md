@@ -207,10 +207,12 @@ DrivingDeviceChecks의 `-e windowWidth <dp>` 인자로 실제 Activity 너비를
 
 모든 조합에서 대시보드 인원 입력·처리 중 차단·예약 단계 안내·UNKNOWN 조회/종료 미지원 안내·주입 제한/조회 실패 차단을 검사했다. UI fixture는 메모리에만 넣고 종료 시 원 상태로 복원했다. 테스트 전후 journal JSON 전체 동일. 실제 보관 CHANGE UNKNOWN의 확정21:19/요청21:34/0원을 유지했고, 840dp/150%에서 실제 창 내부 swipe 후 하단 조회 버튼(72dp) 접근을 XML/PNG로 확인했다. 기기 캡처를 직접 열어1100dp 두 열/840dp 확대 상태를 확인했다. 신규 예약·변경 POST/결과 주입/실제 전화·유료 호출 없음.
 
-환경은 Pleos Connect2.1.0/API34·user10·density160·jointvalidation 기존 설치, 표준 MOCK18082/8080 reverse다. 각 창은 shell task resize이며 OEM의 모든 Connect-S/W 창 배치 인수가 아니다. font_scale의 원래 null, 주간, 원래1682dp 창으로 복원했고 서버/앱을 실행 상태로 유지했다.
+환경은 Pleos Connect2.1.0/API34·user10·density160·jointvalidation 기존 설치, 표준 MOCK18082/8080 reverse다. 각 창은 shell task resize이며 OEM의 모든 Connect-S/W 창 배치 인수가 아니다. 검사 후 font_scale=1.0·주간·원래1682dp 창을 재확인했고 서버/앱을 실행 상태로 유지했다.
 
 재현: 기존 인증된 MOCK 설치에서 `adb shell am instrument -w -e dashboard true -e windowWidth 840 -e fontScale 1.5 ai.pleos.assistant.mock.jointvalidation.test/ai.pleos.assistant.app.DrivingDeviceChecks`. 글꼴/user10과 시스템 테마는 먼저 설정하며, 완료 후 원래 값으로 복원한다. 예상 결과 PASS이며 새 인증/업무 명령을 생성하지 않는다.
 
 증거는 로컬 Git 제외 `work/ux25-final/{matrix.json,*.log}`, `captures/ux25-final/`(각 조합 dashboard-ready/guidance-unknown/change-unknown, actual-unknown-scrolled.png). 보관 journal/기기 APK는 공개하지 않는다. format·최종 verifyAll PASS(UX94개 기존 결과는 캐시/UP-TO-DATE 포함, 기기5조합은 실제 실행). 제품/API 변경이 없어 smoke는 이번에 재실행하지 않았으며 직전 제품 검증과 구분한다. Lint 오류0·기존4경고 유지.
 
 남은 실제 moving callback/권한·서비스 장애, 다른 Connect-S/W 이미지와 OEM 전체 창 조합·물리 회전/거리 가독성은 현재 환경으로 대체 검증할 수 없다. 기존 #25 협업 요청에 새 답변은 없고 #4의 일반 UNKNOWN 종료 계약도 새 답변이 없다. #39 전체 인수 체크를 올리지 않는다. #19 서버 계약 통합·#40 공동 시연·PR 중복 정리/병합은 별개로 남는다. OPEN/Draft와 담당을 유지한다.
+
+추가 증거 해석: shell resize 후 접근성 bounds와 실제 합성 화면의 위치가 달라 첫 좌표 조작은 스크롤 증거로 채택하지 않았다. 실제 표시된 창 위치에서 다시 swipe하여 actual-unknown-scrolled.png의 조회 버튼까지 확인했다. 이는 OEM 전체 창 배치 검증과 shell 크기 검증을 구분해야 하는 추가 이유다.
