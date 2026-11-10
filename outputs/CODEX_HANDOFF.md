@@ -2,6 +2,8 @@
 
 ## 2026-11-10 REC-12 공공데이터 catalog 준비
 
+- 최초 Linux CI의 Python fixture 완전 일치가 PROJ 마지막 비트 차이로 실패해 좌표만1e-7도 수치 오차를 허용하고 다른 필드는 완전 일치를 유지하도록 수정했습니다. 런타임 코드는 바꾸지 않았으며 최신 CI는 PR에서 확인합니다.
+
 - #48 / feat/48-public-place-catalog에서 공식 OA-18655 로컬 XML→비공개 catalog와 서버 로컬 검색 adapter를 준비했습니다. 출처/라이선스/자체·원천ID/취득·snapshot·원시 행시각/번호 UNVERIFIED를 보존하고 중복·상태충돌/폐업·번호/좌표/시범범위를 검사합니다. catalog 스키마와 공유 가상 fixture·가상 테스트를 추가했습니다. Python49개/Java321개 실패·오류·skip0, format/verify·schema/가상 fixture·REC-08 검사 및 JAR MOCK/인증/계약/H2 재시작/LIVE 차단을 통과했습니다. 로컬 링크76/JSON/diff도 통과했으며 Android/기기는 이번 로컬 검증에 포함하지 않습니다. 원격 CI는 최종 PR 기록을 따릅니다.
 - 기본 MOCK·LIVE 시작 차단·v1/DB/앱/미리보기 공개 계약은 유지합니다. 새 adapter는 Spring 미등록이며 실제 XML 수집/연락처 저장·Kakao/GPT/전화/유료 호출0회입니다. snapshot 미확인/7일 경과 검색 거부와 dispatchBlockers 기본 차단은 운영 최신성/발신 인수의 대체물이 아닙니다.
 - #16 최신 화면 담당의 Docker 기기 보고를 읽고 동일 commit/입력 차이·429/정리 실패 안내를 대조했습니다. 원본 PNG/기기 재검증·공동 전체 인수/PR 병합은 하지 않았습니다. #11 정책은 #23, 상세 인계/남은 계약은 docs/REC12_PUBLIC_CATALOG.md에서 이어갑니다.
