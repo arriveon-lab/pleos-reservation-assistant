@@ -1,6 +1,9 @@
 package ai.pleos.assistant;
 
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -145,8 +148,65 @@ public final class DestinationRecommendationService implements AutoCloseable {
               webResult.state() == WebRecommendation.State.RESULTS
                   ? joiner.join(destinationWindow, found, provider, webResult, needs)
                   : null;
+          if (matches != null
+              && matches.state() != WebListingRecommendationJoiner.State.INVALID_EVIDENCE
+              && matches.candidates().size() < 3
+              && places instanceof PlaceIdentityLookup lookup) {
+            var missing = missingIdentities(webResult, matches);
+            if (!missing.isEmpty() && current.getAsBoolean()) {
+              var resolved = lookup.lookup(destinationWindow, missing, current);
+              if (resolved instanceof PlaceSearchResult.Success extra && current.getAsBoolean()) {
+                var byId = new LinkedHashMap<String, PlaceSummary>();
+                for (PlaceSummary place : extra.places())
+                  byId.putIfAbsent(place.providerPlaceId(), place);
+                for (PlaceSummary place : found.places()) {
+                  if (relevant(place, webResult.candidates()))
+                    byId.putIfAbsent(place.providerPlaceId(), place);
+                }
+                var merged = new ArrayList<PlaceSummary>();
+                for (PlaceSummary place : byId.values()) {
+                  if (merged.size() >= destinationWindow.limit()) break;
+                  merged.add(place);
+                }
+                matches =
+                    joiner.join(
+                        destinationWindow,
+                        new PlaceSearchResult.Success(merged, extra.fetchedAt(), 0),
+                        provider,
+                        webResult,
+                        needs);
+              }
+            }
+          }
           return new Recommendation(plan, webResult.state(), matches);
         });
+  }
+
+  private static List<PlaceIdentityLookup.Identity> missingIdentities(
+      WebRecommendation.Result web, WebListingRecommendationJoiner.Result matches) {
+    return web.candidates().stream()
+        .filter(
+            report ->
+                matches.candidates().stream()
+                    .noneMatch(
+                        matched ->
+                            same(report.name(), matched.name())
+                                && same(report.address(), matched.address())))
+        .limit(3)
+        .map(report -> new PlaceIdentityLookup.Identity(report.name(), report.address()))
+        .toList();
+  }
+
+  private static boolean relevant(PlaceSummary place, List<WebRecommendation.Candidate> reports) {
+    return reports.stream()
+        .anyMatch(
+            report -> same(place.name(), report.name()) && same(place.address(), report.address()));
+  }
+
+  private static boolean same(String left, String right) {
+    return left != null
+        && right != null
+        && PlaceDetailEnricher.canonical(left).equals(PlaceDetailEnricher.canonical(right));
   }
 
   private static Set<WebRecommendation.Need> webNeeds(Set<String> features) {

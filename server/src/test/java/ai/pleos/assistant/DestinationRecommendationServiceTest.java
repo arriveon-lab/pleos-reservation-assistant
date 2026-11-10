@@ -15,6 +15,114 @@ import org.junit.jupiter.api.Test;
 
 class DestinationRecommendationServiceTest {
   @Test
+  void resolves_web_identified_branches_when_category_first_page_does_not_contain_them() {
+    Clock clock = Clock.fixed(Instant.parse("2026-11-10T00:01:00Z"), ZoneOffset.UTC);
+    class Lookup implements PlaceSearchAdapter, PlaceIdentityLookup {
+      int queries;
+
+      @Override
+      public PlaceSearchResult search(PlaceQuery query) {
+        return new PlaceSearchResult.Success(
+            java.util.List.of(
+                new PlaceSummary(
+                    PlaceSummary.Provider.KAKAO,
+                    "nearby",
+                    "근처 다른 식당",
+                    null,
+                    37.544,
+                    127.055,
+                    "다른 주소",
+                    "0212345678",
+                    null,
+                    null)),
+            clock.instant(),
+            0);
+      }
+
+      @Override
+      public PlaceSearchResult lookup(
+          PlaceQuery query,
+          java.util.List<Identity> identities,
+          java.util.function.BooleanSupplier current) {
+        queries++;
+        assertThat(identities).hasSize(3);
+        assertThat(identities).allSatisfy(i -> assertThat(i.name()).startsWith("가상 식당"));
+        return new PlaceSearchResult.Success(
+            java.util.stream.IntStream.range(0, 3)
+                .mapToObj(
+                    n ->
+                        new PlaceSummary(
+                            PlaceSummary.Provider.KAKAO,
+                            "resolved-" + n,
+                            "가상 식당 " + n,
+                            null,
+                            37.544,
+                            127.055,
+                            "가상 주소 " + n,
+                            "0212345678",
+                            null,
+                            null))
+                .toList(),
+            clock.instant(),
+            0);
+      }
+    }
+    var places = new Lookup();
+    DestinationRecommendationService.WebGateway web =
+        (request, deadline, current) ->
+            new WebRecommendation.Result(
+                WebRecommendation.Mode.WEB_SEARCH,
+                WebRecommendation.State.RESULTS,
+                clock.instant(),
+                clock.instant().plusSeconds(240),
+                java.util.stream.IntStream.range(0, 3)
+                    .mapToObj(
+                        n ->
+                            new WebRecommendation.Candidate(
+                                n + 1,
+                                "가상 식당 " + n,
+                                "가상 주소 " + n,
+                                URI.create("https://example.org/fictional-" + n),
+                                WebRecommendation.Fit.NEEDS_CONFIRMATION,
+                                java.util.List.of(
+                                    new WebRecommendation.Assessment(
+                                        WebRecommendation.Need.PARKING,
+                                        WebRecommendation.Verdict.UNKNOWN,
+                                        java.util.List.of())),
+                                java.util.List.of(WebRecommendation.Need.PARKING),
+                                false,
+                                false,
+                                false))
+                    .toList(),
+                0);
+    try (var service =
+        new DestinationRecommendationService(
+            places,
+            PlaceSummary.Provider.KAKAO,
+            new DestinationRecommendationService.SourceInfo(
+                PlaceSummary.Provider.KAKAO, null, null, null, "Kakao Local", null, null),
+            clock,
+            Runnable::run,
+            web)) {
+      var id =
+          service.start(
+              "owner-a",
+              UUID.randomUUID(),
+              1,
+              "가상 서울숲",
+              new PlaceQuery(37.544, 127.055, 1000, 15),
+              new PlaceRecommendationPlanner.Requirements(
+                  new Model.Party(2, 0), 15, Set.of("parking"), Set.of()));
+      var result = service.poll("owner-a", id).orElseThrow().result();
+      assertThat(result.listing().candidates()).hasSize(1);
+      assertThat(result.matches().candidates()).hasSize(3);
+      assertThat(result.matches().candidates())
+          .allSatisfy(candidate -> assertThat(candidate.bookable()).isFalse());
+      assertThat(places.queries).isEqualTo(1);
+    }
+  }
+
+  @Test
   void independent_web_reports_join_three_kakao_candidates_without_sending_kakao_data() {
     Clock clock = Clock.fixed(Instant.parse("2026-11-10T00:01:00Z"), ZoneOffset.UTC);
     PlaceSearchAdapter places =

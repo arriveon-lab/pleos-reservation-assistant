@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -13,6 +14,8 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -22,13 +25,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 
 /**
  * Explicitly constructed transport, not a Spring bean. Real-time preview requires a configured
  * account; persistence/booking integration additionally needs a data-use and transaction contract.
  * The product workflow injects MockPlaceSearchAdapter only.
  */
-public final class KakaoPlaceSearchAdapter implements PlaceSearchAdapter, AutoCloseable {
+public final class KakaoPlaceSearchAdapter
+    implements PlaceSearchAdapter, PlaceIdentityLookup, AutoCloseable {
   private static final URI ENDPOINT =
       URI.create("https://dapi.kakao.com/v2/local/search/category.json");
   private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(3);
@@ -109,6 +114,57 @@ public final class KakaoPlaceSearchAdapter implements PlaceSearchAdapter, AutoCl
                 + query.radiusMeters()
                 + "&sort=distance&page=1&size="
                 + query.limit());
+    return get(uri);
+  }
+
+  @Override
+  public PlaceSearchResult lookup(
+      PlaceQuery query, List<PlaceIdentityLookup.Identity> identities, BooleanSupplier current) {
+    if (query == null
+        || identities == null
+        || identities.isEmpty()
+        || current == null
+        || identities.size() > 3) return failure(PlaceSearchFailure.INVALID_QUERY);
+    var found = new LinkedHashMap<String, PlaceSummary>();
+    int rejected = 0;
+    java.time.Instant fetchedAt = null;
+    for (var identity : identities) {
+      if (!current.getAsBoolean() || Thread.currentThread().isInterrupted())
+        return failure(PlaceSearchFailure.CANCELLED);
+      if (identity == null
+          || !WebRecommendation.text(identity.name(), 100)
+          || !WebRecommendation.text(identity.address(), 200))
+        return failure(PlaceSearchFailure.INVALID_QUERY);
+      URI keyword =
+          URI.create(
+              endpoint.toString().replace("/category.json", "/keyword.json")
+                  + "?query="
+                  + URLEncoder.encode(identity.name(), StandardCharsets.UTF_8)
+                  + "&category_group_code=FD6&x="
+                  + query.longitude()
+                  + "&y="
+                  + query.latitude()
+                  + "&radius="
+                  + query.radiusMeters()
+                  + "&sort=distance&page=1&size=15");
+      var response = get(keyword);
+      if (!(response instanceof PlaceSearchResult.Success success)) return response;
+      fetchedAt = success.fetchedAt();
+      rejected += success.rejectedRecords();
+      for (PlaceSummary place : success.places()) {
+        if (PlaceDetailEnricher.canonical(place.name())
+                .equals(PlaceDetailEnricher.canonical(identity.name()))
+            && PlaceDetailEnricher.canonical(place.address())
+                .equals(PlaceDetailEnricher.canonical(identity.address()))
+            && PlaceRecommendationPlanner.distance(query, place) <= query.radiusMeters() + 30) {
+          found.putIfAbsent(place.providerPlaceId(), place);
+        }
+      }
+    }
+    return new PlaceSearchResult.Success(new ArrayList<>(found.values()), fetchedAt, rejected);
+  }
+
+  private PlaceSearchResult get(URI uri) {
     HttpRequest request =
         HttpRequest.newBuilder(uri)
             .timeout(timeout)
