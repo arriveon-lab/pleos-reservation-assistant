@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class DrivingDeviceChecks extends Instrumentation {
   private boolean narrow;
   private boolean previewBoundary;
+  private boolean recoveryFailure;
   private float expectedFontScale;
 
   @Override
@@ -22,6 +23,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
     narrow = "true".equals(arguments.getString("narrow"));
     previewBoundary = "true".equals(arguments.getString("previewBoundary"));
     expectedFontScale = Float.parseFloat(arguments.getString("fontScale", "0"));
+    recoveryFailure = "true".equals(arguments.getString("recoveryFailure"));
     start();
   }
 
@@ -29,6 +31,12 @@ public final class DrivingDeviceChecks extends Instrumentation {
   public void onStart() {
     Bundle result = new Bundle();
     try {
+      if (recoveryFailure) {
+        RecoveryDeviceChecks.run(this);
+        result.putString("stream", "PASS: injected recovery transport and UI checks\n");
+        finish(Activity.RESULT_OK, result);
+        return;
+      }
       if (previewBoundary) {
         PreviewBoundaryChecks.run(this);
         result.putString(

@@ -268,7 +268,12 @@ public final class ReservationActivity extends ComponentActivity {
     int restoredY = stage.equals(displayedStage) ? previousY : 0;
     displayedStage = stage;
     if (state.has("pending")) {
-      text(R.string.pending);
+      JSONObject pending = state.optJSONObject("pending");
+      boolean timeRejected =
+          pending != null
+              && java.util.Set.of("INVALID_TIME", "STALE_NAVIGATION")
+                  .contains(pending.optString("recoveryCode"));
+      text(timeRejected ? R.string.pending_time_rejected : R.string.pending);
       button(
           R.string.retry,
           !model.busy() && model.restriction().allowsInput(),

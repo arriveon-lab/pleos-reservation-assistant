@@ -193,9 +193,21 @@ public final class MockRepository {
     // Also retry a previously failed disk write before contacting the server.
     persist();
     if (!restriction.allowsInput()) throw new IllegalStateException("INPUT_BLOCKED");
-    JSONObject result =
-        transport.exchange(
-            pending.getString("path"), pending.getJSONObject("body"), pending.getString("key"));
+    JSONObject result;
+    try {
+      result =
+          transport.exchange(
+              pending.getString("path"), pending.getJSONObject("body"), pending.getString("key"));
+    } catch (AuthSession.HttpFailure failure) {
+      if (failure.status == 400
+          && "/searches".equals(pending.getString("path"))
+          && java.util.Set.of("INVALID_TIME", "STALE_NAVIGATION").contains(failure.code)) {
+        // Preserve the original identity, key and intent. Rejection is not reconciliation.
+        pending.put("recoveryCode", failure.code);
+        persist();
+      }
+      throw failure;
+    }
     checkMode(result);
     String target = pending.getString("target");
     if ("searchId".equals(target) && !result.getString("id").equals(state.optString("searchId"))) {

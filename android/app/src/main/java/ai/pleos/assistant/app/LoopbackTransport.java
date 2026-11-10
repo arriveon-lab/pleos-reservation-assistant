@@ -55,7 +55,23 @@ final class LoopbackTransport implements AuthSession.Wire {
         }
       }
       int code = connection.getResponseCode();
-      if (code != 200) throw new AuthSession.HttpFailure(code);
+      if (code != 200) {
+        String errorCode = "";
+        try (InputStream input = connection.getErrorStream()) {
+          if (input != null) {
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            int value;
+            while (buffer.size() <= 4096 && (value = input.read()) != -1) buffer.write(value);
+            byte[] error = buffer.toByteArray();
+            if (error.length <= 4096)
+              errorCode =
+                  new JSONObject(new String(error, StandardCharsets.UTF_8)).optString("code");
+          }
+        } catch (Exception unreadable) {
+          // Keep the HTTP failure even if its optional JSON body is absent or malformed.
+        }
+        throw new AuthSession.HttpFailure(code, errorCode);
+      }
       try (InputStream input = connection.getInputStream();
           ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
         byte[] buffer = new byte[4096];

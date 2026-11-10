@@ -37,6 +37,7 @@ class PreviewControllerTest {
         cancels = new AtomicInteger();
     CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(0);
     boolean holdCreate, cleanupFailure;
+    AuthSession.HttpFailure cleanupHttp;
     Consumer<JSONObject> mutation = v -> {};
 
     public JSONObject exchange(String path, JSONObject body, String key) throws Exception {
@@ -55,11 +56,13 @@ class PreviewControllerTest {
       }
       if (path.endsWith("/cancel")) {
         cancels.incrementAndGet();
+        if (cleanupHttp != null) throw cleanupHttp;
         if (cleanupFailure) throw new IOException();
         return new JSONObject();
       }
       if (path.endsWith("/close")) {
         closes.incrementAndGet();
+        if (cleanupHttp != null) throw cleanupHttp;
         return new JSONObject();
       }
       CountDownLatch waiting = release;
@@ -328,6 +331,39 @@ class PreviewControllerTest {
       assertEquals("INVALID_RESPONSE", c.view().state());
       assertNull(c.view().result());
     }
+  }
+
+  @Test
+  void missingCleanupIsNotSuccessAndNeverRestoresExpiredResults() throws Exception {
+    Wire w = new Wire();
+    w.cleanupHttp = new AuthSession.HttpFailure(404, "PREVIEW_NOT_FOUND");
+    var c = controller(w);
+    c.search(INPUT);
+    await(() -> c.view().result() != null);
+    now.set(NOW.plusSeconds(301));
+    c.tick();
+    await(() -> !c.view().cleanupPending());
+    assertEquals("EXPIRED", c.view().state());
+    assertNull(c.view().result());
+    assertTrue(c.view().cleanupMissing());
+    assertFalse(c.view().cleanupFailed());
+    assertEquals(1, w.queries.get());
+    assertEquals(1, w.cancels.get());
+    assertEquals(1, w.closes.get());
+  }
+
+  @Test
+  void unclassified404RemainsCleanupFailure() throws Exception {
+    Wire w = new Wire();
+    w.cleanupHttp = new AuthSession.HttpFailure(404);
+    var c = controller(w);
+    c.search(INPUT);
+    await(() -> c.view().result() != null);
+    c.invalidate("EDITING");
+    await(() -> !c.view().cleanupPending());
+    assertTrue(c.view().cleanupFailed());
+    assertFalse(c.view().cleanupMissing());
+    assertNull(c.view().result());
   }
 
   @Test

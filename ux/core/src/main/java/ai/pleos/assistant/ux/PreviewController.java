@@ -82,7 +82,11 @@ public final class PreviewController implements AutoCloseable {
   }
 
   public record View(
-      String state, JSONObject result, boolean cleanupFailed, boolean cleanupPending) {}
+      String state,
+      JSONObject result,
+      boolean cleanupFailed,
+      boolean cleanupPending,
+      boolean cleanupMissing) {}
 
   private static final class Ticket {
     final long generation;
@@ -106,7 +110,7 @@ public final class PreviewController implements AutoCloseable {
   private JSONObject result;
   private Instant receivedAt;
   private long receivedTick, validNanos;
-  private boolean allowed, closed, cleanupFailed;
+  private boolean allowed, closed, cleanupFailed, cleanupMissing;
   private int cleaning;
 
   public PreviewController(Transport transport, Runnable changed) {
@@ -133,7 +137,8 @@ public final class PreviewController implements AutoCloseable {
           state,
           result == null ? null : new JSONObject(result.toString()),
           cleanupFailed,
-          cleaning > 0);
+          cleaning > 0,
+          cleanupMissing);
     } catch (Exception invalid) {
       throw new IllegalStateException("INVALID_RESPONSE");
     }
@@ -354,22 +359,30 @@ public final class PreviewController implements AutoCloseable {
     cleanup.execute(
         () -> {
           boolean failed = false;
+          boolean missing = false;
           try {
             transport.exchange(
                 ROOT + "/" + ticket.id + "/cancel",
                 new JSONObject().put("generation", ticket.generation),
                 null);
           } catch (Exception error) {
-            failed = true;
+            if (error instanceof AuthSession.HttpFailure http
+                && http.status == 404
+                && "PREVIEW_NOT_FOUND".equals(http.code)) missing = true;
+            else failed = true;
           }
           try {
             transport.exchange(ROOT + "/" + ticket.id + "/close", new JSONObject(), null);
           } catch (Exception error) {
-            failed = true;
+            if (error instanceof AuthSession.HttpFailure http
+                && http.status == 404
+                && "PREVIEW_NOT_FOUND".equals(http.code)) missing = true;
+            else failed = true;
           }
           synchronized (this) {
             cleaning--;
             cleanupFailed |= failed;
+            cleanupMissing |= missing;
             changed.run();
           }
         });

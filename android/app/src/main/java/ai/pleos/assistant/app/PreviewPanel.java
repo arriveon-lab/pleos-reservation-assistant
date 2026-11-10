@@ -248,6 +248,8 @@ final class PreviewPanel {
     }
     if (state.cleanupPending())
       text(results, activity.getString(R.string.preview_cleanup_pending), 24);
+    if (state.cleanupMissing())
+      text(results, activity.getString(R.string.preview_cleanup_missing), 24);
     if (state.cleanupFailed())
       text(results, activity.getString(R.string.preview_cleanup_failed), 24);
     JSONObject value = state.result();

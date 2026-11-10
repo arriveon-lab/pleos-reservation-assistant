@@ -18,10 +18,20 @@ public final class AuthSession implements MockRepository.Transport {
 
   public static final class HttpFailure extends Exception {
     public final int status;
+    public final String code;
 
     public HttpFailure(int status) {
+      this(status, "");
+    }
+
+    public HttpFailure(int status, String code) {
       super("HTTP_" + status);
       this.status = status;
+      // Only known, non-sensitive contract codes cross the transport boundary.
+      this.code =
+          java.util.Set.of("INVALID_TIME", "STALE_NAVIGATION", "PREVIEW_NOT_FOUND").contains(code)
+              ? code
+              : "";
     }
   }
 
