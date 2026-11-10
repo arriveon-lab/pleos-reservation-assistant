@@ -13,6 +13,7 @@ from ..service import DomainError, ReservationService
 from .config import VoiceConfig, load_env_file
 from .diagnostics import AudioDiagnostics
 from .echo import attach_echo
+from .input_probe import InputProbe
 from .resilience import CallSupervisor, SerializedStore, opening_text, room_options, turn_options
 from .workflow import LiveWorkflow
 
@@ -203,6 +204,7 @@ async def reservation_agent(ctx: agents.JobContext):
     diagnostics = AudioDiagnostics()
     ended = False
     echo = None
+    input_probe = None
 
     def persist_end(reason, snapshot):
         # One queued operation: cancellation of its await cannot skip finish after diagnostics.
@@ -217,6 +219,8 @@ async def reservation_agent(ctx: agents.JobContext):
             return
         ended = True
         try:
+            if input_probe:
+                await input_probe.close()
             if call_id:
                 snapshot = diagnostics.snapshot()
                 await store.run(lambda: persist_end(reason, snapshot))
@@ -239,6 +243,8 @@ async def reservation_agent(ctx: agents.JobContext):
             await supervisor.stop()
         if echo:
             echo.clear()
+        if input_probe:
+            await input_probe.close()
         if call_id and not ended:
             snapshot = diagnostics.snapshot()
             await store.run(lambda: persist_end(reason, snapshot))
@@ -324,6 +330,9 @@ async def reservation_agent(ctx: agents.JobContext):
 
         agent = BookingVoiceAgent(workflow, call_id, booking_context, close_call, diagnostics, supervisor, store)
         await session.start(room=ctx.room, agent=agent, room_options=room_options(config))
+        if config.input_level_probe:
+            input_probe = InputProbe(session, participant)
+            diagnostics.input_probe = input_probe
         echo = attach_echo(session, config, diagnostics)
         reminder = supervisor.spawn(supervisor.watch())
         # Only the short identity statement is protected; buffered user audio is preserved.

@@ -13,6 +13,7 @@ from livekit.agents.llm import ChatMessage
 from ..service import DomainError
 from .config import VoiceConfig, ConfigurationError
 from .diagnostics import AudioDiagnostics
+from .input_probe import InputProbe
 from .resilience import (CallSupervisor, SerializedStore, control_intent, fallback_audio,
                          opening_text, room_options, turn_options)
 
@@ -28,6 +29,58 @@ class ResilienceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("안녕하세요, 박테스트 님의 AI 비서입니다.",
                          opening_text({"reservationName": "박테스트"}))
         self.assertEqual("안녕하세요, AI 예약 비서입니다.", opening_text({}))
+
+    async def test_input_probe_distinguishes_raw_signal_from_filtered_silence(self):
+        from livekit import rtc
+        from .echo import pcm_frame
+        import array
+        raw = pcm_frame(array.array("h", [1600] * 800).tobytes())
+        silence = pcm_frame(bytes(1600))
+        class Stream:
+            def __aiter__(self):
+                async def frames():
+                    yield rtc.AudioFrameEvent(raw)
+                return frames()
+            aclose = AsyncMock()
+        source = SimpleNamespace(__anext__=AsyncMock(return_value=silence))
+        session = SimpleNamespace(input=SimpleNamespace(audio=source))
+        factory = Mock(return_value=Stream())
+        probe = InputProbe(session, object(), stream_factory=factory)
+        self.assertIs(silence, await session.input.audio.__anext__())
+        await probe.task
+        snapshot = probe.snapshot()
+        self.assertGreater(snapshot["decodedBeforeLocalNC"]["rmsAmplitude"], 0)
+        self.assertEqual(0, snapshot["afterLocalNCBeforeAEC"]["rmsAmplitude"])
+        self.assertIsNone(factory.call_args.kwargs["noise_cancellation"])
+        self.assertEqual(4, factory.call_args.kwargs["capacity"])
+        self.assertTrue(all(isinstance(v, int) for v in vars(probe.raw).values()))
+        await probe.close()
+
+    async def test_input_probe_failure_keeps_original_input_available(self):
+        from .echo import pcm_frame
+        frame = pcm_frame(bytes(1600))
+        source = SimpleNamespace(__anext__=AsyncMock(return_value=frame))
+        session = SimpleNamespace(input=SimpleNamespace(audio=source))
+        probe = InputProbe(session, object(), stream_factory=Mock(side_effect=RuntimeError("test")))
+        self.assertIs(frame, await session.input.audio.__anext__())
+        self.assertEqual(1, probe.errors)
+        self.assertIsNone(probe.snapshot()["decodedBeforeLocalNC"]["rmsAmplitude"])
+        await probe.close()
+
+    async def test_input_probe_cancellation_closes_the_shadow_stream_once(self):
+        class Stream:
+            def __aiter__(self):
+                return self
+            async def __anext__(self):
+                await asyncio.Event().wait()
+            aclose = AsyncMock()
+        stream = Stream()
+        session = SimpleNamespace(input=SimpleNamespace(audio=None))
+        probe = InputProbe(session, object(), stream_factory=Mock(return_value=stream))
+        await asyncio.sleep(0)
+        await asyncio.wait_for(probe.close(), 0.2)
+        await probe.close()
+        stream.aclose.assert_awaited_once()
 
     def setUp(self):
         self.now = 0
@@ -281,7 +334,8 @@ class AudioConfigurationTest(unittest.TestCase):
         self.assertIsNone(room_options(replace(config, noise_suppression=False)).audio_input.noise_cancellation)
 
     def test_invalid_audio_configuration_is_rejected_and_vad_rollback_is_supported(self):
-        for settings in [{"PHONE_INTERRUPTION_MODE": "unknown"}, {"PHONE_NOISE_SUPPRESSION": "maybe"}]:
+        for settings in [{"PHONE_INTERRUPTION_MODE": "unknown"}, {"PHONE_NOISE_SUPPRESSION": "maybe"},
+                         {"PHONE_INPUT_LEVEL_PROBE": "maybe"}]:
             with self.assertRaises(ConfigurationError):
                 VoiceConfig.from_env({"PHONE_SECRETS_DIR": "no-test-secrets", **settings})
         config = VoiceConfig.from_env({"PHONE_SECRETS_DIR": "no-test-secrets", "PHONE_INTERRUPTION_MODE": "vad"})

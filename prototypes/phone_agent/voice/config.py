@@ -68,6 +68,7 @@ class VoiceConfig:
     noise_suppression: bool = True
     echo_cancellation: bool = False
     echo_delay_ms: int = 200
+    input_level_probe: bool = False
     interruption_mode: str = "adaptive"
     database: str = "data/phone-agent-prototype.sqlite3"
     secrets_dir: str = field(default="work/telkit-private", repr=False)
@@ -94,8 +95,10 @@ class VoiceConfig:
             noise = env.get("PHONE_NOISE_SUPPRESSION", "true").lower()
             echo = env.get("PHONE_ECHO_CANCELLATION", "false").lower()
             echo_delay = int(env.get("PHONE_ECHO_DELAY_MS", "200"))
+            probe = env.get("PHONE_INPUT_LEVEL_PROBE", "false").lower()
             interruption = env.get("PHONE_INTERRUPTION_MODE", "adaptive").lower()
             if (noise not in ("true", "false") or echo not in ("true", "false")
+                    or probe not in ("true", "false")
                     or not 0 <= echo_delay <= 500 or interruption not in ("adaptive", "vad")):
                 raise ValueError
             if not 30 <= seconds <= 600 or not 1 <= daily <= 10:
@@ -120,6 +123,7 @@ class VoiceConfig:
             tts_model=env.get("PHONE_TTS_MODEL", cls.tts_model),
             noise_suppression=noise == "true", interruption_mode=interruption,
             echo_cancellation=echo == "true", echo_delay_ms=echo_delay,
+            input_level_probe=probe == "true",
             tts_voice=env.get("PHONE_TTS_VOICE", cls.tts_voice))
 
     def missing(self, setup=False):
@@ -160,4 +164,5 @@ class VoiceConfig:
                 "audioHandling": {"noiseSuppression": self.noise_suppression,
                                   "echoCancellation": self.echo_cancellation,
                                   "echoInitialDelayMs": self.echo_delay_ms,
+                                  "inputLevelProbe": self.input_level_probe,
                                   "interruptionMode": self.interruption_mode}}
