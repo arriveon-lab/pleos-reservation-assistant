@@ -93,8 +93,11 @@ PHONE_ENV_FILE=work/no-test-secrets python -m unittest prototypes.phone_agent.te
 docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
 ```
 
-95개 로컬 검사는 전화/모델 요청 없이 LIVE 시작 차단, 기존 예약 상태·소유권·중복·장애 처리, VAD 재사용을 확인합니다. 컨테이너에서도 같은 검사를 실행합니다. 배포·readiness·MOCK 검증과 실제 한국어 음질 검증은 별개이며, 서버에서의 실통화 품질은 승인된 시험 전까지 미검증입니다.
+102개 로컬 검사는 전화/모델 요청 없이 LIVE 시작 차단, 기존 예약 상태·소유권·중복·장애 처리, VAD 재사용과 AEC 참조·겹침·중단 수명을 확인합니다. 컨테이너에서도 같은 검사를 실행합니다. 배포·readiness·MOCK 검증과 실제 한국어 음질 검증은 별개이며, 서버에서의 실통화 품질은 승인된 시험 전까지 미검증입니다.
 
 근거: [Docker host network](https://docs.docker.com/engine/network/drivers/host/), [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/), [LiveKit prewarm](https://docs.livekit.io/agents/server/options/), [LiveKit 이미지 빌드](https://docs.livekit.io/deploy/agents/builds/).
 
 2026-11-10 첫 EC2 실전화는 36초·48원, SDK 모델/연결 오류 0개였으나 사용자 청취 끊김과 AI 중단 메시지 3개가 남았습니다. UNKNOWN 저장 후 worker를 중단했습니다. 스피커폰 에코 여부와 실제 음질 개선은 확정하지 않았으며 [STATUS](../../../docs/STATUS.md)를 따릅니다.
+
+
+2026-11-10 후속 스피커폰 시험은 배포 소스 `e7e397f`에서 42초·60원, UNKNOWN 저장 후 종료됐습니다. 사용자 청취 개선과 AI 중단 메시지 0개를 관측했습니다. 로컬/Linux 102개 검사와 해당 코드의 원격 CI 5개를 통과했습니다. 에코 처리·16kHz·출력 속도 조정을 함께 적용한 한 번의 결과이며 전체 음질 통과로 확대하지 않습니다. 시험 후 LIVE=false·AEC 기본 false·일일 상한 1·worker 중단·활성 room 0개·API healthy입니다.

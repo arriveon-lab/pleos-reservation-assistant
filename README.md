@@ -2,7 +2,7 @@
 
 목적지·ETA·동행자의 필수 조건으로 식당을 비교하고, 누락 정보 문의에서 예약 결과 확인까지 연결하는 차량용 서비스입니다.
 
-현재 **로컬 MOCK 서버**를 실행하고 **SDK 진단용 debug APK**를 빌드할 수 있습니다. 성수동 이름을 사용한 가상 식당 3곳이며 실제 장소 검색·AI 모델·전화·예약이 아닙니다. `app.mode=LIVE`는 서버 시작 단계에서 차단됩니다. Pleos 기기 실행은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)에서는 Telkit·LiveKit 실전화 8회를 시험했습니다. 최근 첫 EC2 통화는 SDK 연결/모델 오류 없이 종료됐지만 발화 중단 3개와 청취 끊김이 남았고 UNKNOWN을 유지합니다. 스피커폰 에코는 원인 후보이며 미확정입니다. NC 소음 억제·adaptive 끼어들기·대기/장애 복구를 적용하고 92개 로컬 검사를 통과했습니다. 전체 음질 개선과 문맥 수락·종료 안내의 실전화 효과, 제품 서버 통합은 미검증입니다. 독립 전화 프로토타입은 [EC2 배포](prototypes/phone_agent/deploy/README.md)에서도 MOCK으로 동작하며 Linux 포함 95개 검사를 통과했습니다. 첫 서버 실전화에서도 끊김이 남아 청취 품질은 미통과입니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
+현재 **로컬 MOCK 서버**를 실행하고 **SDK 진단용 debug APK**를 빌드할 수 있습니다. 성수동 이름을 사용한 가상 식당 3곳이며 실제 장소 검색·AI 모델·전화·예약이 아닙니다. `app.mode=LIVE`는 서버 시작 단계에서 차단됩니다. Pleos 기기 실행은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)은 Telkit·LiveKit과 EC2 배포를 연결하고 실전화 9회를 시험했습니다. 최근 스피커폰 시험에서 출력 참조 AEC·입출력 속도 조정을 함께 적용한 뒤 사용자가 끊김 감소와 응답 개선을 보고했고 AI 중단 메시지는 직전 3개에서 0개였습니다. 예약 결과는 UNKNOWN이며 한 번의 시험으로 전체 품질이나 에코 원인을 확정하지 않습니다. 로컬·Linux에서 102개 검사를 통과했고 시험 후 LIVE와 worker는 꺼 두었습니다. 제품 서버 통합·실수신·변경 재확인은 미검증입니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
 
 [GitHub 저장소](https://github.com/arriveon-lab/pleos-reservation-assistant) · [작업 이슈](https://github.com/arriveon-lab/pleos-reservation-assistant/issues) · [CI 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)
 
