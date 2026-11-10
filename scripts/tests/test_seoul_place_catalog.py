@@ -29,7 +29,14 @@ class SeoulCatalogTest(unittest.TestCase):
     def test_shared_java_fixture_matches_importer_and_preserves_raw_time(self):
         actual, report = catalog.build_catalog([row(n) for n in range(4)], NOW, SNAPSHOT)
         fixture = Path(__file__).parents[2] / "server/src/test/resources/places/seoul-catalog-fictional.json"
-        self.assertEqual(actual, json.loads(fixture.read_text()))
+        expected = json.loads(fixture.read_text())
+        # PROJ/libm can differ in the final floating-point bits across macOS/Linux.
+        # This numerical tolerance is not a claim of real merchant/survey accuracy.
+        for produced, saved in zip(actual["entries"], expected["entries"], strict=True):
+            for field in ("latitude", "longitude"):
+                self.assertAlmostEqual(produced[field], saved[field], delta=1e-7)
+                saved[field] = produced[field]
+        self.assertEqual(actual, expected)
         self.assertEqual(report["acceptedRows"], 4)
         self.assertFalse(report["inquiryDispatchAllowed"])
         self.assertEqual(actual["entries"][0]["rowTimeZone"], "UNKNOWN")

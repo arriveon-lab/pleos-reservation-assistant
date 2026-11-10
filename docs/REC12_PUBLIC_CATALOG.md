@@ -82,3 +82,6 @@ python scripts/seoul-place-catalog.py \
 - 가상 Python49개(기존 품질40+catalog9)·서버 Java321개(기존313+catalog8), 실패/오류/skip0. format/verify 및 schema/공유 fixture·REC-08 가상2계획 검사를 통과했습니다.
 - 패키징 JAR의 실제 서버 토큰/소유권·MOCK/UNKNOWN·OpenAPI·Flyway/H2 재시작·LIVE 시작 차단을 확인했습니다. 로컬 로그는 작업 루트의 Git 제외 work/public-catalog-verify.log 및 work/public-catalog-smoke.log입니다.
 - 수정/신규18파일·로컬 문서 링크76개·JSON/diff 검사. Python 테스트는 네트워크0회이며 실매장 원문/연락처 fixture를 추가하지 않았습니다. Android/기기 검증은 이번 로컬 실행에 포함하지 않았고 원격 CI는 PR에서 별도로 확인합니다.
+
+
+Linux 최초 CI에서는 PROJ/libm 좌표의 마지막 부동소수점 비트 차이(위도 약7e-15도)를 fixture 완전 일치로 비교한 테스트가 실패했습니다. 좌표만 절대오차1e-7도 이내로 비교하고 ID/원천/시각/번호 등 다른 필드는 완전 일치를 유지하도록 수정했습니다. 이는 실제 좌표 정확도 보장이 아닌 플랫폼 수치 차이의 검증 기준입니다. 런타임 변환·검색/발신 보호나 기존 품질 검사를 완화하지 않았습니다. 후속 CI 성공 여부는 PR의 최신 head를 기준으로 확인합니다.
