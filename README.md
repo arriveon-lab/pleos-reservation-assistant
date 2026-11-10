@@ -2,7 +2,7 @@
 
 목적지·ETA·동행자의 필수 조건으로 식당을 비교하고, 누락 정보 문의에서 예약 결과 확인까지 연결하는 차량용 서비스입니다.
 
-현재 **로컬 MOCK 서버**를 실행하고 **SDK 진단용 debug APK**를 빌드할 수 있습니다. 성수동 이름을 사용한 가상 식당 3곳이며 실제 장소 검색·AI 모델·전화·예약이 아닙니다. `app.mode=LIVE`는 서버 시작 단계에서 차단됩니다. Pleos 기기 실행은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)에서는 Telkit·LiveKit 실전화 5회를 시험했습니다. 최근 첫 안내 청취·양방향 대화를 확인했지만 약한 끊김과 반복 질문이 남았습니다. 저장 결과 UNKNOWN과 음성의 예약 완료 안내가 달라 확정을 보류했습니다. 문맥 수락·저장 결과에 따른 종료 안내를 보강했고 이 후속 수정의 실전화 효과와 제품 서버 통합은 미검증입니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
+현재 **로컬 MOCK 서버**를 실행하고 **SDK 진단용 debug APK**를 빌드할 수 있습니다. 성수동 이름을 사용한 가상 식당 3곳이며 실제 장소 검색·AI 모델·전화·예약이 아닙니다. `app.mode=LIVE`는 서버 시작 단계에서 차단됩니다. Pleos 기기 실행은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)에서는 Telkit·LiveKit 실전화 6회를 시험했습니다. 최근 첫 안내·이름 전달 뒤 비용 질문이 음성 중단으로 반복됐고, 조건 확인 전 연결 종료로 UNKNOWN을 유지합니다. 문맥 수락·저장 결과 기반 종료 안내의 실전화 효과, 소음 처리와 제품 서버 통합은 미검증입니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
 
 [GitHub 저장소](https://github.com/arriveon-lab/pleos-reservation-assistant) · [작업 이슈](https://github.com/arriveon-lab/pleos-reservation-assistant/issues) · [CI 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)
 
