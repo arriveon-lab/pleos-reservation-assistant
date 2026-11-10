@@ -3,6 +3,7 @@
 ## 2026-11-10 INT-01 #52 격리 통합 진행
 
 - 서버 `RecommendationJobRegistry`는 같은 화면의 목적지 세대가 바뀌면 이전 비동기 추천 결과를 폐기하고, 소유자별 폴링에서 완료 결과만 재조회한다. 폴링은 공급자 작업을 재실행하지 않는다. 가상 지연·취소·실패·타인 조회 단위 테스트를 통과했다. 현재는 메모리 경계이며 제품 HTTP·Spring 주입·실제 검색 worker는 아직 연결하지 않았다.
+- #48 catalog의 `SEOUL_OPEN_DATA` provider를 공유 추천 계획 스키마에 추가한 뒤 미리보기 초안의 중첩 스키마가 어긋나 원격 `Server and contract`가 실패했다. 중첩 enum을 동기화하고 로컬 `smoke-test.py --check-contract`의 가상 HTTP·OpenAPI·재시작·LIVE 차단 검사를 통과했다. 원격 재실행은 새 push에서 판정한다.
 - #43 이슈에 조건 문의·예약·지연 통보의 비동기 작업/멱등성/UNKNOWN/비용·연락처 경계 API 제안을 남겼다. 담당자 답변 전 계약 확정이나 실제 발신으로 취급하지 않는다.
 - #48/PR #49 공공데이터 로컬 catalog 두 커밋을 통합 브랜치로 가져와 원 PR의 출처와 검증 경계를 보존했다. 원 PR 자체는 Draft/미병합이다. catalog는 아직 Spring 제품 경로에 등록하지 않았고 실제 XML을 취득하지 않았다.
 - `PlaceDetailRecommendationService`가 `SEOUL_OPEN_DATA` 목록을 승인된 공공 출처로 취급해 별도로 승인된 웹 페이지의 일반 조건을 조사할 수 있게 했다. `KAKAO` 목록은 같은 READ_ONLY_WEB 경로에서 DATA_USE_BLOCKED를 유지한다. 두 경계 가상 테스트를 통과했고 결과는 예약·발신 권한이 아니다.
