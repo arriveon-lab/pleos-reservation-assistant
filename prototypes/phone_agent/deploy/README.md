@@ -93,7 +93,7 @@ PHONE_ENV_FILE=work/no-test-secrets python -m unittest prototypes.phone_agent.te
 docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
 ```
 
-102개 로컬 검사는 전화/모델 요청 없이 LIVE 시작 차단, 기존 예약 상태·소유권·중복·장애 처리, VAD 재사용과 AEC 참조·겹침·중단 수명을 확인합니다. 컨테이너에서도 같은 검사를 실행합니다. 배포·readiness·MOCK 검증과 실제 한국어 음질 검증은 별개이며, 서버에서의 실통화 품질은 승인된 시험 전까지 미검증입니다.
+110개 로컬 검사는 전화/모델 요청 없이 LIVE 시작 차단, 기존 예약 상태·소유권·중복·장애 처리, VAD 재사용과 AEC 참조·겹침·중단 수명을 확인합니다. 컨테이너에서도 같은 검사를 실행합니다. 배포·readiness·MOCK 검증과 실제 한국어 음질 검증은 별개이며, 서버에서의 실통화 품질은 승인된 시험 전까지 미검증입니다.
 
 근거: [Docker host network](https://docs.docker.com/engine/network/drivers/host/), [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/), [LiveKit prewarm](https://docs.livekit.io/agents/server/options/), [LiveKit 이미지 빌드](https://docs.livekit.io/deploy/agents/builds/).
 

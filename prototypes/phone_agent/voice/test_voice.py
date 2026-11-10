@@ -136,6 +136,110 @@ class LiveWorkflowTest(unittest.TestCase):
         self.assertEqual("19:00", self.get_booking(booking)["confirmedTime"])
         self.assertEqual("contextual_acknowledgement", self.workflow._find(call["id"])[1]["confirmationBasis"])
 
+    def test_short_acceptance_is_bound_to_the_named_booking_request(self):
+        from .workflow import acknowledged_booking_name
+        for reply in ["네", "네.", "네네", "예", "넵", "아, 네.", "네, 좋습니다.", "네, 맞아요.",
+                      "알겠습니다.", "그렇게 해드릴게요.", "네, 예약되었습니다.",
+                      "예약 확정됐습니다.", "네, 알겠습니다. 이따 뵐게요."]:
+            with self.subTest(reply=reply):
+                events = [{"speaker": "agent", "message": "김예약 이름으로 예약 부탁드립니다."},
+                          {"speaker": "restaurant", "message": reply}]
+                self.assertTrue(acknowledged_booking_name(events, reply, "김예약"))
+
+    def test_bare_yes_is_valid_evidence_even_when_cost_answer_is_also_yes(self):
+        booking, call = self.reserve()
+        for speaker, message in [
+            ("agent", "김예약 이름으로 예약 부탁드립니다."), ("restaurant", "네."),
+            ("agent", "추가 비용은 없고 필수 조건도 모두 가능할까요?"), ("restaurant", "네."),
+        ]:
+            self.workflow.transcript(call["id"], speaker, message)
+        result = self.workflow.record_outcome(call["id"], accepted=True, day=DAY, time="19:00",
+            reservation_name="김예약", people=4, additional_cost=0,
+            confirmed_requirements=required_conditions(CONDITIONS), evidence="네")
+        self.assertEqual("CONFIRMED", result["status"])
+        self.assertEqual("19:00", self.get_booking(booking)["confirmedTime"])
+
+    def test_booking_completion_reply_does_not_require_repeating_the_name(self):
+        booking, call = self.reserve()
+        for speaker, message in [
+            ("agent", "김예약 이름으로 예약 부탁드립니다."),
+            ("restaurant", "네, 예약되었습니다."),
+            ("agent", "추가 비용이나 필수 조건에 문제가 있을까요?"),
+            ("restaurant", "아니요, 비용은 없고 요청하신 조건 모두 가능합니다."),
+        ]:
+            self.workflow.transcript(call["id"], speaker, message)
+        result = self.workflow.record_outcome(call["id"], accepted=True, day=DAY, time="19:00",
+            reservation_name="김예약", people=4, additional_cost=0,
+            confirmed_requirements=required_conditions(CONDITIONS), evidence="네, 예약되었습니다.")
+        self.assertEqual("CONFIRMED", result["status"])
+        self.assertEqual("contextual_acknowledgement", self.workflow._find(call["id"])[1]["confirmationBasis"])
+
+    def test_hold_after_acceptance_can_resolve_without_repeating_the_name(self):
+        _, call = self.reserve()
+        for speaker, message in [
+            ("agent", "김예약 이름으로 예약 부탁드립니다."), ("restaurant", "네"),
+            ("agent", "추가 비용이나 필수 조건에 문제가 있을까요?"),
+            ("restaurant", "잠시만요, 확인해 볼게요."), ("agent", "네, 기다리겠습니다."),
+            ("restaurant", "추가 비용 없고 요청하신 조건 모두 가능합니다."),
+        ]:
+            self.workflow.transcript(call["id"], speaker, message)
+        result = self.workflow.record_outcome(call["id"], accepted=True, day=DAY, time="19:00",
+            reservation_name="김예약", people=4, additional_cost=0,
+            confirmed_requirements=required_conditions(CONDITIONS), evidence="네")
+        self.assertEqual("CONFIRMED", result["status"])
+
+    def test_yes_to_availability_or_cost_alone_stays_unknown(self):
+        booking, call = self.reserve()
+        self.workflow.transcript(call["id"], "agent", "김예약 이름으로 예약 가능할까요?")
+        self.workflow.transcript(call["id"], "restaurant", "네")
+        result = self.workflow.record_outcome(call["id"], accepted=True, day=DAY, time="19:00",
+            reservation_name="김예약", people=4, additional_cost=0,
+            confirmed_requirements=required_conditions(CONDITIONS), evidence="네")
+        self.assertEqual("UNKNOWN", result["status"])
+        self.assertIsNone(self.get_booking(booking)["confirmedTime"])
+
+    def test_short_acceptance_rejects_qualified_partial_and_stale_evidence(self):
+        from .workflow import acknowledged_booking_name
+        named = "김예약 이름으로 예약 부탁드립니다."
+        for prompt, reply, quote in [
+            (named, "네, 다만 시간이 달라요.", "네"),
+            (named, "네, 확인해 볼게요.", "네"),
+            (named, "네, 추가 비용이 있습니다.", "네, 추가 비용이 있습니다."),
+            (named, "네, 예약됐지만 다른 시간입니다.", "네, 예약됐지만 다른 시간입니다."),
+            ("김예약 이름으로 예약 부탁드립니다. 이름은 들리셨나요?", "네", "네"),
+            ("예약할까요?", "네", "네"),
+            ("박김예약 이름으로 예약 부탁드립니다.", "네", "네"),
+            ("김예약 이름으로 예약 부탁드리면 안 될까요?", "네", "네"),
+        ]:
+            with self.subTest(prompt=prompt, reply=reply):
+                events = [{"speaker": "agent", "message": prompt},
+                          {"speaker": "restaurant", "message": reply}]
+                self.assertFalse(acknowledged_booking_name(events, quote, "김예약"))
+        events = [{"speaker": "agent", "message": named},
+                  {"speaker": "restaurant", "message": "네"}]
+        for _ in range(3):
+            events += [{"speaker": "agent", "message": "추가 사항이 있나요?"},
+                       {"speaker": "restaurant", "message": "네, 따로 없습니다."}]
+        self.assertFalse(acknowledged_booking_name(events, "네", "김예약"))
+
+    def test_later_retraction_overrides_short_acceptance(self):
+        from .workflow import acknowledged_booking_name
+        for correction in ["잠시만요, 아직 확인이 필요해요.", "예약은 안 돼요.",
+                           "일곱 시 말고 여덟 시요.", "이름은 다른이름입니다."]:
+            with self.subTest(correction=correction):
+                events = [{"speaker": "agent", "message": "김예약 이름으로 예약 부탁드립니다."},
+                          {"speaker": "restaurant", "message": "네"},
+                          {"speaker": "restaurant", "message": correction}]
+                self.assertFalse(acknowledged_booking_name(events, "네", "김예약"))
+
+    def test_completion_with_a_qualification_cannot_bypass_context_checks(self):
+        booking, call = self.reserve()
+        self.workflow.transcript(call["id"], "agent", "김예약 이름으로 예약 부탁드립니다.")
+        evidence = "김예약 이름으로 예약됐지만 다른 시간으로만 가능합니다."
+        result = self.result(call, evidence=evidence)
+        self.assertEqual("UNKNOWN", result["status"])
+        self.assertIsNone(self.get_booking(booking)["confirmedTime"])
+
     def test_acknowledgement_cannot_confirm_an_unrelated_or_conditional_request(self):
         from .workflow import acknowledged_booking_name
         named = "김예약 이름으로 예약 부탁드립니다."

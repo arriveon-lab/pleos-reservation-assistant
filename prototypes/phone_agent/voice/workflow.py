@@ -11,29 +11,48 @@ from .config import normalize_number
 
 
 def acknowledged_booking_name(events, evidence, name):
-    """Accept a narrow acknowledgement only of the immediately preceding named request."""
-    acknowledgement = (r"(?:네|예)[,\s.!]*(?:알겠습니다|알겠어요|그렇게\s*(?:할게요|하겠습니다))"
-                       r"(?:[,\s.!]*(?:(?:좀\s*)?이따|그때|당일에)?\s*(?:뵐게요|뵙겠습니다))?[,\s.!]*")
-    if not re.fullmatch(acknowledgement, evidence.strip()):
+    """Bind a short affirmative to its own named booking request, never another slot."""
+    def compact(text):
+        return re.sub(r"[\s,.!?~…。！？]+", "", text)
+
+    yes = r"(?:네+|예+|넵|응)"
+    acceptance = (r"(?:알겠습니다|알겠어요|좋습니다|좋아요|맞습니다|맞아요|괜찮습니다|괜찮아요|"
+                  r"그렇게(?:할게요|하겠습니다|해드릴게요|해드리겠습니다))")
+    completion = (r"예약(?:이)?(?:(?:확정|완료)(?:됐습니다|되었습니다|입니다|했습니다)|"
+                  r"됐습니다|되었습니다|해드렸습니다|해드릴게요|해드리겠습니다)")
+    courtesy = r"(?:(?:좀)?(?:이따|그때|당일에)?(?:뵐게요|뵙겠습니다))?"
+    acknowledgement = (rf"(?:아|아하)?(?:{yes}(?:{acceptance}|{completion})?|"
+                       rf"{acceptance}|{completion}){courtesy}")
+    quote = compact(evidence)
+    if not re.fullmatch(acknowledgement, quote):
         return False
-    for index in range(len(events) - 1, 0, -1):
-        reply, request = events[index], events[index - 1]
-        if reply["speaker"] != "restaurant" or reply["message"].strip() != evidence.strip():
+    # Keep the existing recent-evidence window. Match the whole reply, so quoting
+    # only '네' from '네, 다만...' cannot remove a qualification or correction.
+    recent = [i for i, event in enumerate(events) if event["speaker"] == "restaurant"][-3:]
+    for index in reversed(recent):
+        if index == 0:
             continue
-        if request["speaker"] != "agent":
-            return False
+        reply, request = events[index], events[index - 1]
+        if compact(reply["message"]) != quote or request["speaker"] != "agent":
+            continue
         prompt = request["message"]
         named_request = re.search(
             rf"(?:예약자\s*)?이름은\s*{re.escape(name)}입니다(?:[.,!\s]|$)|"
-            rf"{re.escape(name)}\s*이름으로\s*예약\s*(?:을\s*)?부탁", prompt)
-        # An availability question or a truncated name is not a booking request.
-        if not named_request or not re.search(r"예약\s*(?:을\s*)?부탁", prompt):
-            return False
-        if re.search(r"아니|말고|다른|변경|취소|대신|가능", prompt):
-            return False
-        later = " ".join(e["message"] for e in events[index + 1:] if e["speaker"] == "restaurant")
-        return not re.search(r"다만|하지만|그런데|근데|대신|말고|취소|불가|안\s*됩|못|"
-                             r"다른\s*(?:이름|시간|날짜)|이름.{0,10}아니", later)
+            rf"(?<!\w){re.escape(name)}\s*이름으로\s*예약", prompt)
+        booking_request = re.search(
+            r"예약\s*(?:을\s*)?(?:부탁(?:드립니다|드려요|드리겠습니다|드릴게요)|"
+            r"(?:해|잡아)\s*주(?:세요|시겠어요|시겠습니까|실\s*수\s*있을까요))[.!?。！？\s]*$", prompt)
+        # Availability, an unrelated question after the request, or a negative
+        # question must not inherit the meaning of a positive booking request.
+        if (not named_request or not booking_request
+                or re.search(r"아니|말고|다른|변경|취소|대신|가능|안\s*(?:되|돼|될)|못", prompt)):
+            continue
+        later_replies = [e["message"] for e in events[index + 1:] if e["speaker"] == "restaurant"]
+        later = " ".join(later_replies)
+        pending = bool(later_replies and re.search(
+            r"잠시|잠깐|아직|확인해\s*볼", later_replies[-1]))
+        return not re.search(r"다만|하지만|그런데|근데|대신|말고|취소|불가|안\s*(?:돼|되|됩)|못|"
+                             r"다른\s*(?:이름|시간|날짜)|이름.{0,10}아니", later) and not pending
     return False
 
 
@@ -218,7 +237,7 @@ class LiveWorkflow:
             events = [e for e in self.service._list(owner, "event")
                       if e["bookingId"] == booking["id"] and e.get("callId") == call_id]
             recent = [e["message"] for e in events if e["speaker"] == "restaurant"][-3:]
-            require(isinstance(evidence, str) and len(evidence.strip()) >= 2
+            require(isinstance(evidence, str) and bool(evidence.strip())
                     and any(evidence in item for item in recent),
                     "EVIDENCE_REQUIRED", "식당의 실제 발화에서 확인 근거를 인용해야 해요.")
             snapshot = booking["approvedSnapshot"]
@@ -226,9 +245,12 @@ class LiveWorkflow:
             require(isinstance(confirmed_requirements, list) and all(isinstance(x, str) for x in confirmed_requirements),
                     "INVALID_INPUT", "필수 조건 확인 목록을 확인해 주세요.", 400)
             negative = bool(re.search(r"안\s*(돼|되|됩|됐|될)|불가|아니|아직|미확정|못\s*(해|하|받)|확인해\s*볼|잠시만", evidence))
+            qualified = bool(re.search(
+                r"다만|하지만|됐지만|되었지만|그런데|근데|대신|말고|다른\s*(?:시간|날짜|이름)", evidence))
             explicit = bool(re.search(r"예약.{0,20}(확정|완료|됐|되었|해.{0,3}드)|잡아.{0,5}(드|둘)", evidence))
             contextual = not changing and acknowledged_booking_name(events, evidence, booking["reservationName"])
-            verified = (accepted is True and (explicit or contextual) and not negative and day == booking["date"]
+            verified = (accepted is True and (explicit or contextual) and not negative and not qualified
+                        and day == booking["date"]
                         and reservation_name == booking["reservationName"]
                         and (reservation_name in " ".join(recent) or contextual)
                         and time == (booking["change"]["proposedTime"] if changing else booking["requestedTime"]) and type(people) is int
