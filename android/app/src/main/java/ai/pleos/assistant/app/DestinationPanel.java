@@ -4,7 +4,6 @@ import ai.pleos.assistant.ux.DestinationController;
 import android.view.View;
 import android.widget.*;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -19,10 +18,7 @@ final class DestinationPanel {
   private final Button search;
   private final List<View> inputs = new ArrayList<>();
   private final List<Button> destinationButtons = new ArrayList<>();
-  private final List<Button> cuisineButtons = new ArrayList<>();
-  private final LinkedHashSet<String> cuisines = new LinkedHashSet<>();
   private final boolean wide;
-  private Button anyCuisine;
   private int destination, adultCount = 2, childCount = 1, detail = -1;
   private String rendered = "";
 
@@ -81,52 +77,6 @@ final class DestinationPanel {
     highChair = toggle(needs, R.string.destination_high_chair);
     stepFree = toggle(needs, R.string.destination_step_free);
     text(needs, activity.getString(R.string.destination_wait_fixed), 22);
-    LinearLayout food = VehicleUi.card(activity);
-    form.addView(food);
-    text(food, activity.getString(R.string.destination_food_title), 26);
-    text(food, activity.getString(R.string.destination_food_hint), 22);
-    String[] options = activity.getResources().getStringArray(R.array.destination_cuisines);
-    LinearLayout choices = null;
-    for (int i = 0; i < options.length; i++) {
-      if (i % (wide ? 5 : 2) == 0) {
-        choices = row();
-        food.addView(choices);
-      }
-      String cuisine = options[i];
-      Button b = new Button(activity);
-      b.setText(cuisine);
-
-      style(b, false);
-      weighted(choices, b);
-      inputs.add(b);
-      cuisineButtons.add(b);
-      b.setOnClickListener(
-          v -> {
-            boolean checked = !b.isSelected();
-            b.setSelected(checked);
-            if (checked) cuisines.add(cuisine);
-            else cuisines.remove(cuisine);
-            style(b, checked);
-            refreshAny();
-            edit();
-          });
-    }
-    anyCuisine =
-        button(
-            food,
-            R.string.destination_food_any,
-            false,
-            () -> {
-              for (Button b : cuisineButtons) {
-                b.setSelected(false);
-                style(b, false);
-              }
-              cuisines.clear();
-              refreshAny();
-              edit();
-            });
-    inputs.add(anyCuisine);
-    refreshAny();
     search =
         button(
             form,
@@ -139,8 +89,7 @@ final class DestinationPanel {
                         adultCount,
                         childCount,
                         highChair.isSelected(),
-                        stepFree.isSelected(),
-                        new ArrayList<>(cuisines))));
+                        stepFree.isSelected())));
     button(form, R.string.preview_cancel, false, () -> model.invalidateDestination("CANCELLED"));
     results = column();
     root.addView(results);
@@ -149,13 +98,6 @@ final class DestinationPanel {
   private void edit() {
     detail = -1;
     model.invalidateDestination("EDITING");
-  }
-
-  private void refreshAny() {
-    if (anyCuisine != null) {
-      anyCuisine.setSelected(cuisines.isEmpty());
-      style(anyCuisine, cuisines.isEmpty());
-    }
   }
 
   private void stepper(LinearLayout parent, boolean adult) {
@@ -253,13 +195,9 @@ final class DestinationPanel {
               R.string.destination_selection_summary,
               activity.getResources().getStringArray(R.array.destination_mock_places)[destination],
               adultCount,
-              childCount,
-              cuisines.isEmpty()
-                  ? activity.getString(R.string.destination_food_any)
-                  : String.join(" · ", cuisines)),
+              childCount),
           22);
       text(results, activity.getString(R.string.destination_not_bookable), 22);
-      text(results, activity.getString(R.string.destination_food_fixture_notice), 20);
       LinearLayout actions = row();
       results.addView(actions);
       Button change =

@@ -1,5 +1,14 @@
 # 구현·검증 현황
 
+## 2026-11-11 음식 선호 선택 MVP 제외
+
+사용자 결정으로 음식5종 다중 선택·전체 해제와 선택 요약/미반영 안내를 제거했다. 앱 Input에서도 음식 목록을 제거하고 기존 #53 계약의 preferredCuisines=[]만 전송한다. 목적지·인원·필수 주차/선택 조건, 후보 비교와 안전/복구 동작은 유지한다. #52의 음식 선호 서버 전달·추천 반영 협업 요청 댓글을 삭제하고 [철회 안내](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/52#issuecomment-6790589103)를 남겼다. 이 작업은 더 이상 앱 MVP 잔여/서버 대기 항목이 아니다. 다른 담당자의 API·범위·배정은 변경하지 않았다.
+
+format/verifyAll PASS(UX107개 실패0, 캐시/UP-TO-DATE 포함). 같은 새 APK로 Pleos 주간/기본 글꼴1682dp·840dp 조건→후보3곳/상세→입력 변경/취소→제한/UNKNOWN 주입→재실행 PASS. 실제 HTTP에서 preferredCuisines=[]와 requiredFeatures=[parking,highChair] 확인. 원래 예약 journal 바이트 동일. 실제 moving/공동 인수 아님. 새 APK SHA256 `11b72ec152782d7bbfa1172439af4edc32c3f9fcf660aaf20ed1a6e39dc1133e`, 증거 captures/no-cuisine/, work/no-cuisine/. 이번 변경 후5분/응답 유실 전체 검사는 재실행하지 않았으며 앞선 cab4564의 검증과 구분한다.
+
+아래 음식 선택/서버 요청 문장은 당시 이력이며 현재 요구사항이 아니다.
+
+
 ## 2026-11-11 추천 만료·실패·강제 종료·창 전환 회귀
 
 제품7092c0e의 같은 별도 APK로 실제300148ms 만료, GET404, POST 응답 유실, close503, 결과/검색 중 프로세스 force-stop 후 재진입, 840↔1682 창4회 PASS. 기존 예약 XML 바이트 동일. 검사 도구에 화면 생성 대기와 실패 fixture를 추가했으며 제품/계약은 변경하지 않았다. format/verifyAll·UX107개 재실행·MOCK smoke PASS. 자세한 절차/한계/증거는 [UX52_DESTINATION_MOCK](UX52_DESTINATION_MOCK.md) 최신 절을 따른다. 실제 주행·전체 OEM 창·음식 추천 반영·공동 인수는 미완료이며 기존 UNKNOWN 기록을 유지한다.

@@ -93,11 +93,6 @@ final class DestinationDeviceChecks {
           ((Button) field(panel, "highChair")).performClick();
           return null;
         });
-    clickText("한식");
-    clickText("양식");
-    check(
-        main(() -> ((java.util.Set<?>) field(panel, "cuisines")).size() == 2),
-        "two cuisines not selected");
     capture(fixture + "-conditions");
     main(
         () -> {
@@ -220,12 +215,6 @@ final class DestinationDeviceChecks {
         check(
             main(() -> model.destinationView().candidates().length() == 0),
             "input change retained result");
-        click(R.string.destination_food_any);
-        check(
-            main(() -> ((java.util.Set<?>) field(panel, "cuisines")).isEmpty()),
-            "clear cuisine failed");
-        clickText("한식");
-        clickText("양식");
         click(R.string.destination_search);
         await(() -> model.destinationView().state().equals("RESULTS"), 15000);
         main(

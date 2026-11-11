@@ -1,5 +1,14 @@
 # #52 목적지 추천 MOCK 화면 인수 기록
 
+## 2026-11-11 음식 선호 선택 MVP 제외
+
+사용자 결정으로 음식5종 다중 선택·전체 해제와 선택 요약/미반영 안내를 제거했다. 앱 Input에서도 음식 목록을 제거하고 기존 #53 계약의 preferredCuisines=[]만 전송한다. 목적지·인원·필수 주차/선택 조건, 후보 비교와 안전/복구 동작은 유지한다. #52의 음식 선호 서버 전달·추천 반영 협업 요청 댓글을 삭제하고 [철회 안내](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/52#issuecomment-6790589103)를 남겼다. 이 작업은 더 이상 앱 MVP 잔여/서버 대기 항목이 아니다. 다른 담당자의 API·범위·배정은 변경하지 않았다.
+
+format/verifyAll PASS(UX107개 실패0, 캐시/UP-TO-DATE 포함). 같은 새 APK로 Pleos 주간/기본 글꼴1682dp·840dp 조건→후보3곳/상세→입력 변경/취소→제한/UNKNOWN 주입→재실행 PASS. 실제 HTTP에서 preferredCuisines=[]와 requiredFeatures=[parking,highChair] 확인. 원래 예약 journal 바이트 동일. 실제 moving/공동 인수 아님. 새 APK SHA256 `11b72ec152782d7bbfa1172439af4edc32c3f9fcf660aaf20ed1a6e39dc1133e`, 증거 captures/no-cuisine/, work/no-cuisine/. 이번 변경 후5분/응답 유실 전체 검사는 재실행하지 않았으며 앞선 cab4564의 검증과 구분한다.
+
+아래 음식 선택/서버 요청 문장은 당시 이력이며 현재 요구사항이 아니다.
+
+
 ## 2026-11-11 실제 5분·HTTP 실패·프로세스 종료·창 변경 추가 검증
 
 제품 소스 기준7092c0e, #53 서버cc393399의 THREE 가상 gateway, Pleos Connect2.1.0/API34/user10. 별도 destinationvalidation 설치의 제품 APK SHA256은 `2d868d088720e1a30eaaa56192272e033f208acc9a1292c7f4871aa6165b4036`으로 이전 UI 검증본과 동일하다. 제품 코드/원래 설치는 변경하지 않았고 instrumentation과 loopback 실패 주입 도구를 확장했다.
