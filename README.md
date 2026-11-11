@@ -2,7 +2,7 @@
 
 목적지·ETA·동행자의 필수 조건으로 식당을 비교하고, 누락 정보 문의에서 예약 결과 확인까지 연결하는 차량용 서비스입니다.
 
-현재 **로컬 MOCK 서버**를 실행하고 **SDK 진단용 debug APK**를 빌드할 수 있습니다. 성수동 이름을 사용한 가상 식당 3곳이며 실제 장소 검색·AI 모델·전화·예약이 아닙니다. `app.mode=LIVE`는 서버 시작 단계에서 차단됩니다. Pleos 기기 실행은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)은 Telkit·LiveKit과 EC2를 연결해 승인 발신 시험 13회를 진행했습니다. 최신 시험은 이름을 포함한 예약 요청의 자연스러운 수락을 문맥으로 인정해 CONFIRMED 저장·확정 안내·정상 종료까지 확인했고, 사용자는 자연스럽게 들렸다고 답했습니다. 가상 식당 역할 시험이며 실제 매장 예약은 아닙니다. 로컬·Linux 118개 검사를 통과했습니다. 앞선 재생 대기/입력 무음의 모든 원인과 다양한 환경의 품질·실수신·변경 재확인·제품 통합은 미검증입니다. LIVE와 worker는 꺼 두었습니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
+현재 기본 서버는 **로컬 MOCK**, 전화 프로토타입은 별도 선택형 Telkit·LiveKit adapter입니다. 최신 전화 코드에서 Soniox v6 문맥 입력·첫 소개 재생·예약 결과 판정·수신 변경 승인·웹 후보 시험 화면을 보강했습니다. Python 167개 검사를 통과했고, 승인된 휴대폰 시험에서 첫 소개 청취와 CONFIRMED 저장을 확인했습니다. 실제 식당 예약이나 Pleos 제품 통합 완료는 아닙니다. 기본 서버의 `app.mode=LIVE` 차단을 유지하며, 최신 범위·실전화 관측·후속 과제는 [전화 인계](docs/PHONE_AGENT_LATEST_HANDOFF.md)와 [STATUS](docs/STATUS.md)를 따릅니다.
 
 [GitHub 저장소](https://github.com/arriveon-lab/pleos-reservation-assistant) · [작업 이슈](https://github.com/arriveon-lab/pleos-reservation-assistant/issues) · [CI 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)
 

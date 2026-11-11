@@ -1,5 +1,7 @@
 # Telkit·LiveKit 선택형 전화 시험
 
+2026-11-12 최신 변경과 최종 검증은 [전화 인계](../../../docs/PHONE_AGENT_LATEST_HANDOFF.md)를 기준으로 합니다. 아래 날짜별 실패·이전 테스트 수는 당시 이력입니다.
+
 기본 MOCK 도구에 실제 SIP 음성을 연결하는 독립 adapter입니다. 제품 Spring 서버의 `app.mode=LIVE` 차단·공개 `/api/v1` 계약·Android는 변경하지 않습니다. 테스트용 예약 정보를 사용하고 실제 연락처는 비공개 설정에만 둡니다.
 
 단일 Linux 서버 배포는 [배포 안내](../deploy/README.md)를 따릅니다. API·worker가 같은 영속 DB를 쓰며 기본은 MOCK, worker는 명시적인 LIVE 검증 후 실행합니다.
@@ -193,7 +195,7 @@ binding은 영속 SQLite에 저장하고 번호·소유 ID를 웹 상태에 공�
 work/voice-venv/bin/python -m unittest prototypes.phone_agent.voice.test_voice prototypes.phone_agent.voice.test_resilience prototypes.phone_agent.voice.test_echo -v
 ```
 
-CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 59개 테스트를 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 기본 MOCK의 36개 테스트는 SDK 없이 계속 실행됩니다.
+CI는 고정 SDK 설치 뒤 전체 전화 테스트 167개를 발견해 실행합니다. 실제 전화·모델 호출·공급자 자원 생성은 하지 않습니다. 서비스·음식 취향 전달 38개는 음성 SDK 없이 실행하며 OpenAPI도 독립 검증합니다.
 
 공식 근거: [Telkit LiveKit 연결](https://telkit.io/docs/connect/livekit.md), [번호·요금](https://telkit.io/docs/numbers/pricing.md), [LiveKit 음성 에이전트](https://docs.livekit.io/agents/start/voice-ai/), [SIP 참가자](https://docs.livekit.io/reference/telephony/sip-participant/), [Cartesia 한국어 Jiwoo](https://www.cartesia.ai/voices/library/jiwoo-service-specialist-15628352-2ede-4f1b-89e6-ceda0c983fbc).
 
