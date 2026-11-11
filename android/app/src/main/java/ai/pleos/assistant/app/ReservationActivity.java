@@ -522,7 +522,26 @@ public final class ReservationActivity extends ComponentActivity {
       }
     }
     try {
+      JSONArray rejected = state.optJSONArray("rejectedReservations");
+      if (rejected != null && rejected.length() > 0) {
+        JSONObject last = rejected.getJSONObject(rejected.length() - 1);
+        text(
+            getString(
+                R.string.rebooking_history,
+                rejected.length(),
+                time(last.getString("originalRequestedTime"))),
+            22);
+      }
       if (state.has("reservation")) reservation(state.getJSONObject("reservation"));
+      if (MockRepository.canPrepareNewBooking(state))
+        button(
+            R.string.rebooking_start,
+            model.canWrite(),
+            v ->
+                confirm(
+                    R.string.rebooking_title,
+                    getString(R.string.rebooking_body),
+                    MockRepository::prepareNewBooking));
       if (activeCall != null) call(activeCall);
       if (state.has("search") && !state.has("reservationId")) {
         button(

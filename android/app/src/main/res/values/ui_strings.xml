@@ -63,8 +63,13 @@
   <string name="home_action_wait">응답을 기다리고 있어요. 최신 상태를 조회해 결과를 확인하세요.</string>
   <string name="home_action_change_wait">변경 응답을 기다리고 있어요. 수락 전에는 기존 예약 정보를 유지합니다.</string>
   <string name="home_action_confirmed">모의 예약이 수락됐어요. 확정 시각과 비용을 확인하세요.</string>
-  <string name="home_action_rejected">예약 요청이 거절됐어요. 결과를 확인하세요. 자동으로 다시 요청하지 않습니다.</string>
+  <string name="home_action_rejected">예약 요청이 거절됐어요. 새 예약을 준비하려면 아래에서 조건과 후보를 다시 선택하세요.</string>
   <string name="home_action_unknown">결과 확인이 필요해요. 기존 요청을 대조하기 전에는 다시 요청하지 마세요.</string>
   <string name="home_action_change_accepted">모의 변경이 수락됐어요. 변경된 확정 시각과 비용을 확인하세요.</string>
   <string name="home_action_change_rejected">변경 요청이 거절됐어요. 기존 예약 시각을 유지합니다. 다시 변경하려면 재요청 가능 시각을 확인하세요.</string>
+  <string name="rebooking_start">다른 예약 준비하기</string>
+  <string name="rebooking_title">새 예약을 준비할까요?</string>
+  <string name="rebooking_body">거절된 예약 기록은 보관합니다. 조건과 후보를 다시 선택한 뒤 예약 내용을 새로 승인해야 해요. 지금은 전화나 예약을 요청하지 않습니다.</string>
+  <string name="rebooking_history">거절된 예약 %1$d건 보관 · 최근 요청 시각 %2$s
+이전 요청을 다시 보내지 않습니다.</string>
 </resources>

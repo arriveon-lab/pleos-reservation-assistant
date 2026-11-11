@@ -1,5 +1,9 @@
 # 구현·검증 현황
 
+## 2026-11-11 음성 제외 핵심 흐름 보완
+
+명시적 예약 거절 후 기록을 보관하고 새 조건·후보·문의·승인으로 진행하는 흐름을 구현했다. UNKNOWN/미완료/확정 예약과 변경 거절에는 새 예약 준비를 제공하지 않는다. 저장 실패·제한·응답 유실·재실행 보존을 포함한 UX121개, verifyAll/MOCK smoke PASS. Pleos의 재예약 UI+로컬 HTTP 흐름, 넓은/좁은 창·150%·주야간, 실제 CarUx 초기 조회/재진입과 주입 제한 검증 PASS. 두 설치 journal 전후 동일. [검증·초기 실패·고정 APK·잔여](UX_NONVOICE_COMPLETION.md). #4 UNKNOWN 종료 계약, #40 공동 운영자 환경, #25 실제 moving/단절, #1 목적지/ETA 근거는 미제공·미검증으로 유지한다. 음성 개발 제외, 이슈 OPEN/PR #46 Draft 유지.
+
 ## 2026-11-11 #40 outcome 계약 대조와 변경 결과 보존
 
 서버 인수안과 앱을 대조해 완료된 CHANGE가 BOOKING 통화로 덮이는 문제를 수정했다. 검증된 변경 참조를 journal에 보존하고 수락/거절별 다음 행동을 표시한다. format/verifyAll·UX116개·MOCK smoke PASS, Pleos 별도 APK의 결과 화면 fixture PASS. 원 예약 journal 해시 동일. 시간/비용 불일치와 동일 이벤트 재전달 HTTP 검사 추가. 초기 기기 검사 렌더 대기 실패와 재검사, APK/증거는 [결과 대조 기록](UX40_OUTCOME_REVIEW.md)에 기록했다. 공동 운영자 인수, 예약 거절 후 새 예약 UI, 일반 UNKNOWN 종료는 미완료이며 #40 OPEN/PR #46 Draft 유지.

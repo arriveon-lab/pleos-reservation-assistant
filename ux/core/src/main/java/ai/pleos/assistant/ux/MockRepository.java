@@ -198,7 +198,8 @@ public final class MockRepository {
           "lastChangeCallId",
           "pending",
           "authBinding",
-          "searchReconciliations"
+          "searchReconciliations",
+          "rejectedReservations"
         }) if (source.has(key)) durable.put(key, source.get(key));
     journal.save(durable.toString());
   }
@@ -376,6 +377,56 @@ public final class MockRepository {
         .getJSONObject("request")
         .getJSONObject("navigation")
         .getString("eta");
+  }
+
+  /** A new attempt is only offered for a reconciled, explicitly rejected booking. */
+  public static boolean canPrepareNewBooking(JSONObject state) {
+    JSONObject reservation = state.optJSONObject("reservation");
+    JSONObject call = state.optJSONObject("call");
+    return !state.has("pending")
+        && reservation != null
+        && call != null
+        && state.has("reservationId")
+        && state.has("searchId")
+        && state.getString("reservationId").equals(reservation.optString("id"))
+        && state.getString("searchId").equals(reservation.optString("searchId"))
+        && "REJECTED".equals(reservation.optString("status"))
+        && reservation.isNull("confirmedTime")
+        && reservation.isNull("pendingChangeCallId")
+        && "BOOKING".equals(call.optString("purpose"))
+        && "REJECTED".equals(call.optString("status"))
+        && !reservation.optString("bookingCallId").isEmpty()
+        && reservation.optString("bookingCallId").equals(call.optString("id"))
+        && state.getString("reservationId").equals(call.optString("reservationId"))
+        && state.getString("searchId").equals(call.optString("searchId"));
+  }
+
+  /** Explicit local transition, not a new booking or a server cancellation. */
+  public void prepareNewBooking() throws Exception {
+    requireWrite();
+    if (!canPrepareNewBooking(state)) throw new IllegalStateException("BOOKING_BLOCKED");
+    refresh();
+    requireWrite();
+    if (!canPrepareNewBooking(state)) throw new IllegalStateException("BOOKING_BLOCKED");
+    JSONObject next = new JSONObject(state.toString());
+    JSONObject reservation = next.getJSONObject("reservation");
+    JSONArray history = next.optJSONArray("rejectedReservations");
+    if (history == null) history = new JSONArray();
+    history.put(
+        new JSONObject()
+            .put("reservationId", next.getString("reservationId"))
+            .put("searchId", next.getString("searchId"))
+            .put("bookingCallId", reservation.getString("bookingCallId"))
+            .put("originalRequestedTime", reservation.getString("originalRequestedTime"))
+            .put("status", "REJECTED")
+            .put("archivedAt", Instant.now().toString()));
+    next.put("rejectedReservations", history);
+    for (String key :
+        new String[] {
+          "reservationId", "reservation", "callId", "call", "lastChangeCallId", "searchId", "search"
+        }) next.remove(key);
+    persist(next);
+    state = next;
   }
 
   public void book(String candidateId, boolean explicitApproval) throws Exception {

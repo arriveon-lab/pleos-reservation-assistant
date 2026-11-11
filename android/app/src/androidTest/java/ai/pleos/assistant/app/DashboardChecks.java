@@ -44,16 +44,18 @@ final class DashboardChecks {
                 throw new AssertionError("dashboard label missing: " + activity.getString(label));
             VehicleUiChecks.layout(root);
             EditText adults = (EditText) field(activity, "adults").get(activity);
-            int before = Integer.parseInt(adults.getText().toString());
+            String previousInput = adults.getText().toString();
+            // The retained input may already be at the upper bound after prior device checks.
+            adults.setText("2");
             Button plus =
                 find(
                     root,
                     activity.getString(
                         R.string.home_increase, activity.getString(R.string.adults)));
             plus.performClick();
-            if (Integer.parseInt(adults.getText().toString()) != before + 1)
+            if (Integer.parseInt(adults.getText().toString()) != 3)
               throw new AssertionError("stepper not connected");
-            adults.setText(Integer.toString(before));
+            adults.setText(previousInput);
           });
       capture(runner, "dashboard-ready");
       main(
@@ -94,6 +96,9 @@ final class DashboardChecks {
               state.remove("pending");
               JSONObject reservation =
                   new JSONObject()
+                      .put("id", "ui-fixture")
+                      .put("searchId", "ui-search")
+                      .put("bookingCallId", "ui-booking")
                       .put("status", status)
                       .put("originalRequestedTime", "2026-11-10T12:00:00Z")
                       .put(
@@ -103,9 +108,13 @@ final class DashboardChecks {
               state
                   .put("reservation", reservation)
                   .put("reservationId", "ui-fixture")
+                  .put("searchId", "ui-search")
                   .put(
                       "call",
                       new JSONObject()
+                          .put("id", "ui-booking")
+                          .put("searchId", "ui-search")
+                          .put("reservationId", "ui-fixture")
                           .put("requestedTime", "2026-11-10T12:00:00Z")
                           .put("purpose", "BOOKING")
                           .put("status", "CONFIRMED".equals(status) ? "ACCEPTED" : status));
@@ -116,6 +125,23 @@ final class DashboardChecks {
                   || contains(root, activity.getString(R.string.home_ready_hint))
                   || contains(root, activity.getString(R.string.reconcile_search_closed)))
                 throw new AssertionError("Wrong booking guidance: " + status);
+              boolean rebooking = contains(root, activity.getString(R.string.rebooking_start));
+              if (rebooking != "REJECTED".equals(status))
+                throw new AssertionError("Rebooking offered for wrong status: " + status);
+              if (rebooking) {
+                String beforeDialog = state.toString();
+                find(root, activity.getString(R.string.rebooking_start)).performClick();
+                android.app.AlertDialog dialog =
+                    (android.app.AlertDialog) field(activity, "approval").get(activity);
+                if (!dialog.isShowing()
+                    || !contains(
+                        dialog.getWindow().getDecorView(),
+                        activity.getString(R.string.rebooking_body)))
+                  throw new AssertionError("Rebooking needs explicit preparation notice");
+                dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick();
+                if (!beforeDialog.equals(snapshot.get(model).toString()))
+                  throw new AssertionError("Dismissed rebooking changed the snapshot");
+              }
               if ("UNKNOWN".equals(status)
                   && (!contains(root, activity.getString(R.string.unknown_read_only))
                       || !contains(root, activity.getString(R.string.unknown_refresh))))
@@ -139,6 +165,32 @@ final class DashboardChecks {
         Thread.sleep(300);
         main(runner, () -> VehicleUiChecks.layout(activity.getWindow().getDecorView()));
         capture(runner, "guidance-" + status.toLowerCase(java.util.Locale.ROOT));
+        if ("REJECTED".equals(status)) {
+          main(
+              runner,
+              () -> {
+                Button action =
+                    find(
+                        activity.getWindow().getDecorView(),
+                        activity.getString(R.string.rebooking_start));
+                action.requestRectangleOnScreen(
+                    new android.graphics.Rect(0, 0, action.getWidth(), action.getHeight()), true);
+              });
+          runner.waitForIdleSync();
+          Thread.sleep(300);
+          main(
+              runner,
+              () -> {
+                Button action =
+                    find(
+                        activity.getWindow().getDecorView(),
+                        activity.getString(R.string.rebooking_start));
+                android.graphics.Rect visible = new android.graphics.Rect();
+                if (!action.getGlobalVisibleRect(visible) || visible.height() < action.getHeight())
+                  throw new AssertionError("Rebooking action not reachable by scrolling");
+              });
+          capture(runner, "rebooking-action");
+        }
       }
       main(
           runner,
@@ -293,7 +345,10 @@ final class DashboardChecks {
   }
 
   private static Button find(View v, String description) {
-    if (v instanceof Button b && description.contentEquals(b.getContentDescription())) return b;
+    if (v instanceof Button b
+        && ((b.getContentDescription() != null
+                && description.contentEquals(b.getContentDescription()))
+            || description.contentEquals(b.getText()))) return b;
     if (v instanceof ViewGroup g)
       for (int i = 0; i < g.getChildCount(); i++) {
         Button b = find(g.getChildAt(i), description);

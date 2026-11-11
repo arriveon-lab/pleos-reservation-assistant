@@ -15,6 +15,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
   private int windowWidth;
   private String destinationFixture;
   private boolean dashboard;
+  private boolean rebooking;
   private boolean previewBoundary;
   private boolean recoveryFailure;
   private String searchRecovery;
@@ -35,6 +36,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
     recoveryFailure = "true".equals(arguments.getString("recoveryFailure"));
     searchRecovery = arguments.getString("searchRecovery", "");
     dashboard = "true".equals(arguments.getString("dashboard"));
+    rebooking = "true".equals(arguments.getString("rebooking"));
     start();
   }
 
@@ -42,6 +44,14 @@ public final class DrivingDeviceChecks extends Instrumentation {
   public void onStart() {
     Bundle result = new Bundle();
     try {
+      if (rebooking) {
+        RebookingDeviceChecks.run(this);
+        result.putString(
+            "stream",
+            "PASS: synthetic HTTP rebooking UI flow; not joint authorization acceptance\n");
+        finish(Activity.RESULT_OK, result);
+        return;
+      }
       if (!destinationFixture.isEmpty()) {
         DestinationDeviceChecks.run(this, destinationFixture, windowWidth, expectedFontScale);
         result.putString("stream", "PASS destination MOCK fixture " + destinationFixture + "\n");
@@ -102,7 +112,11 @@ public final class DrivingDeviceChecks extends Instrumentation {
             "requested font scale not applied to Activity");
       }
       ReservationViewModel model = (ReservationViewModel) field(activity, "model");
-      await(() -> dashboard ? model.connected() && !model.busy() : model.canWrite());
+      await(
+          () ->
+              dashboard
+                  ? model.connected() && !model.busy() && model.restriction().allowsInput()
+                  : model.canWrite());
       waitForIdleSync();
       if (dashboard) {
         DashboardChecks.run(this, activity, model);

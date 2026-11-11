@@ -255,6 +255,92 @@ class MockRepositoryTest {
   }
 
   @Test
+  void rejectedBookingCanStartFreshWithPreservedHistoryAndNewApproval() throws Exception {
+    Journal journal = new Journal();
+    Recording wire = new Recording(journal);
+    MockRepository repo = ready(journal, wire);
+    repo.search(2, 1, true);
+    prepareBooking(repo);
+    repo.book("mock-1", true);
+    repo.simulate("REJECTED");
+    JSONObject rejected = repo.snapshot();
+    int writes = wire.writes.size();
+    assertTrue(MockRepository.canPrepareNewBooking(rejected));
+    repo.prepareNewBooking();
+    assertEquals(writes, wire.writes.size());
+    assertThrows(IllegalStateException.class, repo::prepareNewBooking);
+    JSONObject archive = repo.snapshot().getJSONArray("rejectedReservations").getJSONObject(0);
+    assertEquals(rejected.getString("reservationId"), archive.getString("reservationId"));
+    assertEquals(rejected.getString("searchId"), archive.getString("searchId"));
+    assertFalse(repo.snapshot().has("reservationId"));
+    repo = ready(journal, wire);
+    assertEquals(rejected.getString("tripId"), repo.snapshot().getString("tripId"));
+    repo.search(3, 0, false);
+    assertNotEquals(rejected.getString("searchId"), repo.snapshot().getString("searchId"));
+    prepareBooking(repo);
+    MockRepository current = repo;
+    assertThrows(IllegalStateException.class, () -> current.book("mock-1", false));
+    wire.loseResponse = true;
+    assertThrows(java.io.IOException.class, () -> current.book("mock-1", true));
+    String lost = wire.writes.get(wire.writes.size() - 1);
+    repo = ready(journal, wire);
+    repo.retry();
+    assertEquals(lost, wire.writes.get(wire.writes.size() - 1));
+    assertNotEquals(
+        rejected.getString("reservationId"), repo.snapshot().getString("reservationId"));
+    repo.simulate("ACCEPTED");
+    assertEquals("CONFIRMED", repo.snapshot().getJSONObject("reservation").getString("status"));
+    assertTrue(
+        archive.similar(repo.snapshot().getJSONArray("rejectedReservations").getJSONObject(0)));
+    assertEquals(
+        "REJECTED",
+        http("/reservations/" + archive.getString("reservationId"), null, null)
+            .getString("status"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"PENDING", "UNKNOWN", "ACCEPTED"})
+  void onlyRejectedBookingsCanBeArchived(String outcome) throws Exception {
+    MockRepository repo = searchable();
+    prepareBooking(repo);
+    repo.book("mock-1", true);
+    if (!"PENDING".equals(outcome)) repo.simulate(outcome);
+    JSONObject before = repo.snapshot();
+    assertFalse(MockRepository.canPrepareNewBooking(before));
+    assertThrows(IllegalStateException.class, repo::prepareNewBooking);
+    assertTrue(before.similar(repo.snapshot()));
+  }
+
+  @Test
+  void failedArchiveSaveAndDrivingRestrictionPreserveRejectedBooking() throws Exception {
+    Journal journal =
+        new Journal() {
+          @Override
+          public void save(String value) {
+            if (new JSONObject(value).has("rejectedReservations"))
+              throw new IllegalStateException("DISK_FAILED");
+            super.save(value);
+          }
+        };
+    Recording wire = new Recording(journal);
+    MockRepository repo = ready(journal, wire);
+    repo.search(2, 1, true);
+    prepareBooking(repo);
+    repo.book("mock-1", true);
+    repo.simulate("REJECTED");
+    String saved = journal.saved;
+    JSONObject state = repo.snapshot();
+    int writes = wire.writes.size();
+    assertThrows(IllegalStateException.class, repo::prepareNewBooking);
+    assertTrue(state.similar(repo.snapshot()));
+    assertEquals(saved, journal.saved);
+    repo.restrict(MockRepository.Restriction.UNKNOWN);
+    assertThrows(IllegalStateException.class, repo::prepareNewBooking);
+    assertEquals(writes, wire.writes.size());
+    assertEquals(saved, journal.saved);
+  }
+
+  @Test
   void explicitApprovalAndBookableAreRequired() throws Exception {
     MockRepository repository = searchable();
     assertThrows(IllegalStateException.class, () -> repository.book("mock-1", true));

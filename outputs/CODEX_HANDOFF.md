@@ -1,3 +1,7 @@
+## 2026-11-11 음성 제외 후속 인계
+
+거절 후 명시적 새 예약 준비/기록 보관 구현, UX121/verifyAll/MOCK smoke와 Pleos 재예약 UI+HTTP 흐름 PASS. 넓은/좁은 창·야간150%와 실제 CarUx 초기조회/재진입·주입 제한 PASS. 원 journal 두 설치 동일. [기록](../docs/UX_NONVOICE_COMPLETION.md). 음성 제외. #4 종료 계약/#40 공동 환경/#25 실제moving·단절/#1 실제 목적지·ETA 근거 전에는 완료로 표시하지 않는다. Draft/OPEN 유지.
+
 ## 2026-11-11 결과 대조 인계
 
 #40 zito outcome 인수안 대조 및 완료 CHANGE 참조/수락·거절 안내 보완. [상세](../docs/UX40_OUTCOME_REVIEW.md). verifyAll/UX116/MOCK smoke/별도 Pleos 화면 fixture PASS; 원 jointvalidation journal 불변. 서버 계약 변경 없음. 공동 인증분리 환경 인수, REJECTED 새 예약 UI, #4 일반 UNKNOWN 종료는 남음. #46 Draft 유지. 외부 전화/예약/유료 호출0.
