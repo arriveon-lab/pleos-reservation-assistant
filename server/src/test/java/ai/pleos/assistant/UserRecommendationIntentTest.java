@@ -1,11 +1,35 @@
 package ai.pleos.assistant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class UserRecommendationIntentTest {
+  @Test
+  void extractsCuisineWithoutOverridingCompanionRequirements() {
+    assertThat(UserRecommendationIntent.preferredCuisines("양식 먹고 싶어", Set.of(), true))
+        .containsExactly("양식");
+    assertThat(UserRecommendationIntent.preferredCuisines("양식 말고 한식 먹자", Set.of(), true))
+        .containsExactly("한식");
+    assertThat(UserRecommendationIntent.preferredCuisines("한식이나 양식", Set.of(), true))
+        .containsExactlyInAnyOrder("한식", "양식");
+    assertThat(UserRecommendationIntent.preferredCuisines("성수에서 서양 음식 먹고 싶어", Set.of(), true))
+        .containsExactly("양식");
+    assertThat(UserRecommendationIntent.preferredCuisines("내일 식사할 곳 추천해줘", Set.of(), false))
+        .isEmpty();
+    assertThat(UserRecommendationIntent.preferredCuisines("", Set.of(), true)).isEmpty();
+  }
+
+  @Test
+  void unclearOrOnlyExcludedPreferencesRequireClarification() {
+    for (String phrase : new String[] {"양식 말고", "양식 아니어도 돼", "맛있는 거", "양식 싫어", "양식\n먹고 싶어"}) {
+      assertThatIllegalArgumentException()
+          .isThrownBy(() -> UserRecommendationIntent.preferredCuisines(phrase, Set.of(), true));
+    }
+  }
+
   @Test
   void user_phrases_add_only_supported_conditions_with_mandatory_parking() {
     assertThat(UserRecommendationIntent.requiredFeatures("지금 도착지 근처에 갈만한 맛집 추천해줘", Set.of()))

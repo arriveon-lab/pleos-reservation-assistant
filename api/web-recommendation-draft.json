@@ -635,6 +635,16 @@
           }
         }
       },
+      "BusinessDetails": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "CUISINE": { "$ref": "#/components/schemas/Evidence" },
+          "MENU": { "$ref": "#/components/schemas/Evidence" },
+          "OPENING_HOURS": { "$ref": "#/components/schemas/Evidence" },
+          "BREAK_TIME": { "$ref": "#/components/schemas/Evidence" }
+        }
+      },
       "Candidate": {
         "type": "object",
         "additionalProperties": false,
@@ -672,6 +682,19 @@
             "format": "uri",
             "pattern": "^https://"
           },
+          "naverPlaceUrl": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://map\\.naver\\.com/p/entry/place/[0-9]+$",
+            "description": "Optional link to the matching branch, independent of the source for business details."
+          },
+          "venueCategory": {
+            "type": "string",
+            "enum": ["RESTAURANT", "CAFE", "UNKNOWN"]
+          },
+          "businessDetails": {
+            "$ref": "#/components/schemas/BusinessDetails"
+          },
           "fit": {
             "type": "string",
             "enum": [
@@ -699,6 +722,12 @@
             "items": {
               "$ref": "#/components/schemas/Need"
             }
+          },
+          "reviewSignals": {
+            "type": "array",
+            "maxItems": 6,
+            "items": { "$ref": "#/components/schemas/Assessment" },
+            "description": "One cited visitor-review signal per requested need. YES is a positive observation, NO a caution, CONFLICT mixed observations. Secondary ranking evidence only; never proves a facility or authorizes booking. An empty array means no qualifying review evidence."
           },
           "identityVerified": {
             "const": false

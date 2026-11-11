@@ -1,0 +1,10 @@
+{
+  "approved": true,
+  "candidateOrdinal": 2,
+  "reservationAt": "2030-11-12T19:00:00+09:00",
+  "reservationName": "가상 예약자",
+  "previousAttemptId": null,
+  "conditionScenario": "UNMET",
+  "availabilityScenario": "AVAILABLE",
+  "bookingScenario": "ACCEPT"
+}

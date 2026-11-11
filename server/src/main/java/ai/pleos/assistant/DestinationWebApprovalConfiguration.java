@@ -36,6 +36,8 @@ class DestinationWebApprovalConfiguration {
       @Value("${app.destination-recommendations.web.approved-max-output-tokens:0}") int outputLimit,
       @Value("${app.destination-recommendations.web.approved-until:}") String until,
       @Value("${app.destination-recommendations.web.runtime-enabled:false}") boolean runtimeEnabled,
+      @Value("${app.destination-recommendations.web.gumi-catalog-enabled:false}")
+          boolean gumiCatalogEnabled,
       @Value("${app.destination-recommendations.web.runtime-model:}") String runtimeModel,
       @Value("${app.destination-recommendations.web.runtime-max-output-tokens:0}")
           int runtimeOutputLimit,
@@ -53,8 +55,17 @@ class DestinationWebApprovalConfiguration {
           || !until.isBlank()
           || generation != 0
           || outputLimit != 0) throw new IllegalStateException("Conflicting web access modes");
-      return new RuntimeWebRecommendationGateway(
-          clock, adapter, runtimeModel, runtimeOutputLimit, runtimeMaxCalls);
+      var web =
+          new RuntimeWebRecommendationGateway(
+              clock, adapter, runtimeModel, runtimeOutputLimit, runtimeMaxCalls);
+      if (!gumiCatalogEnabled) return web;
+      return (request, deadline, current) -> {
+        if (current.getAsBoolean() && clock.instant().isBefore(deadline)) {
+          var catalog = GumiRestaurantCatalog.search(request, clock);
+          if (catalog.isPresent()) return catalog.orElseThrow();
+        }
+        return web.search(request, deadline, current);
+      };
     }
     if (needs.isBlank()) throw new IllegalStateException("Approved web needs required");
     var parsed = EnumSet.noneOf(WebRecommendation.Need.class);

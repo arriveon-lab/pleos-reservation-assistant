@@ -20,6 +20,33 @@ class GptWebRecommendationAdapterTest {
       new Request(UUID.randomUUID(), 1, "가상 서울숲", Set.of(Need.PET_FRIENDLY), true);
 
   @Test
+  void structuredCuisineAndRequiredNeedsAreBothSentWithoutOriginalUtterance() throws Exception {
+    var adapter =
+        new GptWebRecommendationAdapter(
+            clock,
+            (b, k, t) -> {
+              throw new AssertionError();
+            },
+            () -> "fixture");
+    var foodRequest =
+        new Request(
+            UUID.randomUUID(),
+            1,
+            "가상 성수",
+            Set.of(Need.PARKING, Need.HIGH_CHAIR),
+            false,
+            VenueCategory.RESTAURANT,
+            UserRecommendationIntent.preferredCuisines("양식 먹고 싶어", Set.of(), true));
+    var body = new ObjectMapper().readTree(adapter.requestJson(foodRequest, "fixture", 3072));
+    var input = new ObjectMapper().readTree(body.path("input").asText());
+    assertThat(body.path("max_tool_calls").asInt()).isEqualTo(3);
+    assertThat(body.at("/tools/0/search_context_size").asText()).isEqualTo("medium");
+    assertThat(input.path("preferredCuisines").get(0).asText()).isEqualTo("양식");
+    assertThat(input.path("needs").toString()).contains("PARKING", "HIGH_CHAIR");
+    assertThat(body.toString()).doesNotContain("양식 먹고 싶어");
+  }
+
+  @Test
   void noPermitNoCurrentOrExpiredNeverReadsKeyOrCallsTransport() {
     var adapter =
         new GptWebRecommendationAdapter(

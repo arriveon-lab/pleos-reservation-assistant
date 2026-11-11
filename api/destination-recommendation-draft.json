@@ -3,7 +3,7 @@
   "info": {
     "title": "Destination restaurant shortlist — experimental contract",
     "version": "0.1.0-draft",
-    "description": "Disabled by default. WEB_SEARCH independently finds up to three cited restaurants using only a public destination label and required needs under an exact one-shot permit. KAKAO remains a separate transient listing source and PUBLIC_CATALOG is optional; Kakao responses are never forwarded to OpenAI. Telephone, booking, driving ETA and numeric star ratings are absent."
+    "description": "Disabled by default. WEB_SEARCH independently finds up to three cited restaurants using only a public destination label and required needs under an exact one-shot permit. KAKAO remains a separate transient listing source and PUBLIC_CATALOG is optional. The opt-in reservation endpoint runs only with a fictional catalog and the loopback phone simulator."
   },
   "servers": [{ "url": "http://127.0.0.1:8080" }],
   "paths": {
@@ -25,6 +25,26 @@
         }
       }
     },
+    "/api/experimental/destination-recommendations/web": {
+      "post": {
+        "description": "Start a WEB_SEARCH task from a public destination label. The server also researches parking.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WebStartRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Poll the returned taskId with the same bearer token",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Started" } } }
+          },
+          "400": { "description": "Invalid destination, needs, or generation" },
+          "401": { "description": "Bearer token required" },
+          "404": { "description": "WEB_SEARCH source is disabled" },
+          "429": { "description": "In-memory task capacity reached" }
+        }
+      }
+    },
     "/api/experimental/destination-recommendations/{id}": {
       "get": {
         "security": [{ "bearerAuth": [] }],
@@ -36,6 +56,41 @@
           },
           "401": { "description": "Bearer token required" },
           "404": { "description": "Unknown, foreign-owner, or expired task" }
+        }
+      }
+    },
+    "/api/experimental/destination-recommendations/{id}/phone-reservations": {
+      "description": "Local MOCK only. The server forwards the authenticated owner's current catalog shortlist and its party requirements to the phone simulator.",
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": {
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Latest attempt for this owner, including after the shortlist expires", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MockPhoneReceipt" } } } },
+          "401": { "description": "Bearer token required" },
+          "404": { "description": "No attempt for this owner" },
+          "502": { "description": "Phone simulator unavailable" },
+          "504": { "description": "Phone simulator timed out" }
+        }
+      },
+      "post": {
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{
+          "name": "Idempotency-Key", "in": "header", "required": true,
+          "description": "Use a fresh key for each new approval. Replaying the same request while the shortlist is valid returns the original receipt.",
+          "schema": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,100}$" }
+        }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MockPhoneApproval" } } }
+        },
+        "responses": {
+          "200": { "description": "Attempt receipt. Only a definitive decline can offer a next candidate. Another POST with a new approval is required to try it.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MockPhoneReceipt" } } } },
+          "400": { "description": "Invalid or missing approval, candidate, key, time, or simulation input" },
+          "401": { "description": "Bearer token required" },
+          "404": { "description": "Unknown, expired, or foreign-owner recommendation" },
+          "409": { "description": "Inactive recommendation, stale or changed fallback approval, no eligible fallback, or conflicting replay" },
+          "502": { "description": "Phone simulator request failed. Check current state with GET." },
+          "504": { "description": "Phone simulator timed out. Check current state with GET." }
         }
       }
     },
@@ -65,6 +120,83 @@
       "bearerAuth": { "type": "http", "scheme": "bearer" }
     },
     "schemas": {
+      "WebStartRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["viewId", "generation", "destination", "requiredNeeds"],
+        "properties": {
+          "viewId": { "type": "string", "format": "uuid" },
+          "generation": { "type": "integer", "minimum": 1, "maximum": 1000000000 },
+          "destination": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "venueCategory": { "type": "string", "enum": ["RESTAURANT", "CAFE"], "description": "Optional venue filter. Omitting this searches both categories." },
+          "foodPreferenceText": { "type": "string", "maxLength": 160, "description": "Optional local interpretation of Korean cuisine intent, e.g. 양식 먹고 싶어 or 양식 말고 한식. Supports 한식, 양식, 일식, 중식, 분식, 아시아음식. Blank means no cuisine restriction. Unclear or only excluded cuisines return HTTP 400 FOOD_PREFERENCE_UNCLEAR before any search. The raw text is not sent to the search model." },
+          "requiredNeeds": {
+            "type": "array", "uniqueItems": true, "maxItems": 6,
+            "items": { "enum": ["PARKING", "HIGH_CHAIR", "STEP_FREE_ACCESS", "CHILD_FRIENDLY", "PET_FRIENDLY", "INDOOR_PET_FRIENDLY"] }
+          }
+        },
+        "examples": [{
+          "viewId": "11111111-1111-4111-8111-111111111111",
+          "generation": 1,
+          "destination": "성수",
+          "venueCategory": "RESTAURANT",
+          "foodPreferenceText": "양식 먹고 싶어",
+          "requiredNeeds": ["PARKING", "HIGH_CHAIR", "STEP_FREE_ACCESS"]
+        }]
+      },
+      "MockPhoneApproval": {
+        "type": "object",
+        "required": ["approved", "candidateOrdinal", "reservationAt", "reservationName", "conditionScenario", "availabilityScenario", "bookingScenario"],
+        "properties": {
+          "approved": { "const": true },
+          "candidateOrdinal": { "type": "integer", "minimum": 1, "maximum": 3 },
+          "reservationAt": { "type": "string", "format": "date-time", "description": "Future time with seconds and fractional seconds equal to zero. Converted to Asia/Seoul." },
+          "reservationName": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "previousAttemptId": { "type": ["string", "null"], "pattern": "^[a-f0-9]{32}$", "description": "Required for an offered fallback. Use the preceding receipt's attemptId and keep the approved time and name." },
+          "conditionScenario": { "enum": ["MET", "UNMET", "UNKNOWN"] },
+          "availabilityScenario": { "enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"] },
+          "bookingScenario": { "enum": ["ACCEPT", "DECLINE", "AMBIGUOUS", "DISCONNECT", "BUSY", "TIME_MISMATCH", "COST_REQUIRED", "ARS"] }
+        }
+      },
+      "MockPhoneReceipt": {
+        "type": "object",
+        "required": ["attemptId", "mode", "candidateOrdinal", "restaurantName", "status", "conditionStatus", "availabilityStatus", "bookingRequested", "date", "requestedTime", "confirmedTime", "partySize", "requiredConditions", "requirementChecks", "nextCandidate", "externalCalls", "notice", "conversation"],
+        "properties": {
+          "attemptId": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+          "mode": { "const": "MOCK" },
+          "candidateOrdinal": { "type": "integer", "minimum": 1, "maximum": 3 },
+          "restaurantName": { "type": "string" },
+          "status": { "enum": ["CONFIRMED", "DECLINED", "UNKNOWN", "FAILED"] },
+          "conditionStatus": { "enum": ["MET", "UNMET", "UNKNOWN"] },
+          "availabilityStatus": { "enum": ["AVAILABLE", "UNAVAILABLE", "UNKNOWN"] },
+          "bookingRequested": { "type": "boolean" },
+          "date": { "type": "string", "format": "date" },
+          "requestedTime": { "type": "string", "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+          "confirmedTime": { "type": ["string", "null"], "pattern": "^[0-2][0-9]:[0-5][0-9]$" },
+          "partySize": { "type": "integer", "minimum": 1, "maximum": 30 },
+          "requiredConditions": { "type": "array", "items": { "type": "string" } },
+          "requirementChecks": { "type": "object", "additionalProperties": { "enum": ["CONFIRMED", "UNMET", "UNKNOWN"] } },
+          "nextCandidate": {
+            "type": ["object", "null"], "required": ["ordinal", "name", "address"],
+            "properties": {
+              "ordinal": { "type": "integer", "minimum": 1, "maximum": 3 },
+              "name": { "type": "string" },
+              "address": { "type": "string" }
+            }
+          },
+          "externalCalls": { "const": 0 },
+          "notice": { "type": "string" },
+          "conversation": {
+            "type": "array", "items": {
+              "type": "object", "required": ["speaker", "message"],
+              "properties": {
+                "speaker": { "enum": ["agent", "restaurant", "system"] },
+                "message": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
       "StartRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -149,12 +281,13 @@
         "type": "object",
         "required": ["listing", "webState", "webCandidateCount", "identityLookupState", "webRecommendations"],
         "properties": {
+          "preferredCuisines": { "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "enum": ["한식", "양식", "일식", "중식", "분식", "아시아음식"] }, "description": "Locally extracted food preferences. Requested cuisine and sourced CUISINE business detail are checked before applying required-needs and review ranking. An empty result does not silently broaden cuisines." },
           "listing": { "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/Plan" }] },
           "webState": { "type": "string", "enum": ["RESULTS", "EMPTY", "FILTERED", "FAILED", "CANCELLED", "EXPIRED", "APPROVAL_REQUIRED", "ALREADY_REQUESTED"] },
           "webFailureReason": { "type": ["string", "null"], "enum": ["BUDGET_EXHAUSTED", "CREDENTIAL_MISSING", "HTTP_BAD_REQUEST", "HTTP_UNAUTHORIZED", "HTTP_RATE_LIMITED", "HTTP_REJECTED", "INCOMPLETE_RESPONSE", "MISSING_WEB_SEARCH", "MISSING_OUTPUT_TEXT", "UNMATCHED_IDENTITY_SOURCE", "INVALID_SOURCE_METADATA", "INVALID_OUTPUT_SHAPE", "INVALID_CANDIDATE", "INVALID_REVIEW", "INVALID_REPORT", "INVALID_RESPONSE", "TRANSPORT_ERROR", null], "description": "Coarse diagnostic only when webState=FAILED. No provider body or credential is exposed." },
           "webCandidateCount": { "type": "integer", "minimum": 0, "maximum": 3, "description": "Count of independently found web candidates before Kakao identity matching; no names or addresses." },
           "identityLookupState": { "type": "string", "enum": ["NOT_RUN", "MATCHED", "EMPTY", "FAILED"], "description": "Coarse result of the bounded Kakao keyword recheck; MATCHED does not imply final recommendation." },
-          "webRecommendations": { "type": "array", "maxItems": 3, "items": { "type": "object" }, "description": "WEB_SEARCH source only: independently cited restaurant candidates with review and condition evidence. No Kakao data or driving ETA." },
+          "webRecommendations": { "type": "array", "maxItems": 3, "items": { "type": "object", "properties": { "venueCategory": { "type": "string", "enum": ["RESTAURANT", "CAFE", "UNKNOWN"] }, "businessDetails": { "$ref": "web-recommendation-draft.json#/components/schemas/BusinessDetails" }, "naverPlaceUrl": { "$ref": "web-recommendation-draft.json#/components/schemas/Candidate/properties/naverPlaceUrl" }, "reviewSignals": { "$ref": "web-recommendation-draft.json#/components/schemas/Candidate/properties/reviewSignals" } } }, "description": "Up to three WEB_SEARCH candidates ranked by supported required needs, then fewer review cautions and more positively reviewed needs. Ties preserve provider order. Includes cited branch and business details, review summaries and per-need visitor signals; review evidence is not merchant confirmation." },
           "matches": {
             "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/WebMatches" }],
             "description": "Only independently searched web results matched to a transient listing. Null until web approval/search succeeds."

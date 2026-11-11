@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -24,6 +25,10 @@ import java.util.Set;
  * Validates cited model reports, not merchant identity or the truth of a webpage. Never fetches.
  */
 public final class WebRecommendationParser {
+  static final int MAX_WEB_SEARCHES = 3;
+  private static final java.util.regex.Pattern ROAD_ADDRESS =
+      java.util.regex.Pattern.compile("(?:^|\\s)(\\S+(?:로|길))\\s+(\\d+(?:-\\d+)?)(?=[\\s,]|$)");
+
   private final ObjectMapper json =
       new ObjectMapper(
               JsonFactory.builder()
@@ -39,6 +44,16 @@ public final class WebRecommendationParser {
 
   public Result parse(
       String response, Request request, Mode mode, Instant observedAt, Instant validUntil) {
+    return parse(response, request, mode, observedAt, validUntil, List.of());
+  }
+
+  Result parse(
+      String response,
+      Request request,
+      Mode mode,
+      Instant observedAt,
+      Instant validUntil,
+      List<Candidate> supplemental) {
     FailureReason stage = FailureReason.INVALID_RESPONSE;
     try {
       if (response == null || response.length() > 1_048_576 || !validUntil.isAfter(observedAt))
@@ -55,11 +70,11 @@ public final class WebRecommendationParser {
         if ("web_search_call".equals(output.path("type").asText())) {
           if (!"search".equals(output.path("action").path("type").asText())
               || !"completed".equals(output.path("status").asText())) continue;
-          searches++;
+          if (++searches > MAX_WEB_SEARCHES) return empty(mode, State.FAILED);
           for (JsonNode source : output.path("action").path("sources")) {
             URI url = safeUri(source.path("url"));
             if (url != null) consulted.add(url);
-            if (consulted.size() > 64) return empty(mode, State.FAILED);
+            if (consulted.size() > MAX_WEB_SEARCHES * 64) return empty(mode, State.FAILED);
           }
         }
         if (!"message".equals(output.path("type").asText())
@@ -80,23 +95,24 @@ public final class WebRecommendationParser {
         }
       }
       // One Responses request may contain search plus page-open actions. It is still one API call.
-      if (searches < 1 || searches > 3 || texts.size() != 1) return empty(mode, State.FAILED);
+      if (searches < 1 || texts.size() != 1) return empty(mode, State.FAILED);
       JsonNode content = json.readTree(texts.getFirst());
       stage = FailureReason.INVALID_OUTPUT_SHAPE;
       shape(content, Set.of("candidates"));
       JsonNode input = content.path("candidates");
       if (!input.isArray() || input.size() > 8) return empty(mode, State.FAILED);
-      if (input.isEmpty())
+      if (input.isEmpty() && supplemental.isEmpty())
         return new Result(mode, State.EMPTY, observedAt, validUntil, List.of(), 0);
       Map<String, Draft> distinct = new LinkedHashMap<>();
       for (JsonNode candidate : input) {
         stage = FailureReason.INVALID_CANDIDATE;
         boolean hasReviews = candidate.has("reviews");
-        shape(
-            candidate,
-            hasReviews
-                ? Set.of("name", "address", "identitySourceUrl", "reports", "reviews")
-                : Set.of("name", "address", "identitySourceUrl", "reports"));
+        var fields = new HashSet<>(Set.of("name", "address", "identitySourceUrl", "reports"));
+        if (hasReviews) fields.add("reviews");
+        if (candidate.has("venueCategory")) fields.add("venueCategory");
+        if (candidate.has("cuisine")) fields.add("cuisine");
+        if (candidate.has("businessDetails")) fields.add("businessDetails");
+        shape(candidate, fields);
         String rawName = candidate.path("name").asText(null),
             rawAddress = candidate.path("address").asText(null);
         if (!validIdentityText(rawName, 150)
@@ -110,6 +126,36 @@ public final class WebRecommendationParser {
             PlaceDetailEnricher.canonical(name) + "\u0000" + PlaceDetailEnricher.canonical(address);
         Draft draft =
             distinct.computeIfAbsent(key, ignored -> new Draft(name, address, identityUrl));
+        switch (candidate.path("venueCategory").asText()) {
+          case "RESTAURANT" -> draft.categories.add(VenueCategory.RESTAURANT);
+          case "CAFE" -> draft.categories.add(VenueCategory.CAFE);
+          default -> {} // Earlier results and unsupported classifications remain UNKNOWN.
+        }
+        String cuisine = candidate.path("cuisine").asText();
+        if (UserRecommendationIntent.CUISINES.contains(cuisine)) draft.cuisines.add(cuisine);
+        JsonNode businessDetails = candidate.path("businessDetails");
+        if (businessDetails.isArray() && businessDetails.size() <= 6) {
+          for (JsonNode detail : businessDetails) {
+            try {
+              shape(
+                  detail,
+                  Set.of("kind", "condition", "sourceUrl", "sourceType", "sourceUpdatedAt"));
+              var kind = BusinessDetailKind.valueOf(required(detail, "kind", 30));
+              var evidence = readEvidence(detail, citations, consulted, observedAt, validUntil);
+              if (evidence != null && evidence.sourceType() != SourceType.VISITOR_REVIEW)
+                draft.businessDetails.merge(
+                    kind,
+                    evidence,
+                    (previous, current) ->
+                        previous.sourceType() != SourceType.MERCHANT_PAGE
+                                && current.sourceType() == SourceType.MERCHANT_PAGE
+                            ? current
+                            : previous);
+            } catch (RuntimeException invalidDetail) {
+              // Optional details without usable evidence do not invalidate the branch.
+            }
+          }
+        }
         if (hasReviews) {
           stage = FailureReason.INVALID_REVIEW;
           JsonNode reviews = candidate.path("reviews");
@@ -147,51 +193,46 @@ public final class WebRecommendationParser {
             Need need = Need.valueOf(required(report, "need", 40));
             Verdict answer = Verdict.valueOf(required(report, "answer", 20));
             if (answer == Verdict.CONFLICT || !request.requiredNeeds().contains(need)) continue;
-            URI url = safeUri(report.path("sourceUrl"));
-            if (url == null || (!citations.containsKey(url) && !consulted.contains(url))) continue;
-            boolean inlineCited = citations.containsKey(url);
-            SourceType type =
-                inlineCited
-                    ? SourceType.valueOf(required(report, "sourceType", 30))
-                    : SourceType.OTHER;
-            String condition = report.path("condition").asText(null);
-            if (!text(condition, 240)) continue;
-            Instant updated = null;
-            if (!report.path("sourceUpdatedAt").isNull()) {
-              String date = report.path("sourceUpdatedAt").asText(null);
-              if (date == null || date.length() > 40) continue;
-              updated = Instant.parse(date);
-            }
-            if (updated != null
-                && (updated.isAfter(observedAt)
-                    || updated.isBefore(observedAt.minus(Duration.ofDays(180))))) continue;
-            var evidence =
-                new Evidence(
-                    url,
-                    inlineCited ? citations.get(url) : "웹검색 출처",
-                    type,
-                    observedAt,
-                    inlineCited ? updated : null,
-                    validUntil,
-                    condition.strip(),
-                    "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION",
-                    Model.Scope.GENERAL,
-                    null);
+            var evidence = readEvidence(report, citations, consulted, observedAt, validUntil);
+            if (evidence == null) continue;
+            boolean inlineCited = citations.containsKey(evidence.url());
             draft
                 .reports
                 .computeIfAbsent(need, ignored -> new ArrayList<>())
-                .add(new Report(inlineCited ? answer : Verdict.UNKNOWN, evidence));
+                .add(new Report(inlineCited ? answer : Verdict.UNKNOWN, evidence, answer));
           } catch (RuntimeException invalidReport) {
             // A malformed report cannot establish a feature; retain the place as UNKNOWN.
           }
         }
       }
-      if (distinct.isEmpty()) return empty(mode, State.FAILED);
+      if (distinct.isEmpty() && !input.isEmpty()) return empty(mode, State.FAILED);
       stage = FailureReason.INVALID_CANDIDATE;
-      var ranked = new ArrayList<Candidate>();
+      // Only attach verified facts to a branch identified by both its name and its street address.
+      for (Candidate supplement : supplemental) {
+        distinct.values().stream()
+            .filter(draft -> sameAddress(draft, supplement) && sameName(draft, supplement))
+            .forEach(draft -> attachConditions(draft, supplement));
+      }
+      var candidates = new ArrayList<Candidate>();
       int excluded = 0;
       for (Draft draft : distinct.values()) {
+        var category =
+            draft.categories.size() == 1
+                ? draft.categories.iterator().next()
+                : VenueCategory.UNKNOWN;
+        if (request.venueCategory() != null && request.venueCategory() != category) {
+          excluded++;
+          continue;
+        }
+        if (!request.preferredCuisines().isEmpty()
+            && (draft.cuisines.size() != 1
+                || !request.preferredCuisines().contains(draft.cuisines.iterator().next())
+                || !draft.businessDetails.containsKey(BusinessDetailKind.CUISINE))) {
+          excluded++;
+          continue;
+        }
         var assessments = new ArrayList<Assessment>();
+        var reviewSignals = new ArrayList<Assessment>();
         var remaining = new ArrayList<Need>();
         boolean no = false;
         for (Need need : request.requiredNeeds().stream().sorted().toList()) {
@@ -215,40 +256,54 @@ public final class WebRecommendationParser {
           assessments.add(
               new Assessment(
                   need, value, reports.stream().map(Report::evidence).distinct().toList()));
+          var visitorReports =
+              reports.stream()
+                  .filter(
+                      report ->
+                          report.evidence.sourceType() == SourceType.VISITOR_REVIEW
+                              && (report.answer == Verdict.YES || report.answer == Verdict.NO))
+                  .toList();
+          if (!visitorReports.isEmpty()) {
+            boolean positive =
+                visitorReports.stream().anyMatch(report -> report.answer == Verdict.YES);
+            boolean caution =
+                visitorReports.stream().anyMatch(report -> report.answer == Verdict.NO);
+            reviewSignals.add(
+                new Assessment(
+                    need,
+                    positive && caution ? Verdict.CONFLICT : positive ? Verdict.YES : Verdict.NO,
+                    visitorReports.stream().map(Report::evidence).distinct().toList()));
+          }
         }
         if (no) {
           excluded++;
           continue;
         }
-        ranked.add(
+        candidates.add(
             new Candidate(
-                0,
+                candidates.size() + 1,
                 draft.name,
                 draft.address,
                 draft.identityUrl,
+                category,
                 remaining.isEmpty() ? Fit.POTENTIAL_MATCH : Fit.NEEDS_CONFIRMATION,
                 assessments,
                 draft.reviews.stream().distinct().limit(3).toList(),
                 remaining,
                 false,
                 false,
-                false));
+                false,
+                draft.businessDetails,
+                null,
+                reviewSignals));
       }
-      var shortlist = new ArrayList<Candidate>();
-      for (Candidate c : ranked.stream().limit(3).toList())
-        shortlist.add(
-            new Candidate(
-                shortlist.size() + 1,
-                c.name(),
-                c.address(),
-                c.identitySourceUrl(),
-                c.fit(),
-                c.assessments(),
-                c.reviews(),
-                c.remainingQuestions(),
-                false,
-                false,
-                false));
+      // Compare against every sourced branch, including ones excluded by mandatory conditions.
+      for (Candidate supplement : supplemental) {
+        if (distinct.values().stream()
+            .noneMatch(draft -> sameName(draft, supplement) || sameAddress(draft, supplement)))
+          candidates.add(supplement);
+      }
+      var shortlist = shortlist(candidates);
       return new Result(
           mode,
           shortlist.isEmpty() ? State.FILTERED : State.RESULTS,
@@ -261,11 +316,75 @@ public final class WebRecommendationParser {
     }
   }
 
-  private record Report(Verdict answer, Evidence evidence) {}
+  private static boolean sameName(Draft draft, Candidate candidate) {
+    return PlaceDetailEnricher.canonical(draft.name)
+            .equals(PlaceDetailEnricher.canonical(candidate.name()))
+        || SeongsuWesternCatalog.isListingAlias(draft.name, candidate.name());
+  }
+
+  private static boolean sameAddress(Draft draft, Candidate candidate) {
+    var left = ROAD_ADDRESS.matcher(draft.address);
+    var right = ROAD_ADDRESS.matcher(candidate.address());
+    return left.find()
+        && right.find()
+        && left.group(1).equals(right.group(1))
+        && left.group(2).equals(right.group(2));
+  }
+
+  private static void attachConditions(Draft draft, Candidate supplement) {
+    for (Assessment assessment : supplement.assessments()) {
+      var reports = draft.reports.computeIfAbsent(assessment.need(), ignored -> new ArrayList<>());
+      if (reports.stream().anyMatch(report -> report.reportedAnswer == Verdict.NO)) continue;
+      if (assessment.verdict() == Verdict.UNKNOWN && !reports.isEmpty()) continue;
+      for (Evidence evidence : assessment.evidence())
+        reports.add(new Report(assessment.verdict(), evidence, assessment.verdict()));
+    }
+  }
+
+  private static Evidence readEvidence(
+      JsonNode report,
+      Map<URI, String> citations,
+      Set<URI> consulted,
+      Instant observedAt,
+      Instant validUntil) {
+    URI url = safeUri(report.path("sourceUrl"));
+    if (url == null || (!citations.containsKey(url) && !consulted.contains(url))) return null;
+    boolean inlineCited = citations.containsKey(url);
+    SourceType type =
+        inlineCited ? SourceType.valueOf(required(report, "sourceType", 30)) : SourceType.OTHER;
+    String condition = report.path("condition").asText(null);
+    if (!text(condition, 240)) return null;
+    Instant updated = null;
+    if (!report.path("sourceUpdatedAt").isNull()) {
+      String date = report.path("sourceUpdatedAt").asText(null);
+      if (date == null || date.length() > 40) return null;
+      updated = Instant.parse(date);
+    }
+    if (updated != null
+        && (updated.isAfter(observedAt)
+            || updated.isBefore(observedAt.minus(Duration.ofDays(180))))) return null;
+    return new Evidence(
+        url,
+        inlineCited ? citations.get(url) : "웹검색 출처",
+        type,
+        observedAt,
+        inlineCited ? updated : null,
+        validUntil,
+        condition.strip(),
+        "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION",
+        Model.Scope.GENERAL,
+        null);
+  }
+
+  private record Report(Verdict answer, Evidence evidence, Verdict reportedAnswer) {}
 
   private static class Draft {
     final String name, address;
     final URI identityUrl;
+    final Set<VenueCategory> categories = EnumSet.noneOf(VenueCategory.class);
+    final Set<String> cuisines = new HashSet<>();
+    final Map<BusinessDetailKind, Evidence> businessDetails =
+        new EnumMap<>(BusinessDetailKind.class);
     final Map<Need, List<Report>> reports = new EnumMap<>(Need.class);
     final List<Evidence> reviews = new ArrayList<>();
 

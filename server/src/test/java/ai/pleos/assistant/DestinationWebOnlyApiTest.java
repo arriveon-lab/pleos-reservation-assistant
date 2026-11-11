@@ -47,7 +47,9 @@ class DestinationWebOnlyApiTest {
     DestinationRecommendationService.WebGateway fictionalDestinationWeb(Clock clock) {
       return (request, deadline, current) -> {
         String response = MockWebRecommendationGateway.fictionalResponse();
-        if ("두 곳 시험".equals(request.area())) {
+        if ("두 곳 시험".equals(request.area())
+            || "업종 시험".equals(request.area())
+            || "음식 취향 시험".equals(request.area())) {
           try {
             var root =
                 (com.fasterxml.jackson.databind.node.ObjectNode)
@@ -55,8 +57,24 @@ class DestinationWebOnlyApiTest {
             var body =
                 (com.fasterxml.jackson.databind.node.ObjectNode)
                     new ObjectMapper().readTree(root.at("/output/1/content/0/text").asText());
-            ((com.fasterxml.jackson.databind.node.ObjectNode) body.at("/candidates/0"))
-                .put("address", "UNKNOWN");
+            var first = (com.fasterxml.jackson.databind.node.ObjectNode) body.at("/candidates/0");
+            var second = (com.fasterxml.jackson.databind.node.ObjectNode) body.at("/candidates/1");
+            if ("음식 취향 시험".equals(request.area())) {
+              first.put("venueCategory", "RESTAURANT").put("cuisine", "양식");
+              first
+                  .putArray("businessDetails")
+                  .addObject()
+                  .put("kind", "CUISINE")
+                  .put("condition", "양식: 가상 파스타 메뉴")
+                  .put("sourceUrl", first.path("identitySourceUrl").asText())
+                  .put("sourceType", "MERCHANT_PAGE")
+                  .putNull("sourceUpdatedAt");
+            } else if ("업종 시험".equals(request.area())) {
+              first.put("venueCategory", "CAFE");
+              second.put("venueCategory", "RESTAURANT");
+            } else {
+              first.put("address", "UNKNOWN");
+            }
             ((com.fasterxml.jackson.databind.node.ObjectNode) root.at("/output/1/content/0"))
                 .put("text", body.toString());
             response = root.toString();
@@ -73,6 +91,69 @@ class DestinationWebOnlyApiTest {
                 clock.instant().plusSeconds(300));
       };
     }
+  }
+
+  @Test
+  void foodPhraseSurvivesAuthenticatedSearchAndKeepsRequiredNeeds() throws Exception {
+    String token = auth.issue().accessToken();
+    var request =
+        new java.util.HashMap<String, Object>(
+            Map.of(
+                "viewId",
+                UUID.randomUUID(),
+                "generation",
+                1,
+                "destination",
+                "음식 취향 시험",
+                "requiredNeeds",
+                Set.of("HIGH_CHAIR", "STEP_FREE_ACCESS"),
+                "venueCategory",
+                "RESTAURANT",
+                "foodPreferenceText",
+                "양식 먹고 싶어"));
+    var started =
+        json.readTree(
+            http.perform(
+                    post(BASE + "/web")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsBytes(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    com.fasterxml.jackson.databind.JsonNode result = null;
+    for (int attempt = 0; attempt < 100; attempt++) {
+      result =
+          json.readTree(
+              http.perform(
+                      get(BASE + "/" + started.path("taskId").asText())
+                          .header("Authorization", "Bearer " + token))
+                  .andExpect(status().isOk())
+                  .andReturn()
+                  .getResponse()
+                  .getContentAsString());
+      if (result.path("state").asText().equals("RESULTS")) break;
+      Thread.sleep(10);
+    }
+    assertThat(result.at("/result/preferredCuisines/0").asText()).isEqualTo("양식");
+    assertThat(result.at("/result/webRecommendations").size()).isEqualTo(1);
+    assertThat(result.at("/result/webRecommendations/0/assessments").findValuesAsText("need"))
+        .containsExactlyInAnyOrder("PARKING", "HIGH_CHAIR", "STEP_FREE_ACCESS");
+    assertThat(result.at("/result/webRecommendations/0/businessDetails/CUISINE/condition").asText())
+        .contains("양식");
+    request.put("foodPreferenceText", "양식 말고");
+    var failure =
+        http.perform(
+                post(BASE + "/web")
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsBytes(request)))
+            .andExpect(status().isBadRequest())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(failure).contains("FOOD_PREFERENCE_UNCLEAR");
   }
 
   @Test
@@ -125,18 +206,18 @@ class DestinationWebOnlyApiTest {
     String token = auth.issue().accessToken();
     var request =
         Map.of(
-            "viewId", UUID.randomUUID(),
-            "generation", 1,
-            "userRequest", "도착지 근처 식당 추천해줘",
-            "destination", Map.of("name", "두 곳 시험", "latitude", 37.544, "longitude", 127.055),
-            "party", Map.of("adults", 2, "children", 0),
-            "maxWaitMinutes", 15,
-            "requiredFeatures", Set.of(),
-            "preferredCuisines", Set.of());
+            "viewId",
+            UUID.randomUUID(),
+            "generation",
+            1,
+            "destination",
+            "두 곳 시험",
+            "requiredNeeds",
+            Set.of("HIGH_CHAIR"));
     var started =
         json.readTree(
             http.perform(
-                    post(BASE)
+                    post(BASE + "/web")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsBytes(request)))
@@ -161,5 +242,56 @@ class DestinationWebOnlyApiTest {
     assertThat(result).isNotNull();
     assertThat(result.at("/result/webState").asText()).isEqualTo("RESULTS");
     assertThat(result.at("/result/webRecommendations").size()).isEqualTo(2);
+    var needs = result.at("/result/webRecommendations/0/assessments").findValuesAsText("need");
+    assertThat(needs).containsExactlyInAnyOrder("PARKING", "HIGH_CHAIR");
+  }
+
+  @Test
+  void categoryFilterDropsOtherAndUnknownCategoriesBeforeAssigningOrdinals() throws Exception {
+    String token = auth.issue().accessToken();
+    for (String category : java.util.List.of("RESTAURANT", "CAFE")) {
+      var request =
+          Map.of(
+              "viewId",
+              UUID.randomUUID(),
+              "generation",
+              1,
+              "destination",
+              "업종 시험",
+              "requiredNeeds",
+              Set.of("PARKING"),
+              "venueCategory",
+              category);
+      var started =
+          json.readTree(
+              http.perform(
+                      post(BASE + "/web")
+                          .header("Authorization", "Bearer " + token)
+                          .contentType(MediaType.APPLICATION_JSON)
+                          .content(json.writeValueAsBytes(request)))
+                  .andExpect(status().isOk())
+                  .andReturn()
+                  .getResponse()
+                  .getContentAsString());
+      com.fasterxml.jackson.databind.JsonNode result = null;
+      for (int attempt = 0; attempt < 100; attempt++) {
+        result =
+            json.readTree(
+                http.perform(
+                        get(BASE + "/" + started.path("taskId").asText())
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString());
+        if (result.path("state").asText().equals("RESULTS")) break;
+        Thread.sleep(10);
+      }
+      assertThat(result).isNotNull();
+      var candidates = result.at("/result/webRecommendations");
+      assertThat(candidates.size()).isEqualTo(1);
+      assertThat(candidates.at("/0/venueCategory").asText()).isEqualTo(category);
+      assertThat(candidates.at("/0/ordinal").asInt()).isEqualTo(1);
+    }
   }
 }

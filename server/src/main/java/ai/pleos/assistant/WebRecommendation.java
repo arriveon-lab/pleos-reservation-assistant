@@ -1,8 +1,13 @@
 package ai.pleos.assistant;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.net.URI;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -27,6 +32,19 @@ public final class WebRecommendation {
     NO,
     UNKNOWN,
     CONFLICT
+  }
+
+  public enum VenueCategory {
+    RESTAURANT,
+    CAFE,
+    UNKNOWN
+  }
+
+  public enum BusinessDetailKind {
+    CUISINE,
+    MENU,
+    OPENING_HOURS,
+    BREAK_TIME
   }
 
   public enum SourceType {
@@ -97,8 +115,31 @@ public final class WebRecommendation {
       String area,
       Set<Need> requiredNeeds,
       @com.fasterxml.jackson.annotation.JsonProperty(required = true)
-          boolean personalizationConsent) {
+          boolean personalizationConsent,
+      @JsonIgnore VenueCategory venueCategory,
+      @JsonIgnore Set<String> preferredCuisines) {
+    public Request(
+        UUID viewId,
+        long generation,
+        String area,
+        Set<Need> requiredNeeds,
+        boolean personalizationConsent,
+        VenueCategory venueCategory) {
+      this(
+          viewId, generation, area, requiredNeeds, personalizationConsent, venueCategory, Set.of());
+    }
+
+    public Request(
+        UUID viewId,
+        long generation,
+        String area,
+        Set<Need> requiredNeeds,
+        boolean personalizationConsent) {
+      this(viewId, generation, area, requiredNeeds, personalizationConsent, null);
+    }
+
     public Request {
+      preferredCuisines = preferredCuisines == null ? Set.of() : Set.copyOf(preferredCuisines);
       if (viewId == null
           || generation < 1
           || generation > 1_000_000_000
@@ -106,7 +147,10 @@ public final class WebRecommendation {
           || requiredNeeds == null
           || requiredNeeds.isEmpty()
           || requiredNeeds.size() > Need.values().length
-          || requiredNeeds.stream().anyMatch(Objects::isNull))
+          || requiredNeeds.stream().anyMatch(Objects::isNull)
+          || venueCategory == VenueCategory.UNKNOWN
+          || !UserRecommendationIntent.CUISINES.containsAll(preferredCuisines)
+          || (venueCategory == VenueCategory.CAFE && !preferredCuisines.isEmpty()))
         throw new IllegalArgumentException("Invalid web recommendation request");
       area = area.strip();
       requiredNeeds = Set.copyOf(requiredNeeds);
@@ -177,13 +221,109 @@ public final class WebRecommendation {
       String name,
       String address,
       URI identitySourceUrl,
+      VenueCategory venueCategory,
       Fit fit,
       List<Assessment> assessments,
       List<Evidence> reviews,
       List<Need> remainingQuestions,
       boolean identityVerified,
       boolean bookable,
-      boolean inquiryDispatchAllowed) {
+      boolean inquiryDispatchAllowed,
+      Map<BusinessDetailKind, Evidence> businessDetails,
+      @JsonInclude(JsonInclude.Include.NON_NULL) URI naverPlaceUrl,
+      List<Assessment> reviewSignals) {
+    public Candidate(
+        int ordinal,
+        String name,
+        String address,
+        URI identitySourceUrl,
+        VenueCategory venueCategory,
+        Fit fit,
+        List<Assessment> assessments,
+        List<Evidence> reviews,
+        List<Need> remainingQuestions,
+        boolean identityVerified,
+        boolean bookable,
+        boolean inquiryDispatchAllowed,
+        Map<BusinessDetailKind, Evidence> businessDetails,
+        URI naverPlaceUrl) {
+      this(
+          ordinal,
+          name,
+          address,
+          identitySourceUrl,
+          venueCategory,
+          fit,
+          assessments,
+          reviews,
+          remainingQuestions,
+          identityVerified,
+          bookable,
+          inquiryDispatchAllowed,
+          businessDetails,
+          naverPlaceUrl,
+          List.of());
+    }
+
+    public Candidate(
+        int ordinal,
+        String name,
+        String address,
+        URI identitySourceUrl,
+        VenueCategory venueCategory,
+        Fit fit,
+        List<Assessment> assessments,
+        List<Evidence> reviews,
+        List<Need> remainingQuestions,
+        boolean identityVerified,
+        boolean bookable,
+        boolean inquiryDispatchAllowed,
+        Map<BusinessDetailKind, Evidence> businessDetails) {
+      this(
+          ordinal,
+          name,
+          address,
+          identitySourceUrl,
+          venueCategory,
+          fit,
+          assessments,
+          reviews,
+          remainingQuestions,
+          identityVerified,
+          bookable,
+          inquiryDispatchAllowed,
+          businessDetails,
+          null);
+    }
+
+    public Candidate(
+        int ordinal,
+        String name,
+        String address,
+        URI identitySourceUrl,
+        Fit fit,
+        List<Assessment> assessments,
+        List<Evidence> reviews,
+        List<Need> remainingQuestions,
+        boolean identityVerified,
+        boolean bookable,
+        boolean inquiryDispatchAllowed) {
+      this(
+          ordinal,
+          name,
+          address,
+          identitySourceUrl,
+          VenueCategory.UNKNOWN,
+          fit,
+          assessments,
+          reviews,
+          remainingQuestions,
+          identityVerified,
+          bookable,
+          inquiryDispatchAllowed,
+          Map.of());
+    }
+
     public Candidate(
         int ordinal,
         String name,
@@ -210,11 +350,43 @@ public final class WebRecommendation {
     }
 
     public Candidate {
+      venueCategory = venueCategory == null ? VenueCategory.UNKNOWN : venueCategory;
+      businessDetails = businessDetails == null ? Map.of() : Map.copyOf(businessDetails);
       assessments = List.copyOf(assessments);
       reviews = List.copyOf(reviews);
+      reviewSignals = reviewSignals == null ? List.of() : List.copyOf(reviewSignals);
       remainingQuestions = List.copyOf(remainingQuestions);
       if (identityVerified || bookable || inquiryDispatchAllowed)
         throw new IllegalArgumentException("Web reports cannot authorize actions");
+    }
+
+    private Candidate withOrdinal(int rank) {
+      return new Candidate(
+          rank,
+          name,
+          address,
+          identitySourceUrl,
+          venueCategory,
+          fit,
+          assessments,
+          reviews,
+          remainingQuestions,
+          identityVerified,
+          bookable,
+          inquiryDispatchAllowed,
+          businessDetails,
+          naverPlaceUrl,
+          reviewSignals);
+    }
+
+    private long reviewCautions() {
+      return reviewSignals.stream()
+          .filter(signal -> signal.verdict() == Verdict.NO || signal.verdict() == Verdict.CONFLICT)
+          .count();
+    }
+
+    private long reviewSupport() {
+      return reviewSignals.stream().filter(signal -> signal.verdict() == Verdict.YES).count();
     }
 
     @Override
@@ -264,6 +436,24 @@ public final class WebRecommendation {
       boolean deleted) {}
 
   public record Response(String requestId, Result result) {}
+
+  /**
+   * Rank assessed places before truncation. Stable ties preserve the provider's proximity order.
+   */
+  static List<Candidate> shortlist(List<Candidate> candidates) {
+    var ordered =
+        candidates.stream()
+            .sorted(
+                Comparator.comparingInt(
+                        (Candidate candidate) -> candidate.remainingQuestions().size())
+                    .thenComparingLong(Candidate::reviewCautions)
+                    .thenComparing(Comparator.comparingLong(Candidate::reviewSupport).reversed()))
+            .limit(3)
+            .toList();
+    var ranked = new ArrayList<Candidate>();
+    for (Candidate candidate : ordered) ranked.add(candidate.withOrdinal(ranked.size() + 1));
+    return List.copyOf(ranked);
+  }
 
   static Result empty(Mode mode, State state) {
     return new Result(mode, state, null, null, List.of(), 0);

@@ -31,6 +31,14 @@ class DestinationRecommendationController {
 
   record Started(UUID taskId, RecommendationJobRegistry.State state) {}
 
+  record WebStartRequest(
+      UUID viewId,
+      @JsonProperty(required = true) long generation,
+      String destination,
+      Set<WebRecommendation.Need> requiredNeeds,
+      WebRecommendation.VenueCategory venueCategory,
+      String foodPreferenceText) {}
+
   record Polled(
       UUID id,
       RecommendationJobRegistry.State state,
@@ -65,7 +73,11 @@ class DestinationRecommendationController {
           UserRecommendationIntent.requiredFeatures(input.userRequest(), input.requiredFeatures());
       var requirements =
           new PlaceRecommendationPlanner.Requirements(
-              input.party(), input.maxWaitMinutes(), features, input.preferredCuisines());
+              input.party(),
+              input.maxWaitMinutes(),
+              features,
+              UserRecommendationIntent.preferredCuisines(
+                  input.userRequest(), input.preferredCuisines(), false));
       var query = PlaceQuery.forDestination(input.destination());
       UUID id =
           service.start(
@@ -98,6 +110,46 @@ class DestinationRecommendationController {
         snapshot.result(),
         snapshot.validUntil(),
         service.source());
+  }
+
+  @PostMapping("/web")
+  Started startWeb(HttpServletRequest http, @RequestBody WebStartRequest input) {
+    var actor = RequestActor.from(http);
+    if (service.source().provider() != PlaceSummary.Provider.WEB_SEARCH) {
+      throw new ApiError(HttpStatus.NOT_FOUND, "WEB_SEARCH_DISABLED", "웹검색 추천을 사용할 수 없어요.");
+    }
+    try {
+      var needs = java.util.EnumSet.of(WebRecommendation.Need.PARKING);
+      if (input.requiredNeeds() == null
+          || input.requiredNeeds().stream().anyMatch(java.util.Objects::isNull))
+        throw new IllegalArgumentException("Invalid required needs");
+      needs.addAll(input.requiredNeeds());
+      Set<String> cuisines;
+      try {
+        cuisines =
+            UserRecommendationIntent.preferredCuisines(input.foodPreferenceText(), Set.of(), true);
+      } catch (IllegalArgumentException unclearPreference) {
+        throw ApiError.bad(
+            "FOOD_PREFERENCE_UNCLEAR",
+            "먹고 싶은 음식 종류를 한식·양식·일식·중식·분식·아시아음식 중에서 알려 주세요. 예: 양식 먹고 싶어, 양식 말고 한식");
+      }
+      var request =
+          new WebRecommendation.Request(
+              input.viewId(),
+              input.generation(),
+              input.destination(),
+              needs,
+              false,
+              input.venueCategory(),
+              cuisines);
+      UUID id = service.startWeb(actor.subject(), request);
+      return new Started(id, service.poll(actor.subject(), id).orElseThrow().state());
+    } catch (IllegalArgumentException error) {
+      throw ApiError.bad("INVALID_DESTINATION_RECOMMENDATION", "목적지와 필수 조건을 확인해 주세요.");
+    } catch (IllegalStateException error) {
+      throw new ApiError(
+          HttpStatus.TOO_MANY_REQUESTS, "RECOMMENDATION_CAPACITY", "잠시 후 다시 시도해 주세요.");
+    }
   }
 
   @DeleteMapping("/views/{viewId}")

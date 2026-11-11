@@ -33,9 +33,30 @@ public final class DestinationRecommendationService implements AutoCloseable {
       int webCandidateCount,
       LookupState identityLookupState,
       WebListingRecommendationJoiner.Result matches,
-      List<WebRecommendation.Candidate> webRecommendations) {
+      List<WebRecommendation.Candidate> webRecommendations,
+      Set<String> preferredCuisines) {
+    public Recommendation(
+        PlaceRecommendationPlanner.Plan listing,
+        WebRecommendation.State webState,
+        WebRecommendation.FailureReason webFailureReason,
+        int webCandidateCount,
+        LookupState identityLookupState,
+        WebListingRecommendationJoiner.Result matches,
+        List<WebRecommendation.Candidate> webRecommendations) {
+      this(
+          listing,
+          webState,
+          webFailureReason,
+          webCandidateCount,
+          identityLookupState,
+          matches,
+          webRecommendations,
+          Set.of());
+    }
+
     public Recommendation {
       webRecommendations = List.copyOf(webRecommendations);
+      preferredCuisines = Set.copyOf(preferredCuisines);
     }
   }
 
@@ -69,8 +90,7 @@ public final class DestinationRecommendationService implements AutoCloseable {
     return new DestinationRecommendationService(
         null,
         PlaceSummary.Provider.WEB_SEARCH,
-        new SourceInfo(
-            PlaceSummary.Provider.WEB_SEARCH, null, null, null, "OpenAI web search", null, null),
+        new SourceInfo(PlaceSummary.Provider.WEB_SEARCH, null, null, null, "웹 근거", null, null),
         clock,
         executor,
         web);
@@ -153,36 +173,24 @@ public final class DestinationRecommendationService implements AutoCloseable {
     if (!WebRecommendation.text(area, 80)) throw new IllegalArgumentException("Invalid area");
     Objects.requireNonNull(destinationWindow);
     Objects.requireNonNull(requirements);
+    if (provider == PlaceSummary.Provider.WEB_SEARCH) {
+      return startWeb(
+          owner,
+          new WebRecommendation.Request(
+              viewId,
+              generation,
+              area,
+              webNeeds(requirements.requiredFeatures()),
+              false,
+              null,
+              requirements.preferredCuisines()));
+    }
     return jobs.submit(
         owner,
         viewId,
         generation,
         current -> {
           if (!current.getAsBoolean()) return null;
-          if (provider == PlaceSummary.Provider.WEB_SEARCH) {
-            var request =
-                new WebRecommendation.Request(
-                    viewId, generation, area, webNeeds(requirements.requiredFeatures()), false);
-            var result = web.search(request, clock.instant().plusSeconds(30), current);
-            if (!current.getAsBoolean()) return null;
-            if (result == null)
-              return new Recommendation(
-                  null,
-                  WebRecommendation.State.FAILED,
-                  WebRecommendation.FailureReason.TRANSPORT_ERROR,
-                  0,
-                  LookupState.NOT_RUN,
-                  null,
-                  List.of());
-            return new Recommendation(
-                null,
-                result.state(),
-                result.failureReason(),
-                result.candidates().size(),
-                LookupState.NOT_RUN,
-                null,
-                result.candidates());
-          }
           PlaceSearchResult listing = places.search(destinationWindow);
           if (!current.getAsBoolean()) return null;
           var plan = planner.evaluate(provider, destinationWindow, listing, requirements);
@@ -300,6 +308,38 @@ public final class DestinationRecommendationService implements AutoCloseable {
           });
     }
     return Set.copyOf(needs);
+  }
+
+  UUID startWeb(String owner, WebRecommendation.Request request) {
+    if (provider != PlaceSummary.Provider.WEB_SEARCH)
+      throw new IllegalStateException("Web source required");
+    return jobs.submit(
+        owner,
+        request.viewId(),
+        request.generation(),
+        current -> {
+          if (!current.getAsBoolean()) return null;
+          var result = web.search(request, clock.instant().plusSeconds(30), current);
+          if (!current.getAsBoolean()) return null;
+          if (result == null)
+            return new Recommendation(
+                null,
+                WebRecommendation.State.FAILED,
+                WebRecommendation.FailureReason.TRANSPORT_ERROR,
+                0,
+                LookupState.NOT_RUN,
+                null,
+                List.of());
+          return new Recommendation(
+              null,
+              result.state(),
+              result.failureReason(),
+              result.candidates().size(),
+              LookupState.NOT_RUN,
+              null,
+              result.candidates(),
+              request.preferredCuisines());
+        });
   }
 
   public Optional<RecommendationJobRegistry.Snapshot<Recommendation>> poll(
