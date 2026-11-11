@@ -1,5 +1,55 @@
 # 구현·검증 현황
 
+## 2026-11-11 probe 재연결 상태 회귀 테스트
+
+JDK 21과 D 드라이브 Android SDK로 `gradlew.bat --offline -PincludeAndroid=true verifyAndroid`가 성공했습니다. Spotless, Debug APK, Lint 검증과 Gradle 단위 테스트 7건을 확인했습니다. 테스트 실패·오류·스킵은 0건입니다. 별도 작업 폴더 캐시로 실행한 재시도는 Spotless 7.0.4를 오프라인에서 찾지 못했으며, 성공한 실행은 기본 Gradle 캐시를 사용했습니다.
+
+JDK 21과 JUnitCore 4.13.2로 ProbeStateTest 7건을 실행해 모두 통과했습니다. 추가한 테스트는 단절 처리로 기존 목적지를 지운 뒤, 재연결 직후 새 조회 전 들어온 늦은 콜백을 거부하고 새 조회 뒤 목적지를 수신하는 상태 전이를 검증합니다. SDK 콜백에 요청 식별자가 없어 새 조회가 시작된 뒤 도착하는 이전 응답은 구분할 수 없습니다. 실제 단절 구간에 요청을 보내는 시험은 후속 항목입니다.
+
+## 2026-11-11 격리 Pleos에서 내비 서비스 단절과 재조회 확인
+
+13:42:32 KST에 격리 AVD의 사용자 10 내비 서비스에 일회성 Android 프로세스 장애를 주입했습니다. 서비스 PID는 1931에서 13888로 바뀌었고 시스템 시작 횟수는 1로 유지됐습니다. 13:42:32.932~32.943에 단절 로그, 13:42:33.243~33.249에 연결 로그를 관측했습니다. 같은 probe 세션은 13:42:34.281에 유효 목적지 콜백을 받았고, 13:44:17.575 수동 재조회에도 13:44:19.536에 유효 목적지로 응답했습니다.
+
+14:33:32 KST에 같은 probe 세션에서 복구 후 Trip을 한 번 수동 조회했고, 약 453ms 뒤 `rawEtaSeconds=701`을 받았습니다. ETA 시간 기준과 요청 연관성은 UNVERIFIED입니다. 관측 시점은 서비스 재연결 이후입니다.
+
+약 0.3초의 단절 중 요청, 목적지 무효화, 이전 응답 차단은 미검증입니다. 복구 직후 화면 캡처는 시간 초과됐으며 콜백과 재조회 판정은 비식별 로그에 근거합니다. 비식별 근거는 Git 제외 captures/veh01-service-disconnect-20261111.json에 보존했습니다.
+
+## 2026-11-11 서비스 단절 판정 근거 확인
+
+고정 NaviHelper3.0.5 AAR와 navi-data3.0.4 소스, 공식 오류 처리 문서를 대조했습니다. SDK 내부 Android ServiceConnection의 단절 처리를 확인했고, 공개 리스너의 NavigationStatus와 연결 상태를 구분했습니다. 초기화 실패·요청 오류·무응답과 플랫폼 재시작을 대조할 절차를 후속 검증 문서에 기록했습니다.
+
+
+## 2026-11-11 probe 화면 종료 후 새 세션에서 목적지 조회 복구
+
+격리 Pleos에서 정상 probe 초기화 후 목적지 VALID_FIELDS(04:27:54.653155Z)를 받았습니다. 뒤로 가기 후 Activity를 다시 열어 WARM 실행과 새 세션 ID를 확인했습니다. 새 화면에서 목적지 사용 가능=false이며 초기화 전 조회·Trip·재탐색 버튼이 비활성이었습니다. 새 세션에서 초기화 후 목적지 VALID_FIELDS(04:29:03.007780Z)를 다시 받았고 system_server 시작횟수는1이었습니다.
+
+기존 세션 STOPPED와 새 세션 STARTED를 관측했습니다. SDK 서비스 단절이나 늦은 유효 응답은 미재현이며 listener 해제 완료는 별도 계측하지 않았습니다. 비식별 로그는 Git 제외 captures/veh01-lifecycle-reopen-20261111.json에 보존했습니다.
+
+
+## 2026-11-11 재탐색 권한 단독 미선언 시험 완료
+
+격리 Pleos 환경에서 최근 공개 목적지 상세의 목적지 설정을 통해 안내를 시작했습니다. 이전 빠른 안내 버튼 입력은 ADB 시간 제한에 걸려 상세 화면에서 다시 진행했습니다. .nosearch 앱에서 NAVI_ROUTE=true/NAVI_ROUTE_SEARCH=false, 초기화 성공, 목적지 VALID_FIELDS(02:42:02.931947Z), TripInfo raw798초(02:42:36.946048Z)를 확인했습니다. 유효 목적지 상태에서 재조회·Trip 버튼은 활성, 재탐색 버튼은 비활성이었습니다. 재탐색 SDK 호출은 수행하지 않았습니다. 시스템 시작횟수1을 확인했습니다.
+
+두 개별 권한 조합을 확인했습니다. NAVI_ROUTE 단독 미선언에서는 목적지 조회가 PERMISSION_DENIED, NAVI_ROUTE_SEARCH 단독 미선언에서는 목적지·Trip 조회가 가능하고 probe의 재탐색 버튼이 비활성이었습니다. ETA 시간 기준·경로 연관성은 UNVERIFIED입니다. 비식별 관측은 captures/veh01-individual-permission-20261111.json에 보존했습니다.
+
+
+## 2026-11-11 재탐색 권한 시험 재시도
+
+기존 격리 데이터로 재부팅해 boot_completed=1/currentUser10과 시스템 시작횟수1을 확인했습니다. 내비 초기 화면에는 복원된 안내가 없었습니다. 공개 역 검색 결과를 선택하는 입력을 보냈으나 화면 캡처가 지연되어 안내 시작과 유효 목적지·Trip·재탐색 버튼 확인은 보류했습니다. 이후 검색 결과가 표시된 화면에서 다시 선택 입력을 보냈으나 Android가 Cannot broadcast before boot completed를 반환했습니다. 안내 시작은 확인되지 않았습니다.
+
+
+## 2026-11-11 개별 권한 조합 실기기 시험 중간 결과
+
+PR47/f946140은 OPEN/Draft·충돌 없음·필수CI3개 성공을 확인했습니다. Issue #1 최신 서버 코멘트 이후 새 답변은 없었습니다. 기존 격리 Pleos2.1.0/SDK3.0.5에서 정상 probe와 동일 Java 소스의 별도 두 APK를 빌드(assemble34초)했습니다. .noroute는 NAVI_ROUTE만, .nosearch는 NAVI_ROUTE_SEARCH만 최종 manifest에서 제거했습니다. 설치 Success/COLD Status:ok와 시스템 시작횟수1을 확인했습니다. 일반 앱·원본 AVD는 변경하지 않았으며 fixture Lint/단위 테스트는 실행하지 않았습니다.
+
+- .noroute: NAVI_ROUTE=false/NAVI_ROUTE_SEARCH=true, SDK 초기화 성공 후 목적지 조회에서 sdkCallFailed/PERMISSION_DENIED(01:30:43.031585Z). 목적지 사용 불가·조회/Trip/재탐색 비활성을 실제 확인했습니다.
+- .nosearch: NAVI_ROUTE=true/NAVI_ROUTE_SEARCH=false, SDK 초기화 성공 및 destinationRequested(01:31:38.485176Z) 확인. 이 스냅샷에서 목적지 응답은 아직 확인되지 않았습니다. 유효 목적지에서 Trip/재탐색 버튼 분리를 검증하려고 사용자 공개 길안내 시작을 요청했습니다. 초기화/요청 로그를 조회 성공으로 세지 않습니다.
+
+사용자가 길안내 시작을 확인한 뒤 .nosearch 복귀에서 초기 조회의 MISSING_OR_INVALID 응답(01:32:24.754585Z)을 확보했습니다. 시스템 오버레이와 검은 화면으로 재조회가 지연됐고 이후 Watchdog(android.fg 82초)로 system_server 시작횟수가1→2로 증가했습니다. 사용자0 전환/사용자10 미시작 상태에서 Activity 실행 오류를 확인했으나 두 시험 패키지는 목록에 남았습니다. 최종 점검에서 ADB 연결이 사라졌습니다. 유효 목적지·Trip·재탐색 버튼 분리는 미검증이며 권한 오류로 판정하지 않습니다.
+
+비식별 증거/두 APK hash는 Git 제외 captures/veh01-individual-permission-20261111.json, 누적 안전 로그178건, 로컬 화면 work/veh01/noroute-result.png입니다. 권한 강제 변경/시스템 서비스 중지·제품 코드 수정·commit/push·PR/Issue 변경은 하지 않았습니다. ETA 기준/도착/단절/늦은 응답은 미검증 유지입니다.
+
+
 ## 2026-11-11 main 286f2a1 문서 통합·PR47 충돌 해소
 
 사용자 승인으로 최신 main286f2a1을 feat/1-navi-probe에 이력 보존 merge로 반영했습니다. STATUS/HANDOFF의 차량 관측·서버 인수 기록과 main의 전화 업체 검토 기록을 모두 보존했습니다. 양쪽 신규 행 보존 검사와 관련 로컬 링크/diff/명명 검사 통과. 이번 main 추가분은 문서뿐이므로 코드 빌드·서버/기기 테스트는 재실행하지 않았으며 과거 통과를 새 실행으로 세지 않습니다. main 자체/기존 커밋 재작성·force push 없이 작업 브랜치만 일반 Push하며 PR Draft/#1 미완료·PLEOS 차단을 유지합니다.

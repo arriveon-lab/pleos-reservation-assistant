@@ -57,6 +57,22 @@ public final class ProbeStateTest {
   }
 
   @Test
+  public void reconnectRequiresNewDestinationQuery() {
+    ProbeState<String> state = connected();
+    assertTrue(state.requestDestination());
+    assertTrue(state.receiveDestination("before-disconnect"));
+
+    state.disconnect();
+    assertNull(state.destination());
+    assertTrue(state.connect());
+    assertFalse(state.receiveDestination("late-before-new-query"));
+
+    assertTrue(state.requestDestination());
+    assertTrue(state.receiveDestination("after-reconnect"));
+    assertEquals("after-reconnect", state.destination());
+  }
+
+  @Test
   public void closeCannotBeReopenedByLateInitializationOrDestination() {
     ProbeState<String> state = connected();
     state.requestDestination();
