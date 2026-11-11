@@ -28,6 +28,7 @@ import org.json.JSONObject;
 public final class ReservationActivity extends ComponentActivity {
   private ai.pleos.assistant.ux.GleoSearchCommand voiceCommand;
   private long voiceDeadline;
+  private boolean voiceInputOnly;
   private boolean voiceResumed;
   private boolean voiceOpen;
   private final android.os.Handler voiceHandler =
@@ -140,21 +141,26 @@ public final class ReservationActivity extends ComponentActivity {
     }
     String action = ai.pleos.assistant.ux.GleoSearchCommand.ACTION;
     // Gleo 4.2.0.15 on Pleos 2.1.0 prefixes the package; official examples use bare action.
-    if (!action.equals(intent.getAction())
+    boolean inputOnly =
+        GleoIntentAdapter.SET_PARTY.equals(intent.getAction())
+            || (getPackageName() + "." + GleoIntentAdapter.SET_PARTY).equals(intent.getAction());
+    if (!inputOnly
+        && !action.equals(intent.getAction())
         && !(getPackageName() + "." + action).equals(intent.getAction())) return;
     // Consume before processing: recreation must never repeat a search.
     intent.setAction(null);
     if (voiceCommand != null) {
-      GleoIntentAdapter.reply(this, false);
+      GleoIntentAdapter.reply(this, false, inputOnly);
       return;
     }
     try {
+      voiceInputOnly = inputOnly;
       voiceCommand = GleoIntentAdapter.parse(intent);
       voiceDeadline = android.os.SystemClock.elapsedRealtime() + 5000;
       voiceHandler.postDelayed(voiceTimeout, 5000);
       android.util.Log.i("ArriveOnGleo", "COMMAND_RECEIVED");
     } catch (Exception invalid) {
-      GleoIntentAdapter.reply(this, false);
+      GleoIntentAdapter.reply(this, false, inputOnly);
       android.widget.Toast.makeText(this, R.string.gleo_invalid, android.widget.Toast.LENGTH_LONG)
           .show();
       android.util.Log.i("ArriveOnGleo", "INVALID_INPUT");
@@ -165,13 +171,21 @@ public final class ReservationActivity extends ComponentActivity {
     if (voiceCommand == null) return;
     voiceCommand = null;
     voiceHandler.removeCallbacks(voiceTimeout);
-    GleoIntentAdapter.reply(this, accepted);
+    reportVoice(accepted, voiceInputOnly);
+  }
+
+  private void reportVoice(boolean accepted, boolean inputOnly) {
+    GleoIntentAdapter.reply(this, accepted, inputOnly);
     android.widget.Toast.makeText(
             this,
-            accepted ? R.string.gleo_started : R.string.gleo_blocked,
+            accepted
+                ? (inputOnly ? R.string.gleo_input_applied : R.string.gleo_started)
+                : R.string.gleo_blocked,
             android.widget.Toast.LENGTH_LONG)
         .show();
-    android.util.Log.i("ArriveOnGleo", accepted ? "MOCK_SEARCH_STARTED" : "COMMAND_BLOCKED");
+    android.util.Log.i(
+        "ArriveOnGleo",
+        accepted ? (inputOnly ? "PARTY_APPLIED" : "MOCK_SEARCH_STARTED") : "COMMAND_BLOCKED");
   }
 
   private void applyVoice() {
@@ -184,15 +198,24 @@ public final class ReservationActivity extends ComponentActivity {
     if (reason == DrivingRestrictionController.Reason.CONNECTING
         || reason == DrivingRestrictionController.Reason.STOPPED
         || model.busy()) return;
-    if (!model.canWrite() || !model.claimVoice(voiceCommand)) {
+    if (!model.canWrite() || (!voiceInputOnly && !model.claimVoice(voiceCommand))) {
       finishVoice(false);
       return;
     }
     var command = voiceCommand;
     // Clear before openDestination notifies observers reentrantly.
-    finishVoice(true);
+    boolean inputOnly = voiceInputOnly;
+    voiceCommand = null;
+    voiceHandler.removeCallbacks(voiceTimeout);
     model.openDestination();
-    if (destinationPanel != null) destinationPanel.searchVoice(command);
+    if (destinationPanel == null) {
+      reportVoice(false, inputOnly);
+    } else if (inputOnly) {
+      reportVoice(destinationPanel.inputVoice(command), true);
+    } else {
+      destinationPanel.searchVoice(command);
+      reportVoice(true, false);
+    }
   }
 
   void retryDriving() {

@@ -13,6 +13,8 @@
       <intent-filter>
         <action android:name="OPEN_ARRIVEON" />
         <action android:name="${applicationId}.OPEN_ARRIVEON" />
+        <action android:name="SET_PARTY_SIZE" />
+        <action android:name="${applicationId}.SET_PARTY_SIZE" />
         <action android:name="SEARCH_MOCK_RESTAURANTS" />
         <action android:name="${applicationId}.SEARCH_MOCK_RESTAURANTS" />
         <category android:name="android.intent.category.DEFAULT" />

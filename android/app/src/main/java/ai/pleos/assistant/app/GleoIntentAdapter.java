@@ -27,6 +27,8 @@ final class GleoIntentAdapter {
     return GleoSearchCommand.parse(values);
   }
 
+  static final String SET_PARTY = "SET_PARTY_SIZE";
+
   static final String OPEN = "OPEN_ARRIVEON";
 
   static void opened(Context context) {
@@ -38,6 +40,20 @@ final class GleoIntentAdapter {
   }
 
   static void reply(Context context, boolean accepted) {
+    reply(context, accepted, false);
+  }
+
+  static void reply(Context context, boolean accepted, boolean inputOnly) {
+    if (inputOnly) {
+      reply(
+          context,
+          SET_PARTY,
+          accepted,
+          accepted
+              ? "Adult and child counts were applied to the MOCK recommendation form. Check the displayed counts. No search, call or booking was started."
+              : "Counts were not changed. Provide whole adult and child counts and check the app connection and driving restrictions before retrying.");
+      return;
+    }
     reply(
         context,
         GleoSearchCommand.ACTION,

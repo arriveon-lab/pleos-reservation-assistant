@@ -396,3 +396,7 @@ GitHub 업로드 직전 로컬 `verifyAll` 및 `smoke-test.py --check-contract`�
 ## 2026-11-11 운영자 시스템 없는 로컬 실행 도구
 
 기존 재예약 검사를 한 명령으로 실행하는 scripts/run-mock-rebooking.py와 [실행 안내](MOCK_REBOOKING_RUNNER.md)를 추가했다. 격리 임시 DB·loopback 서버·전용8082 연결, 기존 별도 APK의 synthetic HTTP 재예약 흐름 PASS. 종료/실패 시 자신이 만든 서버/연결만 정리하며 기존8080/8081 유지 확인. 제품/API/음성 변경 없음. 일반 앱/운영자 인증분리 및 #40 공동 인수는 미완료다.
+
+## 2026-11-11 Gleo 음성 인원 반영
+
+SET_PARTY_SIZE로 추천 입력 화면의 인원만 설정하도록 추가했다. verifyAll/기기 GLEO 주입 검사 PASS, 실제 사용자 발화→2/2 표시를05:08:53 기기 로그 및 화면으로 확인했다. journal 전후 동일. [검증 기록](GLEO_PARTY_INPUT.md). 음성 예약/실제 전화/실제 ETA/공동 인수는 미완료. 기존 미커밋 Gleo 작업은 별도로 보존한다.

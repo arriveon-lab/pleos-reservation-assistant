@@ -490,3 +490,7 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 ## 2026-11-11 로컬 재예약 실행 도구 인계
 
 운영자 관리 시스템 없이 기존 합성 MOCK 검사를 실행하는 scripts/run-mock-rebooking.py 추가. [사용법·한계·실행 증거](../docs/MOCK_REBOOKING_RUNNER.md). 실제 별도 APK 재예약 UI/HTTP PASS, 전용8082/서버 종료·기존연결 유지 확인. 일반 토큰403/운영자 권한분리 공동 인수로 세지 않는다. 기존 Gleo 관련 미커밋 작업은 보존하고 이번 커밋에 포함하지 않는다.
+
+## 2026-11-11 음성 인원 입력 인계
+
+입력 전용 SET_PARTY_SIZE 구현/별도 APK 설치. 실제 Gleo 발화1회→성인2/아이2 반영 PASS(사용자 확인+05:08:53 앱 이벤트+화면), verifyAll 및 기존 GLEO 회귀 PASS. [기록](../docs/GLEO_PARTY_INPUT.md). 예약 journal 동일. 입력만 반영하며 검색은 별도 요청. 음성 예약 승인은 미구현. 기존 Gleo 미커밋 내용은 이번 커밋에 포함하지 않는다.

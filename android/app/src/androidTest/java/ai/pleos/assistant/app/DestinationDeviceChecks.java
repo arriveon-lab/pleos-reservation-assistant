@@ -84,6 +84,37 @@ final class DestinationDeviceChecks {
       main(
           () -> {
             activity.onNewIntent(
+                new Intent(activity.getPackageName() + ".SET_PARTY_SIZE")
+                    .putExtra("ACTION_PARAM", "{\"adults\":3,\"children\":1}"));
+            return null;
+          });
+      panel = field(activity, "destinationPanel");
+      check(
+          main(
+              () -> (int) field(panel, "adultCount") == 3 && (int) field(panel, "childCount") == 1),
+          "input-only counts not applied");
+      check(
+          main(
+              () ->
+                  model.destinationView().state().equals("EDITING")
+                      && model.destinationView().candidates().length() == 0),
+          "input-only started a search");
+      check(journal.equals(journal()), "input-only changed reservation journal");
+      capture("GLEO-input-only");
+      main(
+          () -> {
+            activity.onNewIntent(
+                new Intent("SET_PARTY_SIZE").putExtra("ACTION_PARAM", "{\"adults\":2}"));
+            return null;
+          });
+      check(
+          main(
+              () -> (int) field(panel, "adultCount") == 3 && (int) field(panel, "childCount") == 1),
+          "missing child count changed input");
+
+      main(
+          () -> {
+            activity.onNewIntent(
                 new Intent(ai.pleos.assistant.ux.GleoSearchCommand.ACTION)
                     .putExtra("ACTION_PARAM", "{\"adults\":2,\"children\":2}"));
             return null;
@@ -131,6 +162,16 @@ final class DestinationDeviceChecks {
           "restricted voice retained result");
       check(main(() -> (int) field(panel, "adultCount") == 2), "restricted voice mutated input");
       capture("GLEO-restricted");
+      main(
+          () -> {
+            activity.onNewIntent(
+                new Intent("SET_PARTY_SIZE").putExtra("adults", 4).putExtra("children", 2));
+            return null;
+          });
+      check(
+          main(() -> (int) field(panel, "adultCount") == 2),
+          "restricted input-only changed counts");
+
       main(
           () -> {
             activity.debugFailure();

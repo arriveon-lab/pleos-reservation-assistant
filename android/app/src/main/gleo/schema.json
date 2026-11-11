@@ -41,6 +41,31 @@
           ]
         }
       }
+    },
+    {
+      "type": "function",
+      "function": {
+        "component": "activity",
+        "name": "SET_PARTY_SIZE",
+        "description": "Set the adult and child counts in the ArriveOn MOCK recommendation form without searching, making a call, or booking. Both counts must be explicitly provided.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "adults": {
+              "type": "number",
+              "description": "Whole number of adults, from 1 to 20."
+            },
+            "children": {
+              "type": "number",
+              "description": "Whole number of children, from 0 to 10."
+            }
+          },
+          "required": [
+            "adults",
+            "children"
+          ]
+        }
+      }
     }
   ]
 }

@@ -72,4 +72,5 @@
   <string name="rebooking_body">거절된 예약 기록은 보관합니다. 조건과 후보를 다시 선택한 뒤 예약 내용을 새로 승인해야 해요. 지금은 전화나 예약을 요청하지 않습니다.</string>
   <string name="rebooking_history">거절된 예약 %1$d건 보관 · 최근 요청 시각 %2$s
 이전 요청을 다시 보내지 않습니다.</string>
+  <string name="gleo_input_applied">인원을 반영했어요. 숫자를 확인한 뒤 후보를 검색하세요.</string>
 </resources>

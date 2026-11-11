@@ -96,6 +96,16 @@ final class DestinationPanel {
     root.addView(results);
   }
 
+  boolean inputVoice(ai.pleos.assistant.ux.GleoSearchCommand command) {
+    if (!model.canWrite()) return false;
+    adultCount = command.adults();
+    childCount = command.children();
+    adultValue.setText(Integer.toString(adultCount));
+    childValue.setText(Integer.toString(childCount));
+    edit();
+    return true;
+  }
+
   void searchVoice(ai.pleos.assistant.ux.GleoSearchCommand command) {
     if (!model.canWrite()) return;
     adultCount = command.adults();
