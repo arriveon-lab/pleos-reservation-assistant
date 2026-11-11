@@ -59,10 +59,17 @@ Android probe 사용·기기 로그 수집 방법: [android/README.md](../androi
 
 ## 전화 사업자 비교
 
+**2026-11-10 팀 결정: 전화 회선은 Telkit을 사용합니다.** Telkit 070 번호와 SIP 트렁크를 LiveKit에 연결하고, 음성 대화는 LiveKit 에이전트가 맡습니다. 확인한 연동 조건·한도·요금·약관은 [VOICE-01 업체 검토](calls/VENDOR_REVIEW.md#0-결정-telkit-채택-2026-11-10), 흐름은 [전화예약 에이전트 계획](PHONE_RESERVATION_AGENT_PLAN.md)에 있습니다. 계정 생성·번호 구매·발신은 하지 않았습니다.
+
+아래 표의 Telkit 외 행은 2026-11-08 비교 기록입니다.
+
 | 후보 | 공식 자료로 확인한 범위 | 아직 확인할 사항 | 현재 판단 |
 | --- | --- | --- | --- |
-| Twilio Programmable Voice | 한국 PSTN 발신 reachability 표, Toll-Free 발신 제한, Caller ID 조건. Gather 한국어 옵션 | 계정/리전/발신번호별 국내 연결, 모델 조합, 자유 대화 지연, 녹음/전사, 요금·번호 구매 | 개발형 API 후보. 선정/실통화 안 함 |
-| NAVER CLOVA AiCall | inbound/outbound AI call bot, 한국어 대응 사업자 후보. outbound 최소 3채널 및 외부 솔루션 연계 안내 | 외부 매장 대행 허용, 자유 목적지 발신 API, 계약 소요, 최소 고정비·종량비, 데이터 저장 | 국내 후보. 계정/계약/발신 검증 안 함 |
+| Telkit (주식회사 플릭) | 070 번호(계정당 1개), LiveKit SIP 수신·발신(TLS 5061, PCMA/PCMU), 통화 기록 API, 동시 4통·발신 하루 500통, 요금·약관 | 발신 표시 번호·발신번호 등록 조건, `telkit_call_id`와 LiveKit 참가자 연결, `call.ended` 웹훅 공개(현재 준비 중, 발신 미적용), 한국어 품질 | **채택(2026-11-10 팀 결정).** 계정/발신 안 함 |
+| Vox (주식회사 플릭) | 070 개통, `POST /v3/calls`, 서명 webhook, 통화 후 구조화 추출, `metadata` 조회 필터, 요금·약관·녹음 보관 설정 | 실제 식당 발신의 업체 확인, 녹음 해제 API 필드, 한국어 인식 품질, 발신 멱등 키 부재 대응 | 미채택(11-08 PoC 1순위 후보였음) |
+| 한국AI통신 (팀러너스 주식회사) | 070 즉시 발급, `POST /v1/accounts/{accountId}/calls`, 서명 webhook, Agent SDK, 요금·약관 | 체험 기간 발신 불가, 외부 참조 조회 없음, webhook 재시도 규칙, 업체 검증 모델 범위 | 미채택 |
+| Twilio Programmable Voice | 한국 PSTN 발신 reachability 표, Toll-Free 발신 제한, Caller ID 조건. Gather 한국어 옵션 | 한국 번호 발급 여부, 국내 발신 Caller ID 비보장의 실제 표시, 모델 조합, 자유 대화 지연, 녹음/전사, 요금·번호 구매 | 보류. 선정/실통화 안 함 |
+| NAVER CLOVA AiCall | inbound/outbound AI call bot, 한국어 대응 사업자 후보. outbound 최소 3채널·캠페인형 고정 메시지·외부 솔루션 연계 안내 | 외부 매장 대행 허용, 자유 목적지 발신 API, 계약 소요, 최소 고정비·종량비, 데이터 저장 | 매장별 자유 대화와 맞지 않아 보류. 계정/계약/발신 검증 안 함 |
 | KT AICC/A’Cen | 공식 소개자료에 음성 인식·대화·합성과 inbound/outbound 구성 | 스타트업 PoC 개통, 외부 API, 한국 발신 정책, 과금·녹음·콜백 | 국내 후보. 계약/SDK/발신 검증 안 함 |
 
 근거: [Twilio 한국 가이드](https://www.twilio.com/en-us/guidelines/kr/south-korea-voice-guidelines---twilio), [Gather](https://www.twilio.com/docs/voice/twiml/gather), [CLOVA AiCall](https://guide.ncloud-docs.com/docs/en/clovaaicall-aicall-1-1), [KT 공식 AICC 자료](https://enterprise.kt.com/resource/files/DX_Webinar_Oct_02.pdf). 가격 수치는 확인되지 않았으므로 비용을 0원이나 임의 단가로 가정하지 않습니다. STT 한국어 지원과 한국 전화망 발신은 서로 다른 검증입니다.
@@ -84,7 +91,7 @@ Android probe 사용·기기 로그 수집 방법: [android/README.md](../androi
 | --- | --- | --- |
 | 차량 | ArriveOn 프로젝트 생성 완료. NaviHelper 별도 신청 불필요. Emulator/Virtual Console·기기 검증 필요, 준비 중 SDK는 상태 변경 후 신청 검토 | probe 소스·계약, 표준 위치/음성 가용성 검증 계획, 서버 MOCK |
 | 장소 | 시범 지역, 공식 API 키, 저장/재표시 조건 | 가상 후보·평가 테스트 |
-| 전화 | 업체 계정, 발신번호, 협의 수신번호, 예산/승인 | 모의 결과 정규화·실패 시나리오 |
+| 전화 | Telkit 계정(본인인증·카드 등록)·070 번호·SIP 자격, LiveKit 프로젝트, 협의 수신번호, 예산/승인 | 모의 결과 정규화·실패 시나리오 |
 | 서버 | 팀 DB 경험, 운영 환경, 인증 방식 | H2 트랜잭션·중복/상태 검증 |
 | 통합 | 팀 GitHub ID, 조직/공개범위, APK 서명 주체 | CI·문서·시연 절차 |
 

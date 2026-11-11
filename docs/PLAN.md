@@ -73,7 +73,7 @@
 | [#11 / REC-02](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/11) | 추천/장소 (`tiemo0708`) | 공식 저장 제한·문의 등록 | 사용/보관/제공 조건과 공급자 최종 결정 | 사업자 답변·대안 근거 |
 | [#12 / REC-03](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/12) | 추천/장소 (`tiemo0708`), #4/#5 협업 | 서버·화면 계약 초안 | 트랜잭션 밖 IO·중복/복구·출처/모드 계약과 가상 검증 | 기반 main 통합, 실제 연결은 #11 조건 |
 | [#13 / REC-04](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/13) | 추천/장소 (`tiemo0708`) | 독립 HTTP 경계·무료 앱 설정 | 실제 TLS/키/IP/쿼터·지역 품질 검증 | #11·실행 경계·호출/비용 상한 |
-| [#3 / VOICE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | AI 전화 | MockCallAdapter·outcome 계약 | 업체 선정 근거, 한국 발신/음성 PoC, 정규화/서명 검증 | 계정·발신번호·협의 수신번호·비용 승인 |
+| [#3 / VOICE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/3) | AI 전화 | MockCallAdapter·outcome 계약, Telkit 채택(2026-11-10) | Telkit·LiveKit 한국 발신/음성 PoC, 정규화·사후 통화 기록 대조 | Telkit 계정·070 번호·협의 수신번호·비용 승인 |
 | [#4 / BE-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/4) | 서버/예약 | 상태 전이·멱등성·H2 | 사용자/여정 소유권, UNKNOWN 대조, timeout/outbox, 운영 DB 결정 | 팀 DB 경험·운영 환경 |
 | [#5 / UX-01](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/5) | UX/통합/시연 | CLI 모의 시연·실패 시나리오 | 후보3개/명시적 선택/수락 전후/변경 미확인 화면, 주행 제한, 영상 | emulator·CarUxRestrictions·서명 계획 |
 
@@ -86,7 +86,7 @@
 | 단계 | 세부 작업 | 현재 상태 | 다음 단계 진입 조건 |
 | --- | --- | --- | --- |
 | A. 팀 기반 | main, Gradle, 규칙, 계약, CI, 조직/리뷰 권한 | 공개 원격·첫 커밋·원격 Verify 확인 | 팀원이 verify 재현, 담당자·리뷰 권한 배정 |
-| B. 핵심 연동 검증 | Android SDK·Pleos probe, 전화 사업자·한국어 품질·비용 검토 | 빌드 SDK 설치·debug APK/Lint 확인, Pleos 기기 미검증, 전화 미선정 | 목적지/ETA 로그, 승인된 통화 PoC 또는 차단 근거 |
+| B. 핵심 연동 검증 | Android SDK·Pleos probe, 전화 사업자·한국어 품질·비용 검토 | 빌드 SDK 설치·debug APK/Lint 확인, Pleos 기기 미검증, 전화는 Telkit 채택·계정/실통화 미검증 | 목적지/ETA 로그, 승인된 통화 PoC 또는 차단 근거 |
 | C. 차량 UI | 조건 입력, 후보 3개, 선택/승인, 결과·실패 화면, 주행 제한 | 미구현 | MOCK API와 화면 연동, 주행 제한별 동작 확인 |
 | D. 장소·전화 연결 | 공식 장소 데이터, 누락 정보 선별, AI 고지·문의·예약 대화, 결과 정규화 | MOCK adapter 분리·가상 Kakao 응답 매핑 검증, 장소/전화 실연동 전 | 출처/유효기간 유지, 한국어 시간·비용·부정표현 대조 |
 | E. 실제 예약 통합 | 사용자 인증·소유권, 승인 증빙, allowlist/비용 상한, webhook 서명, outbox/timeout, UNKNOWN 대조 | 예약 상태 테스트 완료, 운영 경계 미구현 | 수락/거절/단절/중복 각각 실험, 중복 예약 없음 |
@@ -94,7 +94,7 @@
 | G. PT 안정화 | 실제 동작 앱, 차량 UX, 장애 복구, 증거 정리 | 예정 | 다른 팀원이 환경부터 시연까지 재현 |
 | H. 후속 고도화 | 지속 ETA 지연·허용 변경, 개인화, 업종 확장 | 변경 상태 처리만 모의 구현 | MVP 안정화 후 별도 이슈·동의·검증 기준 합의 |
 
-현재 병목은 Pleos 실행 환경/SDK 시간 의미 확인과 전화 업체·승인 확보입니다. 빌드용 Android SDK와 debug probe APK, 코드 컨벤션·영역별 에이전트 지침·Gradle 검증 명령은 준비했습니다. 서버·추천·UX 담당은 모의 계약으로 개발을 진행할 수 있습니다. 두 실연동이 확보되지 않으면 모의 시연이라고 명시하고 실제 예약 달성을 주장하지 않습니다.
+현재 병목은 Pleos 실행 환경/SDK 시간 의미 확인과 Telkit 계정·번호 준비 및 실통화 승인 확보입니다. 빌드용 Android SDK와 debug probe APK, 코드 컨벤션·영역별 에이전트 지침·Gradle 검증 명령은 준비했습니다. 서버·추천·UX 담당은 모의 계약으로 개발을 진행할 수 있습니다. 두 실연동이 확보되지 않으면 모의 시연이라고 명시하고 실제 예약 달성을 주장하지 않습니다.
 
 차량 담당의 B단계에는 [API 선택·가용성 기준](INTEGRATIONS.md#api-선택-정책과-가용성)에 따른 지원/권한/서비스 상태 확인과 미지원 대체 흐름을 포함합니다. UX 담당의 C단계 완료 조건에는 플랫폼 주행 제한의 초기 상태·변경 반영, 상태 미확인 처리를 추가합니다. 확인되지 않은 기능은 MOCK 또는 실제 연동 성공으로 바꿔 표시하지 않습니다.
 
@@ -121,7 +121,7 @@
 ## 제출 전 필요한 결정
 
 - 팀원 GitHub ID, 대표자, 참가 부문, 소스 라이선스. GitHub 조직은 ArriveOn Lab, 저장소는 Public으로 생성했으며 공모전 제출용 팀명은 별도 확정
-- 성수·서울숲 시범 지역의 테스트 목적지·반경, Kakao 사용 조건·최종 채택, 전화 사업자·DB 경험·테스트 기기
+- 성수·서울숲 시범 지역의 테스트 목적지·반경, Kakao 사용 조건·최종 채택, DB 경험·테스트 기기(전화 회선은 2026-11-10 Telkit으로 결정)
 - 비용 승인 주체, 번호 allowlist, 최대 통화 수/분, 로그 보관·삭제 범위
 - 실제/모의 구분이 드러나는 시연과 문서. 전화 예약 자체를 최초라고 주장하지 않음
 
