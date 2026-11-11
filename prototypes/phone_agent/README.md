@@ -13,7 +13,34 @@
 
 ## 실행
 
-저장소 루트에서 실행합니다.
+추천과 전화의 모의 통합은 저장소 루트에서 실행합니다.
+
+```bash
+./gradlew -PincludeAndroid=false :server:bootJar
+python3 scripts/mock-agent-integration.py --candidate 2 --scenario REQUIREMENT_UNAVAILABLE --next-scenario ACCEPT --prompt-approval
+python3 scripts/mock-agent-integration.py --verify
+```
+
+스크립트는 Java 추천 서버와 Python 전화 에이전트를 별도 프로세스로 실행합니다. Java는
+인증된 사용자의 추천 목록과 인원·필수 조건을 HTTP로 넘깁니다. Python은 추천 후보의 상호와
+전체 주소를 가상 카탈로그와 대조하고 임시 SQLite에 승인과 결과를 저장합니다. 시연 예약
+시각은 한국 시간 내일 19시입니다. 식당의 조건 응답과 해당 시각의 예약 가능 여부를
+시나리오로 재현합니다.
+
+`--prompt-approval`을 켜면 각 후보와 예약 조건을 보고 `예`를 입력해야 시도합니다. 첫
+후보의 필수 조건 미충족 또는 예약 불가가 확인되면 다음 후보를 보여주고 다시 승인받습니다.
+`--prompt-approval`을 생략한 실행에서는 각 `--scenario` 옵션이 별도의 가상 승인을 보냅니다.
+`--scenario`도 생략하면 후보 선택 화면에서 승인 대기 상태로 끝납니다.
+`--verify`는 다음 후보 승인, 미확인 결과 보류, 중복 요청, 사용자별 결과 격리를 검사합니다.
+
+수동 실행 시 두 프로세스에 동일한 `PHONE_RECOMMENDATION_TOKEN` 환경 변수를 설정합니다.
+Python은 `--mock-recommendation-catalog`로 가상 파일을 받고, Java는
+`app.mode=MOCK`, `app.destination-recommendations.enabled=true`,
+`app.destination-recommendations.source=PUBLIC_CATALOG`, `app.destination-recommendations.catalog-path`에 같은 가상 파일 경로,
+`app.recommendation-phone.enabled=true`, `app.recommendation-phone.port`를 설정합니다.
+클라이언트는 [추천 서버의 승인 계약](../../api/destination-recommendation-draft.json)을 사용합니다.
+
+전화 프로토타입 화면은 저장소 루트에서 아래 명령으로 실행합니다.
 
 ```bash
 python3 -m prototypes.phone_agent --port 8765
@@ -28,6 +55,45 @@ python3 -m prototypes.phone_agent --port 8766 --database data/phone-agent-second
 Ctrl+C로 종료합니다. 같은 브라우저 세션과 DB로 다시 시작하면 상태를 복구합니다. 브라우저 쿠키가 사라지면 새 소유 세션이 생성되며 기존 데이터가 자동 배정되지 않습니다. 실사용자·실제 동승자·연락처 정보는 입력하지 않습니다.
 
 ## 화면으로 테스트
+
+### 목적지 웹검색
+
+로컬 전화 화면은 추천 서버의 웹검색 후보와 조건별 근거를 표시합니다. 왼쪽에서 웹으로 조사할
+조건을 고르고 **목적지 주변 식당 웹검색**에 지역명을 입력합니다. 웹에서 찾은 근거는
+조건별로 가능·불가·미확인·상충으로 표시합니다. 후보 카드의 주소, 후기 요약과 조건 근거에는
+출처 링크를 제공합니다.
+
+추천 서버 JAR을 `./gradlew -PincludeAndroid=false :server:bootJar`로 빌드한 뒤, 아래 전화
+화면 실행에 `--web-search`를 추가합니다. `OPENAI_API_KEY` 환경 변수 또는 권한이 600인
+비공개 `work/openai-web.env`를 사용합니다. 추천 서버가 이미 실행 중이면
+`--recommendation-port`로 루프백 포트를 지정할 수 있습니다. 기본 검색 한도는 실행당 1회이며
+`--web-max-calls`로 지정합니다. 검색은 폼을 제출할 때 시작합니다.
+
+### 등록 휴대폰으로 실전화 시험
+
+이 화면의 식당 목록은 `--directory`로 읽는 로컬 공개 연락처 목록입니다. 각 항목은
+`id`(접두사 `test-`), `name`, `address`, `phone`, `sourceUrl`을 담습니다. 지점과
+공개 번호는 예약 카드에 표시됩니다. 시험 발신 대상은 기존 `PHONE_ALLOWED_NUMBERS`의
+휴대폰 한 대입니다. 화면에는 그 휴대폰의 끝 네 자리만 표시됩니다.
+
+통화에 사용할 Python 음성 환경에서 아래 명령을 실행합니다. 기본 실행은 미리보기입니다.
+
+```bash
+python -m prototypes.phone_agent.voice.console \
+  --directory work/test-restaurant-directory.json \
+  --env-file work/phone-live.env
+```
+
+실제 시험할 때 `--live`를 추가합니다. 미리보기를 켜 둔 상태라면 `--port 8768`을
+추가해 별도 화면을 엽니다. 실행기는 음성 worker 등록을 기다리고 화면 주소를 출력합니다.
+예약 조건 저장 → 공개 식당 선택 → 예약 요청 만들기 → 승인 → **등록 휴대폰으로 시험전화**
+순서로 진행합니다. 마지막 확인에는 시험 대상과 설정된 최대 시간이 표시됩니다. 통화가
+진행되는 동안 예약 카드와 대화 기록이 자동으로 갱신됩니다. 결과는 시험 전용 SQLite에
+저장합니다. 시험을 마치면 터미널에서 `Ctrl+C`로 화면과 worker를 종료합니다.
+
+공개 식당 목록은 수동으로 검토해 추가합니다. 웹검색 후보 카드는 조사 결과를 보여줍니다.
+
+### 가상 전화와 회신
 
 1. **예약부터 변경까지 자동 시연**을 누르면 별도의 가상 여정을 만들고 예약 생성·승인·수락·회신·변경 승인·식당 재확인을 실행합니다. 19:00 → 19:30 변경 완료와 대화 기록을 확인합니다. 이 시연에서는 재사용 프로필을 만들지 않습니다.
 2. 수동 테스트는 왼쪽의 예약자 이름·전체 인원·유아의자·반려동물·접근성·식사 조건을 확인하고 **새 여정 조건 저장**을 누릅니다.

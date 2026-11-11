@@ -8,7 +8,7 @@
 
 브라우저 예약 승인 → `/api/live/dial` → SQLite 통화 claim → LiveKit named agent dispatch → Telkit SIP 발신 → 식당 음성 → STT → LLM·예약 도구 → TTS → 식당으로 전달합니다. Telkit은 음성 통신을 담당하며 텍스트는 LiveKit STT가 생성합니다.
 
-수신은 Telkit → LiveKit inbound trunk → 개별 room/agent dispatch → 허용한 발신자·trunk 확인 → 이름·날짜·기존 시간 식별 → 변경 요청 저장 순서입니다. 사용자 승인 전에는 원 예약을 바꾸지 않고, 승인 뒤 별도 실제 재확인 발신을 해야 변경을 적용합니다.
+수신은 Telkit → LiveKit inbound trunk → 개별 room/agent dispatch → 허용한 발신자·trunk 확인 → 기존 예약 식별 → 변경 요청 저장 순서입니다. 사용자 승인과 식당의 변경 확정을 모두 확인한 뒤 새 시간을 적용합니다.
 
 ## 설치와 비공개 설정
 
@@ -26,7 +26,7 @@ chmod 600 work/phone-live.env
 - LiveKit Cloud 프로젝트의 WSS URL·전용 API key/secret·SIP URI를 입력합니다. 키 생성과 계정 약관은 사용자 승인 후 진행합니다.
 - Telkit 본인인증·카드 등록과 번호 구매는 공식 계정 흐름에서 완료합니다. 구매 전 번호·30일 갱신 비용을 명시해 승인받습니다. 이 adapter는 계정 생성·번호 구매·카드 등록·SIP credential 회전을 하지 않습니다.
 - 구매한 번호와 ID, Telkit API key, 발급한 SIP username/password를 설정합니다. 기존 로컬 `work/telkit-private/`의 `workspace-key.json`·`sip-credential.json`·`livekit-setup.json`도 읽을 수 있습니다.
-- `PHONE_ALLOWED_NUMBERS`는 승인된 국내 테스트 번호의 E.164 목록이고, `PHONE_RESTAURANT_NUMBERS`는 식당 ID→허용 번호의 JSON 객체입니다. 임의 브라우저 입력으로 발신 대상을 정하지 않습니다. 실제 번호 예시는 문서·fixture에 넣지 않습니다.
+- `PHONE_ALLOWED_NUMBERS`는 승인된 국내 테스트 번호의 E.164 목록이고, `PHONE_RESTAURANT_NUMBERS`는 식당 ID→허용 번호의 JSON 객체입니다. 로그인으로 보호된 시험 화면에서 `PHONE_TEST_PHONE_INPUT=true`를 설정하면 승인된 시험 예약에 한해 발신 시 입력한 국내 010 번호를 사용합니다. 번호 소유권은 사용자가 확인합니다.
 - `PHONE_MAX_SECONDS`는 30–600, `PHONE_DAILY_CALLS`는 1–10이며 기본은 180초·하루 1회입니다. Telkit 자체 최대 통화 시간도 별도로 설정합니다. 첫 실제 시험에서는 두 경계를 60초로 제한했습니다.
 
 ## SIP 준비와 읽기 전용 확인
@@ -54,6 +54,39 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 
 중단할 때 worker에 Ctrl+C를 보내고 환경 파일을 `PHONE_LIVE_ENABLED=false`로 되돌립니다. 실행 중 통화는 worker shutdown과 provider 최대 시간으로 종료를 제한합니다. 승인 1회를 실행한 뒤 자동 반복·재발신하지 않습니다. 로컬 DB의 일일 상한은 UTC 날짜 기준이며 DB 삭제·복제나 다른 클라이언트 발신까지 포함하는 사업자 과금 상한이 아닙니다. 사업자 콘솔의 잔액·한도도 확인합니다.
 
+## Soniox 음성 인식 시험
+
+기본 STT는 AssemblyAI입니다. [Soniox v6](https://docs.soniox.com/stt/models)를 비교할 때는
+별도 DB·agent 이름과 권한 600의 환경 파일을 사용하고
+`PHONE_STT_MODEL=soniox/stt-rt-v6` 및 `SONIOX_API_KEY`를 설정합니다.
+`PHONE_MAX_SECONDS=60`, `PHONE_DAILY_CALLS=1`, `PHONE_INBOUND_ENABLED=false`,
+`PHONE_TEST_PHONE_INPUT=false`와 등록 시험 휴대폰 1대가 필요합니다.
+등록 휴대폰을 사용하는 가상 식당의 새 시험 예약에만 발신할 수 있습니다.
+Soniox 키가 없으면 LIVE 시작과 발신을 차단합니다. 기존 SIP·LLM·TTS·AEC는 같은 설정을 사용합니다.
+
+시험 worker는 [Agent text input](https://docs.soniox.com/stt/rt/agent-text-input)을 활성화합니다.
+고정된 Soniox 플러그인 1.8.11에 시작 설정과 같은 WebSocket의 텍스트 프레임 전송을 추가했습니다.
+RoomIO의 재생 동기화된 출력 뒤에서 발화 조각을 받아 SSML을 제거하고, 재생 종료·중단 시
+`end_of_segment`를 전송합니다. LLM의 전체 답변이나 미재생 뒷부분을 미리 보내지 않습니다.
+현재 타이밍은 LiveKit의 재생 위치 추정이며 공식 문서가 권장하는 글자별 500–1000ms 선행
+전송을 정확히 구현한 것은 아닙니다. AEC는 계속 사용합니다. `agentTextInput` 진단에는
+전송 조각·문자·종료·유실·오류 수만 저장합니다. 전송 텍스트에는 Soniox 입력 토큰 비용이 붙습니다.
+
+첫 소개가 들리지 않았다는 실전화 피드백에 따라 시험 worker에 600ms 무음 재생 준비와
+DTX 비활성화, 첫 소개 전후의 송신 RTP 카운터를 추가했습니다. 무음은 대화 기록에 넣지 않습니다.
+`openingAudio` 카운터는 worker→LiveKit 전송만 보여주며 휴대폰 도달의 증거가 아닙니다.
+첫 소개는 TTS 합성을 끝낸 뒤 메모리에 모은 프레임을 재생합니다(최대 합성 대기 6초).
+Soniox 시험에서는 소개의 성명을 한 단어로 읽고, 이후 예약 이름 확인은 별도 문맥으로 처리합니다.
+2026-11-12 승인된 1회 시험에서 사용자가 소개의 이름이 끊김 없이 자연스럽다고 확인했습니다.
+해당 통화는 37초·예약 CONFIRMED였으며, 원음 없이 필터 전후 음량과 송신 카운터만 계측했습니다.
+모든 환경의 음질을 보장하거나 기본 AssemblyAI worker를 Soniox로 전환한 결과는 아닙니다.
+
+승인한 통화에서 식당 역할이 말한 가상 이름, 예약 시간, 추가 요금 유무와 금액을 같은 통화의
+전사 기록과 대조합니다. STT의 정적 context에는 정답 용어 힌트를 전달하지 않습니다.
+Agent text input을 켠 통화는 AI가 실제 말한 내용을 활용하므로 이전 무힌트 시험과 구분합니다.
+추가 요금이 있는 답변은 시험 예약이 확정되지 않아야 합니다.
+유료 Soniox API 사용료와 Telkit 발신료는 실행 전 확인합니다.
+
 ## 기록과 결과 판정
 
 - 승인된 예약 사본·버전·소유 세션·식당 번호 mapping을 검증하고 원자적으로 통화 작업을 선점합니다. 외부 API는 DB transaction 밖에서 호출합니다.
@@ -62,7 +95,7 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 - 실제 발화는 LIVE event와 call ID로 로컬 저장합니다. SDK handoff는 대화 근거로 취급하지 않습니다. 원본 음성 녹음은 생성하지 않습니다.
 - 결과는 해당 통화의 최근 식당 발화 인용, 이름·일시·인원·추가 비용 0원·필수 조건을 대조합니다. 이름도 실제 인식된 발화에 있어야 합니다. 발화 의미의 해석은 STT/LLM에 의존하므로 완전한 의미 검증을 보장하지 않습니다.
 - 미확인·타임아웃·단절은 UNKNOWN이고 자동 재발신하지 않습니다. 실제 결과를 가상 버튼으로 확정하지 않습니다. 진행 중 전체 삭제를 차단합니다.
-- 수신 통화의 변경 요청은 사용자 확인 대기이며, 승인 후 실제 재확인 결과가 일치해야 새 시간을 적용합니다.
+- 수신 통화의 변경 요청은 사용자 확인 대기이며, 승인 후 같은 통화에서 식당이 변경을 확인하면 새 시간을 적용합니다.
 - 로컬 텍스트·예약은 세션 전체 삭제로 지울 수 있지만 공급자 보관 데이터 삭제와 별개입니다. 공급자 보관 정책·운영 알림·자동 만료·crash 이후 외부 통화 대조·outbox는 후속입니다.
 
 ## 모델과 검증 상태
@@ -75,6 +108,11 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 현재는 등록된 테스트 식당 번호만 받고 다른 번호·발신번호 비공개는 거절합니다.
 발신번호만으로 실제 식당 신원을 인증한 것으로 보지 않습니다.
 
+휴대폰을 식당 역할로 사용한 시험 예약으로 회신을 검증할 때는 수신 worker의
+`PHONE_CALLBACK_TEST_BOOKING_ID`에 해당 확정 예약을 지정합니다. 수신 서비스 번호는
+`TELKIT_NUMBER`와 일치해야 하며, `PHONE_RESTAURANT_NUMBERS`에 지정된 발신자 번호가
+기존 확정 시험전화의 실제 수신 번호와 일치해야 합니다. 이 설정은 기본적으로 비어 있습니다.
+
 전용 binding이 없는 수신은 일반 AI 소개 후 예약자 성함부터 묻습니다. 상대가 제시한 이름·날짜·기존 시간과
 식당 mapping이 유일한 LIVE 확정 예약과 일치해야 연결하며 후보를 먼저 읽지 않습니다.
 동명이인·복수 후보·불일치이면 임의 선택하지 않습니다. 식별 전 전사는 별도 비공개
@@ -82,13 +120,13 @@ work/voice-venv/bin/python -m prototypes.phone_agent.voice.worker start
 이 임시 영역의 자동 만료·운영 보관 정책은 후속 과제입니다.
 
 시간 변경은 실제 같은 통화의 최근 전체 발화 근거와 함께 AWAITING_USER로 저장합니다.
-원 시간·동승 조건은 유지하고 사용자 승인 후 별도 실제 재확인이 있어야 적용합니다.
+예약을 만든 브라우저 화면 상단에 승인·거절을 표시하고, 비서는 식당에 잠시 기다려 달라고 말한 뒤 최대 20초 동안 결정을 확인합니다. 승인하면 같은 통화에서 식당에 확정을 요청하고 명확한 응답을 받았을 때 새 시간을 저장합니다. 거절은 통화에서 전달하고 기존 시간을 보존합니다. 대기 시간이 지나면 요청을 남겨두고 안내한 뒤 종료합니다.
 취소·예약 불가·기타 문의는 NEEDS_REVIEW 회신으로 접수합니다. 취소·예약 불가는
 확인 필요 표시와 reviewRequired를 세워 자동 변경 재확인을 막습니다. 원 확정 기록을
 취소 완료로 바꾸지 않으며 수동 처리·해결 상태 전이는 아직 없습니다.
-접수 후 짧은 안내를 재생하고 통화를 마치며 자동 재발신하지 않습니다.
+일반 문의는 접수 후 짧은 안내를 재생하고 통화를 마칩니다.
 
-해당 소유 세션의 웹 화면은 보이는 동안 5초 간격으로 DB 상태를 조회해 회신을 표시합니다.
+해당 소유 세션의 웹 화면은 보이는 동안 실제 통화 기록이 있으면 2초, 가상 모드는 5초 간격으로 DB 상태를 조회합니다.
 화면 접수와 실제 사용자 확인은 다르며 휴대폰 푸시·문자·운영 알림은 미구현입니다.
 가상 및 네트워크 차단 검사는 실제 수신 성공의 증거가 아닙니다. 수신·사용자 전달
 검증 전에는 발신 통화에서 “이 번호로 다시 연락 주세요”라는 안내를 하지 않습니다.
@@ -166,7 +204,7 @@ CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 59개 테스트를 실�
 | 항목 | 공식 근거 | 반영/검증 상태 |
 | --- | --- | --- |
 | 답변 길이 | [LiveKit prompting](https://docs.livekit.io/agents/start/prompting/) | 기본 한 문장·질문 하나, 틀린 항목만 재확인·반복 축소 지침 |
-| 이름 인식 | [AssemblyAI keyterms](https://docs.livekit.io/agents/models/stt/assemblyai/), [편향 주의](https://www.assemblyai.com/blog/when-keyterm-prompting-backfires) | 현재 통화의 승인된 이름 1개만 STT 힌트. 이름 강제 치환·전역 목록 없음 |
+| 예약 용어 인식 | [AssemblyAI keyterms](https://docs.livekit.io/agents/models/stt/assemblyai/), [편향 주의](https://www.assemblyai.com/blog/when-keyterm-prompting-backfires) | 현재 통화의 예약자 이름과 추가 비용 관련 용어를 STT에 전달합니다. 무계단 입장이 필수인 예약은 접근성 용어도 전달합니다. |
 | 종료 시 끊김 | [Speech playout](https://docs.livekit.io/agents/multimodality/audio/) | 도구 이전 발화 재생 완료→종료 안내 완료→room 삭제 순서, 가짜 SDK 순서 검사 |
 | 중간 끊김 | [Turn tuning](https://docs.livekit.io/agents/logic/turns/tuning/) | 중단·오감지·응답 지연 계측. 2026-11-10 후속 적용은 아래 항목 참고 |
 | AI 이름 발음 | [Cartesia 사전](https://docs.cartesia.ai/build-with-cartesia/capability-guides/custom-pronunciations), [IPA 범위](https://docs.cartesia.ai/build-with-cartesia/capability-guides/phonemes) | 요청 시 실제 이름의 한글 음절 재확인. 한국어 IPA/사전 효과는 미검증, 사전 생성·추가 합성 없음 |
@@ -179,6 +217,8 @@ CI는 고정 SDK 설치 뒤 가짜 client·임시 DB로 59개 테스트를 실�
 새 예약에서 이름을 포함한 직전 예약 요청과 식당의 실제 수락을 연결합니다. “네”, “예”, “알겠습니다”, “예약되었습니다”도 문맥상 수락이며 이름을 다시 말하게 하지 않습니다. 짧은 답은 실제 발화 그대로 근거로 받고, 같은 “네”가 비용 답에도 반복되면 최근 같은 통화에서 예약 요청에 답한 쌍을 찾습니다. 전체 응답을 대조하므로 “네, 다만…”의 앞부분만 인용해 조건을 지울 수 없습니다. 가능 여부·비용·다른 질문에 대한 답만으로 확정하지 않고, 후속 정정·취소·미해결 대기는 UNKNOWN으로 둡니다. 이미 수락한 뒤 잠시 대기했다가 비용/조건 확인이 끝난 경우는 다시 이름을 반복할 필요가 없습니다.
 
 수락의 의미는 모델이 판단하고 서버는 최근 실제 근거·직전 요청·승인 이름/일시/인원/추가 비용/필수 조건을 함께 대조합니다. 들어오는 수락 답변을 고정된 문구 목록으로 제한하지 않습니다. 명확한 부정·조건·대기에는 보수적인 차단 규칙을 유지하며 이 규칙이 모든 한국어 의미를 이해하는 것은 아닙니다. 변경 재확인은 기존 명시적 발화 기준을 유지합니다. 이 보완은 아홉 번째 시험 뒤 가상 회귀 검사로 검증했으며 추가 실전화는 하지 않았습니다.
+
+새 예약에서 직전 비용 질문에 불분명한 답이 들어오면 에이전트가 결과 저장 전에 비용 여부를 한 번 더 묻습니다. 재확인 뒤에도 비용을 알 수 없으면 예약을 보류합니다.
 
 결과 도구가 저장을 마치면 저장 상태에 맞는 짧은 고정 음성→재생 완료→종료 순서를 사용합니다. [LiveKit StopResponse](https://docs.livekit.io/reference/python/livekit/agents/llm/)로 도구 뒤 모델이 UNKNOWN을 성공으로 바꾸어 안내하는 경로를 차단합니다. 저장 실패는 재확인할 수 있게 반환하고 자동 종료하지 않습니다. 다섯 번째 통화 후 코드/가짜 SDK 검증까지이며 실제 효과는 다음 승인된 시험에서 확인해야 합니다.
 

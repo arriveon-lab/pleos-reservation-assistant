@@ -21,11 +21,12 @@ def failure_reason(error):
     return "dispatch_uncertain"
 
 
-async def dial_booking(service, config, owner, booking_id, version, request_id, client=None):
+async def dial_booking(service, config, owner, booking_id, version, request_id, client=None, *,
+                       test_phone_number=None):
     from google.protobuf.duration_pb2 import Duration
     from livekit import api
     workflow = LiveWorkflow(service, config)
-    call, created = workflow.reserve(owner, booking_id, version, request_id)
+    call, created = workflow.reserve(owner, booking_id, version, request_id, test_phone_number=test_phone_number)
     if not created:
         return {"id": call["id"], "reused": True, "status": call["status"]}
     own_client = client is None
