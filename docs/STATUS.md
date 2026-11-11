@@ -392,3 +392,7 @@ GitHub 업로드 직전 로컬 `verifyAll` 및 `smoke-test.py --check-contract`�
 - Registry 18개 + H2 추가 1개를 더해 총 **188개 실행, 실패/오류/skip 0**입니다. 기존 H2 비차단/DB 미저장 테스트도 Registry 경로에서 통과했습니다. format/verify와 JAR MOCK HTTP/OpenAPI/H2 재시작/LIVE 차단 통과. 로컬 증거는 Git 제외 `work/rec03-registry-results.json`, `work/rec03-registry-verify.log`, `work/rec03-registry-smoke.log`에 있습니다. 초기 테스트 helper 컴파일 오류는 수정했고 초기 로그도 따로 보관했습니다.
 - 로그인 인증·외부 요청의 owner 검증은 아직 미구현이며, Owner는 trusted caller가 공급할 내부 scope입니다. 만료는 요청/명시적 reap 시 정리하고 자동 정리 스케줄은 아직 없습니다. Registry 재생성/다중 인스턴스를 넘는 누적 예산·영속 claim·불확실한 실행 대조도 미완료입니다.
 - 공개 REST API·Spring bean·기존 WorkflowService 연결·Model/migration/의존성 변경 없음. navigation freshness/ETA 재검증, #4/#5 계약·공개 API/화면, 실제 인증/복구는 다음 작업입니다. #12는 OPEN·PR #14는 Draft로 유지하며 실제 Kakao 조회·전화·비용은 0회입니다.
+
+## 2026-11-11 운영자 시스템 없는 로컬 실행 도구
+
+기존 재예약 검사를 한 명령으로 실행하는 scripts/run-mock-rebooking.py와 [실행 안내](MOCK_REBOOKING_RUNNER.md)를 추가했다. 격리 임시 DB·loopback 서버·전용8082 연결, 기존 별도 APK의 synthetic HTTP 재예약 흐름 PASS. 종료/실패 시 자신이 만든 서버/연결만 정리하며 기존8080/8081 유지 확인. 제품/API/음성 변경 없음. 일반 앱/운영자 인증분리 및 #40 공동 인수는 미완료다.
