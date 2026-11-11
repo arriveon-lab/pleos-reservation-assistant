@@ -1,0 +1,90 @@
+{
+  "recordedDateKst": "2026-11-10",
+  "measurementMode": "SDK_PROBE",
+  "implementationCommit": "487e55c",
+  "integrationCommit": "49115f6",
+  "versions": {
+    "image": "Pleos Connect v2.1.0",
+    "androidApi": 34,
+    "abi": "x86_64",
+    "naviHelper": "3.0.5",
+    "naviData": "3.0.4",
+    "navigation": "3.3.2-rc5-hotfix.3",
+    "probe": "0.1.0-probe"
+  },
+  "timezone": "Asia/Seoul",
+  "samples": [
+    {
+      "tripRequestedAt": "2026-11-10T11:10:13.846025Z",
+      "tripObservedAt": "2026-11-10T11:10:14.563042Z",
+      "elapsedRealtimeMs": 358563,
+      "rawEtaSeconds": 681,
+      "deviceClockBeforeCaptureUtc": "2026-11-10T11:10:15Z",
+      "deviceClockAfterCaptureUtc": "2026-11-10T11:10:18Z",
+      "captureDelayConservativeSeconds": {
+        "lower": 0.436958,
+        "upperExclusive": 4.436958
+      },
+      "ui": {
+        "clock": "20:10",
+        "remainingMinutes": 12,
+        "arrivalClock": "20:21",
+        "speedKmh": 0
+      },
+      "systemServerStartCountBefore": "1",
+      "systemServerStartCountAfter": "1",
+      "sourceCaptureSha256": "4ad0cb0aac9c13c9918e80780b0a45412c13e3de503d012b1455430cdb38ea53"
+    },
+    {
+      "tripRequestedAt": "2026-11-10T11:11:40.483857Z",
+      "tripObservedAt": "2026-11-10T11:11:40.761931Z",
+      "elapsedRealtimeMs": 444762,
+      "rawEtaSeconds": 681,
+      "deviceClockBeforeCaptureUtc": "2026-11-10T11:11:42Z",
+      "deviceClockAfterCaptureUtc": "2026-11-10T11:11:46Z",
+      "captureDelayConservativeSeconds": {
+        "lower": 1.238069,
+        "upperExclusive": 6.238069
+      },
+      "ui": {
+        "clock": "20:11",
+        "remainingMinutes": 12,
+        "arrivalClock": "20:22",
+        "speedKmh": 0
+      },
+      "systemServerStartCountBefore": "1",
+      "systemServerStartCountAfter": "1",
+      "sourceCaptureSha256": "5767d733934a907af7dc191a3a81297669062fb58855429d812d27df3b7dfb8a"
+    }
+  ],
+  "sampleIntervalMonotonicSeconds": 86.199,
+  "etaTimeBasis": "UNVERIFIED",
+  "responseAssociation": "UNVERIFIED",
+  "sourceGenerationTime": "UNKNOWN",
+  "captureTimingMethod": "device date before/after screencap; integer seconds, upper bound expanded by one second",
+  "limitations": [
+    "Stationary single public route, two manual requests",
+    "No SDK request/destination ID in TripInfo",
+    "UI minute rounding and current route equivalence unknown",
+    "Source capture JSON/screenshots remain local ignored artifacts"
+  ],
+  "earlierManualSamples": {
+    "rawEtaSeconds": [
+      731,
+      734
+    ],
+    "intervalMonotonicSeconds": 222.494,
+    "noAdditionalRequestWindowSeconds": 222.052,
+    "additionalTripInfoInWindow": 0
+  },
+  "permissionNegative": {
+    "method": "separate applicationId, identical Java, both normal manifest permissions omitted",
+    "naviRouteGranted": false,
+    "naviRouteSearchGranted": false,
+    "initialized": true,
+    "destinationCallResult": "PERMISSION_DENIED",
+    "observedAt": "2026-11-10T06:14:06.819745Z",
+    "runtimeDialogDenialTested": false,
+    "testAppRemoved": true
+  }
+}

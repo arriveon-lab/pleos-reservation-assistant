@@ -32,6 +32,7 @@
 | [FUNCTIONAL_SPEC](FUNCTIONAL_SPEC.md) | 현재 동작과 목표 기능·인수 기준 | 팀 검토용 명세 |
 | [ERD](ERD.md) | 관계도·컬럼·무결성·DB 전환 | DB/API 미적용 설계 초안 |
 | [설계 제안](DESIGN_PROPOSALS.md) | 다중 방문 예약·피클 비교·차별화 방향 | 팀 합의 전 제안 |
+| [차량 데이터 앱 인수안](VEH01_APP_HANDOFF.md) | #1 → #16/#26 데이터·상태·변환 차단·공동 시나리오 | 협의용, 제품 adapter/공동 기기 인수 미완료 |
 | [연동 근거](INTEGRATIONS.md) | Pleos API 정책·ETA 증거·전화 PoC 조건 | 문서/정적 확인과 실행 확인 구분 |
 | [SDK 대체·단계별 연동](SDK_FALLBACK_PLAN.md) | 위치·사용자 음성의 표준 API 우선·어댑터 경계·미지원 처리·담당/인수 조건 | 2026-11-09 설계 결정, 새 런타임/기기 검증 전 |
 | [VOICE-01 업체 검토](calls/VENDOR_REVIEW.md) | #3 Telkit 채택 결정과 연동 조건·한도·요금·약관, 이전 업체 비교·서버 계약 영향·PoC 초안 | 문서 확인, Telkit 채택(2026-11-10)·계정/발신 0회 |
