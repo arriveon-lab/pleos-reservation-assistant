@@ -1,5 +1,33 @@
 # #52 목적지 추천 MOCK 화면 인수 기록
 
+## 2026-11-11 실제 5분·HTTP 실패·프로세스 종료·창 변경 추가 검증
+
+제품 소스 기준7092c0e, #53 서버cc393399의 THREE 가상 gateway, Pleos Connect2.1.0/API34/user10. 별도 destinationvalidation 설치의 제품 APK SHA256은 `2d868d088720e1a30eaaa56192272e033f208acc9a1292c7f4871aa6165b4036`으로 이전 UI 검증본과 동일하다. 제품 코드/원래 설치는 변경하지 않았고 instrumentation과 loopback 실패 주입 도구를 확장했다.
+
+| 절차·기대 결과 | 실제 결과 |
+| --- | --- |
+| 검색 후 실제300초 대기, 후보 제거·자동 재검색 없음 | elapsedRealtime 기준300148ms에 EXPIRED, 후보0·안내 표시. 추가3초 상태 유지. 인증만료401 후 갱신/재전송1회, 접수된 POST200은1회, GET200은1회, close200 확인. 짧은 TTL/시계 조작 없음 |
+| GET404 주입, 조회 불가·후보 제거 | NOT_FOUND/후보0, POST1·GET404 1·close1 PASS |
+| 서버 POST200 접수 후 응답 소켓 종료 | FAILED/후보0, 접수POST1·자동 POST 재시도0. close200 2회(실패 정리와 화면 종료 정리), 예약 생성 없음 |
+| 후보 표시 후 close503 주입 | 후보0, cleanupFailed=true, 화면에 서버 정리 미확인 표시. 원격 종료 성공으로 처리하지 않음 |
+| 결과 표시 상태에서 호스트 am force-stop, instrumentation으로 다시 시작 | 실제 PID19949 종료, 후보0·재시작 구간 추천HTTP0. Activity.finish만 수행한 이전 검사와 구분 |
+| 서버 검색 응답10초 지연 중 force-stop, 다시 시작 | LOADING 캡처/준비 신호 뒤 실제 PID32555 종료. 서버 접수POST200 1회, 재시작 자동 검색/조회0, 이전 후보 복원 없음. 서버 작업 자체 취소/종료를 확인한 검사는 아님 |
+| 창840→1682→840→1682dp 전환 | 각 전환 직후 조건 선택→후보/상세→제한 주입→재진입 PASS, 마지막 넓은 창 복원. 제품 APK 동일 |
+| 원래 jointvalidation 예약 보존 | XML 전체 바이트 동일, SHA256 `beb02ab84b57d492514117bb1e0eb7d069c3f4036e0fd1a22e5f29967b1f13b3`. 인증/DB/예약을 초기화하지 않음 |
+
+**창 진입 실패 판정:** 기존 도구는 클릭 후 destinationPanel 필드를 즉시 읽었다. 이번에는 메인 스레드에서 패널 생성 조건을 최대5초 기다리도록 바꿨고 실제 창 전환4회가 통과했다. 이전 단발 실패는 재현되지 않았으며 제품 결함의 원인이 입증됐다고 주장하지 않는다. OEM 전체 창/물리 회전·실제 moving/서비스 단절 검증은 아니다.
+
+**검사 도구 실패 이력:** 로컬 수집기가 성공 이름 CLOSE_FAIL을 실패 문자열로 잘못 판정해 두 번 중단했다. 실제 instrumentation은 두 번 모두 PASS였으며, 줄 시작 FAIL:만 검사하도록 고친 뒤 나머지를 실행했다. HOLD/HOLD_LOADING의 Process crashed 표시는 호스트 force-stop으로 의도한 종료이며 성공 종료한 테스트로 세지 않는다. 이어진 RESTART 검사와 HTTP 기록을 함께 판정했다.
+
+검증: format·verifyAll 성공(캐시/UP-TO-DATE 포함), 별도 `:ux:core:test --rerun-tasks`107개 실패/오류/skip0, MOCK smoke 성공. 기존 Lint 경고 유지·추가 억제 없음. 이번 실제 기기는 주간/기본 글꼴이며 이전 야간150% 증거와 구분한다.
+
+증거: Git 제외 `work/destination-followup/`의 five-minute.log, GET404/LOST/CLOSE_FAIL 로그, phases.log, loading-phases.log, http.log/loading-http.log, verify.log/core-tests.log/smoke.log. PNG23개와 SHA manifest는 `captures/destination-followup/`. 만료/close실패 화면은 직접 시각 확인했다. 이 경로의 원본 PNG가 GitHub에 업로드됐다는 뜻은 아니다.
+
+재현: 기존 #53 THREE 서버18085를 사용하고 `python3 scripts/fixtures/destination-fault-proxy.py <mode-file>`로127.0.0.1:18086을 연다. mode-file은 PASS/GET404/LOST/CLOSE_FAIL/DELAY 중 하나이며 upstream MOCK 표식을 확인한다. 별도 앱의8080→18085/8081→18086 reverse를 설정한다. instrumentation 인수 destinationFixture=FIVE_MINUTE/GET404/LOST/CLOSE_FAIL/HOLD/HOLD_LOADING/RESTART, windowWidth=840 또는1682를 사용한다. FIVE_MINUTE는PASS, HOLD_LOADING은DELAY와 조합한다. HOLD 계열 READY를 받은 호스트가 **별도 패키지만** force-stop한 뒤 RESTART를 실행한다. 토큰/본문/실제 장소는 프록시 로그에 남기지 않는다. 검증 뒤8081→18085로 복원한다.
+
+잔여: 실제 주행/장애·OEM 전체 창, 음식 취향 서버 반영, 실제 목적지/Gleo/전화 연결, #16/#40 공동 인수·release/영상. 기존 예약 UNKNOWN 종료 API 부재도 그대로다. 이번 결과는 #53 초안 기반 로컬 MOCK 검사이며 공동 인수 완료가 아니다.
+
+
 ## 2026-11-11 차량용 선택·비교 화면 단순화
 
 사용자 피드백에 따라 키보드/드롭다운 중심 폼을 큰 선택 버튼으로 교체했다. 목적지2개·인원±·필수 조건 토글, 아래 한식/일식/중식/양식/분식 다중 선택 및 전체 해제를 제공한다. 결과가 오면 입력 폼을 숨기고 후보 비교로 전환한다. 넓은 창은 후보3개 가로 배치, 좁은 창 또는 확대 글꼴은 세로 배치다. 상세 근거는 별도 보기와 비교 복귀로 분리했다. 선택값 변경은 이전 결과를 폐기하며 기본 MOCK·주행 차단·기존 예약 journal을 유지한다.

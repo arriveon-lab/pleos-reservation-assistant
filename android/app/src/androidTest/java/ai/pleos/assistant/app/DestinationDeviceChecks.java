@@ -72,9 +72,22 @@ final class DestinationDeviceChecks {
     }
     await(model::canWrite, 15000);
     String journal = journal();
+    if (fixture.equals("RESTART")) {
+      check(
+          main(() -> model.destinationView().candidates().length() == 0),
+          "restart restored candidates");
+      click(R.string.destination_open);
+      await(() -> field(activity, "destinationPanel") != null, 5000);
+      capture("RESTART-empty");
+      check(journal.equals(journal()), "restart changed journal");
+      Bundle status = new Bundle();
+      status.putString("stream", "PASS RESTART: no restored candidates or automatic search\n");
+      runner.sendStatus(0, status);
+      return;
+    }
     click(R.string.destination_open);
+    await(() -> field(activity, "destinationPanel") != null, 5000);
     panel = field(activity, "destinationPanel");
-    check(panel != null, "destination entry missing");
     main(
         () -> {
           ((Button) field(panel, "highChair")).performClick();
@@ -91,8 +104,22 @@ final class DestinationDeviceChecks {
           VehicleUiChecks.layout(activity.getWindow().getDecorView());
           return null;
         });
+    long searchStarted = SystemClock.elapsedRealtime();
     click(R.string.destination_search);
-    if (fixture.equals("LATE")) {
+    if (fixture.equals("HOLD_LOADING")) {
+      await(
+          () ->
+              java.util.Set.of("LOADING", "QUEUED", "RUNNING")
+                  .contains(model.destinationView().state()),
+          5000);
+      capture("HOLD_LOADING-pending");
+      Bundle ready = new Bundle();
+      ready.putString(
+          "stream", "READY HOLD_LOADING: search pending; externally force-stop isolated package\n");
+      runner.sendStatus(0, ready);
+      Thread.sleep(45000);
+      throw new AssertionError("HOLD_LOADING must be interrupted by host force-stop");
+    } else if (fixture.equals("LATE")) {
       await(
           () -> java.util.Set.of("QUEUED", "RUNNING").contains(model.destinationView().state()),
           5000);
@@ -114,7 +141,8 @@ final class DestinationDeviceChecks {
                       && model.destinationView().candidates().length() == 0),
           "late response restored result");
       capture(fixture + "-invalidated");
-    } else if (java.util.Set.of("THREE", "TWO", "EXPIRED").contains(fixture)) {
+    } else if (java.util.Set.of("THREE", "TWO", "EXPIRED", "FIVE_MINUTE", "HOLD", "CLOSE_FAIL")
+        .contains(fixture)) {
       await(() -> model.destinationView().state().equals("RESULTS"), 15000);
       check(
           main(() -> model.destinationView().candidates().length())
@@ -143,8 +171,36 @@ final class DestinationDeviceChecks {
                       activity.getWindow().getDecorView(),
                       activity.getString(R.string.destination_not_bookable))),
           "authority warning missing");
-      if (fixture.equals("EXPIRED")) {
-        await(() -> model.destinationView().state().equals("EXPIRED"), 10000);
+      if (fixture.equals("HOLD")) {
+        Bundle ready = new Bundle();
+        ready.putString(
+            "stream", "READY HOLD: results visible; externally force-stop isolated package\n");
+        runner.sendStatus(0, ready);
+        Thread.sleep(45000);
+        throw new AssertionError("HOLD must be interrupted by host force-stop");
+      } else if (fixture.equals("CLOSE_FAIL")) {
+        click(R.string.preview_cancel);
+        await(() -> model.destinationView().cleanupFailed(), 10000);
+        check(
+            main(() -> model.destinationView().candidates().length() == 0),
+            "close failure restored candidates");
+        capture("CLOSE_FAIL-cleared");
+      } else if (fixture.equals("EXPIRED") || fixture.equals("FIVE_MINUTE")) {
+        await(
+            () -> model.destinationView().state().equals("EXPIRED"),
+            fixture.equals("FIVE_MINUTE") ? 310000 : 10000);
+        long elapsed = SystemClock.elapsedRealtime() - searchStarted;
+        if (fixture.equals("FIVE_MINUTE")) {
+          check(
+              elapsed >= 295000 && elapsed <= 310000, "not a real five-minute expiry: " + elapsed);
+          Bundle timing = new Bundle();
+          timing.putString("stream", "REAL_EXPIRY elapsedMs=" + elapsed + "\n");
+          runner.sendStatus(0, timing);
+          Thread.sleep(3000);
+          check(
+              main(() -> model.destinationView().state().equals("EXPIRED")),
+              "automatic restart after expiry");
+        }
         check(
             main(() -> model.destinationView().candidates().length() == 0),
             "expired result retained");
@@ -227,7 +283,8 @@ final class DestinationDeviceChecks {
         capture(fixture + "-relaunch");
       }
     } else {
-      String expected = fixture.equals("EMPTY") ? "EMPTY" : "FAILED";
+      String expected =
+          fixture.equals("EMPTY") ? "EMPTY" : fixture.equals("GET404") ? "NOT_FOUND" : "FAILED";
       await(() -> model.destinationView().state().equals(expected), 15000);
       check(
           main(() -> model.destinationView().candidates().length() == 0),
