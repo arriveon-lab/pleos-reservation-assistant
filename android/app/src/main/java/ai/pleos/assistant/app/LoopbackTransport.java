@@ -19,15 +19,23 @@ final class LoopbackTransport implements AuthSession.Wire {
   @Override
   public JSONObject exchange(String path, JSONObject body, String key, String bearer)
       throws Exception {
-    boolean preview = path.matches("/experimental/place-previews(/[a-zA-Z0-9-]+)*");
+    boolean destination =
+        path.matches("/experimental/destination-recommendations(/[a-zA-Z0-9-]+)*");
+    boolean preview = destination || path.matches("/experimental/place-previews(/[a-zA-Z0-9-]+)*");
     if (!BuildConfig.DEBUG
         || (!preview
             && !path.matches(
                 "/(status|searches|reservations|calls|anonymous-sessions)(/[a-zA-Z0-9-]+)*")))
       throw new IllegalStateException("LOCAL_DEBUG_ONLY");
+    if (destination) requireDestinationMock();
     HttpURLConnection connection =
         (HttpURLConnection)
-            new URL("http://127.0.0.1:8080/api" + (preview ? "" : "/v1") + path)
+            new URL(
+                    "http://127.0.0.1:"
+                        + (destination ? "8081" : "8080")
+                        + "/api"
+                        + (preview ? "" : "/v1")
+                        + path)
                 .openConnection(Proxy.NO_PROXY);
     try {
       connection.setConnectTimeout(5000);
@@ -84,6 +92,33 @@ final class LoopbackTransport implements AuthSession.Wire {
       }
     } finally {
       connection.disconnect();
+    }
+  }
+
+  // #53 can execute paid web calls even with the reservation service in MOCK mode. Only the
+  // explicitly marked, separate test harness is accepted; stock/live servers fail closed.
+  private void requireDestinationMock() throws Exception {
+    HttpURLConnection c =
+        (HttpURLConnection)
+            new URL("http://127.0.0.1:8081/mock-capabilities").openConnection(Proxy.NO_PROXY);
+    try {
+      c.setConnectTimeout(3000);
+      c.setReadTimeout(3000);
+      c.setInstanceFollowRedirects(false);
+      if (c.getResponseCode() != 200) throw new IllegalStateException("DESTINATION_MOCK_REQUIRED");
+      try (InputStream in = c.getInputStream()) {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        int value;
+        while (buffer.size() < 4097 && (value = in.read()) != -1) buffer.write(value);
+        byte[] bytes = buffer.toByteArray();
+        if (bytes.length > 4096) throw new IllegalStateException("DESTINATION_MOCK_REQUIRED");
+        JSONObject marker = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
+        if (!"MOCK".equals(marker.getString("destinationRecommendationsMode"))
+            || marker.getBoolean("externalCallsEnabled"))
+          throw new IllegalStateException("DESTINATION_MOCK_REQUIRED");
+      }
+    } finally {
+      c.disconnect();
     }
   }
 }

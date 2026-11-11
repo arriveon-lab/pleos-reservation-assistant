@@ -130,7 +130,10 @@ public final class AuthSession implements MockRepository.Transport {
   /** Long preview IO must not hold the refresh lock and prevent independent cancellation. */
   public JSONObject exchangeTransient(String path, JSONObject body, String key) throws Exception {
     if (path.equals("/status")) return wire.exchange(path, null, null, null);
-    if (!path.equals(PreviewController.ROOT) && !path.startsWith(PreviewController.ROOT + "/"))
+    if (!path.equals(PreviewController.ROOT)
+        && !path.startsWith(PreviewController.ROOT + "/")
+        && !path.equals(DestinationController.ROOT)
+        && !path.startsWith(DestinationController.ROOT + "/"))
       throw new IllegalArgumentException("INVALID_PATH");
     String token;
     synchronized (this) {

@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Explicit device check: requires automotive baseline and a connected MOCK test installation. */
 public final class DrivingDeviceChecks extends Instrumentation {
   private int windowWidth;
+  private String destinationFixture;
   private boolean dashboard;
   private boolean previewBoundary;
   private boolean recoveryFailure;
@@ -22,6 +23,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
   @Override
   public void onCreate(Bundle arguments) {
     super.onCreate(arguments);
+    destinationFixture = arguments.getString("destinationFixture", "");
     windowWidth =
         Integer.parseInt(
             arguments.getString(
@@ -40,6 +42,12 @@ public final class DrivingDeviceChecks extends Instrumentation {
   public void onStart() {
     Bundle result = new Bundle();
     try {
+      if (!destinationFixture.isEmpty()) {
+        DestinationDeviceChecks.run(this, destinationFixture);
+        result.putString("stream", "PASS destination MOCK fixture " + destinationFixture + "\n");
+        finish(Activity.RESULT_OK, result);
+        return;
+      }
       if (!searchRecovery.isEmpty()) {
         SearchRecoveryDeviceChecks.run(this, "restart".equals(searchRecovery));
         result.putString(

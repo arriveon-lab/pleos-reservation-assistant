@@ -29,6 +29,7 @@ public final class ReservationActivity extends ComponentActivity {
   private ReservationViewModel model;
   private DrivingRestrictionController driving;
   private PreviewPanel previewPanel;
+  private DestinationPanel destinationPanel;
   private Bundle previewDraft;
   private LinearLayout content;
   private ScrollView scroll;
@@ -61,7 +62,10 @@ public final class ReservationActivity extends ComponentActivity {
             new androidx.activity.OnBackPressedCallback(true) {
               @Override
               public void handleOnBackPressed() {
-                if (model.previewOpen()) {
+                if (model.destinationOpen()) {
+                  model.closeDestination();
+                  destinationPanel = null;
+                } else if (model.previewOpen()) {
                   model.closePreview();
                   previewPanel = null;
                 } else {
@@ -89,6 +93,7 @@ public final class ReservationActivity extends ComponentActivity {
     if (approval != null) approval.dismiss();
     model.observe(null);
     model.invalidatePreview("CLOSED");
+    model.invalidateDestination("CLOSED");
     driving.stop();
     super.onStop();
   }
@@ -215,6 +220,13 @@ public final class ReservationActivity extends ComponentActivity {
   }
 
   private void render() {
+    if (model.destinationOpen()) {
+      if (destinationPanel == null) destinationPanel = new DestinationPanel(this, model);
+      if (destinationPanel.view.getParent() == null) setContentView(destinationPanel.view);
+      destinationPanel.update();
+      return;
+    }
+    destinationPanel = null;
     if (model.previewOpen()) {
       if (previewPanel == null) {
         previewPanel = new PreviewPanel(this, model, previewDraft);
@@ -467,6 +479,7 @@ public final class ReservationActivity extends ComponentActivity {
         content = mainPanel;
       }
       button(R.string.preview_open, model.canWrite(), v -> model.openPreview());
+      button(R.string.destination_open, model.canWrite(), v -> model.openDestination());
       content = page;
       diagnostics();
 

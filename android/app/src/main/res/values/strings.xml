@@ -68,4 +68,43 @@
   <string name="change_cooldown">변경 요청은 10분 간격으로 가능해요. %1$s 이후 최신 상태를 조회해 주세요.</string>
   <string name="unknown_read_only">서버에 결과 미확인으로 기록돼 있어요. 조회로 다시 확인할 수 있지만, 현재 앱에서는 확정·취소·종료할 수 없어요. 기존 기록을 보존합니다.</string>
   <string name="unknown_refresh">서버의 기존 결과 다시 확인 · 조회만</string>
+  <string name="destination_open">목적지 주변 추천 · MOCK</string>
+  <string name="destination_title">목적지 주변 식당 찾기</string>
+  <string name="destination_notice">MOCK 전용 · 가상 목적지와 후보입니다. 실제 검색·전화·예약은 하지 않습니다. 차량 목적지·ETA와 아직 연결되지 않았습니다.</string>
+  <string-array name="destination_mock_places"><item>가상 성수</item><item>가상 서울숲</item></string-array>
+  <string name="destination_parking">주차 조건은 항상 확인해요</string>
+  <string name="destination_high_chair">아기의자</string>
+  <string name="destination_step_free">계단 없는 접근</string>
+  <string name="destination_search">이 조건으로 MOCK 추천 보기</string>
+  <string name="destination_ready">조건을 선택하고 추천을 요청해 주세요.</string>
+  <string name="destination_loading">후보를 확인하고 있어요…</string>
+  <string name="destination_results">추천 후보 · 조건 확인이 필요해요</string>
+  <string name="destination_empty">찾은 후보가 없어요.</string>
+  <string name="destination_filtered">현재 조건으로 표시할 후보가 없어요.</string>
+  <string name="destination_expired">결과가 만료되어 지웠어요. 필요하면 다시 요청해 주세요.</string>
+  <string name="destination_not_found">작업을 찾을 수 없어 결과를 지웠어요. 정리 완료 여부는 확인되지 않았습니다.</string>
+  <string name="destination_failed">추천을 확인하지 못했어요. 전용 MOCK 서버 연결을 확인해 주세요. 자동으로 다시 검색하지 않습니다.</string>
+  <string name="destination_invalid">인원을 확인해 주세요. 성인 1–20명, 아동 0–10명까지 입력할 수 있어요.</string>
+  <string name="destination_unavailable">지금은 새 결과를 표시할 수 없어요. 자동으로 다시 검색하지 않습니다.</string>
+  <string name="destination_cleared">이전 결과를 지웠어요. 조건을 확인한 뒤 다시 요청해 주세요.</string>
+  <string name="destination_cleanup">화면 결과는 지웠지만 서버 정리는 확인되지 않았어요.</string>
+  <string name="destination_blocked">차량 제한 또는 연결 상태 때문에 요청할 수 없어요.</string>
+  <string name="destination_not_bookable">지점·전화·예약 미확인 · 이 목록에서는 예약할 수 없어요</string>
+  <string name="destination_other_condition">추가 조건</string>
+  <string name="destination_yes">웹 근거 있음 · 매장 확인 전</string>
+  <string name="destination_no">웹 근거상 미충족 · 매장 확인 전</string>
+  <string name="destination_conflict">근거가 서로 달라요</string>
+  <string name="destination_unknown">미확인</string>
+  <string name="destination_reviews">인용 후기 요약 · 가상 근거</string>
+  <string name="destination_evidence_time">일반 조건 근거 · 도착 시점 보장 아님
+관측 %1$s
+유효 %2$s</string>
+    <string name="destination_questions">추가 확인이 필요한 조건 · 매장 답변 아님</string>
+    <string name="destination_evidence_source">출처: %1$s · 원문 갱신: %2$s</string>
+    <string name="destination_source_merchant">가상 매장 페이지</string>
+    <string name="destination_source_review">가상 방문 후기</string>
+    <string name="destination_source_other">기타 가상 출처</string>
+    <string name="destination_unknown_time">알 수 없음</string>
+    <string name="destination_details_show">출처·후기·유효기한 보기</string>
+    <string name="destination_details_hide">상세 근거 접기</string>
 </resources>
