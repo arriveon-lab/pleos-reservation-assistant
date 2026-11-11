@@ -15,7 +15,7 @@ final class DestinationPanel {
   private final ReservationViewModel model;
   private final LinearLayout root, form, results;
   private final Button highChair, stepFree;
-  private final Button search;
+  private final Button search, navigationRetry;
   private final List<View> inputs = new ArrayList<>();
   private final TextView navigationLabel;
   private final boolean wide;
@@ -49,6 +49,7 @@ final class DestinationPanel {
     addCard(conditions, people, wide);
     text(people, activity.getString(R.string.destination_where), 26);
     navigationLabel = text(people, activity.getString(R.string.navigation_missing), 24);
+    navigationRetry = button(people, R.string.navigation_retry, false, activity::retryNavigation);
     stepper(people, true);
     stepper(people, false);
     LinearLayout needs = VehicleUi.card(activity);
@@ -178,10 +179,19 @@ final class DestinationPanel {
     DestinationController.View state = model.destinationView();
     boolean loading = java.util.Set.of("LOADING", "QUEUED", "RUNNING").contains(state.state());
     search.setEnabled(model.canWrite() && model.navigationReady() && !loading);
+    boolean navigationLoading =
+        java.util.Set.of("CONNECTING", "READING").contains(model.navigationState());
+    navigationRetry.setEnabled(model.restriction().allowsInput() && !navigationLoading);
     var navigation = model.navigationDestination();
     navigationLabel.setText(
         navigation == null
-            ? activity.getString(R.string.navigation_missing)
+            ? activity.getString(
+                switch (model.navigationState()) {
+                  case "CONNECTING", "READING" -> R.string.navigation_loading;
+                  case "TIMEOUT" -> R.string.navigation_timeout;
+                  case "PERMISSION_DENIED" -> R.string.navigation_permission;
+                  default -> R.string.navigation_missing;
+                })
             : activity.getString(
                 model.navigationReady()
                     ? R.string.navigation_ready

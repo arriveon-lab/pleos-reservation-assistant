@@ -100,6 +100,13 @@ public final class ReservationActivity extends ComponentActivity {
     model.run(MockRepository::connect);
   }
 
+  void retryNavigation() {
+    if (navigation == null || !model.restriction().allowsInput()) return;
+    navigation.close();
+    navigation = new NavigationDestinationAdapter(this, model::navigation);
+    navigation.start();
+  }
+
   @Override
   protected void onStop() {
     voiceResumed = false;

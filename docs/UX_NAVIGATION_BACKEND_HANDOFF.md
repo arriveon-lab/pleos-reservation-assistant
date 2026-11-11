@@ -37,3 +37,28 @@ ETA는 이 추천 요청에 필요하지 않다. 원시 ETA를 도착 시각으�
 #1/#47에서 현재 경로와 응답의 연관성 보장 근거를 확보해야 실제 내비 목적지 검색을 활성화할 수 있다. 입력의 boolean을 강제로 true로 바꾸는 것은 완료 방법이 아니다. 실제 변경/취소/늦은 응답 기기 인수, #52/#53 공동 인수, 실제 서버 배포 연결은 미완료다. 추천에 ETA 계약 변경은 필요 없으나 실제 예약 ETA 인수는 별개다. 외부 장소·전화·AI·유료 호출0. PR #46 Draft 유지.
 
 최종 APK SHA256: `3d62c2408f3498bcaa1a2002117bd03d93ad41f52e81a59f4478651675823c2d`. 최종 APK 재설치 후 NAVIGATION/GLEO 모두 PASS. mock-recovery.xml 전체 SHA256 전후 `cd53323c4c0e83e38df13804d60091ab6ff4da8c6658a567023d64524590f60d` 동일.
+
+## 2026-11-11 최신 #1/#47·SDK 재검토와 조회 복구
+
+#1 최신 서버 회신(6771962584), PR #47 head `bbfb1844af7b11118d229ef2b8fe40822705dd19`를 다시 확인했다. 새 현재 경로 연관성 보장은 없었다. PR 본문의 서비스 단절/재연결 관측은 이전 `5086d8b` 근거이며 현재 경로 응답 식별의 보증이 아니다.
+
+공식 [목적지 가이드](https://document.pleos.ai/api-reference/connect-sdk-pleos/NaviHelper/destinations)와 [SDK 소개](https://document.pleos.ai/api-reference/connect-sdk-pleos/NaviHelper/intro), 로컬 배포 소스 NaviHelper3.0.5 / navi-data3.0.4를 대조했다. getDestinationInfo는 대응 콜백으로 응답하며 실제 이벤트는 내비 구현에 따라 다를 수 있다. DestinationInfo에는 장소 필드가 있지만 requestId/routeId가 없다. RouteStartInfo의 name은 목적지 또는 출발점이며 식별자로 대체할 수 없다. RouteStateInfo/isRouting과 NavigationStatus에도 목적지 응답을 연결할 식별자가 없다. 같은 값 반복 수신·내부 revision·새 연결을 SDK 연관성 보장으로 승격하지 않는다.
+
+### 구현
+
+- 화면에 ‘내비 목적지 다시 확인’ 추가. 입력이 허용된 정차 상태에서 이전 adapter/listener를 닫고 새 연결로 조회한다. 조회 중 연속 클릭은 비활성이다. 재조회는 검색·전화·예약을 실행하지 않는다.
+- 초기 연결/조회 각각 10초 응답 대기 한도 추가. 초과 시 이전 목적지를 지우고 listener 해제, TIMEOUT 안내 후 명시적 재조회를 제공한다. 이는 UI 대기 한도이며 차량 데이터 freshness/TTL 기준이 아니다.
+- CONNECTING/READING, TIMEOUT, SecurityException의 PERMISSION_DENIED, MISSING_OR_INVALID를 구분한다. 일반 실패를 목적지 없음이나 미지원으로 확정하지 않는다.
+- 종료/시간 초과한 adapter의 콜백으로 재조회 상태를 덮거나 다시 검색하지 않는다. 정상 수신도 UNVERIFIED로 유지한다.
+
+### 실행 결과와 한계
+
+- format/verifyAll/assembleDebugAndroidTest PASS. UX123/서버313 결과는 UP-TO-DATE 포함, 이번 신규 실행 수로 세지 않는다. Android JVM NO-SOURCE 제외. MOCK smoke PASS.
+- 같은 최종 APK에 NAVI_RECOVERY, NAVIGATION, GLEO 계측 3종 PASS. 실제 SDK 첫 수신·재조회·시간 초과 처리 후 재조회에서 UNVERIFIED 재수신을 확인했다. 이전 adapter 취소/누락 콜백 주입과 시간 초과 이후 routing 콜백 주입에서 상태 복구/자동 검색이 발생하지 않았다.
+- 시간 초과는 Runnable을 직접 주입한 결정적 검사다. 실제 10초 무응답·서비스 강제 단절·권한 거부·늦은 실제 SDK 유효 응답 재현은 이번에 하지 않았다. 실제 발화 반복 검사도 하지 않았다.
+- 합성 목적지 MOCK HTTP·인원/제한/UNKNOWN 회귀 PASS. 일반 SDK 수신값은 로그/캡처/fixture/백엔드에 저장·전송하지 않았다. 외부 전화·장소·유료 실행0.
+- APK SHA256 `37f3bc3f9861ce5b80bcf4628a5245f039b41ac07e230666edf81077d7567a4d`. 별도 destinationvalidation 설치의 mock-recovery.xml 전체 SHA256 `cd53323c4c0e83e38df13804d60091ab6ff4da8c6658a567023d64524590f60d` 유지. 원래 jointvalidation 설치는 수정하지 않았다.
+- 로컬 증거 `work/navigation-recovery/{sdk-recovery,navigation,gleo,smoke}.log`, `captures/navigation-recovery/timeout.png`. 화면에서 대기 종료 안내/재조회 버튼/검색 비활성을 확인했다. 계측 후 일반 앱 실행으로 복원했다.
+- Lint 오류0/경고15, 억제 추가 없음. SDK XML 버전 경고는 기존과 동일하며 빌드 성공.
+
+검색 차단 해제는 **미완료**다. #1/#47에서 응답이 현재 목적지에 속함을 확인할 지원 방식/순서 보장과 변경·취소·늦은 응답 기기 근거가 필요하다. 앱 재조회 기능의 성공을 해당 보장 또는 공동 인수 완료로 표시하지 않는다. ETA 입력 및 기존 예약은 변경하지 않았다.

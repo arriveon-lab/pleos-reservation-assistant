@@ -72,6 +72,46 @@ final class DestinationDeviceChecks {
     }
     await(model::canWrite, 15000);
     String journal = journal();
+    if (fixture.equals("NAVI_RECOVERY")) {
+      click(R.string.destination_open);
+      panel = field(activity, "destinationPanel");
+      await(() -> model.navigationState().equals("UNVERIFIED"), 15000);
+      check(!main(model::navigationReady), "SDK fields became verified");
+      Object firstAdapter = field(activity, "navigation");
+      var oldListener =
+          (ai.pleos.playground.navi.helper.listener.NaviHelperEventListener)
+              field(firstAdapter, "listener");
+      click(R.string.navigation_retry);
+      check(firstAdapter != field(activity, "navigation"), "retry reused old listener owner");
+      oldListener.onRouteCancelled();
+      oldListener.onDestinationInfo(null);
+      await(() -> model.navigationState().equals("UNVERIFIED"), 15000);
+      check(!main(model::navigationReady), "retry verified route association");
+      Object secondAdapter = field(activity, "navigation");
+      // Deterministic timeout delivery; this is not a real service outage or elapsed-time test.
+      main(
+          () -> {
+            ((Runnable) field(secondAdapter, "responseTimeout")).run();
+            return null;
+          });
+      check(main(() -> model.navigationState().equals("TIMEOUT")), "timeout reason overwritten");
+      check(main(() -> model.navigationDestination() == null), "timeout retained destination");
+      check(main(() -> !((Button) field(panel, "search")).isEnabled()), "timeout enabled search");
+      capture("NAVI_RECOVERY-timeout");
+      var timedOutListener =
+          (ai.pleos.playground.navi.helper.listener.NaviHelperEventListener)
+              field(secondAdapter, "listener");
+      timedOutListener.onRoutingCompleted();
+      runner.waitForIdleSync();
+      check(main(() -> model.navigationState().equals("TIMEOUT")), "late event revived timeout");
+      click(R.string.navigation_retry);
+      await(() -> model.navigationState().equals("UNVERIFIED"), 15000);
+      check(
+          main(() -> model.destinationView().candidates().length() == 0),
+          "retry searched automatically");
+      check(journal.equals(journal()), "navigation retry changed booking journal");
+      return;
+    }
     // Synthetic navigation is installed only by instrumentation. Production SDK stays UNVERIFIED.
     main(
         () -> {

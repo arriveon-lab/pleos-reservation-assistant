@@ -18,6 +18,9 @@ final class NavigationDestinationAdapter implements AutoCloseable {
   private final Context context;
   private final BiConsumer<DestinationController.Destination, String> changed;
   private final Handler main = new Handler(Looper.getMainLooper());
+  // UI response wait limit, not a navigation freshness/TTL guarantee.
+  private static final long RESPONSE_WAIT_MS = 10_000;
+  private final Runnable responseTimeout = () -> fail("TIMEOUT");
   private NaviHelper helper;
   private boolean closed, listening, awaiting;
   private final NaviHelperEventListener listener =
@@ -28,6 +31,7 @@ final class NavigationDestinationAdapter implements AutoCloseable {
               () -> {
                 if (!awaiting) return;
                 awaiting = false;
+                main.removeCallbacks(responseTimeout);
                 DestinationController.Destination value =
                     info == null
                         ? null
@@ -37,7 +41,7 @@ final class NavigationDestinationAdapter implements AutoCloseable {
                 // CURRENT.
                 changed.accept(
                     value != null && value.validFields() ? value : null,
-                    value != null && value.validFields() ? "UNVERIFIED" : "UNAVAILABLE");
+                    value != null && value.validFields() ? "UNVERIFIED" : "MISSING_OR_INVALID");
                 android.util.Log.i(
                     "ArriveOnNavi",
                     value != null && value.validFields()
@@ -89,7 +93,9 @@ final class NavigationDestinationAdapter implements AutoCloseable {
   }
 
   void start() {
+    if (closed || helper != null) return;
     changed.accept(null, "CONNECTING");
+    main.postDelayed(responseTimeout, RESPONSE_WAIT_MS);
     try {
       helper = new NaviHelper(context);
       helper.initialize(
@@ -101,17 +107,17 @@ final class NavigationDestinationAdapter implements AutoCloseable {
                     listening = true;
                     invalidate(true);
                   } catch (RuntimeException failure) {
-                    fail();
+                    fail(failure);
                   }
                 });
             return Unit.INSTANCE;
           },
           error -> {
-            post(this::fail);
+            post(() -> fail(error));
             return Unit.INSTANCE;
           });
     } catch (RuntimeException failure) {
-      fail();
+      fail(failure);
     }
   }
 
@@ -124,20 +130,28 @@ final class NavigationDestinationAdapter implements AutoCloseable {
 
   private void invalidate(boolean query) {
     awaiting = false;
-    changed.accept(null, "UNAVAILABLE");
+    main.removeCallbacks(responseTimeout);
+    changed.accept(null, query ? "READING" : "UNAVAILABLE");
     if (query && helper != null) {
       awaiting = true;
+      main.postDelayed(responseTimeout, RESPONSE_WAIT_MS);
       try {
         helper.getDestinationInfo();
       } catch (RuntimeException failure) {
-        fail();
+        fail(failure);
       }
     }
   }
 
-  private void fail() {
-    changed.accept(null, "UNAVAILABLE");
+  private void fail(Throwable failure) {
+    fail(failure instanceof SecurityException ? "PERMISSION_DENIED" : "UNAVAILABLE");
+  }
+
+  private void fail(String state) {
+    if (closed) return;
     close();
+    changed.accept(null, state);
+    android.util.Log.i("ArriveOnNavi", state);
   }
 
   @Override
