@@ -1,5 +1,10 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-11 main 286f2a1 문서 통합·PR47 충돌 해소
+
+사용자 승인으로 최신 main286f2a1을 feat/1-navi-probe에 이력 보존 merge로 반영했습니다. STATUS/HANDOFF의 차량 관측·서버 인수 기록과 main의 전화 업체 검토 기록을 모두 보존했습니다. 양쪽 신규 행 보존 검사와 관련 로컬 링크/diff/명명 검사 통과. 이번 main 추가분은 문서뿐이므로 코드 빌드·서버/기기 테스트는 재실행하지 않았으며 과거 통과를 새 실행으로 세지 않습니다. main 자체/기존 커밋 재작성·force push 없이 작업 브랜치만 일반 Push하며 PR Draft/#1 미완료·PLEOS 차단을 유지합니다.
+
+
 ## 2026-11-11 서버 답변 반영·ETA 없는 목적지 추천 인수 구분
 
 [새 서버 코멘트](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1#issuecomment-6771962584)와9709887 인계 문서를 확인했습니다. [앱 인수안](../docs/VEH01_APP_HANDOFF.md)에 기존 Navigation의 source 거절 순서/INVALID_TIME/STALE_NAVIGATION/INVALID_REQUEST와 정확한 시간 경계(now<eta<=now+86400, now-300<=observedAt<=now+5)를 반영했습니다. 로컬 WorkflowService도 정적으로 대조했고 HTTP 실행으로 세지 않습니다.
@@ -199,6 +204,12 @@ GitHub API로 [추가 코멘트](https://github.com/arriveon-lab/pleos-reservati
 - 현재 사용자 Pleos AVD/연결 기기 없음. 개발자가 Studio SDK Manager에서 공식 Windows Pleos 사이트/API 34 이미지를 설치하고 라이선스·계정·SDK 이용 권한을 확인한 뒤 현재 사용자 Automotive AVD를 생성해야 합니다. 다른 사용자의 Pixel AVD를 이동하지 않습니다.
 - 이어서 정상/목적지 없음·시간 기준(짧은/긴 경로·60초·자정)·변경/탐색/취소/도착·권한 거부·미지원/단절·늦은 응답·백그라운드/복귀를 관측합니다. #1을 아직 닫지 않습니다. 서버 Windows 실패 2건은 #4와 협의하고 Android 범위에서 우회하지 않습니다.
 
+## 2026-11-10 VOICE-01 Telkit 채택 (#3)
+
+- 전화 회선은 Telkit으로 결정했습니다. 연동 조건·한도·요금·약관과 서버 계약 영향은 [업체 검토](../docs/calls/VENDOR_REVIEW.md#0-결정-telkit-채택-2026-11-10), 흐름은 [전화예약 에이전트 계획](../docs/PHONE_RESERVATION_AGENT_PLAN.md)을 따릅니다.
+- 다음 작업은 Telkit 계정 준비(본인인증·카드 등록·070 번호, 계정당 1개)와 LiveKit 프로젝트 설정의 실행 제안 작성입니다. 실제 번호 구매·발신은 대상·목적·예상 비용·상한 승인 후에만 합니다. 발신 표시 번호와 `telkit_call_id` 연결 방법을 PoC에서 확인합니다.
+- 이번 변경은 문서만입니다. 계정·번호·발신·비용 0회, Gradle 재실행 없음.
+
 ## 2026-11-10 #35/#38 통합과 #42 CI·문서 이력 복구
 
 - 사용자 승인으로 #35는4d65c01, #38은9ea227d에 squash merge됐고 #34/#37은 독립 검증/코드 준비 범위로 종료됐습니다. 실제 공급자 채택·기기/ETA·전화/유료 실행 인수는 별도입니다.
@@ -284,6 +295,8 @@ GitHub API로 [추가 코멘트](https://github.com/arriveon-lab/pleos-reservati
 **통합 검증:** `./gradlew -PincludeAndroid=true verifyAll` 성공. 서버 200개 실행·실패/오류/skip 0, Android Lint/APK 검사 통과(일부 UP-TO-DATE, 단위 테스트 NO-SOURCE). `work/contract-venv/bin/python scripts/smoke-test.py --check-contract`로 JAR MOCK HTTP·OpenAPI·H2 재시작·LIVE 시작 차단을 확인했습니다. 기기 실행과 실제 예약은 검증하지 않았습니다.
 
 **실제 실행 증거:** [독립 시연](../docs/REC04_LIVE_SEARCH.md)의 Kakao 1회 성공·3곳 일시 표시·쿼터 1 / 100,000, 비용 0원·전화/예약/AI 0회입니다. 이번 병합 중 추가 실제 호출은 없으며 제품 MOCK/LIVE 차단·응답 미저장을 유지합니다. 앞선 브랜치별 188개/156개 기록과 통합 결과를 구분합니다. 아래 OPEN/Draft·병합 대기 표현은 당시 이력이며 최신 병합 상태는 GitHub가 기준입니다.
+
+**VOICE-01 (#3, 2026-11-08):** 전화 업체 문서·약관 검토를 [업체 검토](../docs/calls/VENDOR_REVIEW.md)에 기록했습니다. 다음 작업은 MOCK 기준 outcome 정규화 시나리오와 outbox·대조 설계(#4 협의)이며, 실제 발신은 대상·목적·비용 상한 승인 전 실행하지 않습니다. 발신·계정·비용 0회입니다.
 
 문서 갱신: 2026-11-07 KST. 기존 제품 실행 기록은 2026-11-04이며, 현재 검증 상태의 기준 문서는 `docs/STATUS.md`입니다.
 
@@ -378,7 +391,7 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 2. 빌드 SDK와 debug APK는 준비됨. Pleos 계정/SDK 신청, Android Studio와 Pleos Emulator/Virtual Console 확보 후 probe 설치·실행. 실제 콜백/권한·초기화 실패 후 재실행·종료 중 늦은 콜백 등 수명 경계도 기기에서 확인.
 3. ETA 단위는 확인됐으므로 시간 기준·갱신 주기·권한·백그라운드·도착 이벤트 증거 확보, 변환 adapter+테스트.
 4. Android 제품 UI/후보 선택/명시적 예약 승인/변경 미확인 안내, CarUxRestrictions, Gleo 또는 STT/TTS. 현재 probe는 제출용 앱 아님.
-5. 장소 사업자와 시범 지역, 전화 업체 선택. Twilio/CLOVA/KT 비교와 검증 계획은 INTEGRATIONS. 계정·협의 번호·예상 비용/상한·명시적 승인 없이는 실발신 금지.
+5. 장소 사업자와 시범 지역 선택. 전화 회선은 Telkit으로 결정(2026-11-10), 조건은 docs/calls/VENDOR_REVIEW.md. 계정·협의 번호·예상 비용/상한·명시적 승인 없이는 실발신 금지.
 6. LIVE 전 인증/사용자 소유권·승인 증빙·allowlist·비용/횟수 제한·웹훅 서명·outbox/timeout·UNKNOWN 대조 해결 구현.
 7. 운영 DB는 팀 경험 확인 후 결정. 지속 ETA 지연 감지/자동 변경/학습은 후속 범위. 현재 변경 API는 모의 수동 명령.
 8. release APK·시연 영상·접수양식/개별 서명·심사용 접근 확인. 현재 진단 debug APK만 있고 release 앱/영상/서명/제출 없음.
