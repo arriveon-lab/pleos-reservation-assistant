@@ -33,6 +33,7 @@ runtime.env는 다음 `.env.example`의 값 중 실행에 필요한 설정만 �
 
 ```dotenv
 PHONE_LIVE_ENABLED=false
+PHONE_INBOUND_ENABLED=false
 PHONE_DATABASE=/var/lib/arriveon-phone/phone-agent-prototype.sqlite3
 PHONE_SECRETS_DIR=/run/secrets/no-admin
 PHONE_MAX_SECONDS=60
@@ -70,6 +71,24 @@ healthcheck는 정적 `/`만 읽어 세션을 추가하지 않습니다. `/api/s
 
 ## 실제 전화 worker
 
+### EC2에서 웹검색 후보로 시험 예약
+
+통합 시험 환경은 Compose 프로젝트 `arriveon-integration`과 `compose.integration.yml`을 사용합니다.
+전화 화면은 EC2의 루프백 포트 18767에 있으며, 추천 서버와 음성 worker를 함께 실행합니다.
+Mac에서 접속할 때 SSH 터널을 엽니다. 키 경로와 서버 주소는 현재 사용하는 값으로 지정합니다.
+
+```bash
+ssh -i "$EC2_KEY" -N -L 18767:127.0.0.1:18767 "$EC2_USER@$EC2_HOST"
+```
+
+[EC2 시험 화면](http://127.0.0.1:18767/)에서 목적지와 조건을 입력하고 웹검색을 실행합니다.
+후보 카드의 **이 식당으로 시험 예약 만들기**를 누른 뒤 예약 카드에서 발신을 승인합니다.
+로그인으로 보호된 EC2 HTTPS 화면에서 받을 010 번호를 입력하고 **입력한 휴대폰으로 시험전화**를
+누릅니다. 확인 창에 표시된 번호를 승인하면 발신합니다. 서버 전체 기준 1일 1회, 최대 60초입니다.
+결과는 통합 시험 환경의 SQLite에 저장하며 세션 삭제 후에도 당일 통화 횟수는 유지합니다.
+
+### 기본 전화 worker 배포
+
 기본 `up`은 worker를 실행하지 않습니다. Compose는 서비스를 명시하면 profile 없이도 시작할 수 있으므로, `voice.launch`가 LIVE를 먼저 검증하고 비활성 상태에서는 SDK worker 등록 자체를 막습니다. 실제 발신/수신 시험은 대상·횟수·시간·비용 승인을 받은 다음 진행합니다. 이미 소비한 통화 이력을 지우거나 DB를 바꿔 상한을 우회하지 않습니다.
 
 ```bash
@@ -77,7 +96,11 @@ healthcheck는 정적 `/`만 읽어 세션을 추가하지 않습니다. `/api/s
 docker compose -f prototypes/phone_agent/deploy/compose.yml --profile voice up -d worker
 ```
 
-API는 공개 서비스 인증이 없는 테스트 도구이므로 SSH 터널로 사용합니다. worker를 로컬과 서버에서 동시에 켜지 않습니다. 시험이 끝나면 runtime.env를 LIVE=false로 되돌리고 worker를 중단합니다. API는 계속 MOCK으로 사용할 수 있습니다.
+수신 전용 시험은 `PHONE_LIVE_ENABLED=false`, `PHONE_INBOUND_ENABLED=true`로 실행합니다.
+발신 trunk가 없어도 수신 설정이 완전하면 worker를 시작할 수 있습니다. 수신에도 동일한
+일일 상한·동시 1통·시간 제한이 적용되므로 기존 통화 이력은 그대로 유지합니다.
+
+API는 공개 서비스 인증이 없는 테스트 도구이므로 SSH 터널로 사용합니다. worker를 로컬과 서버에서 동시에 켜지 않습니다. 시험이 끝나면 runtime.env의 LIVE와 INBOUND를 모두 false로 되돌리고 worker를 중단합니다. API는 계속 MOCK으로 사용할 수 있습니다.
 
 ```bash
 docker compose -f prototypes/phone_agent/deploy/compose.yml stop worker
@@ -104,3 +127,9 @@ docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
 
 
 짧은 수락 판정 보완 소스 `8b54619`를 후속 배포했습니다. 로컬·네트워크 차단 Linux 컨테이너 각각 110개 검사와 해당 코드의 원격 CI 5개를 통과했습니다. 배포 후 짧은 수락 함수·HTTP 상태·기존 통화 이력 9건·LIVE/AEC false·일일 상한 1·worker 중단을 확인했습니다. 실제 전화/모델 호출은 추가하지 않았습니다.
+
+
+입력 무음 진단 소스 `cc96ad4`를 배포하고 네트워크 차단 Linux에서 116개 검사를 통과했습니다. `PHONE_INPUT_LEVEL_PROBE`는 기본 false이며, 다음 승인된 진단 통화에만 선택적으로 켭니다. 최근 2회 발신의 재생 대기/입력 무음과 비용은 [STATUS](../../../docs/STATUS.md)를 따릅니다. 새 진단은 아직 실전화로 실행하지 않았습니다.
+
+
+2026-11-11 열세 번째 시험은 의미 기반 수락을 인정해 CONFIRMED 저장과 결과에 맞는 종료 안내까지 확인했습니다. 사용자는 확정 안내까지 자연스럽게 들렸다고 답했습니다. 43초·60원(VAT 별도), 누적 발신 13회·768원·잔액 2,232원입니다. AI 중단 메시지·모델/AEC/계측 오류 0개였으며 시험 후 LIVE/AEC/계측 비활성·일일 상한 1·worker 중단·활성 room 0개를 확인했습니다. 배포 코드 변경 없이 진행한 1회 가상 식당 역할 시험이며 모든 환경의 품질 보장은 아닙니다.

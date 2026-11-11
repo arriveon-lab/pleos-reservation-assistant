@@ -15,6 +15,7 @@ from livekit.agents.voice import io
 RATE = 16000
 SAMPLES = RATE // 100
 BYTES = SAMPLES * 2
+PLAYOUT_LEAD_SECONDS = 0.04
 
 
 def pcm_frame(data):
@@ -33,11 +34,13 @@ class EchoProcessor:
         self.failed = False
         self.input_frames = self.reference_frames = self.errors = 0
         self.reference_overflows = self.input_gaps = self.output_gaps = 0
+        self.output_late_frames = 0
+        self.max_output_late_ms = 0.0
         self.max_processing_ms = 0.0
         self.input_energy = self.output_energy = 0
         self.last_output = None
 
-    def reference(self, frame):
+    def reference(self, frame, *, playout_at=None):
         if self.failed:
             return
         now = self.clock()
@@ -46,7 +49,7 @@ class EchoProcessor:
         self.last_output = now
         if len(self.references) == self.references.maxlen:
             self.reference_overflows += 1
-        self.references.append((now, bytes(frame.data)))
+        self.references.append((now if playout_at is None else playout_at, bytes(frame.data)))
 
     def _reference_at(self, timestamp):
         while self.references and self.references[0][0] <= timestamp + 0.005:
@@ -101,6 +104,8 @@ class EchoProcessor:
                 "processed10msFrames": self.input_frames, "reference10msFrames": self.reference_frames,
                 "processingErrors": self.errors, "referenceOverflows": self.reference_overflows,
                 "inputTimelineGaps": self.input_gaps, "outputSubmissionGapsOver100ms": self.output_gaps,
+                "outputLateFramesOver20ms": self.output_late_frames,
+                "maxOutputLateMs": round(self.max_output_late_ms, 3),
                 "maxProcessingMs": round(self.max_processing_ms, 3),
                 "outputToInputEnergyRatio": round(self.output_energy / self.input_energy, 4)
                 if self.input_energy else None}
@@ -127,7 +132,8 @@ class EchoOutput(io.AudioOutput):
         self.processor, self.clock, self.sleep = processor, clock, sleep
         self.ready = asyncio.Event()
         self.ready.set()
-        self.next_at = 0.0
+        self.next_at = None
+        self.segment_started = False
         self.generation = 0
 
     async def capture_frame(self, frame):
@@ -139,9 +145,9 @@ class EchoOutput(io.AudioOutput):
             await self.ready.wait()
             if generation != self.generation:
                 return
-            if self.next_at < self.clock() - 0.02:
-                self.next_at = self.clock()
-            await self.sleep(max(0, self.next_at - self.clock()))
+            now = self.clock()
+            if self.next_at is not None and self.next_at - now > PLAYOUT_LEAD_SECONDS:
+                await self.sleep(self.next_at - now - PLAYOUT_LEAD_SECONDS)
             await self.ready.wait()
             if generation != self.generation:
                 return
@@ -150,29 +156,42 @@ class EchoOutput(io.AudioOutput):
             # that as a segment would wait forever for a nonexistent playout event.
             await super().capture_frame(chunk)
             await self.next_in_chain.capture_frame(chunk)
+            now = self.clock()
+            playout_at = now if self.next_at is None else max(self.next_at, now)
+            if self.segment_started:
+                late = playout_at - self.next_at
+                self.processor.output_late_frames += late > 0.02
+                self.processor.max_output_late_ms = max(self.processor.max_output_late_ms, late * 1000)
             # A short tail is passed through unchanged but padded only in the reference.
-            self.processor.reference(pcm_frame(bytes(chunk.data).ljust(BYTES, b"\0")))
-            self.next_at += chunk.duration
+            self.processor.reference(pcm_frame(bytes(chunk.data).ljust(BYTES, b"\0")),
+                                     playout_at=playout_at)
+            self.next_at = playout_at + chunk.duration
+            self.segment_started = True
 
     def flush(self):
         super().flush()
         self.next_in_chain.flush()
+        self.segment_started = False
         self.processor.last_output = None
 
     def clear_buffer(self):
         self.generation += 1
-        self.next_at = 0.0
+        self.next_at = None
+        self.segment_started = False
         self.ready.set()
         self.next_in_chain.clear_buffer()
         self.processor.last_output = None
-        # Already submitted frames may still return as echo; retain their reference.
+        # Already played frames may still return as echo. Discard queued references.
+        now = self.clock()
+        while self.processor.references and self.processor.references[-1][0] > now:
+            self.processor.references.pop()
 
     def pause(self):
         self.ready.clear()
         super().pause()
 
     def resume(self):
-        self.next_at = self.clock()
+        self.segment_started = False
         self.ready.set()
         super().resume()
 

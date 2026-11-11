@@ -12,7 +12,7 @@ from livekit.agents.voice import io
 
 from .config import ConfigurationError, VoiceConfig
 from .diagnostics import AudioDiagnostics
-from .echo import EchoInput, EchoOutput, EchoProcessor, attach_echo, pcm_frame
+from .echo import EchoInput, EchoOutput, EchoProcessor, PLAYOUT_LEAD_SECONDS, attach_echo, pcm_frame
 from .resilience import room_options
 
 
@@ -117,14 +117,34 @@ class EchoTest(unittest.IsolatedAsyncioTestCase):
         processor = EchoProcessor(clock=lambda: now[0])
         sink = Sink()
         output = EchoOutput(sink, processor, clock=lambda: now[0], sleep=sleep)
-        data = array.array("h", [1000] * 800).tobytes()
+        data = array.array("h", [1000] * 1600).tobytes()
         await output.capture_frame(pcm_frame(data))
         output.flush()
         event = await asyncio.wait_for(output.wait_for_playout(), 1)
         self.assertEqual(data, bytes(sink.data))
-        self.assertGreaterEqual(now[0], 50.039)
+        self.assertAlmostEqual(50.09 - PLAYOUT_LEAD_SECONDS, now[0])
         self.assertFalse(event.interrupted)
-        self.assertEqual(5, len(processor.references))
+        self.assertEqual(10, len(processor.references))
+        self.assertAlmostEqual(50.09, processor.references[-1][0])
+        self.assertEqual(0, processor.output_late_frames)
+
+    async def test_playback_lead_covers_a_short_stall_and_measures_a_longer_gap(self):
+        now = [1.0]
+        processor = EchoProcessor(clock=lambda: now[0])
+        output = EchoOutput(Sink(), processor, clock=lambda: now[0])
+        frame = pcm_frame(bytes(1600))
+        await output.capture_frame(frame)
+        now[0] += 0.03
+        await output.capture_frame(pcm_frame(bytes(320)))
+        self.assertEqual(0, processor.output_late_frames)
+        now[0] += 0.07
+        await output.capture_frame(pcm_frame(bytes(320)))
+        self.assertEqual(1, processor.output_late_frames)
+        self.assertAlmostEqual(40, processor.max_output_late_ms)
+        output.flush()
+        now[0] += 1
+        await output.capture_frame(pcm_frame(bytes(320)))
+        self.assertEqual(1, processor.output_late_frames)
 
     async def test_interrupt_while_paused_unblocks_capture_without_stale_audio(self):
         sink = Sink()

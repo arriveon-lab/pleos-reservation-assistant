@@ -7,7 +7,7 @@ import time
 import wave
 
 from livekit import rtc
-from livekit.agents import StopResponse, room_io
+from livekit.agents import APIConnectOptions, StopResponse, room_io
 from livekit.plugins import noise_cancellation
 
 from ..service import DomainError
@@ -21,16 +21,112 @@ REPEAT_TEXT = "말씀을 처리하지 못했어요. 다시 한 번 말씀해 주
 def opening_text(context):
     name = context.get("reservationName")
     if isinstance(name, str) and name.strip():
+        if context.get("testCall"):
+            return f"안녕하세요, {name} 님의 AI 비서입니다. 예약 통화 시험입니다."
         return f"안녕하세요, {name} 님의 AI 비서입니다."
     return "안녕하세요, AI 예약 비서입니다."
 
 
-def room_options(config):
-    return room_io.RoomOptions(audio_input=room_io.AudioInputOptions(
+def initial_reply_instructions(context):
+    if context.get("testCall"):
+        return ("소개는 이미 했다. 날짜·시간·인원으로 예약 가능한지 먼저 묻는다. "
+                "필수 조건과 추가 비용 여부를 확인한 후에만 시험 예약을 요청한다.")
+    if context.get("purpose") == "CALLBACK":
+        if context.get("found"):
+            return ("소개는 이미 했다. 기존 예약을 서버에서 조회한 회신 전화다. "
+                    "저장된 성함·날짜·시간을 다시 묻거나 새 예약을 요청하지 않는다. "
+                    "어떤 문의나 변경으로 연락했는지 짧게 묻는다. 상대가 이미 말했으면 그 내용부터 처리한다.")
+        return ("소개는 이미 했다. 식당에서 걸려온 회신 전화다. 새 예약을 요청하지 않는다. "
+                "예약을 식별하기 위해 예약자 성함을 묻는 짧은 질문 하나만 한다.")
+    return ("소개는 이미 했다. 이번 통화 목적에 맞는 질문 하나만 한다. "
+            "새 예약이면 날짜·시간·인원을 포함해 예약 가능한지 한 문장으로 묻는다.")
+
+
+async def start_sip_audio(direction, participant, start_audio, close_call, *, sleep=asyncio.sleep):
+    """Inbound audio must be published before LiveKit can accept the ringing call.
+
+    Outbound audio still waits for the callee to answer. Never speak a greeting
+    until active, and never restart a failed or disconnected call.
+    """
+    if direction not in ("inbound", "outbound"):
+        raise DomainError("INVALID_JOB", "허용한 전화 방향이 아니에요.", 403)
+    if participant.attributes.get("sip.callStatus") == "hangup":
+        await close_call("sip_disconnected")
+        return False
+    if direction == "inbound":
+        await start_audio()
+    for _ in range(350):
+        status = participant.attributes.get("sip.callStatus")
+        if status == "active":
+            if direction == "outbound":
+                await start_audio()
+            return True
+        if status == "hangup":
+            await close_call("sip_disconnected")
+            return False
+        await sleep(0.1)
+    await close_call("answer_timeout")
+    return False
+
+
+def room_options(config, agent_text_output=None):
+    return room_io.RoomOptions(
+        text_output=room_io.TextOutputOptions(sync_transcription=True, next_in_chain=agent_text_output),
+        audio_input=room_io.AudioInputOptions(
         sample_rate=16000 if config.echo_cancellation else 24000,
         noise_cancellation=noise_cancellation.NC() if config.noise_suppression else None),
         audio_output=room_io.AudioOutputOptions(
-            sample_rate=16000 if config.echo_cancellation else 24000))
+            sample_rate=16000 if config.echo_cancellation else 24000,
+            track_publish_options=rtc.TrackPublishOptions(
+                source=rtc.TrackSource.SOURCE_MICROPHONE,
+                **({"dtx": False} if config.soniox_trial else {}))))
+
+
+async def opening_rtp_snapshot(room):
+    """Counters for the worker-to-LiveKit hop only; not handset delivery proof."""
+    try:
+        stats = await asyncio.wait_for(room.get_rtc_stats(), timeout=0.7)
+        tracks = [row.outbound_rtp for row in stats.publisher_stats
+                  if row.HasField("outbound_rtp") and row.outbound_rtp.stream.kind == "audio"]
+        return {"available": True, "audioTracks": len(tracks),
+                "packetsSent": sum(row.sent.packets_sent for row in tracks),
+                "bytesSent": sum(row.sent.bytes_sent for row in tracks)}
+    except Exception:
+        # A missing stats sample must not block the greeting or expose provider errors.
+        return {"available": False}
+
+
+async def speak_trial_opening(session, room, context, diagnostics):
+    """Prime the audio path and buffer the entire greeting before playing it."""
+    async def silence():
+        for _ in range(30):
+            yield rtc.AudioFrame(bytes(640), 16000, 1, 320)
+
+    record = diagnostics.opening_audio
+    record.update(warmupMs=600, state="warming")
+    await session.say("", audio=silence(), allow_interruptions=False, add_to_chat_ctx=False)
+    greeting = opening_text(context)
+    record["state"] = "buffering"
+    started = time.monotonic()
+    async with asyncio.timeout(6):
+        async with session.tts.synthesize(
+            greeting, conn_options=APIConnectOptions(max_retry=0, timeout=5)
+        ) as synthesis:
+            frames = [chunk.frame async for chunk in synthesis]
+    if not frames:
+        raise RuntimeError("Greeting synthesis returned no audio")
+    record["bufferedAudioMs"] = round(1000 * sum(frame.duration for frame in frames))
+    record["synthesisMs"] = round(1000 * (time.monotonic() - started))
+
+    async def greeting_audio():
+        for frame in frames:
+            yield frame
+
+    record["beforeGreeting"] = await opening_rtp_snapshot(room)
+    record["state"] = "speaking"
+    await session.say(greeting, audio=greeting_audio(), allow_interruptions=False)
+    record["afterGreeting"] = await opening_rtp_snapshot(room)
+    record["state"] = "played_on_server"
 
 
 def turn_options(config):

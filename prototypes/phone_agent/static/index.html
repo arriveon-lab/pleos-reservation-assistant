@@ -5,22 +5,53 @@
 <main>
 <div class="intro"><div><p class="eyebrow">전화예약 에이전트 프로토타입</p><h1>예약부터 회신까지,<br>한 흐름으로 확인하세요.</h1><p>가상 식당 응답으로 예약과 변경 처리를 테스트합니다.<br>Telkit·LiveKit 설정과 별도 승인 후 실제 음성 통화도 시험할 수 있어요.</p></div><div class="intro-note"><b>처음이라면</b><p>① 조건 저장 → ② 예약 생성·승인 → ③ 가상 통화 → ④ 식당 회신 순서로 진행하세요.</p><button id="quick-demo">예약부터 변경까지 자동 시연 ↗</button></div></div>
 <div id="message" role="status" aria-live="polite" hidden></div>
+<section id="incoming-changes" class="panel" aria-live="polite" hidden></section>
 <div class="workspace">
 <section class="panel setup"><div class="section-title"><span>01</span><h2>이번 예약의 조건</h2></div>
 <form id="trip-form">
-<label>예약자 이름<input name="reservationName" value="김예약" maxlength="40" required></label>
+<label>예약자 성명 (성 포함)<input name="reservationName" value="김예약" maxlength="40" required></label>
 <div class="pair"><label>전체 인원<input name="partySize" type="number" min="1" max="30" value="4" required></label><label>유아의자 수<input name="highChairCount" type="number" min="0" max="30" value="1" required></label></div>
 <label>반려동물 동반<select name="petAccompanied"><option value="NO">동반하지 않음</option><option value="YES">동반함</option><option value="UNKNOWN">아직 확인하지 않음</option></select></label>
 <label class="check"><input name="stepFree" type="checkbox" checked> 계단 없이 입장해야 해요</label>
+<label class="check"><input name="childFriendly" type="checkbox"> 어린이와 함께 이용할 수 있어야 해요</label>
+<label class="check"><input name="parkingRequired" type="checkbox"> 주차가 필요해요</label>
+<label>도착 시 최대 대기 시간(분)<input name="maxArrivalWaitMinutes" type="number" min="0" max="120" placeholder="선택 입력"></label>
 <label>필수 식사 조건<input name="dietaryRequirements" placeholder="가상 조건만 입력하세요" maxlength="160"></label>
 <div class="storage"><label class="check"><input name="remember" type="checkbox"> 다음 여정에도 기억하기</label><p>선택하지 않아도 예약할 수 있어요. 식사 관련 상세 내용은 재사용 프로필에 저장하지 않아요.</p><div class="inline"><button type="button" id="load-profile" class="quiet">저장 조건 불러오기</button><button type="button" id="delete-profile" class="quiet">저장 프로필 삭제</button></div><div id="profile-status" class="muted"></div></div>
 <div class="inline"><button type="submit">새 여정 조건 저장</button><button type="button" id="update-trip" class="outline">현재 여정 수정</button></div><p id="trip-status" class="muted">저장된 여정이 없어요.</p>
 </form>
-<hr><form id="booking-form"><label>가상 식당<select name="restaurantId"><option value="demo-garden">가상 정원식당</option><option value="demo-table">가상 식탁</option></select></label><div class="pair"><label>예약 날짜<input name="date" type="date" required></label><label>예약 시간<input name="time" type="time" value="19:00" required></label></div><button type="submit" class="wide outline">예약 요청 만들기</button><p class="muted">예약 생성 후 오른쪽에서 조건을 확인하고 발신을 승인하세요.</p></form>
+<hr><form id="booking-form"><label>식당<select name="restaurantId"><option value="demo-garden">가상 정원식당</option><option value="demo-table">가상 식탁</option><optgroup id="test-restaurants" label="실전화 시험용 공개 식당" hidden></optgroup></select></label><p id="restaurant-contact" class="muted" hidden></p><div class="pair"><label>예약 날짜<input name="date" type="date" required></label><label>예약 시간<input name="time" type="time" value="19:00" required></label></div><button type="submit" class="wide outline">예약 요청 만들기</button><p class="muted">예약 생성 후 오른쪽에서 조건을 확인하고 발신을 승인하세요.</p></form>
 </section>
 <div class="right-stack">
-<section class="panel"><div class="section-title"><span>SIP</span><h2>Telkit · LiveKit 연결</h2></div><p id="voice-status" class="muted">연결 설정 확인 중…</p><p class="muted">실제 통화는 별도 승인한 테스트 번호와 비용·시간 상한을 준비한 뒤 켤 수 있어요.</p></section>
-<section class="panel"><div class="section-title"><span>02</span><h2>예약과 가상 통화</h2><small id="booking-count"></small></div><div id="bookings" class="empty">아직 예약이 없어요. 왼쪽에서 여정 조건과 예약을 만들어 주세요.</div></section>
+<section class="panel" id="web-recommendation" hidden>
+  <div class="section-title"><h2>목적지 주변 장소 웹검색</h2></div>
+  <form id="web-search-form">
+    <label>목적지<input name="destination" placeholder="예: 성수 또는 경북 구미시 3공단3로 302" maxlength="80" required></label>
+    <label>먹고 싶은 음식<input name="foodPreferenceText" placeholder="예: 양식 먹고 싶어 / 양식 말고 한식" maxlength="160" aria-describedby="food-preference-help"></label>
+    <p id="food-preference-help" class="muted">한식·양식·일식·중식·분식·아시아음식을 알아들어요. 말한 내용을 글로 입력해 주세요. 비워 두면 종류를 제한하지 않아요.</p>
+    <label>장소 종류
+      <select name="venueCategory">
+        <option value="RESTAURANT">식당</option>
+        <option value="CAFE">카페</option>
+        <option value="">전체</option>
+      </select>
+    </label>
+    <p class="muted">주차와 왼쪽에서 선택한 유아의자·접근성·어린이·반려동물 조건을 조사합니다.</p>
+    <button type="submit">웹검색으로 후보 찾기</button>
+  </form>
+  <p id="web-search-status" role="status"></p>
+  <div id="web-search-results"></div>
+</section>
+<section class="panel">
+  <div class="section-title"><h2>시험전화</h2></div>
+  <p id="voice-status" class="muted">연결 설정 확인 중…</p>
+  <div id="test-phone-field" hidden>
+    <label>시험전화를 받을 내 휴대폰 번호
+      <input id="test-phone-number" type="tel" autocomplete="tel" maxlength="24" placeholder="010으로 시작하는 번호">
+    </label>
+  </div>
+</section>
+<section class="panel"><div class="section-title"><span>02</span><h2>예약과 통화 결과</h2><small id="booking-count"></small></div><div id="bookings" class="empty">아직 예약이 없어요. 왼쪽에서 여정 조건과 예약을 만들어 주세요.</div></section>
 <section class="panel"><div class="section-title"><span>03</span><h2>식당에서 다시 전화가 왔어요</h2></div><p class="muted">가상 식당 직원이 알려주는 이름·날짜·기존 시간으로 예약을 찾습니다. 식당 번호만으로 확정하지 않아요.</p>
 <form id="callback-form"><div class="pair"><label>가상 식당<select name="restaurantId"><option value="demo-garden">가상 정원식당</option><option value="demo-table">가상 식탁</option></select></label><label>식당이 말한 예약자<input name="reservationName" value="김예약" required></label></div><div class="triple"><label>예약 날짜<input name="date" type="date" required></label><label>기존 시간<input name="currentTime" type="time" value="19:00" required></label><label>제안 시간<input name="proposedTime" type="time" value="19:30" required></label></div><label>변경 사유<input name="reason" value="가상 식당의 영업 사정" maxlength="160" required></label><button type="submit" class="outline">회신 전화 시뮬레이션</button></form><p id="callback-status" class="muted"></p></section>
 <section class="panel"><div class="section-title"><span>04</span><h2>대화와 처리 기록</h2></div><div id="events" class="events"><p class="muted">가상 통화를 시작하면 대화 기록이 표시됩니다.</p></div></section>

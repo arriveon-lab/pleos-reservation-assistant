@@ -15,7 +15,7 @@ from .config import VoiceConfig, ConfigurationError
 from .diagnostics import AudioDiagnostics
 from .input_probe import InputProbe
 from .resilience import (CallSupervisor, SerializedStore, control_intent, fallback_audio,
-                         opening_text, room_options, turn_options)
+                         opening_text, room_options, start_sip_audio, turn_options)
 
 
 def fake_session():
@@ -25,6 +25,52 @@ def fake_session():
 
 
 class ResilienceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_inbound_answers_only_after_audio_session_is_started(self):
+        participant = SimpleNamespace(attributes={"sip.callStatus": "ringing"})
+        order = []
+        async def start():
+            order.append("audio_published")
+        async def subscribe(_):
+            self.assertEqual(["audio_published"], order)
+            participant.attributes["sip.callStatus"] = "active"
+            order.append("call_accepted")
+        close = AsyncMock()
+        self.assertTrue(await start_sip_audio("inbound", participant, start, close, sleep=subscribe))
+        self.assertEqual(["audio_published", "call_accepted"], order)
+        close.assert_not_awaited()
+
+    async def test_outbound_does_not_start_audio_while_callee_is_ringing(self):
+        participant = SimpleNamespace(attributes={"sip.callStatus": "dialing"})
+        start = AsyncMock()
+        async def answer(_):
+            start.assert_not_awaited()
+            participant.attributes["sip.callStatus"] = "active"
+        close = AsyncMock()
+        self.assertTrue(await start_sip_audio("outbound", participant, start, close, sleep=answer))
+        start.assert_awaited_once()
+        close.assert_not_awaited()
+
+    async def test_sip_disconnect_and_timeout_stop_without_retrying_audio(self):
+        for direction, initial, terminal in (("inbound", "ringing", "hangup"),
+                                             ("outbound", "dialing", "hangup"),
+                                             ("inbound", "ringing", "ringing"),
+                                             ("outbound", "dialing", "dialing")):
+            with self.subTest(direction=direction, terminal=terminal):
+                participant = SimpleNamespace(attributes={"sip.callStatus": initial})
+                async def tick(_): participant.attributes["sip.callStatus"] = terminal
+                start, close = AsyncMock(), AsyncMock()
+                self.assertFalse(await start_sip_audio(direction, participant, start, close, sleep=tick))
+                self.assertEqual(1 if direction == "inbound" else 0, start.await_count)
+                close.assert_awaited_once_with("sip_disconnected" if terminal == "hangup" else "answer_timeout")
+
+    async def test_ended_sip_call_is_not_reopened(self):
+        for direction in ("inbound", "outbound"):
+            participant = SimpleNamespace(attributes={"sip.callStatus": "hangup"})
+            start, close = AsyncMock(), AsyncMock()
+            self.assertFalse(await start_sip_audio(direction, participant, start, close))
+            start.assert_not_awaited()
+            close.assert_awaited_once_with("sip_disconnected")
+
     def test_opening_uses_only_the_current_approved_name(self):
         self.assertEqual("안녕하세요, 박테스트 님의 AI 비서입니다.",
                          opening_text({"reservationName": "박테스트"}))

@@ -16,7 +16,144 @@
         "summary": "Get owner-scoped state and bootstrap a session cookie",
         "responses": {
           "200": {
-            "description": "Owner-scoped bookings/events, MOCK or LIVE mode, externalCalls, and secret-free voice readiness (including audioHandling.noiseSuppression and audioHandling.interruptionMode); may set HttpOnly SameSite=Strict session cookie"
+            "description": "Owner-scoped bookings/events, MOCK or LIVE mode, externalCalls, and voice readiness. An active callback time change has booking.change.waitingOnPhone=true while awaiting the user's decision. The optional public test directory appears in testRestaurants. voice.testPhoneInput indicates whether a test recipient must be supplied at dial time. voice.testRecipientLast4 gives the registered test mobile suffix in fixed-recipient mode. May set an HttpOnly SameSite=Strict session cookie."
+          }
+        }
+      }
+    },
+    "/api/web-recommendations": {
+      "post": {
+        "description": "Search via the configured loopback destination recommendation server. Requires the local browser session and X-Prototype-Request: 1. With a conditions snapshot the server derives the web needs and returns an owner-scoped searchId for a trial booking.",
+        "security": [
+          {
+            "localSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "destination"
+                ],
+                "anyOf": [
+                  {
+                    "required": [
+                      "requiredNeeds"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "conditions"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "destination": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "foodPreferenceText": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "description": "Optional food intent phrase, e.g. 양식 먹고 싶어. Sent only to the local recommendation service, which extracts supported cuisine labels before web search. Blank means no cuisine restriction."
+                  },
+                  "venueCategory": {
+                    "type": "string",
+                    "enum": [
+                      "RESTAURANT",
+                      "CAFE"
+                    ],
+                    "description": "Omit to include both categories."
+                  },
+                  "requiredNeeds": {
+                    "type": "array",
+                    "maxItems": 6,
+                    "items": {
+                      "enum": [
+                        "PARKING",
+                        "HIGH_CHAIR",
+                        "STEP_FREE_ACCESS",
+                        "CHILD_FRIENDLY",
+                        "PET_FRIENDLY",
+                        "INDOOR_PET_FRIENDLY"
+                      ]
+                    }
+                  },
+                  "conditions": {
+                    "type": "object",
+                    "required": [
+                      "partySize"
+                    ],
+                    "description": "Trip conditions for the local trial. Only the derived web need codes go to the recommendation server. Selected trial bookings preserve the server-extracted preferredCuisines alongside this conditions snapshot."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Terminal job state and result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "state",
+                    "result",
+                    "validUntil"
+                  ],
+                  "properties": {
+                    "state": {
+                      "$ref": "#/components/schemas/RecommendationJobState"
+                    },
+                    "result": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "$ref": "#/components/schemas/WebTestRecommendation"
+                        }
+                      ]
+                    },
+                    "validUntil": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "searchId": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{32}$"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid destination or needs"
+          },
+          "403": {
+            "description": "Browser session or origin denied"
+          },
+          "429": {
+            "description": "Recommendation server is busy"
+          },
+          "502": {
+            "description": "Invalid upstream response"
+          },
+          "503": {
+            "description": "Recommendation server is unavailable or unconfigured"
+          },
+          "504": {
+            "description": "Recommendation result did not arrive in time"
           }
         }
       }
@@ -58,6 +195,7 @@
                     "enum": [
                       "approve_booking",
                       "create_booking",
+                      "create_web_test_booking",
                       "create_trip",
                       "decide_change",
                       "delete_all",
@@ -77,7 +215,7 @@
                   },
                   "payload": {
                     "type": "object",
-                    "description": "Action-specific fields documented in README and service tests."
+                    "description": "Action-specific fields documented in README and service tests. create_web_test_booking accepts the current session searchId, candidateOrdinal, reservationName, date and time. Its condition snapshot comes from the search. The initial state is AWAITING_APPROVAL. Trip conditions optionally accept childFriendly and parkingRequired booleans, and maxArrivalWaitMinutes (integer 0 to 120). A create_booking restaurantId must be registered by the server. A booking from an injected fictional recommendation catalog is mockOnly."
                   }
                 }
               }
@@ -109,9 +247,250 @@
         }
       }
     },
+    "/api/internal/mock-recommendation-bookings/{id}": {
+      "description": "Opt-in loopback handoff. The service token protects this route. The recommendation server supplies the authenticated subject and canonical candidates; each candidate is checked against the fictional catalog.",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "X-Recommendation-Owner",
+          "in": "header",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,100}$"
+          }
+        }
+      ],
+      "get": {
+        "security": [
+          {
+            "recommendationService": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest mock receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MockPhoneReceipt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Service token required"
+          },
+          "404": {
+            "description": "Disabled or owner-scoped attempt not found"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "recommendationService": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "approved",
+                  "candidateOrdinal",
+                  "date",
+                  "time",
+                  "reservationName",
+                  "candidates",
+                  "conditions",
+                  "conditionScenario",
+                  "availabilityScenario",
+                  "bookingScenario"
+                ],
+                "properties": {
+                  "approved": {
+                    "const": true
+                  },
+                  "candidateOrdinal": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Asia/Seoul date"
+                  },
+                  "time": {
+                    "type": "string",
+                    "description": "Asia/Seoul time, HH:MM"
+                  },
+                  "reservationName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "previousAttemptId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[a-f0-9]{32}$"
+                  },
+                  "conditionScenario": {
+                    "enum": [
+                      "MET",
+                      "UNMET",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "availabilityScenario": {
+                    "enum": [
+                      "AVAILABLE",
+                      "UNAVAILABLE",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "bookingScenario": {
+                    "enum": [
+                      "ACCEPT",
+                      "DECLINE",
+                      "AMBIGUOUS",
+                      "DISCONNECT",
+                      "BUSY",
+                      "TIME_MISMATCH",
+                      "COST_REQUIRED",
+                      "ARS"
+                    ]
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "ordinal",
+                        "name",
+                        "address"
+                      ],
+                      "properties": {
+                        "ordinal": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 3
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "address": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "conditions": {
+                    "type": "object",
+                    "required": [
+                      "partySize",
+                      "petAccompanied"
+                    ],
+                    "properties": {
+                      "partySize": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 30
+                      },
+                      "petAccompanied": {
+                        "enum": [
+                          "YES",
+                          "NO"
+                        ]
+                      },
+                      "highChairCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 30
+                      },
+                      "stepFree": {
+                        "type": "boolean"
+                      },
+                      "childFriendly": {
+                        "type": "boolean"
+                      },
+                      "parkingRequired": {
+                        "type": "boolean"
+                      },
+                      "maxArrivalWaitMinutes": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 120
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mock result after explicit approval",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MockPhoneReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid approval, scenario, or fictional candidate identity"
+          },
+          "401": {
+            "description": "Service token required"
+          },
+          "404": {
+            "description": "Integration disabled"
+          },
+          "409": {
+            "description": "Invalid fallback or changed idempotency payload"
+          },
+          "413": {
+            "description": "Body over 24 KiB"
+          },
+          "415": {
+            "description": "JSON content type required"
+          }
+        }
+      }
+    },
     "/api/live/dial": {
       "post": {
-        "summary": "Dispatch one approved booking to an allowlisted test phone (opt-in LIVE only)",
+        "summary": "Dispatch one approved booking in opt-in LIVE mode",
         "parameters": [
           {
             "name": "X-Prototype-Request",
@@ -152,6 +531,11 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100
+                  },
+                  "testPhoneNumber": {
+                    "type": "string",
+                    "maxLength": 24,
+                    "description": "Required only for approved test bookings when voice.testPhoneInput is true. Accepts a Korean 010 mobile number or its +82 form. Reusing requestId requires the same normalized number."
                   }
                 }
               }
@@ -166,13 +550,13 @@
             "description": "Invalid input"
           },
           "403": {
-            "description": "Host, Origin or session denied"
+            "description": "Host, Origin, session or test-number input denied"
           },
           "404": {
             "description": "Owner-scoped resource not found"
           },
           "409": {
-            "description": "LIVE disabled/not configured, unapproved/stale booking, blocked target, capacity or idempotency conflict; no automatic redial"
+            "description": "LIVE disabled, worker unavailable, unapproved/stale booking, capacity or idempotency conflict. In the test console, only an approved test booking can dial. Requests do not redial automatically."
           },
           "413": {
             "description": "Body over 24 KiB"
@@ -186,10 +570,684 @@
   },
   "components": {
     "securitySchemes": {
+      "recommendationService": {
+        "type": "http",
+        "scheme": "bearer"
+      },
       "localSession": {
         "type": "apiKey",
         "in": "cookie",
         "name": "phone_session"
+      }
+    },
+    "schemas": {
+      "RecommendationJobState": {
+        "type": "string",
+        "enum": [
+          "QUEUED",
+          "RUNNING",
+          "RESULTS",
+          "FAILED",
+          "CANCELLED"
+        ]
+      },
+      "WebTestRecommendation": {
+        "type": "object",
+        "required": [
+          "listing",
+          "webState",
+          "webCandidateCount",
+          "identityLookupState",
+          "webRecommendations"
+        ],
+        "properties": {
+          "preferredCuisines": {
+            "type": "array",
+            "maxItems": 6,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "한식",
+                "양식",
+                "일식",
+                "중식",
+                "분식",
+                "아시아음식"
+              ]
+            },
+            "description": "Locally extracted food preferences. Requested cuisine and sourced CUISINE business detail are checked before applying required-needs and review ranking. An empty result does not silently broaden cuisines."
+          },
+          "listing": {
+            "type": "null"
+          },
+          "webState": {
+            "type": "string",
+            "enum": [
+              "RESULTS",
+              "EMPTY",
+              "FILTERED",
+              "FAILED",
+              "CANCELLED",
+              "EXPIRED",
+              "APPROVAL_REQUIRED",
+              "ALREADY_REQUESTED"
+            ]
+          },
+          "webFailureReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "BUDGET_EXHAUSTED",
+              "CREDENTIAL_MISSING",
+              "HTTP_BAD_REQUEST",
+              "HTTP_UNAUTHORIZED",
+              "HTTP_RATE_LIMITED",
+              "HTTP_REJECTED",
+              "INCOMPLETE_RESPONSE",
+              "MISSING_WEB_SEARCH",
+              "MISSING_OUTPUT_TEXT",
+              "UNMATCHED_IDENTITY_SOURCE",
+              "INVALID_SOURCE_METADATA",
+              "INVALID_OUTPUT_SHAPE",
+              "INVALID_CANDIDATE",
+              "INVALID_REVIEW",
+              "INVALID_REPORT",
+              "INVALID_RESPONSE",
+              "TRANSPORT_ERROR",
+              null
+            ],
+            "description": "Coarse diagnostic only when webState=FAILED. No provider body or credential is exposed."
+          },
+          "webCandidateCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "description": "Count of independently found web candidates before Kakao identity matching; no names or addresses."
+          },
+          "identityLookupState": {
+            "type": "string",
+            "enum": [
+              "NOT_RUN",
+              "MATCHED",
+              "EMPTY",
+              "FAILED"
+            ],
+            "description": "Coarse result of the bounded Kakao keyword recheck; MATCHED does not imply final recommendation."
+          },
+          "webRecommendations": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "properties": {
+                "venueCategory": {
+                  "type": "string",
+                  "enum": [
+                    "RESTAURANT",
+                    "CAFE",
+                    "UNKNOWN"
+                  ]
+                },
+                "businessDetails": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "CUISINE": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "url",
+                        "title",
+                        "sourceType",
+                        "observedAt",
+                        "sourceUpdatedAt",
+                        "validUntil",
+                        "condition",
+                        "certainty",
+                        "scope",
+                        "appliesAt"
+                      ],
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "pattern": "^https://"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "sourceType": {
+                          "type": "string",
+                          "enum": [
+                            "MERCHANT_PAGE",
+                            "VISITOR_REVIEW",
+                            "OTHER"
+                          ]
+                        },
+                        "observedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sourceUpdatedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "condition": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "certainty": {
+                          "const": "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION"
+                        },
+                        "scope": {
+                          "const": "GENERAL"
+                        },
+                        "appliesAt": {
+                          "type": "null"
+                        }
+                      }
+                    },
+                    "MENU": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "url",
+                        "title",
+                        "sourceType",
+                        "observedAt",
+                        "sourceUpdatedAt",
+                        "validUntil",
+                        "condition",
+                        "certainty",
+                        "scope",
+                        "appliesAt"
+                      ],
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "pattern": "^https://"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "sourceType": {
+                          "type": "string",
+                          "enum": [
+                            "MERCHANT_PAGE",
+                            "VISITOR_REVIEW",
+                            "OTHER"
+                          ]
+                        },
+                        "observedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sourceUpdatedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "condition": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "certainty": {
+                          "const": "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION"
+                        },
+                        "scope": {
+                          "const": "GENERAL"
+                        },
+                        "appliesAt": {
+                          "type": "null"
+                        }
+                      }
+                    },
+                    "OPENING_HOURS": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "url",
+                        "title",
+                        "sourceType",
+                        "observedAt",
+                        "sourceUpdatedAt",
+                        "validUntil",
+                        "condition",
+                        "certainty",
+                        "scope",
+                        "appliesAt"
+                      ],
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "pattern": "^https://"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "sourceType": {
+                          "type": "string",
+                          "enum": [
+                            "MERCHANT_PAGE",
+                            "VISITOR_REVIEW",
+                            "OTHER"
+                          ]
+                        },
+                        "observedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sourceUpdatedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "condition": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "certainty": {
+                          "const": "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION"
+                        },
+                        "scope": {
+                          "const": "GENERAL"
+                        },
+                        "appliesAt": {
+                          "type": "null"
+                        }
+                      }
+                    },
+                    "BREAK_TIME": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "url",
+                        "title",
+                        "sourceType",
+                        "observedAt",
+                        "sourceUpdatedAt",
+                        "validUntil",
+                        "condition",
+                        "certainty",
+                        "scope",
+                        "appliesAt"
+                      ],
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "pattern": "^https://"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "sourceType": {
+                          "type": "string",
+                          "enum": [
+                            "MERCHANT_PAGE",
+                            "VISITOR_REVIEW",
+                            "OTHER"
+                          ]
+                        },
+                        "observedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sourceUpdatedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "condition": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "certainty": {
+                          "const": "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION"
+                        },
+                        "scope": {
+                          "const": "GENERAL"
+                        },
+                        "appliesAt": {
+                          "type": "null"
+                        }
+                      }
+                    }
+                  }
+                },
+                "naverPlaceUrl": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^https://map\\.naver\\.com/p/entry/place/[0-9]+$",
+                  "description": "Optional link to the matching branch, independent of the source for business details."
+                },
+                "reviewSignals": {
+                  "type": "array",
+                  "maxItems": 6,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "need",
+                      "verdict",
+                      "evidence"
+                    ],
+                    "properties": {
+                      "need": {
+                        "type": "string",
+                        "enum": [
+                          "PET_FRIENDLY",
+                          "INDOOR_PET_FRIENDLY",
+                          "PARKING",
+                          "CHILD_FRIENDLY",
+                          "HIGH_CHAIR",
+                          "STEP_FREE_ACCESS"
+                        ]
+                      },
+                      "verdict": {
+                        "type": "string",
+                        "enum": [
+                          "YES",
+                          "NO",
+                          "UNKNOWN",
+                          "CONFLICT"
+                        ]
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "maxItems": 256,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "url",
+                            "title",
+                            "sourceType",
+                            "observedAt",
+                            "sourceUpdatedAt",
+                            "validUntil",
+                            "condition",
+                            "certainty",
+                            "scope",
+                            "appliesAt"
+                          ],
+                          "properties": {
+                            "url": {
+                              "type": "string",
+                              "format": "uri",
+                              "pattern": "^https://"
+                            },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "sourceType": {
+                              "type": "string",
+                              "enum": [
+                                "MERCHANT_PAGE",
+                                "VISITOR_REVIEW",
+                                "OTHER"
+                              ]
+                            },
+                            "observedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "sourceUpdatedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "validUntil": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "condition": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            },
+                            "certainty": {
+                              "const": "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION"
+                            },
+                            "scope": {
+                              "const": "GENERAL"
+                            },
+                            "appliesAt": {
+                              "type": "null"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "description": "One cited visitor-review signal per requested need. YES is a positive observation, NO a caution, CONFLICT mixed observations. Secondary ranking evidence only; never proves a facility or authorizes booking. An empty array means no qualifying review evidence."
+                }
+              }
+            },
+            "description": "Up to three WEB_SEARCH candidates ranked by supported required needs, then fewer review cautions and more positively reviewed needs. Ties preserve provider order. Includes cited branch and business details, review summaries and per-need visitor signals; review evidence is not merchant confirmation."
+          },
+          "matches": {
+            "type": "null"
+          }
+        }
+      },
+      "MockPhoneReceipt": {
+        "type": "object",
+        "required": [
+          "attemptId",
+          "mode",
+          "candidateOrdinal",
+          "restaurantName",
+          "status",
+          "conditionStatus",
+          "availabilityStatus",
+          "bookingRequested",
+          "date",
+          "requestedTime",
+          "confirmedTime",
+          "partySize",
+          "requiredConditions",
+          "requirementChecks",
+          "nextCandidate",
+          "externalCalls",
+          "notice",
+          "conversation"
+        ],
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{32}$"
+          },
+          "mode": {
+            "const": "MOCK"
+          },
+          "candidateOrdinal": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "restaurantName": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "CONFIRMED",
+              "DECLINED",
+              "UNKNOWN",
+              "FAILED"
+            ]
+          },
+          "conditionStatus": {
+            "enum": [
+              "MET",
+              "UNMET",
+              "UNKNOWN"
+            ]
+          },
+          "availabilityStatus": {
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE",
+              "UNKNOWN"
+            ]
+          },
+          "bookingRequested": {
+            "type": "boolean"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "requestedTime": {
+            "type": "string",
+            "pattern": "^[0-2][0-9]:[0-5][0-9]$"
+          },
+          "confirmedTime": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-2][0-9]:[0-5][0-9]$"
+          },
+          "partySize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30
+          },
+          "requiredConditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requirementChecks": {
+            "type": "object",
+            "additionalProperties": {
+              "enum": [
+                "CONFIRMED",
+                "UNMET",
+                "UNKNOWN"
+              ]
+            }
+          },
+          "nextCandidate": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "ordinal",
+              "name",
+              "address"
+            ],
+            "properties": {
+              "ordinal": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              },
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              }
+            }
+          },
+          "externalCalls": {
+            "const": 0
+          },
+          "notice": {
+            "type": "string"
+          },
+          "conversation": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "speaker",
+                "message"
+              ],
+              "properties": {
+                "speaker": {
+                  "enum": [
+                    "agent",
+                    "restaurant",
+                    "system"
+                  ]
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

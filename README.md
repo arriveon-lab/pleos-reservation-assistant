@@ -2,7 +2,7 @@
 
 목적지·ETA·동행자의 필수 조건으로 식당을 비교하고, 누락 정보 문의에서 예약 결과 확인까지 연결하는 차량용 서비스입니다.
 
-현재 **로컬 MOCK 서버**와 **SDK 진단용 debug APK**를 빌드할 수 있습니다. Pleos emulator에서 probe 초기화·목적지·TripInfo 수신을 확인했지만 ETA 시간 기준은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)은 Telkit·LiveKit 발신 시험을 진행했으나 추천 서버와 웹 시험 화면을 연결하고 격리 전화 시험에서 CONFIRMED를 확인했습니다. 제품 앱과 실예약 DB 연결은 미완료이며 [Pleos 연결 인계](docs/PLEOS_AGENT_INTEGRATION_HANDOFF.md)에 남은 작업을 정리했습니다. 기본 서버의 `app.mode=LIVE`는 시작 단계에서 차단됩니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
+현재 **로컬 MOCK 서버**와 **SDK 진단용 debug APK**를 빌드할 수 있습니다. Pleos emulator에서 probe 초기화·목적지·TripInfo 수신을 확인했지만 ETA 시간 기준은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)은 Telkit·LiveKit 및 추천 서버와 웹 시험 화면을 연결하고 격리 전화 시험에서 CONFIRMED를 확인했습니다. 제품 앱과 실예약 DB 연결은 미완료이며 [Pleos 연결 인계](docs/PLEOS_AGENT_INTEGRATION_HANDOFF.md)에 남은 작업을 정리했습니다. 기본 서버의 `app.mode=LIVE`는 시작 단계에서 차단됩니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
 
 [GitHub 저장소](https://github.com/arriveon-lab/pleos-reservation-assistant) · [작업 이슈](https://github.com/arriveon-lab/pleos-reservation-assistant/issues) · [CI 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)
 

@@ -25,6 +25,8 @@ class AudioDiagnostics:
         self.response_delays = []
         self.echo = None
         self.input_probe = None
+        self.agent_text = None
+        self.opening_audio = {}
 
     def user_state(self, event):
         if event.old_state == "speaking" and event.new_state == "listening":
@@ -56,6 +58,8 @@ class AudioDiagnostics:
                 "fallbackAudioFailures": self.fallback_failures, "holdRequests": self.holds,
                 "idlePrompts": self.idle_prompts, "automatedAnswers": self.automated_answers,
                 "falseInterruptions": self.false_interruptions,
+                "agentTextInput": self.agent_text.snapshot() if self.agent_text else {"enabled": False},
+                "openingAudio": dict(self.opening_audio),
                 "responseDelaySeconds": list(self.response_delays),
                 "echoCancellation": self.echo.snapshot() if self.echo else {"enabled": False},
                 "inputLevelProbe": self.input_probe.snapshot() if self.input_probe else {"enabled": False}}

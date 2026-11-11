@@ -73,3 +73,5 @@
 
 - [추천 에이전트 최신 변경 인계](RECOMMENDATION_LATEST_HANDOFF.md)
 - [Pleos 추천·전화 연결 인계](PLEOS_AGENT_INTEGRATION_HANDOFF.md)
+
+- [전화 에이전트 최신 변경 인계](PHONE_AGENT_LATEST_HANDOFF.md)
