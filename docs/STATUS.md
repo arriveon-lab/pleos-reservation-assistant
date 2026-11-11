@@ -1,5 +1,13 @@
 # 구현·검증 현황
 
+## 2026-11-11 #53 초안 기반 목적지 MOCK 추천 연결
+
+앱 구현427bcb9. PR #46 충돌을 main286f2a1과 양측 기록 보존으로 해결하고, #53 cc393399의 인증 POST/GET·webRecommendations 배열·2/3곳 가변 후보·출처/후기/UNKNOWN 표시를 별도 화면에 연결했다. 변경/이탈/주행 제한/만료 시 메모리 선폐기·close, 예약 권한 승격/자동 재검색 없음. 기본 MOCK과 기존 예약/인증 journal을 보존했다.
+
+별도 destinationvalidation APK로 실제 Pleos 주간1682dp에서 THREE/TWO/EMPTY/FAILED/LATE/EXPIRED/NO_MARKER7개 fixture PASS. 서버는 #53 실제 서비스+가상 WebGateway, 유료 호출0. 3초 만료/개발 주행 제한은 fixture이며 실제5분/실제 moving/공동 인수 완료가 아니다. 원래 jointvalidation journal XML 전체 SHA256 일치, 기존8080→18082/앱 복원. format/verifyAll/MOCK smoke PASS, UX106개 결과·새12개, 서버313개는UP-TO-DATE, 기존Lint4개 유지.
+
+[고정 계약·APK·절차·초기 실패·증거·재현·한계](UX52_DESTINATION_MOCK.md). #52 실제 목적지 연관성/Gleo/전화 계약, #25 전체 창·실제 신호, #4 일반 UNKNOWN 종료/#40 공동 시연은 남는다. #54 not planned 유지, 기존 담당/OPEN/Draft 유지·병합 없음.
+
 ## 2026-11-10 현재 Pleos 창 경계 검사 완료
 
 #25/#39: 동일 최신 제품 APK에서1682/1100/1099dp 주간100%,840dp 야간100%·150%의5조합 기기 검사 PASS. BOOKING/CHANGE UNKNOWN 상태별 렌더 이후 실측 검사와 너비 인자를 기기 테스트에 추가했다. 실제 UNKNOWN 하단 조회 버튼 스크롤 접근·보관 journal 전체 동일 확인. 제품/API 변경 없음, format/verifyAll PASS; smoke는 이번 재실행 아님. 상세 해시·절차·초기 실패·증거는 docs/UX39_VEHICLE_UI.md 최신 절.
