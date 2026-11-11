@@ -1,5 +1,14 @@
 # 구현·검증 현황
 
+## 2026-11-11 서버 답변 반영·ETA 없는 목적지 추천 인수 구분
+
+[새 서버 코멘트](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1#issuecomment-6771962584)와9709887 인계 문서를 확인했습니다. [앱 인수안](VEH01_APP_HANDOFF.md)에 기존 Navigation의 source 거절 순서/INVALID_TIME/STALE_NAVIGATION/INVALID_REQUEST와 정확한 시간 경계(now<eta<=now+86400, now-300<=observedAt<=now+5)를 반영했습니다. 로컬 WorkflowService도 정적으로 대조했고 HTTP 실행으로 세지 않습니다.
+
+#53 목적지 추천은 eta/observedAt 없는 별도 계약이므로 ETA 미검증 때문에 목적지 추천 검토까지 막지 않습니다. 목적지 현재 경로 연관성·view/generation 무효화는 여전히 앱 공동 인수이며 서버/UX 코드는 수정하지 않았습니다. ETA 사용하는 예약/지연 통보의 PLEOS 차단은 유지합니다.
+
+[후속 검증 절차](VEH01_REMAINING_VALIDATION.md)에 도착·단절·미지원·늦은 응답별 필요한 환경/판정 조건과 가상 경계 예제를 정리했습니다. 공식 Console 안내에서 내비 좌표/경로 재생 절차를 확보하지 못했으며 실제 기능 부재라고 단정하지 않습니다. 현재 ADB0대이고 신규 기기/HTTP/빌드 실행은 없습니다. 이번 변경은 문서만이며 commit/push/외부 답변/PR·Issue 변경은 하지 않았습니다.
+
+
 ## 2026-11-10 PR #47 최신 main 2e873bc 반영
 
 사용자 승인으로 feat/1-navi-probe에 origin/main2e873bc를 공유 이력 보존 merge로 반영했습니다. STATUS/HANDOFF 두 문서 충돌에서 양쪽 신규 기록을 모두 보존했고 미해결 충돌0/추가 행 보존/명명/diff 검사를 통과했습니다. 서버/API는 origin/main과 동일하며 main 자체나 기존 커밋은 수정하지 않습니다. ETA/권한 신규 근거의 고정 기준504b867과 링크는 계속 유효합니다.

@@ -135,3 +135,5 @@ Navigation3.3.2-rc5-hotfix.3/probe0.1.0-probe/NaviHelper3.0.5, Asia/Seoul, 같�
 시스템 시작횟수는 시험 중1회였습니다. 원시 근거는 Git 제외 captures/veh01-permission-fixture-20261110.json, veh01-permission-20261110-live.jsonl, 누적 snapshot158건, 화면 work/veh01/denied-result.png입니다. 정상 probe 화면으로 복귀 요청했습니다. 권한 미선언 조회 실패 경로는 실제 확인했지만 개별 권한 조합/런타임 거부·서비스 미지원/단절·도착·늦은 유효 응답·ETA 기준은 아직 미검증입니다. 테스트 앱/생성 프로젝트/SDK는 공유 fixture에 추가하지 않았으며 제품 코드·commit/push·PR/Issue 변경은 없습니다.
 
 2026-11-10 근접 시점 ETA 대조 추가: [공유 관측 요약](VEH01_OBSERVATIONS_20261110.md)에 비식별 발췌·시각 구간·연관성/갱신 한계·다음 검증 환경을 정리했습니다. 수동2회 raw681/화면12분은 가설 근거이며 시간 기준 확정이나 제품 입력 허용은 아닙니다.
+
+2026-11-11 서버 Navigation 답변 반영: [앱 인수안](VEH01_APP_HANDOFF.md)에 정확한 기존 시간 경계·오류 코드를 정리했습니다. #53 목적지 추천은 ETA 없는 별도 계약이며, ETA를 사용하는 예약/지연 통보 PLEOS 차단은 유지합니다. [후속 시험 환경·조건](VEH01_REMAINING_VALIDATION.md)을 참고합니다. 공식 Console 문서 확인을 내비 주행/도착 재현 성공으로 세지 않습니다.

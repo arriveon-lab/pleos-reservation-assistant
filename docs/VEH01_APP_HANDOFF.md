@@ -25,6 +25,19 @@
 
 기준일: 2026-11-09 KST. [#1 추가 코멘트](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1#issuecomment-6739718159)를 반영한 #16/#26 검토용 인수안입니다. **제품 adapter·공통 DTO·서버 계약에 적용되거나 공동 인수된 상태가 아닙니다.** 기존 #1 담당·probe 검증 범위를 유지합니다.
 
+## 2026-11-11 목적지 추천과 ETA 의존 업무 인수 구분
+
+[서버 담당 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1#issuecomment-6771962584)에서 [Draft PR #53](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/53)의 목적지 추천은 eta/observedAt 없는 별도 계약으로 확인했습니다. **ETA 미검증이 목적지 추천 계약 검토 전체를 막는 것은 아닙니다.** #53 호출자·필드 구현은 소영님/서버 담당 범위로 두고 여기서는 임의 DTO나 API 변경을 추가하지 않습니다. 로컬 main에 #53 코드가 통합됐다는 뜻도 아닙니다.
+
+| 작업 경로 | 차량 담당이 넘길 조건 | 여전히 막아야 할 것 |
+| --- | --- | --- |
+| 목적지 기반 후보 추천 #52/#53 | 목적지 유효성·현재 경로 확인 수준·변경/취소 무효화 근거. 앱 view/generation 변경으로 이전 후보 폐기 | 추천을 위해 미확인 ETA를 생성하거나 이전 목적지의 결과를 현재 후보로 표시 |
+| ETA 사용하는 검색/예약/지연 통보 | 시간 기준·동시 관측·응답 연관성·갱신/오래됨/복귀 근거를 갖춘 뒤 #1/#16/#4/#26 공동 인수 | source=PLEOS 기존 차단 해제, raw+now 변환, MOCK/MANUAL 위장, 기존 예약 자동 변경 |
+
+현재 경로와 응답의 강한 연관성은 SDK 식별자 부재로 미확인입니다. 목적지 필드 유효성을 현재 경로 확인 완료로 확대하지 않습니다. 후보 추천은 실제/가상 출처·실패/UNKNOWN 구분과 세대 무효화를 합의한 범위에서만 연결합니다. 추천 선택은 문의/전화/예약·비용 승인과 별개이며 이번 실제 외부 실행은0회입니다.
+
+실행 전 확인할 환경과 남은 검증은 [후속 검증 절차](VEH01_REMAINING_VALIDATION.md)를 따릅니다.
+
 ## 현재 근거와 인수 차단 조건
 
 | 항목 | 확인/한계 |
@@ -71,7 +84,16 @@
 
 ## 서버 Navigation 변환 조건
 
-2026-11-10 main abd9aa4 통합 후 계약1.1.0의 api/openapi.json을 재대조했습니다. Navigation은 tripId/destination/절대 RFC3339 eta/observedAt/source를 요구합니다. eta는 최대24시간 이내 미래, observedAt은5분 이내이고 PLEOS는 예약된 값이지만 시간 기준 검증 전 거절됩니다. 이 제약은 차량 데이터 유효기간을 검증했다는 뜻이 아닙니다. #16/#26의 최신 draft와 현 브랜치는 다를 수 있으므로 인수 시 정확한 계약 버전/commit을 다시 대조합니다.
+2026-11-11 [서버 담당 확인](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1#issuecomment-6771962584)과 [9709887의 고정 인계 문서](https://github.com/arriveon-lab/pleos-reservation-assistant/blob/9709887/docs/REC02_TEAM_HANDOFF.md#navigation)를 반영했습니다. 로컬25b28a6의 WorkflowService.search/requireFuture와도 시간 경계를 정적으로 대조했습니다. #19/a5ae15e의 기존 `/api/v1/searches` Navigation은 tripId/destination/절대 RFC3339 eta/observedAt/source를 요구합니다.
+
+| 입력 | 서버 기준 / HTTP400 오류 |
+| --- | --- |
+| source=PLEOS | 시간 검사보다 먼저 PLEOS_ETA_UNVERIFIED. 필수 필드/형식 검증을 건너뛴다는 뜻은 아님 |
+| source=MOCK/MANUAL의 eta | `now < eta <= now+86400초`; 위반 INVALID_TIME |
+| observedAt | `now-300초 <= observedAt <= now+5초`; 위반 STALE_NAVIGATION |
+| 필수 입력/형식 오류 | INVALID_REQUEST |
+
+300초/+5초는 기존 서버 입력 거절 기준이며 SDK의 실제 갱신 주기/생성 시각/최신성을 보증하지 않습니다. 앱 수신 시각으로 원본 생성 시각을 대체하지 않습니다. #16/#26의 최신 draft와 로컬 기준은 다를 수 있으므로 인수 시 정확한 계약 버전/commit을 대조합니다. 위 내용은 정적 대조이며 이번 HTTP/기기 재검증 결과가 아닙니다.
 
 현재 PLEOS 변환 결과는 **전송 불가**입니다. 누락 ETA를 0·현재+1시간·null·MOCK/MANUAL로 바꾸어 같은 실제 차량 입력인 것처럼 보내지 않습니다. 가상 미리보기와 사용자가 명시적으로 제공한 MANUAL 입력은 별도 출처와 기존 계약으로만 다룹니다.
 
