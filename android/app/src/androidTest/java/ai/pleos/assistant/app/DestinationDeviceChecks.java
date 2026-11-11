@@ -7,7 +7,6 @@ import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.lang.reflect.Field;
@@ -25,11 +24,12 @@ final class DestinationDeviceChecks {
     this.runner = runner;
   }
 
-  static void run(Instrumentation runner, String fixture) throws Exception {
-    new DestinationDeviceChecks(runner).execute(fixture);
+  static void run(Instrumentation runner, String fixture, int width, float fontScale)
+      throws Exception {
+    new DestinationDeviceChecks(runner).execute(fixture, width, fontScale);
   }
 
-  private void execute(String fixture) throws Exception {
+  private void execute(String fixture, int width, float fontScale) throws Exception {
     check(
         runner
             .getTargetContext()
@@ -40,6 +40,30 @@ final class DestinationDeviceChecks {
         new Intent(runner.getTargetContext(), ReservationActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     activity = (ReservationActivity) runner.startActivitySync(intent);
+    if (width > 0 && activity.getResources().getConfiguration().screenWidthDp != width) {
+      var monitor = runner.addMonitor(ReservationActivity.class.getName(), null, false);
+      try (var descriptor =
+              runner
+                  .getUiAutomation()
+                  .executeShellCommand(
+                      "am task resize "
+                          + activity.getTaskId()
+                          + " "
+                          + (2535 - width)
+                          + " 90 2535 1300");
+          var input = new android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor)) {
+        input.readAllBytes();
+      }
+      activity = (ReservationActivity) runner.waitForMonitorWithTimeout(monitor, 5000);
+      runner.removeMonitor(monitor);
+      check(
+          activity != null && activity.getResources().getConfiguration().screenWidthDp == width,
+          "resize failed");
+    }
+    if (fontScale > 0)
+      check(
+          Math.abs(activity.getResources().getConfiguration().fontScale - fontScale) < 0.01,
+          "fontScale mismatch");
     model = (ReservationViewModel) field(activity, "model");
     await(() -> !model.busy() && (model.canCreateIdentity() || model.canWrite()), 15000);
     if (main(model::canCreateIdentity)) {
@@ -53,7 +77,18 @@ final class DestinationDeviceChecks {
     check(panel != null, "destination entry missing");
     main(
         () -> {
-          ((android.widget.CheckBox) field(panel, "highChair")).setChecked(true);
+          ((Button) field(panel, "highChair")).performClick();
+          return null;
+        });
+    clickText("한식");
+    clickText("양식");
+    check(
+        main(() -> ((java.util.Set<?>) field(panel, "cuisines")).size() == 2),
+        "two cuisines not selected");
+    capture(fixture + "-conditions");
+    main(
+        () -> {
+          VehicleUiChecks.layout(activity.getWindow().getDecorView());
           return null;
         });
     click(R.string.destination_search);
@@ -63,7 +98,12 @@ final class DestinationDeviceChecks {
           5000);
       main(
           () -> {
-            ((EditText) field(panel, "adults")).setText("3");
+            View more =
+                findDescription(
+                    activity.getWindow().getDecorView(),
+                    activity.getString(R.string.destination_adults_more));
+            check(more != null && more.isEnabled(), "adult stepper unavailable");
+            more.performClick();
             return null;
           });
       Thread.sleep(6500);
@@ -84,10 +124,15 @@ final class DestinationDeviceChecks {
           () -> {
             ScrollView scroll = (ScrollView) field(panel, "view");
             View results = (View) field(panel, "results");
-            scroll.scrollTo(0, results.getTop());
+            scroll.scrollTo(0, 0);
             return null;
           });
       capture(fixture + "-results");
+      main(
+          () -> {
+            VehicleUiChecks.layout(activity.getWindow().getDecorView());
+            return null;
+          });
       click(R.string.destination_details_show);
       capture(fixture + "-evidence");
       click(R.string.destination_details_hide);
@@ -105,14 +150,26 @@ final class DestinationDeviceChecks {
             "expired result retained");
         capture(fixture + "-cleared");
       } else {
+        click(R.string.destination_change);
         main(
             () -> {
-              ((EditText) field(panel, "adults")).setText("3");
+              View more =
+                  findDescription(
+                      activity.getWindow().getDecorView(),
+                      activity.getString(R.string.destination_adults_more));
+              check(more != null && more.isEnabled(), "adult stepper unavailable");
+              more.performClick();
               return null;
             });
         check(
             main(() -> model.destinationView().candidates().length() == 0),
             "input change retained result");
+        click(R.string.destination_food_any);
+        check(
+            main(() -> ((java.util.Set<?>) field(panel, "cuisines")).isEmpty()),
+            "clear cuisine failed");
+        clickText("한식");
+        clickText("양식");
         click(R.string.destination_search);
         await(() -> model.destinationView().state().equals("RESULTS"), 15000);
         main(
@@ -200,9 +257,13 @@ final class DestinationDeviceChecks {
   }
 
   private void click(int label) throws Exception {
+    clickText(activity.getString(label));
+  }
+
+  private void clickText(String label) throws Exception {
     main(
         () -> {
-          View v = find(activity.getWindow().getDecorView(), activity.getString(label));
+          View v = find(activity.getWindow().getDecorView(), label);
           check(v != null && v.isEnabled(), "button missing/disabled: " + label);
           v.performClick();
           return null;
@@ -242,10 +303,23 @@ final class DestinationDeviceChecks {
   }
 
   private static View find(View v, String label) {
+    if (!v.isShown()) return null;
     if (v instanceof TextView t && label.contentEquals(t.getText())) return v;
     if (v instanceof ViewGroup g)
       for (int i = 0; i < g.getChildCount(); i++) {
         View found = find(g.getChildAt(i), label);
+        if (found != null) return found;
+      }
+    return null;
+  }
+
+  private static View findDescription(View v, String value) {
+    if (!v.isShown()) return null;
+    if (value.contentEquals(v.getContentDescription() == null ? "" : v.getContentDescription()))
+      return v;
+    if (v instanceof ViewGroup g)
+      for (int i = 0; i < g.getChildCount(); i++) {
+        View found = findDescription(g.getChildAt(i), value);
         if (found != null) return found;
       }
     return null;

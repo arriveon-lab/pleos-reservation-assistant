@@ -16,7 +16,20 @@ public final class DestinationController implements AutoCloseable {
   public static final String ROOT = "/experimental/destination-recommendations";
 
   public record Input(
-      int destination, int adults, int children, boolean highChair, boolean stepFree) {
+      int destination,
+      int adults,
+      int children,
+      boolean highChair,
+      boolean stepFree,
+      java.util.List<String> preferredCuisines) {
+    public Input {
+      preferredCuisines = java.util.List.copyOf(preferredCuisines);
+    }
+
+    public Input(int destination, int adults, int children, boolean highChair, boolean stepFree) {
+      this(destination, adults, children, highChair, stepFree, java.util.List.of());
+    }
+
     JSONObject body(String view, long generation) throws Exception {
       if (destination < 0
           || destination > 1
@@ -24,6 +37,15 @@ public final class DestinationController implements AutoCloseable {
           || adults > 20
           || children < 0
           || children > 10) throw new IllegalArgumentException("INVALID_INPUT");
+      if (preferredCuisines.size() > 8
+          || new java.util.HashSet<>(preferredCuisines).size() != preferredCuisines.size())
+        throw new IllegalArgumentException("INVALID_INPUT");
+      for (String cuisine : preferredCuisines) {
+        if (cuisine.isBlank()
+            || cuisine.length() > 30
+            || cuisine.codePoints().anyMatch(Character::isISOControl))
+          throw new IllegalArgumentException("INVALID_INPUT");
+      }
       JSONArray features = new JSONArray().put("parking");
       if (highChair) features.put("highChair");
       if (stepFree) features.put("stepFreeAccess");
@@ -40,7 +62,7 @@ public final class DestinationController implements AutoCloseable {
           .put("party", new JSONObject().put("adults", adults).put("children", children))
           .put("maxWaitMinutes", 15)
           .put("requiredFeatures", features)
-          .put("preferredCuisines", new JSONArray());
+          .put("preferredCuisines", new JSONArray(preferredCuisines));
     }
   }
 

@@ -1,5 +1,25 @@
 # #52 목적지 추천 MOCK 화면 인수 기록
 
+## 2026-11-11 차량용 선택·비교 화면 단순화
+
+사용자 피드백에 따라 키보드/드롭다운 중심 폼을 큰 선택 버튼으로 교체했다. 목적지2개·인원±·필수 조건 토글, 아래 한식/일식/중식/양식/분식 다중 선택 및 전체 해제를 제공한다. 결과가 오면 입력 폼을 숨기고 후보 비교로 전환한다. 넓은 창은 후보3개 가로 배치, 좁은 창 또는 확대 글꼴은 세로 배치다. 상세 근거는 별도 보기와 비교 복귀로 분리했다. 선택값 변경은 이전 결과를 폐기하며 기본 MOCK·주행 차단·기존 예약 journal을 유지한다.
+
+공식 [Basic button](https://document.pleos.ai/docs/connect/guide/docs-design/components/actions/basic-button)의 명확한 동작/비활성 상태와 [Display Layout](https://document.pleos.ai/docs/connect/guide/docs-design/getting-started/layout)의 창 크기 대응을 참고했다. 공식 전체 적합성 인증을 뜻하지 않는다. 선택 시 색상 재설정이 초기 disabled 배경을 남기던 문제는 현재 선택/제한 상태에 따라 명시적으로 색을 적용해 수정했다.
+
+**음식 취향의 현재 범위:** 앱은 `preferredCuisines` 배열에 선택값을 전달한다. #53 cc393399의 Controller는 이 필드를 접수하지만 WEB_SEARCH 서비스가 만드는 WebRecommendation.Request에는 음식 취향이 전달되지 않는다. 따라서 **선택/해제·요청 전달 완료와 실제 추천 반영은 별도**다. 선택 화면과 결과 화면에 현재 가상 후보에는 미반영임을 표시한다. 실제 필터/정렬 완료를 주장하지 않으며 #52 서버 담당에게 반영 경로를 요청한다. 주차/아기의자 같은 필수 조건을 음식 취향으로 대체하지 않는다. API 필드 추가나 서버 담당 코드 수정은 하지 않았다.
+
+| 검사 | 실제 결과 |
+| --- | --- |
+| 동일 APK, 주간1682dp/글꼴100% | 조건 선택→한식+양식→HTTP→후보3곳 가로 비교→상세/복귀 PASS |
+| 동일 APK, 야간840dp/글꼴150% | 세로 배치·스크롤·상세/복귀 PASS. 측정된 버튼72dp 이상/텍스트 잘림 없음 검사 PASS |
+| 음식 선택/해제 | 두 선택값 유지, ‘상관없음’으로 전체 해제, 재선택 PASS. 로컬 전달 프록시에서 `preferredCuisines=[한식,양식]`, `requiredFeatures=[parking,highChair]` 실제 요청 확인 |
+| 입력 변경·취소·제한·재실행 | 이전 카드 폐기·주행 제한/UNKNOWN 개발 주입에서 입력 차단·journal 동일 PASS |
+| 자동 검사 | format/verifyAll/MOCK smoke PASS. UX107개 결과(음식 목록 복사·경계·요청 필드 회귀1개 추가), 실패0. 서버/기존 검사는 캐시·UP-TO-DATE 포함. 기존 Lint4개 유지 |
+
+제품 APK SHA256 `2d868d088720e1a30eaaa56192272e033f208acc9a1292c7f4871aa6165b4036`, 별도 destinationvalidation에 install-r. 원래 jointvalidation XML은 이전 해시와 전체 동일하다. 증거는 `captures/destination-ui/wide-*.png`, `narrow-night-*.png`, `manifest.json`; 로그는 `work/destination-ui/device-*.log`, `requests.log`. 요청 관측은 가상 조건만 기록했고 토큰/개인정보를 출력하지 않았다.
+
+초기840dp resize 직후 진입 검사는 `destination entry missing`으로 실패했다. 동일 창이 안정된 상태에서 다시 실행해 PASS를 확인했으며 초기 실패 로그도 보존한다. 이 결과를 OEM 전체 분할창/실제 주행 검증으로 확대하지 않는다. 최종 주간/글꼴100%로 복원하고 새 선택 화면을 사용자 확인용으로 열었다. 새 APK에서 앞선7개 서버 fixture 전체를 다시 실행한 것은 아니며 이번에는 THREE와 음식 선택·두 창 조합을 검사했다. 실제5분/프로세스 kill/실제 음식별 결과 변화·공동 인수는 남는다.
+
 ## 범위와 고정 기준 (2026-11-11)
 
 - 앱 구현: `427bcb9` / PR #46 / `feat/39-vehicle-ui`. 기존 #36 인증·복구/#44 주행 제한/#39 예약 화면을 보존하고 별도 추천 화면을 추가했다.

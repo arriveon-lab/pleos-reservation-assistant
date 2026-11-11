@@ -1,141 +1,354 @@
 package ai.pleos.assistant.app;
 
 import ai.pleos.assistant.ux.DestinationController;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.View;
 import android.widget.*;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Separate MOCK-only destination UI; no candidate IDs enter the reservation workflow. */
+/** Large explicit choices, comparison first, and separate evidence; transient MOCK only. */
 final class DestinationPanel {
   final ScrollView view;
   private final ReservationActivity activity;
   private final ReservationViewModel model;
-  private final LinearLayout root, results;
-  private final Spinner destination;
-  private final EditText adults, children;
-  private final CheckBox highChair, stepFree;
+  private final LinearLayout root, form, results;
+  private final Button highChair, stepFree;
   private final Button search;
   private final List<View> inputs = new ArrayList<>();
+  private final List<Button> destinationButtons = new ArrayList<>();
+  private final List<Button> cuisineButtons = new ArrayList<>();
+  private final LinkedHashSet<String> cuisines = new LinkedHashSet<>();
+  private final boolean wide;
+  private Button anyCuisine;
+  private int destination, adultCount = 2, childCount = 1, detail = -1;
   private String rendered = "";
 
   DestinationPanel(ReservationActivity activity, ReservationViewModel model) {
     this.activity = activity;
     this.model = model;
+    wide =
+        activity.getResources().getConfiguration().screenWidthDp >= 1100
+            && activity.getResources().getConfiguration().fontScale <= 1.2f;
     view = new ScrollView(activity);
-    root = new LinearLayout(activity);
-    root.setOrientation(LinearLayout.VERTICAL);
+    view.setFillViewport(true);
+    root = column();
     root.setPadding(dp(24), dp(16), dp(24), dp(24));
     root.setBackgroundColor(activity.getColor(R.color.ui_background));
     view.addView(root);
-    text(root, activity.getString(R.string.destination_title), 32);
-    text(root, activity.getString(R.string.destination_notice), 22);
-    button(R.string.preview_back, model::closeDestination);
-    destination = new Spinner(activity);
-    destination.setMinimumHeight(dp(72));
-    destination.setContentDescription(activity.getString(R.string.preview_destination));
-    ArrayAdapter<String> choices =
-        new ArrayAdapter<>(
-            activity,
-            android.R.layout.simple_spinner_item,
-            activity.getResources().getStringArray(R.array.destination_mock_places));
-    choices.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-    destination.setAdapter(choices);
-    root.addView(destination);
-    inputs.add(destination);
-    adults = field(R.string.preview_adults, "2");
-    children = field(R.string.preview_children, "1");
-    text(root, activity.getString(R.string.destination_parking), 24);
-    highChair = check(R.string.destination_high_chair);
-    stepFree = check(R.string.destination_step_free);
+    LinearLayout header = row();
+    root.addView(header);
+    TextView title = text(header, activity.getString(R.string.destination_title), 32);
+    title.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+    button(header, R.string.destination_exit, false, model::closeDestination);
+    text(root, activity.getString(R.string.destination_short_notice), 22);
+    form = column();
+    root.addView(form);
+    LinearLayout conditions = wide ? row() : column();
+    form.addView(conditions);
+    LinearLayout people = VehicleUi.card(activity);
+    addCard(conditions, people, wide);
+    text(people, activity.getString(R.string.destination_where), 26);
+    LinearLayout places = row();
+    people.addView(places);
+    String[] names = activity.getResources().getStringArray(R.array.destination_mock_places);
+    for (int i = 0; i < names.length; i++) {
+      final int index = i;
+      Button b =
+          choice(
+              places,
+              names[i],
+              () -> {
+                destination = index;
+                for (int j = 0; j < destinationButtons.size(); j++) {
+                  style(destinationButtons.get(j), j == destination);
+                  destinationButtons.get(j).setSelected(j == destination);
+                }
+                edit();
+              });
+      style(b, i == destination);
+      b.setSelected(i == destination);
+      destinationButtons.add(b);
+    }
+    stepper(people, true);
+    stepper(people, false);
+    LinearLayout needs = VehicleUi.card(activity);
+    addCard(conditions, needs, wide);
+    text(needs, activity.getString(R.string.destination_needs), 26);
+    text(needs, activity.getString(R.string.destination_parking_fixed), 24);
+    highChair = toggle(needs, R.string.destination_high_chair);
+    stepFree = toggle(needs, R.string.destination_step_free);
+    text(needs, activity.getString(R.string.destination_wait_fixed), 22);
+    LinearLayout food = VehicleUi.card(activity);
+    form.addView(food);
+    text(food, activity.getString(R.string.destination_food_title), 26);
+    text(food, activity.getString(R.string.destination_food_hint), 22);
+    String[] options = activity.getResources().getStringArray(R.array.destination_cuisines);
+    LinearLayout choices = null;
+    for (int i = 0; i < options.length; i++) {
+      if (i % (wide ? 5 : 2) == 0) {
+        choices = row();
+        food.addView(choices);
+      }
+      String cuisine = options[i];
+      Button b = new Button(activity);
+      b.setText(cuisine);
+
+      style(b, false);
+      weighted(choices, b);
+      inputs.add(b);
+      cuisineButtons.add(b);
+      b.setOnClickListener(
+          v -> {
+            boolean checked = !b.isSelected();
+            b.setSelected(checked);
+            if (checked) cuisines.add(cuisine);
+            else cuisines.remove(cuisine);
+            style(b, checked);
+            refreshAny();
+            edit();
+          });
+    }
+    anyCuisine =
+        button(
+            food,
+            R.string.destination_food_any,
+            false,
+            () -> {
+              for (Button b : cuisineButtons) {
+                b.setSelected(false);
+                style(b, false);
+              }
+              cuisines.clear();
+              refreshAny();
+              edit();
+            });
+    inputs.add(anyCuisine);
+    refreshAny();
     search =
         button(
+            form,
             R.string.destination_search,
-            () -> {
-              try {
+            true,
+            () ->
                 model.searchDestination(
                     new DestinationController.Input(
-                        destination.getSelectedItemPosition(),
-                        Integer.parseInt(adults.getText().toString()),
-                        Integer.parseInt(children.getText().toString()),
-                        highChair.isChecked(),
-                        stepFree.isChecked()));
-              } catch (NumberFormatException invalid) {
-                model.invalidateDestination("INVALID_INPUT");
-              }
-            });
-    button(R.string.preview_cancel, () -> model.invalidateDestination("CANCELLED"));
-    results = new LinearLayout(activity);
-    results.setOrientation(LinearLayout.VERTICAL);
+                        destination,
+                        adultCount,
+                        childCount,
+                        highChair.isSelected(),
+                        stepFree.isSelected(),
+                        new ArrayList<>(cuisines))));
+    button(form, R.string.preview_cancel, false, () -> model.invalidateDestination("CANCELLED"));
+    results = column();
     root.addView(results);
-    destination.setOnItemSelectedListener(
-        new AdapterView.OnItemSelectedListener() {
-          private int previous;
-
-          public void onNothingSelected(AdapterView<?> parent) {}
-
-          public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
-            if (position != previous) {
-              previous = position;
-              model.invalidateDestination("EDITING");
-            }
-          }
-        });
   }
 
-  private EditText field(int label, String initial) {
-    text(root, activity.getString(label), 24);
-    EditText input = new EditText(activity);
-    input.setText(initial);
-    input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-    input.setImeOptions(android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-    input.setMinHeight(dp(72));
-    VehicleUi.text(input, 24);
-    root.addView(input);
-    inputs.add(input);
-    input.addTextChangedListener(
-        new TextWatcher() {
-          public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-          public void onTextChanged(CharSequence s, int start, int before, int count) {
-            model.invalidateDestination("EDITING");
-          }
-
-          public void afterTextChanged(Editable value) {}
-        });
-    return input;
+  private void edit() {
+    detail = -1;
+    model.invalidateDestination("EDITING");
   }
 
-  private CheckBox check(int label) {
-    CheckBox box = new CheckBox(activity);
-    box.setText(label);
-    box.setMinHeight(dp(72));
-    VehicleUi.text(box, 24);
-    box.setOnCheckedChangeListener((v, checked) -> model.invalidateDestination("EDITING"));
-    root.addView(box);
-    inputs.add(box);
-    return box;
+  private void refreshAny() {
+    if (anyCuisine != null) {
+      anyCuisine.setSelected(cuisines.isEmpty());
+      style(anyCuisine, cuisines.isEmpty());
+    }
+  }
+
+  private void stepper(LinearLayout parent, boolean adult) {
+    LinearLayout r = row();
+    parent.addView(r);
+    TextView label =
+        text(
+            r,
+            activity.getString(adult ? R.string.destination_adults : R.string.destination_children),
+            24);
+    label.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+    TextView count = new TextView(activity);
+    VehicleUi.text(count, 28);
+    count.setGravity(android.view.Gravity.CENTER);
+    count.setMinWidth(dp(72));
+    count.setText(Integer.toString(adult ? adultCount : childCount));
+    Button less =
+        button(
+            r,
+            R.string.destination_minus,
+            false,
+            () -> {
+              if (adult) adultCount = Math.max(1, adultCount - 1);
+              else childCount = Math.max(0, childCount - 1);
+              count.setText(Integer.toString(adult ? adultCount : childCount));
+              edit();
+            });
+    less.setContentDescription(
+        activity.getString(
+            adult ? R.string.destination_adults_less : R.string.destination_children_less));
+    r.addView(count);
+    Button more =
+        button(
+            r,
+            R.string.destination_plus,
+            false,
+            () -> {
+              if (adult) adultCount = Math.min(20, adultCount + 1);
+              else childCount = Math.min(10, childCount + 1);
+              count.setText(Integer.toString(adult ? adultCount : childCount));
+              edit();
+            });
+    more.setContentDescription(
+        activity.getString(
+            adult ? R.string.destination_adults_more : R.string.destination_children_more));
+    inputs.add(less);
+    inputs.add(more);
+  }
+
+  private Button toggle(LinearLayout parent, int label) {
+    Button b = new Button(activity);
+    b.setText(label);
+
+    style(b, false);
+    parent.addView(b, new LinearLayout.LayoutParams(-1, -2));
+    inputs.add(b);
+    b.setOnClickListener(
+        v -> {
+          boolean checked = !b.isSelected();
+          b.setSelected(checked);
+          style(b, checked);
+          edit();
+        });
+    return b;
   }
 
   void update() {
     DestinationController.View state = model.destinationView();
     boolean loading = java.util.Set.of("LOADING", "QUEUED", "RUNNING").contains(state.state());
     search.setEnabled(model.canWrite() && !loading);
-    for (View v : inputs) v.setEnabled(model.canWrite());
+    search.setText(loading ? R.string.destination_searching : R.string.destination_search);
+    for (View v : inputs) {
+      v.setEnabled(model.canWrite());
+      if (v instanceof Button b) style(b, b.isSelected());
+    }
+    style(search, true);
+    boolean hasResults = "RESULTS".equals(state.state()) && state.candidates().length() > 0;
+    form.setVisibility(hasResults ? View.GONE : View.VISIBLE);
+    if (!hasResults) detail = -1;
     String signature =
-        state.state() + state.candidates().toString() + state.cleanupFailed() + model.canWrite();
+        state.state() + state.candidates() + state.cleanupFailed() + model.canWrite() + detail;
     if (signature.equals(rendered)) return;
     rendered = signature;
     results.removeAllViews();
     if (!model.canWrite()) text(results, activity.getString(R.string.destination_blocked), 24);
+    if (state.cleanupFailed()) text(results, activity.getString(R.string.destination_cleanup), 22);
+    if (hasResults) {
+      text(
+          results,
+          activity.getString(R.string.destination_comparison, state.candidates().length()),
+          30);
+      text(
+          results,
+          activity.getString(
+              R.string.destination_selection_summary,
+              activity.getResources().getStringArray(R.array.destination_mock_places)[destination],
+              adultCount,
+              childCount,
+              cuisines.isEmpty()
+                  ? activity.getString(R.string.destination_food_any)
+                  : String.join(" · ", cuisines)),
+          22);
+      text(results, activity.getString(R.string.destination_not_bookable), 22);
+      text(results, activity.getString(R.string.destination_food_fixture_notice), 20);
+      LinearLayout actions = row();
+      results.addView(actions);
+      Button change =
+          button(
+              actions,
+              R.string.destination_change,
+              false,
+              () -> {
+                edit();
+                view.smoothScrollTo(0, 0);
+              });
+      change.setEnabled(model.canWrite());
+      button(
+          actions, R.string.preview_cancel, false, () -> model.invalidateDestination("CANCELLED"));
+      try {
+        if (detail >= 0 && detail < state.candidates().length()) {
+          button(
+              results,
+              R.string.destination_details_hide,
+              false,
+              () -> {
+                detail = -1;
+                rendered = "";
+                update();
+              });
+          JSONObject c = state.candidates().getJSONObject(detail);
+          LinearLayout card = VehicleUi.card(activity);
+          results.addView(card);
+          text(card, c.getString("name"), 28);
+          text(card, c.getString("address"), 22);
+          text(card, c.getString("identitySourceUrl"), 20);
+          JSONArray assessments = c.getJSONArray("assessments");
+          for (int j = 0; j < assessments.length(); j++) {
+            JSONObject a = assessments.getJSONObject(j);
+            text(
+                card, needLabel(a.getString("need")) + " · " + verdict(a.getString("verdict")), 24);
+            evidence(card, a.getJSONArray("evidence"));
+          }
+          text(card, activity.getString(R.string.destination_reviews), 24);
+          evidence(card, c.getJSONArray("reviews"));
+        } else {
+          LinearLayout cards = wide ? row() : column();
+          results.addView(cards);
+          for (int i = 0; i < state.candidates().length(); i++) {
+            final int index = i;
+            JSONObject c = state.candidates().getJSONObject(i);
+            LinearLayout card = VehicleUi.card(activity);
+            addCard(cards, card, wide);
+            text(card, c.getString("name"), 28);
+            text(card, c.getString("address"), 22);
+            JSONArray assessments = c.getJSONArray("assessments");
+            for (int j = 0; j < assessments.length(); j++) {
+              JSONObject a = assessments.getJSONObject(j);
+              text(
+                  card,
+                  needLabel(a.getString("need")) + " · " + verdict(a.getString("verdict")),
+                  24);
+            }
+            JSONArray questions = c.getJSONArray("remainingQuestions");
+            List<String> missing = new ArrayList<>();
+            for (int q = 0; q < questions.length(); q++)
+              missing.add(needLabel(questions.getString(q)));
+            if (!missing.isEmpty())
+              text(
+                  card,
+                  activity.getString(R.string.destination_missing, String.join(" · ", missing)),
+                  22);
+            button(
+                card,
+                R.string.destination_details_show,
+                false,
+                () -> {
+                  detail = index;
+                  rendered = "";
+                  update();
+                  view.smoothScrollTo(0, 0);
+                });
+          }
+        }
+      } catch (Exception invalid) {
+        results.removeAllViews();
+        text(results, activity.getString(R.string.destination_failed), 24);
+      }
+      view.post(() -> view.smoothScrollTo(0, 0));
+      return;
+    }
     int label =
         switch (state.state()) {
           case "LOADING", "QUEUED", "RUNNING" -> R.string.destination_loading;
-          case "RESULTS" -> R.string.destination_results;
           case "EMPTY" -> R.string.destination_empty;
           case "FILTERED" -> R.string.destination_filtered;
           case "EXPIRED" -> R.string.destination_expired;
@@ -146,67 +359,17 @@ final class DestinationPanel {
           case "CANCELLED", "CLOSED", "EDITING", "BLOCKED" -> R.string.destination_cleared;
           default -> R.string.destination_ready;
         };
-    text(results, activity.getString(label), 26);
-    if (state.cleanupFailed()) text(results, activity.getString(R.string.destination_cleanup), 22);
-    try {
-      for (int i = 0; i < state.candidates().length(); i++) {
-        JSONObject candidate = state.candidates().getJSONObject(i);
-        LinearLayout card = VehicleUi.card(activity);
-        results.addView(card);
-        text(card, candidate.getString("name"), 28);
-        text(card, candidate.getString("address"), 22);
-        text(card, activity.getString(R.string.destination_not_bookable), 22);
-        LinearLayout details = new LinearLayout(activity);
-        details.setOrientation(LinearLayout.VERTICAL);
-        details.setVisibility(View.GONE);
-        text(details, candidate.getString("identitySourceUrl"), 20);
-        JSONArray assessments = candidate.getJSONArray("assessments");
-        for (int j = 0; j < assessments.length(); j++) {
-          JSONObject assessment = assessments.getJSONObject(j);
-          int need =
-              switch (assessment.getString("need")) {
-                case "PARKING" -> R.string.feature_parking;
-                case "HIGH_CHAIR" -> R.string.destination_high_chair;
-                case "STEP_FREE_ACCESS" -> R.string.destination_step_free;
-                case "CHILD_FRIENDLY" -> R.string.feature_children;
-                default -> R.string.destination_other_condition;
-              };
-          int verdict =
-              switch (assessment.getString("verdict")) {
-                case "YES" -> R.string.destination_yes;
-                case "NO" -> R.string.destination_no;
-                case "CONFLICT" -> R.string.destination_conflict;
-                default -> R.string.destination_unknown;
-              };
-          text(card, activity.getString(need) + " · " + activity.getString(verdict), 24);
-          text(details, activity.getString(need) + " · " + activity.getString(verdict), 24);
-          evidence(details, assessment.getJSONArray("evidence"));
-        }
-        JSONArray questions = candidate.getJSONArray("remainingQuestions");
-        if (questions.length() > 0)
-          text(card, activity.getString(R.string.destination_questions), 24);
-        for (int q = 0; q < questions.length(); q++)
-          text(card, needLabel(questions.getString(q)), 22);
-        text(details, activity.getString(R.string.destination_reviews), 24);
-        evidence(details, candidate.getJSONArray("reviews"));
-        Button expand = new Button(activity);
-        expand.setText(R.string.destination_details_show);
-        expand.setMinHeight(dp(72));
-        VehicleUi.text(expand, 24);
-        expand.setOnClickListener(
-            v -> {
-              boolean show = details.getVisibility() == View.GONE;
-              details.setVisibility(show ? View.VISIBLE : View.GONE);
-              expand.setText(
-                  show ? R.string.destination_details_hide : R.string.destination_details_show);
-            });
-        card.addView(expand);
-        card.addView(details);
-      }
-    } catch (Exception invalid) {
-      results.removeAllViews();
-      text(results, activity.getString(R.string.destination_failed), 24);
-    }
+    text(results, activity.getString(label), 24);
+  }
+
+  private String verdict(String value) {
+    return activity.getString(
+        switch (value) {
+          case "YES" -> R.string.destination_yes;
+          case "NO" -> R.string.destination_no;
+          case "CONFLICT" -> R.string.destination_conflict;
+          default -> R.string.destination_unknown;
+        });
   }
 
   private String needLabel(String need) {
@@ -251,22 +414,76 @@ final class DestinationPanel {
     }
   }
 
-  private TextView text(LinearLayout parent, String value, int size) {
-    TextView v = new TextView(activity);
-    v.setText(value);
-    VehicleUi.text(v, size);
-    parent.addView(v);
-    return v;
+  private LinearLayout column() {
+    LinearLayout l = new LinearLayout(activity);
+    l.setOrientation(LinearLayout.VERTICAL);
+    return l;
   }
 
-  private Button button(int label, Runnable action) {
+  private LinearLayout row() {
+    LinearLayout l = new LinearLayout(activity);
+    l.setOrientation(LinearLayout.HORIZONTAL);
+    l.setGravity(android.view.Gravity.CENTER_VERTICAL);
+    return l;
+  }
+
+  private void weighted(LinearLayout parent, View child) {
+    LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1);
+    p.setMargins(dp(4), dp(4), dp(4), dp(4));
+    parent.addView(child, p);
+  }
+
+  private void addCard(LinearLayout parent, View child, boolean horizontal) {
+    if (horizontal) weighted(parent, child);
+    else parent.addView(child);
+  }
+
+  private TextView text(LinearLayout parent, String value, int size) {
+    TextView t = new TextView(activity);
+    t.setText(value);
+    VehicleUi.text(t, size);
+    parent.addView(t);
+    return t;
+  }
+
+  private Button choice(LinearLayout parent, String value, Runnable action) {
+    Button b = new Button(activity);
+    b.setText(value);
+    style(b, false);
+    b.setOnClickListener(v -> action.run());
+    weighted(parent, b);
+    inputs.add(b);
+    return b;
+  }
+
+  private Button button(LinearLayout parent, int label, boolean primary, Runnable action) {
     Button b = new Button(activity);
     b.setText(label);
-    b.setMinHeight(dp(72));
-    VehicleUi.text(b, 24);
+    style(b, primary);
     b.setOnClickListener(v -> action.run());
-    root.addView(b);
+    LinearLayout.LayoutParams p =
+        new LinearLayout.LayoutParams(
+            parent.getOrientation() == LinearLayout.HORIZONTAL ? -2 : -1, -2);
+    p.setMargins(dp(4), dp(4), dp(4), dp(4));
+    parent.addView(b, p);
     return b;
+  }
+
+  private void style(Button button, boolean selected) {
+    VehicleUi.button(button, selected);
+    // Restyle the current input state explicitly when selection/restriction changes.
+    android.graphics.drawable.GradientDrawable shape =
+        new android.graphics.drawable.GradientDrawable();
+    shape.setCornerRadius(dp(16));
+    shape.setColor(
+        activity.getColor(
+            !button.isEnabled()
+                ? R.color.ui_disabled
+                : selected ? R.color.ui_accent : R.color.ui_surface));
+    if (!selected) shape.setStroke(dp(1), activity.getColor(R.color.ui_outline));
+    button.setBackground(
+        new android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(0x22000000), shape, null));
   }
 
   private int dp(int value) {

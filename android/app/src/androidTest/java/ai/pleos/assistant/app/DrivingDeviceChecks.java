@@ -43,7 +43,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
     Bundle result = new Bundle();
     try {
       if (!destinationFixture.isEmpty()) {
-        DestinationDeviceChecks.run(this, destinationFixture);
+        DestinationDeviceChecks.run(this, destinationFixture, windowWidth, expectedFontScale);
         result.putString("stream", "PASS destination MOCK fixture " + destinationFixture + "\n");
         finish(Activity.RESULT_OK, result);
         return;

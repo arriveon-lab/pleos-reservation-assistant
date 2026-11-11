@@ -260,6 +260,38 @@ class DestinationControllerTest {
   }
 
   @Test
+  void cuisineSelectionIsCopiedAndSentWithoutChangingRequiredFeatures() throws Exception {
+    var choices = new ArrayList<>(List.of("한식", "양식"));
+    var input = new DestinationController.Input(0, 2, 1, true, false, choices);
+    choices.clear();
+    var body = input.body(UUID.randomUUID().toString(), 1);
+    assertEquals(List.of("한식", "양식"), input.preferredCuisines());
+    assertEquals("한식", body.getJSONArray("preferredCuisines").getString(0));
+    assertEquals("양식", body.getJSONArray("preferredCuisines").getString(1));
+    assertEquals("parking", body.getJSONArray("requiredFeatures").getString(0));
+    assertEquals("highChair", body.getJSONArray("requiredFeatures").getString(1));
+    assertEquals(
+        0,
+        new DestinationController.Input(0, 2, 1, false, false, List.of())
+            .body(UUID.randomUUID().toString(), 2)
+            .getJSONArray("preferredCuisines")
+            .length());
+    for (var invalid :
+        List.of(
+            List.of("한식", "한식"),
+            List.of(" "),
+            List.of("a".repeat(31)),
+            List.of("a\nb"),
+            List.of("1", "2", "3", "4", "5", "6", "7", "8", "9"))) {
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              new DestinationController.Input(0, 2, 1, false, false, invalid)
+                  .body(UUID.randomUUID().toString(), 1));
+    }
+  }
+
+  @Test
   void invalidInputDoesNotSend() throws Exception {
     Wire w = new Wire();
     try (var c = controller(w, new AtomicLong())) {
