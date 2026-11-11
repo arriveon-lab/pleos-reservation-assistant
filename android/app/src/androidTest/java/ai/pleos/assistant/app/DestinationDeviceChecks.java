@@ -72,6 +72,80 @@ final class DestinationDeviceChecks {
     }
     await(model::canWrite, 15000);
     String journal = journal();
+    if (fixture.equals("GLEO")) {
+      main(
+          () -> {
+            activity.onNewIntent(
+                new Intent(ai.pleos.assistant.ux.GleoSearchCommand.ACTION)
+                    .putExtra("ACTION_PARAM", "{\"adults\":2,\"children\":2}"));
+            return null;
+          });
+      await(() -> model.destinationView().state().equals("RESULTS"), 15000);
+      panel = field(activity, "destinationPanel");
+      check(
+          main(
+              () -> (int) field(panel, "adultCount") == 2 && (int) field(panel, "childCount") == 2),
+          "voice counts not applied");
+      check(
+          main(() -> model.destinationView().candidates().length() == 3),
+          "voice MOCK results missing");
+      capture("GLEO-valid-counts-results");
+      main(
+          () -> {
+            activity.onNewIntent(
+                new Intent(ai.pleos.assistant.ux.GleoSearchCommand.ACTION)
+                    .putExtra("adults", 2)
+                    .putExtra("children", 2));
+            return null;
+          });
+      check(
+          main(() -> model.destinationView().state().equals("RESULTS")),
+          "duplicate restarted search");
+      main(
+          () -> {
+            activity.onNewIntent(
+                new Intent(ai.pleos.assistant.ux.GleoSearchCommand.ACTION)
+                    .putExtra("ACTION_PARAM", "{\"adults\":2.5,\"children\":2}"));
+            return null;
+          });
+      check(main(() -> (int) field(panel, "adultCount") == 2), "invalid voice mutated input");
+      main(
+          () -> {
+            activity.debugRestriction();
+            activity.onNewIntent(
+                new Intent(ai.pleos.assistant.ux.GleoSearchCommand.ACTION)
+                    .putExtra("adults", 3)
+                    .putExtra("children", 0));
+            return null;
+          });
+      check(
+          main(() -> model.destinationView().candidates().length() == 0),
+          "restricted voice retained result");
+      check(main(() -> (int) field(panel, "adultCount") == 2), "restricted voice mutated input");
+      capture("GLEO-restricted");
+      main(
+          () -> {
+            activity.debugFailure();
+            activity.onNewIntent(
+                new Intent(ai.pleos.assistant.ux.GleoSearchCommand.ACTION)
+                    .putExtra("adults", 3)
+                    .putExtra("children", 0));
+            return null;
+          });
+      check(main(() -> (int) field(panel, "adultCount") == 2), "unknown voice mutated input");
+      check(journal.equals(journal()), "voice changed reservation journal");
+      main(
+          () -> {
+            activity.retryDriving();
+            return null;
+          });
+      Bundle status = new Bundle();
+      status.putString(
+          "stream",
+          "PASS GLEO injected intents: counts/results/duplicate/invalid/restricted/unknown/journal; NOT actual Gleo voice\n");
+      runner.sendStatus(0, status);
+      return;
+    }
     if (fixture.equals("RESTART")) {
       check(
           main(() -> model.destinationView().candidates().length() == 0),

@@ -29,3 +29,25 @@ dependencies {
     implementation("androidx.activity:activity:1.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.8.7")
 }
+
+// Use the actual application ID also for isolated validation installations.
+val gleoAssets = layout.buildDirectory.dir("generated/gleoAssets")
+val generateGleoSchema by
+    tasks.registering {
+        inputs.file("src/main/gleo/schema.json")
+        inputs.property("applicationId", provider { android.defaultConfig.applicationId!! })
+        outputs.dir(gleoAssets)
+        doLast {
+            val output = gleoAssets.get().file("schema.json").asFile
+            output.parentFile.mkdirs()
+            output.writeText(
+                file("src/main/gleo/schema.json")
+                    .readText()
+                    .replace("@APPLICATION_ID@", android.defaultConfig.applicationId!!)
+            )
+        }
+    }
+
+android.sourceSets.getByName("main").assets.srcDir(gleoAssets)
+
+tasks.named("preBuild").configure { dependsOn(generateGleoSchema) }

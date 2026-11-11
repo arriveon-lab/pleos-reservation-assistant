@@ -26,6 +26,21 @@ public final class ReservationViewModel extends AndroidViewModel {
   private PreviewController preview;
   private DestinationController destination;
   private boolean destinationOpen;
+  private ai.pleos.assistant.ux.GleoSearchCommand lastVoice;
+  private long lastVoiceAt;
+
+  boolean claimVoice(ai.pleos.assistant.ux.GleoSearchCommand command) {
+    if (!canWrite()
+        || destination == null
+        || java.util.Set.of("LOADING", "QUEUED", "RUNNING").contains(destination.view().state()))
+      return false;
+    long now = android.os.SystemClock.elapsedRealtime();
+    if (command.equals(lastVoice) && now - lastVoiceAt < 15000) return false;
+    lastVoice = command;
+    lastVoiceAt = now;
+    return true;
+  }
+
   private boolean previewOpen;
   private final Runnable expiry =
       new Runnable() {

@@ -1,3 +1,10 @@
+## 2026-11-11 Gleo MOCK 입력 연결 인계
+
+- docs/GLEO_MOCK_SEARCH.md를 확인. 음성 인원 파서·스키마 생성·bare/prefixed action·Activity 수신 구현, 직접 Intent 기기 검사 PASS. 실제 Gleo 첫 음성에서 action 생성은 확인했으나 접두사 누락으로 수신되지 않았고 수정했다. 수정 후 실제 음성→검색은 확인 대기.
+- 별도 destinationvalidation만 APK 갱신. 원 jointvalidation journal SHA256 beb02ab84b57d492514117bb1e0eb7d069c3f4036e0fd1a22e5f29967b1f13b3 일치. MOCK18085, reverse8080/8081→18085. 서버/기록/인증 초기화 없음.
+- 에뮬레이터 실행 시 -no-audio를 넣지 않는다. 이 옵션 제거 후 Gleo 기본 응답 정상. 초기 common.server_error 이후 기본 질문 재시험 정상이며 전역 장애로 단정하지 않는다.
+- 사용자에게 요청할 시험 문장: “어라이브온에서 성인 두 명, 아이 두 명으로 가상 식당을 검색해줘”. Gleo 최종 인식/명령 생성과 ArriveOnGleo COMMAND_RECEIVED/MOCK_SEARCH_STARTED, 화면 후보를 함께 확인한다. 단순 adb 호출을 실제 Gleo 성공으로 기록하지 않는다.
+
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
 ## 2026-11-11 이슈·PR 상태 대조

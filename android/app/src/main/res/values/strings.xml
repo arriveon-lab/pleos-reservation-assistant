@@ -126,4 +126,7 @@
   <string name="destination_comparison">후보 %1$d곳을 비교해 보세요</string>
   <string name="destination_selection_summary">%1$s · 성인 %2$d명 / 아이 %3$d명</string>
   <string name="destination_missing">추가 확인: %1$s</string>
+  <string name="gleo_invalid">인원을 확인해 주세요. 성인 1~20명, 아이 0~10명을 함께 말해 주세요.</string>
+  <string name="gleo_blocked">음성 검색을 시작하지 못했어요. 정차·서버 연결·진행 중 요청을 확인한 뒤 다시 요청해 주세요.</string>
+  <string name="gleo_started">말씀하신 인원으로 가상 목적지 주변을 검색해요. MOCK 연습이며 실제 예약은 하지 않아요.</string>
 </resources>

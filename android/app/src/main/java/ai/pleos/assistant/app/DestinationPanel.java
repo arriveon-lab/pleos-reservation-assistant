@@ -21,6 +21,7 @@ final class DestinationPanel {
   private final boolean wide;
   private int destination, adultCount = 2, childCount = 1, detail = -1;
   private String rendered = "";
+  private TextView adultValue, childValue;
 
   DestinationPanel(ReservationActivity activity, ReservationViewModel model) {
     this.activity = activity;
@@ -95,6 +96,18 @@ final class DestinationPanel {
     root.addView(results);
   }
 
+  void searchVoice(ai.pleos.assistant.ux.GleoSearchCommand command) {
+    if (!model.canWrite()) return;
+    adultCount = command.adults();
+    childCount = command.children();
+    adultValue.setText(Integer.toString(adultCount));
+    childValue.setText(Integer.toString(childCount));
+    detail = -1;
+    model.searchDestination(
+        new DestinationController.Input(
+            destination, adultCount, childCount, highChair.isSelected(), stepFree.isSelected()));
+  }
+
   private void edit() {
     detail = -1;
     model.invalidateDestination("EDITING");
@@ -110,6 +123,8 @@ final class DestinationPanel {
             24);
     label.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
     TextView count = new TextView(activity);
+    if (adult) adultValue = count;
+    else childValue = count;
     VehicleUi.text(count, 28);
     count.setGravity(android.view.Gravity.CENTER);
     count.setMinWidth(dp(72));

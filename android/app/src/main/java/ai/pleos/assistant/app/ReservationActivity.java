@@ -26,6 +26,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class ReservationActivity extends ComponentActivity {
+  private ai.pleos.assistant.ux.GleoSearchCommand voiceCommand;
+  private long voiceDeadline;
+  private boolean voiceResumed;
+  private final android.os.Handler voiceHandler =
+      new android.os.Handler(android.os.Looper.getMainLooper());
+  private final Runnable voiceTimeout = () -> finishVoice(false);
   private ReservationViewModel model;
   private DrivingRestrictionController driving;
   private PreviewPanel previewPanel;
@@ -47,6 +53,7 @@ public final class ReservationActivity extends ComponentActivity {
   @Override
   public void onCreate(Bundle saved) {
     super.onCreate(saved);
+    if (saved == null) receiveVoice(getIntent());
     previewDraft = saved;
     if (saved != null) {
       adultsInput = saved.getString("adultsInput", "2");
@@ -90,12 +97,93 @@ public final class ReservationActivity extends ComponentActivity {
 
   @Override
   protected void onStop() {
+    voiceResumed = false;
+    finishVoice(false);
     if (approval != null) approval.dismiss();
     model.observe(null);
     model.invalidatePreview("CLOSED");
     model.invalidateDestination("CLOSED");
     driving.stop();
     super.onStop();
+  }
+
+  @Override
+  protected void onNewIntent(android.content.Intent intent) {
+    super.onNewIntent(intent);
+    setIntent(intent);
+    receiveVoice(intent);
+    render();
+  }
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    voiceResumed = true;
+    render();
+  }
+
+  @Override
+  protected void onPause() {
+    voiceResumed = false;
+    super.onPause();
+  }
+
+  private void receiveVoice(android.content.Intent intent) {
+    String action = ai.pleos.assistant.ux.GleoSearchCommand.ACTION;
+    // Gleo 4.2.0.15 on Pleos 2.1.0 prefixes the package; official examples use bare action.
+    if (!action.equals(intent.getAction())
+        && !(getPackageName() + "." + action).equals(intent.getAction())) return;
+    // Consume before processing: recreation must never repeat a search.
+    intent.setAction(null);
+    if (voiceCommand != null) {
+      GleoIntentAdapter.reply(this, false);
+      return;
+    }
+    try {
+      voiceCommand = GleoIntentAdapter.parse(intent);
+      voiceDeadline = android.os.SystemClock.elapsedRealtime() + 5000;
+      voiceHandler.postDelayed(voiceTimeout, 5000);
+      android.util.Log.i("ArriveOnGleo", "COMMAND_RECEIVED");
+    } catch (Exception invalid) {
+      GleoIntentAdapter.reply(this, false);
+      android.widget.Toast.makeText(this, R.string.gleo_invalid, android.widget.Toast.LENGTH_LONG)
+          .show();
+      android.util.Log.i("ArriveOnGleo", "INVALID_INPUT");
+    }
+  }
+
+  private void finishVoice(boolean accepted) {
+    if (voiceCommand == null) return;
+    voiceCommand = null;
+    voiceHandler.removeCallbacks(voiceTimeout);
+    GleoIntentAdapter.reply(this, accepted);
+    android.widget.Toast.makeText(
+            this,
+            accepted ? R.string.gleo_started : R.string.gleo_blocked,
+            android.widget.Toast.LENGTH_LONG)
+        .show();
+    android.util.Log.i("ArriveOnGleo", accepted ? "MOCK_SEARCH_STARTED" : "COMMAND_BLOCKED");
+  }
+
+  private void applyVoice() {
+    if (voiceCommand == null || !voiceResumed) return;
+    var reason = model.driving().reason();
+    if (android.os.SystemClock.elapsedRealtime() >= voiceDeadline) {
+      finishVoice(false);
+      return;
+    }
+    if (reason == DrivingRestrictionController.Reason.CONNECTING
+        || reason == DrivingRestrictionController.Reason.STOPPED
+        || model.busy()) return;
+    if (!model.canWrite() || !model.claimVoice(voiceCommand)) {
+      finishVoice(false);
+      return;
+    }
+    var command = voiceCommand;
+    // Clear before openDestination notifies observers reentrantly.
+    finishVoice(true);
+    model.openDestination();
+    if (destinationPanel != null) destinationPanel.searchVoice(command);
   }
 
   void retryDriving() {
@@ -220,6 +308,7 @@ public final class ReservationActivity extends ComponentActivity {
   }
 
   private void render() {
+    applyVoice();
     if (model.destinationOpen()) {
       if (destinationPanel == null) destinationPanel = new DestinationPanel(this, model);
       if (destinationPanel.view.getParent() == null) setContentView(destinationPanel.view);
