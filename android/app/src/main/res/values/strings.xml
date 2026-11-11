@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">Pleos 예약 비서 · MOCK</string>
+  <string name="app_name">어라이브온 · MOCK</string>
   <string name="connect">연결 다시 확인</string>
   <string name="refresh">최신 상태 조회 · 새 예약 없음</string>
   <string name="pending">요청 결과 미확인 · 새 명령 차단. 같은 요청 재전송 또는 GET 조회로 확인하세요.</string>

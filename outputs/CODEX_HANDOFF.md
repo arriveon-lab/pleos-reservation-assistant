@@ -1,3 +1,7 @@
+## 2026-11-11 Gleo 이름/OPEN 후속
+
+APK label `어라이브온 · MOCK`, 스키마 invokeWord `어라이브온`, 무인수 OPEN_ARRIVEON 추가. 기존 destinationvalidation만 업데이트. OPEN 기기 검사/verifyAndroid PASS. 수정 후에도 실제 음성 앱 실행0/장소 오류. Gleo 프로세스만 재시작해 두 스키마 재로딩 확인, 추가 음성 결과는 아직 앱 실행 미확인. 추정으로 승인/서버 장애를 확정하거나 등록 DB/계정을 초기화하지 않는다. docs/GLEO_MOCK_SEARCH.md의 새 APK 해시와 검증 수준을 따른다.
+
 ## 2026-11-11 Gleo MOCK 입력 연결 인계
 
 - docs/GLEO_MOCK_SEARCH.md를 확인. 음성 인원 파서·스키마 생성·bare/prefixed action·Activity 수신 구현, 직접 Intent 기기 검사 PASS. 실제 Gleo 첫 음성에서 action 생성은 확인했으나 접두사 누락으로 수신되지 않았고 수정했다. 수정 후 실제 음성→검색은 확인 대기.

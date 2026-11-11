@@ -2,6 +2,15 @@
 
 2026-11-11, 사용자 요청 범위: 음성으로 성인/아이 수를 입력하고 기존 MOCK 추천 검색을 시작한다. 실제 전화·예약·실제 내비 목적지/ETA 연결은 포함하지 않는다.
 
+## 앱 실행 이름·스키마 보완
+
+기존 APK label은 `Pleos 예약 비서 · MOCK`, invokeWord는 `어라이브온`으로 서로 달랐다. 표시 이름을 `어라이브온 · MOCK`으로 맞추고 인원 없이 앱만 여는 `OPEN_ARRIVEON` action을 추가했다. 이름 불일치가 Gleo 장소 오류의 확정 원인이라고 단정하지 않는다. 기존 테스트/예약 설치들은 변경하지 않는다.
+
+- bare/prefixed OPEN action은 화면만 열고 검색/예약 요청을 만들지 않는다. callback functionName=OPEN_ARRIVEON, success는 앱 열기만 의미한다.
+- verifyAndroid PASS. 기기 GLEO fixture에 OPEN→검색 상태/예약 journal 불변 검사를 추가해 기존 검색/제한 검사와 함께 PASS.
+- 새 APK SHA256 `4e57c8d9806d83e369f32e00ca79dc19431dc94fcea2b9a8b1e780237a6828af`. 설치 후 Gleo ami-sdk 로그에서 대상 패키지와 새 한글 이름이 함께 나타나는 것을 관측했다. 내장 등록 DB를 강제 수정하지 않았다.
+- 이름/OPEN 수정 후 실제 음성에서는 같은 장소 정보 오류와 앱 실행 요청0을 확인했다. Gleo 프로세스만 재시작한 뒤 새 이름·OPEN/SEARCH 스키마 재로딩을 관측했다. 이후 재시험은 스키마 선택 목록만 확인됐고 앱 실행은 아직 미확인이다. 직접 명령 통과를 음성 통과로 취급하지 않는다.
+
 ## 구현과 계약
 
 - `android/app/src/main/gleo/schema.json` 템플릿을 빌드 시 실제 applicationId로 치환해 APK의 `assets/schema.json`에 포함한다. 별도 검증 설치도 패키지가 일치한다.

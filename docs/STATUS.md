@@ -1,5 +1,9 @@
 # 구현·검증 현황
 
+## 2026-11-11 Gleo 앱 이름·단순 열기 보완
+
+APK label을 어라이브온 · MOCK으로 맞추고 인원 없는 OPEN_ARRIVEON을 추가했다. verifyAndroid와 OPEN 무검색/journal 불변·기존 GLEO 기기 검사 PASS. Gleo 재시작 후 새 이름과 두 스키마 로딩 관측. 음성 앱 실행은 여전히 미확인이고 수정 직후 같은 장소 오류/Activity 실행0을 확인했다. 스키마 읽힘을 음성 실행/공식 승인 완료로 표시하지 않는다. 상세는 [Gleo 기록](GLEO_MOCK_SEARCH.md). 직전 d5021bf 원격 CI3개는 PASS이며 이번 수정 head의 CI와 구분한다.
+
 ## 2026-11-11 Gleo 인원 입력·MOCK 추천 연결
 
 공식 Gleo 스키마·Activity 명령 수신·검증된 인원 반영과 MOCK 검색을 추가했다. 실제 음성에서 명령 생성/패키지 접두사 action 전달을 관측해 해당 형식을 추가 지원한다. 최종 APK의 직접 Intent 실행에서 성인2/아이2·후보3곳 표시, 잘못된 입력/중복/제한/UNKNOWN 주입 차단과 journal 보존 PASS. verifyAll(UX109)·최종 verifyAndroid·MOCK smoke PASS. 실제 Gleo 음성→최종 앱 검색 성공은 아직 미확인, 문서상 승인/공동 인수도 미완료다. [상세 증거·범위](GLEO_MOCK_SEARCH.md). 기존 이슈 OPEN/PR Draft 유지.

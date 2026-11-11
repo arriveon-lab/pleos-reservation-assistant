@@ -29,6 +29,7 @@ public final class ReservationActivity extends ComponentActivity {
   private ai.pleos.assistant.ux.GleoSearchCommand voiceCommand;
   private long voiceDeadline;
   private boolean voiceResumed;
+  private boolean voiceOpen;
   private final android.os.Handler voiceHandler =
       new android.os.Handler(android.os.Looper.getMainLooper());
   private final Runnable voiceTimeout = () -> finishVoice(false);
@@ -98,6 +99,7 @@ public final class ReservationActivity extends ComponentActivity {
   @Override
   protected void onStop() {
     voiceResumed = false;
+    voiceOpen = false;
     finishVoice(false);
     if (approval != null) approval.dismiss();
     model.observe(null);
@@ -129,6 +131,13 @@ public final class ReservationActivity extends ComponentActivity {
   }
 
   private void receiveVoice(android.content.Intent intent) {
+    if (GleoIntentAdapter.OPEN.equals(intent.getAction())
+        || (getPackageName() + "." + GleoIntentAdapter.OPEN).equals(intent.getAction())) {
+      intent.setAction(null);
+      voiceOpen = true;
+      android.util.Log.i("ArriveOnGleo", "OPEN_COMMAND_RECEIVED");
+      return;
+    }
     String action = ai.pleos.assistant.ux.GleoSearchCommand.ACTION;
     // Gleo 4.2.0.15 on Pleos 2.1.0 prefixes the package; official examples use bare action.
     if (!action.equals(intent.getAction())
@@ -308,6 +317,11 @@ public final class ReservationActivity extends ComponentActivity {
   }
 
   private void render() {
+    if (voiceOpen && voiceResumed) {
+      voiceOpen = false;
+      GleoIntentAdapter.opened(this);
+      android.util.Log.i("ArriveOnGleo", "APP_OPENED");
+    }
     applyVoice();
     if (model.destinationOpen()) {
       if (destinationPanel == null) destinationPanel = new DestinationPanel(this, model);

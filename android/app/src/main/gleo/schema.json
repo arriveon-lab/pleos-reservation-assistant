@@ -8,6 +8,19 @@
       "type": "function",
       "function": {
         "component": "activity",
+        "name": "OPEN_ARRIVEON",
+        "description": "Open the ArriveOn MOCK restaurant recommendation app without starting a search or making a call or reservation.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "component": "activity",
         "name": "SEARCH_MOCK_RESTAURANTS",
         "description": "Set adult and child counts and start a MOCK restaurant recommendation search near the fictional destination displayed in ArriveOn.",
         "parameters": {

@@ -73,6 +73,14 @@ final class DestinationDeviceChecks {
     await(model::canWrite, 15000);
     String journal = journal();
     if (fixture.equals("GLEO")) {
+      String beforeOpen = main(() -> model.destinationView().state());
+      main(
+          () -> {
+            activity.onNewIntent(new Intent(activity.getPackageName() + ".OPEN_ARRIVEON"));
+            return null;
+          });
+      check(beforeOpen.equals(main(() -> model.destinationView().state())), "open started search");
+      check(journal.equals(journal()), "open changed journal");
       main(
           () -> {
             activity.onNewIntent(

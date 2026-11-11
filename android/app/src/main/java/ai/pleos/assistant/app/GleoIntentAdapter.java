@@ -27,17 +27,33 @@ final class GleoIntentAdapter {
     return GleoSearchCommand.parse(values);
   }
 
+  static final String OPEN = "OPEN_ARRIVEON";
+
+  static void opened(Context context) {
+    reply(
+        context,
+        OPEN,
+        true,
+        "ArriveOn MOCK app is open. No search, call or reservation was started.");
+  }
+
   static void reply(Context context, boolean accepted) {
+    reply(
+        context,
+        GleoSearchCommand.ACTION,
+        accepted,
+        accepted
+            ? "MOCK recommendation search started using the displayed fictional destination. No booking or call was made. Check the app for results."
+            : "MOCK search was not started. Check the app connection, driving restriction and adult and child counts, then explicitly retry.");
+  }
+
+  private static void reply(Context context, String function, boolean accepted, String message) {
     try {
       JSONObject result =
           new JSONObject()
-              .put("functionName", GleoSearchCommand.ACTION)
+              .put("functionName", function)
               .put("status", accepted ? "success" : "fail")
-              .put(
-                  "message",
-                  accepted
-                      ? "MOCK recommendation search started using the displayed fictional destination. No booking or call was made. Check the app for results."
-                      : "MOCK search was not started. Check the app connection, driving restriction and adult and child counts, then explicitly retry.");
+              .put("message", message);
       context.sendBroadcast(
           new Intent("ai.pleos.playground.intent.action.APP_ACTION_RESPONSE")
               .setPackage("ai.umos.ambientai")
