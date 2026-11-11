@@ -10,9 +10,14 @@ import org.json.*;
 import org.junit.jupiter.api.Test;
 
 class DestinationControllerTest {
+  private static DestinationController.Destination point(int index) {
+    return new DestinationController.Destination(
+        "가상 내비 목적지 " + index, 37.544 + index * .001, 127.055, true);
+  }
+
   static final Instant NOW = Instant.parse("2026-11-11T00:00:00Z");
   static final DestinationController.Input INPUT =
-      new DestinationController.Input(0, 2, 1, false, false);
+      new DestinationController.Input(point(0), 2, 1, false, false);
 
   static class Wire implements PreviewController.Transport {
     String id = UUID.randomUUID().toString(), state = "RESULTS";
@@ -245,14 +250,14 @@ class DestinationControllerTest {
   void requestUsesCurrentContractAndInvalidReplacementClears() throws Exception {
     Wire w = new Wire();
     try (var c = controller(w, new AtomicLong())) {
-      c.search(new DestinationController.Input(1, 20, 10, true, true));
+      c.search(new DestinationController.Input(point(1), 20, 10, true, true));
       await(() -> c.view().state().equals("RESULTS"));
       assertEquals(20, w.request.getJSONObject("party").getInt("adults"));
       assertEquals(10, w.request.getJSONObject("party").getInt("children"));
       assertEquals(3, w.request.getJSONArray("requiredFeatures").length());
       assertFalse(w.request.has("eta"));
       assertFalse(w.request.has("arrivalAt"));
-      c.search(new DestinationController.Input(0, 21, 0, false, false));
+      c.search(new DestinationController.Input(point(0), 21, 0, false, false));
       assertEquals("INVALID_INPUT", c.view().state());
       assertEquals(0, c.view().candidates().length());
       assertEquals(1, w.starts.get());
@@ -262,17 +267,53 @@ class DestinationControllerTest {
   @Test
   void requestKeepsRequiredFeaturesAndEmptyCuisineContract() throws Exception {
     var body =
-        new DestinationController.Input(0, 2, 1, true, false).body(UUID.randomUUID().toString(), 1);
+        new DestinationController.Input(point(0), 2, 1, true, false)
+            .body(UUID.randomUUID().toString(), 1);
     assertEquals(0, body.getJSONArray("preferredCuisines").length());
     assertEquals("parking", body.getJSONArray("requiredFeatures").getString(0));
     assertEquals("highChair", body.getJSONArray("requiredFeatures").getString(1));
   }
 
   @Test
+  void navigationPayloadIsExactAndHasNoEtaOrFallback() throws Exception {
+    var destination = new DestinationController.Destination("가상 내비 검증 장소", 35.25, 128.5, true);
+    var body =
+        new DestinationController.Input(destination, 2, 2, false, false)
+            .body(UUID.randomUUID().toString(), 1);
+    assertEquals(destination.name(), body.getJSONObject("destination").getString("name"));
+    assertEquals(destination.latitude(), body.getJSONObject("destination").getDouble("latitude"));
+    assertEquals(destination.longitude(), body.getJSONObject("destination").getDouble("longitude"));
+    assertEquals(3, body.getJSONObject("destination").length());
+    assertFalse(body.has("eta"));
+    assertFalse(body.has("observedAt"));
+  }
+
+  @Test
+  void missingUnverifiedAndMalformedNavigationNeverPosts() throws Exception {
+    Wire w = new Wire();
+    try (var c = controller(w, new AtomicLong())) {
+      for (var point :
+          new DestinationController.Destination[] {
+            null,
+            new DestinationController.Destination("가상", 37, 127, false),
+            new DestinationController.Destination("가상", Double.NaN, 127, true),
+            new DestinationController.Destination("가상", 91, 127, true),
+            new DestinationController.Destination("가상", 37, 181, true),
+            new DestinationController.Destination(" ", 37, 127, true),
+            new DestinationController.Destination("x".repeat(101), 37, 127, true)
+          }) {
+        c.search(new DestinationController.Input(point, 2, 1, false, false));
+        assertEquals("INVALID_INPUT", c.view().state());
+      }
+      assertEquals(0, w.starts.get());
+    }
+  }
+
+  @Test
   void invalidInputDoesNotSend() throws Exception {
     Wire w = new Wire();
     try (var c = controller(w, new AtomicLong())) {
-      c.search(new DestinationController.Input(0, 0, 1, false, false));
+      c.search(new DestinationController.Input(point(0), 0, 1, false, false));
       assertEquals("INVALID_INPUT", c.view().state());
       assertEquals(0, w.starts.get());
     }

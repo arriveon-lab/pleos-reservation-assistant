@@ -10,7 +10,7 @@
   <string name="adults">성인 · 1–8명</string>
   <string name="children">아이 · 0–6명</string>
   <string name="parking">주차 필수</string>
-  <string name="search">내 조건으로 후보 찾기</string>
+  <string name="search">가상 예약 연습 · 후보 찾기</string>
   <string name="candidates">추천 후보</string>
   <string name="empty">후보가 없습니다. 조건을 확인하세요.</string>
   <string name="none">없음</string>
@@ -71,7 +71,6 @@
   <string name="destination_open">목적지 주변 추천 · MOCK</string>
   <string name="destination_title">목적지 주변 식당 찾기</string>
   <string name="destination_notice">MOCK 전용 · 가상 목적지와 후보입니다. 실제 검색·전화·예약은 하지 않습니다. 차량 목적지·ETA와 아직 연결되지 않았습니다.</string>
-  <string-array name="destination_mock_places"><item>가상 성수</item><item>가상 서울숲</item></string-array>
   <string name="destination_parking">주차 조건은 항상 확인해요</string>
   <string name="destination_high_chair">아기의자</string>
   <string name="destination_step_free">계단 없는 접근</string>
@@ -108,8 +107,8 @@
     <string name="destination_details_show">자세히 보기</string>
     <string name="destination_details_hide">후보 비교로 돌아가기</string>
   <string name="destination_exit">돌아가기</string>
-  <string name="destination_short_notice">MOCK 체험 · 실제 검색·전화·예약 없음 · 차량 목적지 미연결</string>
-  <string name="destination_where">어디에서, 몇 명이 함께하나요?</string>
+  <string name="destination_short_notice">내비 목적지 기준 · 추천 서버 MOCK 검증 · 실제 전화·예약 없음</string>
+  <string name="destination_where">내비 목적지와 인원을 확인하세요</string>
   <string name="destination_needs">꼭 필요한 조건</string>
   <string name="destination_parking_fixed">주차 · 항상 확인</string>
   <string name="destination_wait_fixed">최대 대기 15분 기준</string>

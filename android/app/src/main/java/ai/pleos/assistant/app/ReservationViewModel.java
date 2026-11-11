@@ -26,6 +26,28 @@ public final class ReservationViewModel extends AndroidViewModel {
   private PreviewController preview;
   private DestinationController destination;
   private boolean destinationOpen;
+  private DestinationController.Destination navigationDestination;
+  private String navigationState = "UNAVAILABLE";
+
+  DestinationController.Destination navigationDestination() {
+    return navigationDestination;
+  }
+
+  String navigationState() {
+    return navigationState;
+  }
+
+  boolean navigationReady() {
+    return navigationDestination != null && navigationDestination.usable();
+  }
+
+  void navigation(DestinationController.Destination value, String state) {
+    navigationDestination = value;
+    navigationState = state;
+    invalidateDestination("NAVIGATION_CHANGED");
+    if (observer != null) observer.run();
+  }
+
   private ai.pleos.assistant.ux.GleoSearchCommand lastVoice;
   private long lastVoiceAt;
 
@@ -178,7 +200,11 @@ public final class ReservationViewModel extends AndroidViewModel {
   }
 
   void searchDestination(DestinationController.Input input) {
-    if (canWrite() && destinationOpen) destination.search(input);
+    if (canWrite()
+        && destinationOpen
+        && navigationReady()
+        && navigationDestination.equals(input.destination())) destination.search(input);
+    else invalidateDestination("NAVIGATION_REQUIRED");
   }
 
   JSONObject snapshot() {

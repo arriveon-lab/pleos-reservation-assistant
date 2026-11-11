@@ -494,3 +494,7 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 ## 2026-11-11 음성 인원 입력 인계
 
 입력 전용 SET_PARTY_SIZE 구현/별도 APK 설치. 실제 Gleo 발화1회→성인2/아이2 반영 PASS(사용자 확인+05:08:53 앱 이벤트+화면), verifyAll 및 기존 GLEO 회귀 PASS. [기록](../docs/GLEO_PARTY_INPUT.md). 예약 journal 동일. 입력만 반영하며 검색은 별도 요청. 음성 예약 승인은 미구현. 기존 Gleo 미커밋 내용은 이번 커밋에 포함하지 않는다.
+
+## 2026-11-11 내비 목적지 추천 연결 준비
+
+추천 화면 가상 목적지 선택 제거, NaviHelper3.0.5 읽기·목적지 무효화·#53 요청 매핑 추가. 실제 SDK 수신은 UNVERIFIED이며 현재 경로 연관성 입증 전 검색 차단. ETA 없는 추천 계약 유지. verifyAll/UX123·MOCK smoke·최종 APK NAVIGATION/GLEO 계측 PASS, 기존 기록 보존. 실제 내비 목적지 POST/공동 인수는 미완료. [구현·증거·남은 작업](../docs/UX_NAVIGATION_BACKEND_HANDOFF.md).

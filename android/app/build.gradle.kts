@@ -25,6 +25,7 @@ android {
 }
 
 dependencies {
+    implementation("ai.pleos.playground:NaviHelper:3.0.5")
     implementation(project(":ux:core"))
     implementation("androidx.activity:activity:1.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.8.7")

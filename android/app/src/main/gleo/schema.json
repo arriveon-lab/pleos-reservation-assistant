@@ -1,6 +1,6 @@
 {
   "packageName": "@APPLICATION_ID@",
-  "appDescription": "ArriveOn provides MOCK restaurant recommendations near a fictional destination using adult and child counts. It does not make calls or reservations.",
+  "appDescription": "ArriveOn provides MOCK restaurant recommendations near the verified current navigation destination using adult and child counts. It does not make calls or reservations.",
   "invokeWord": "어라이브온",
   "version": "0.1.0-mock",
   "actionCalls": [
@@ -22,7 +22,7 @@
       "function": {
         "component": "activity",
         "name": "SEARCH_MOCK_RESTAURANTS",
-        "description": "Set adult and child counts and start a MOCK restaurant recommendation search near the fictional destination displayed in ArriveOn.",
+        "description": "Set adult and child counts and start a MOCK restaurant recommendation search near the verified current navigation destination displayed in ArriveOn.",
         "parameters": {
           "type": "object",
           "properties": {

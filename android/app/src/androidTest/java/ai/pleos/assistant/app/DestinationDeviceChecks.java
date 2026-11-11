@@ -72,6 +72,58 @@ final class DestinationDeviceChecks {
     }
     await(model::canWrite, 15000);
     String journal = journal();
+    // Synthetic navigation is installed only by instrumentation. Production SDK stays UNVERIFIED.
+    main(
+        () -> {
+          ((NavigationDestinationAdapter) field(activity, "navigation")).close();
+          model.navigation(
+              new ai.pleos.assistant.ux.DestinationController.Destination(
+                  "가상 내비 검증 장소", 37.544, 127.055, true),
+              "FIXTURE");
+          return null;
+        });
+    if (fixture.equals("NAVIGATION")) {
+      click(R.string.destination_open);
+      panel = field(activity, "destinationPanel");
+      main(
+          () -> {
+            model.navigation(null, "UNAVAILABLE");
+            check(
+                !((Button) field(panel, "search")).isEnabled(),
+                "missing navigation enabled search");
+            model.navigation(
+                new ai.pleos.assistant.ux.DestinationController.Destination(
+                    "가상 내비 검증 장소", 37.544, 127.055, false),
+                "UNVERIFIED");
+            check(
+                !((Button) field(panel, "search")).isEnabled(),
+                "unverified navigation enabled search");
+            return null;
+          });
+      capture("NAVIGATION-unverified");
+      main(
+          () -> {
+            model.navigation(
+                new ai.pleos.assistant.ux.DestinationController.Destination(
+                    "가상 내비 검증 장소", 37.544, 127.055, true),
+                "FIXTURE");
+            return null;
+          });
+      click(R.string.destination_search);
+      await(() -> model.destinationView().state().equals("RESULTS"), 15000);
+      capture("NAVIGATION-results");
+      main(
+          () -> {
+            model.navigation(null, "UNAVAILABLE");
+            return null;
+          });
+      check(
+          main(() -> model.destinationView().candidates().length() == 0),
+          "route change retained results");
+      check(journal.equals(journal()), "navigation changed booking journal");
+      return;
+    }
+
     if (fixture.equals("GLEO")) {
       String beforeOpen = main(() -> model.destinationView().state());
       main(

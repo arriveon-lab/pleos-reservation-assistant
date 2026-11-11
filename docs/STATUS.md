@@ -400,3 +400,7 @@ GitHub 업로드 직전 로컬 `verifyAll` 및 `smoke-test.py --check-contract`�
 ## 2026-11-11 Gleo 음성 인원 반영
 
 SET_PARTY_SIZE로 추천 입력 화면의 인원만 설정하도록 추가했다. verifyAll/기기 GLEO 주입 검사 PASS, 실제 사용자 발화→2/2 표시를05:08:53 기기 로그 및 화면으로 확인했다. journal 전후 동일. [검증 기록](GLEO_PARTY_INPUT.md). 음성 예약/실제 전화/실제 ETA/공동 인수는 미완료. 기존 미커밋 Gleo 작업은 별도로 보존한다.
+
+## 2026-11-11 내비 목적지 추천 연결 준비
+
+추천 화면 가상 목적지 선택 제거, NaviHelper3.0.5 읽기·목적지 무효화·#53 요청 매핑 추가. 실제 SDK 수신은 UNVERIFIED이며 현재 경로 연관성 입증 전 검색 차단. ETA 없는 추천 계약 유지. verifyAll/UX123·MOCK smoke·최종 APK NAVIGATION/GLEO 계측 PASS, 기존 기록 보존. 실제 내비 목적지 POST/공동 인수는 미완료. [구현·증거·남은 작업](UX_NAVIGATION_BACKEND_HANDOFF.md).

@@ -59,7 +59,7 @@ final class GleoIntentAdapter {
         GleoSearchCommand.ACTION,
         accepted,
         accepted
-            ? "MOCK recommendation search started using the displayed fictional destination. No booking or call was made. Check the app for results."
+            ? "MOCK recommendation search started using the verified current navigation destination. No booking or call was made. Check the app for results."
             : "MOCK search was not started. Check the app connection, driving restriction and adult and child counts, then explicitly retry.");
   }
 

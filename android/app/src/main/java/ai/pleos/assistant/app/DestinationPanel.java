@@ -17,9 +17,9 @@ final class DestinationPanel {
   private final Button highChair, stepFree;
   private final Button search;
   private final List<View> inputs = new ArrayList<>();
-  private final List<Button> destinationButtons = new ArrayList<>();
+  private final TextView navigationLabel;
   private final boolean wide;
-  private int destination, adultCount = 2, childCount = 1, detail = -1;
+  private int adultCount = 2, childCount = 1, detail = -1;
   private String rendered = "";
   private TextView adultValue, childValue;
 
@@ -48,27 +48,7 @@ final class DestinationPanel {
     LinearLayout people = VehicleUi.card(activity);
     addCard(conditions, people, wide);
     text(people, activity.getString(R.string.destination_where), 26);
-    LinearLayout places = row();
-    people.addView(places);
-    String[] names = activity.getResources().getStringArray(R.array.destination_mock_places);
-    for (int i = 0; i < names.length; i++) {
-      final int index = i;
-      Button b =
-          choice(
-              places,
-              names[i],
-              () -> {
-                destination = index;
-                for (int j = 0; j < destinationButtons.size(); j++) {
-                  style(destinationButtons.get(j), j == destination);
-                  destinationButtons.get(j).setSelected(j == destination);
-                }
-                edit();
-              });
-      style(b, i == destination);
-      b.setSelected(i == destination);
-      destinationButtons.add(b);
-    }
+    navigationLabel = text(people, activity.getString(R.string.navigation_missing), 24);
     stepper(people, true);
     stepper(people, false);
     LinearLayout needs = VehicleUi.card(activity);
@@ -86,7 +66,7 @@ final class DestinationPanel {
             () ->
                 model.searchDestination(
                     new DestinationController.Input(
-                        destination,
+                        model.navigationDestination(),
                         adultCount,
                         childCount,
                         highChair.isSelected(),
@@ -106,8 +86,8 @@ final class DestinationPanel {
     return true;
   }
 
-  void searchVoice(ai.pleos.assistant.ux.GleoSearchCommand command) {
-    if (!model.canWrite()) return;
+  boolean searchVoice(ai.pleos.assistant.ux.GleoSearchCommand command) {
+    if (!model.canWrite() || !model.navigationReady()) return false;
     adultCount = command.adults();
     childCount = command.children();
     adultValue.setText(Integer.toString(adultCount));
@@ -115,7 +95,12 @@ final class DestinationPanel {
     detail = -1;
     model.searchDestination(
         new DestinationController.Input(
-            destination, adultCount, childCount, highChair.isSelected(), stepFree.isSelected()));
+            model.navigationDestination(),
+            adultCount,
+            childCount,
+            highChair.isSelected(),
+            stepFree.isSelected()));
+    return true;
   }
 
   private void edit() {
@@ -192,7 +177,16 @@ final class DestinationPanel {
   void update() {
     DestinationController.View state = model.destinationView();
     boolean loading = java.util.Set.of("LOADING", "QUEUED", "RUNNING").contains(state.state());
-    search.setEnabled(model.canWrite() && !loading);
+    search.setEnabled(model.canWrite() && model.navigationReady() && !loading);
+    var navigation = model.navigationDestination();
+    navigationLabel.setText(
+        navigation == null
+            ? activity.getString(R.string.navigation_missing)
+            : activity.getString(
+                model.navigationReady()
+                    ? R.string.navigation_ready
+                    : R.string.navigation_unverified,
+                navigation.name()));
     search.setText(loading ? R.string.destination_searching : R.string.destination_search);
     for (View v : inputs) {
       v.setEnabled(model.canWrite());
@@ -218,7 +212,7 @@ final class DestinationPanel {
           results,
           activity.getString(
               R.string.destination_selection_summary,
-              activity.getResources().getStringArray(R.array.destination_mock_places)[destination],
+              model.navigationDestination().name(),
               adultCount,
               childCount),
           22);

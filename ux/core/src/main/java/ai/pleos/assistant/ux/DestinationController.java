@@ -15,11 +15,31 @@ import org.json.JSONObject;
 public final class DestinationController implements AutoCloseable {
   public static final String ROOT = "/experimental/destination-recommendations";
 
+  /** SDK-independent destination. Field validity alone never proves current-route association. */
+  public record Destination(
+      String name, double latitude, double longitude, boolean currentRouteVerified) {
+    public boolean validFields() {
+      return name != null
+          && !name.isBlank()
+          && name.length() <= 100
+          && Double.isFinite(latitude)
+          && latitude >= -90
+          && latitude <= 90
+          && Double.isFinite(longitude)
+          && longitude >= -180
+          && longitude <= 180;
+    }
+
+    public boolean usable() {
+      return validFields() && currentRouteVerified;
+    }
+  }
+
   public record Input(
-      int destination, int adults, int children, boolean highChair, boolean stepFree) {
+      Destination destination, int adults, int children, boolean highChair, boolean stepFree) {
     JSONObject body(String view, long generation) throws Exception {
-      if (destination < 0
-          || destination > 1
+      if (destination == null
+          || !destination.usable()
           || adults < 1
           || adults > 20
           || children < 0
@@ -34,9 +54,9 @@ public final class DestinationController implements AutoCloseable {
           .put(
               "destination",
               new JSONObject()
-                  .put("name", destination == 0 ? "가상 성수" : "가상 서울숲")
-                  .put("latitude", destination == 0 ? 37.544 : 37.545)
-                  .put("longitude", destination == 0 ? 127.055 : 127.043))
+                  .put("name", destination.name())
+                  .put("latitude", destination.latitude())
+                  .put("longitude", destination.longitude()))
           .put("party", new JSONObject().put("adults", adults).put("children", children))
           .put("maxWaitMinutes", 15)
           .put("requiredFeatures", features)

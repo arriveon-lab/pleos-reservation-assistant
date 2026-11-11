@@ -31,6 +31,7 @@ public final class ReservationActivity extends ComponentActivity {
   private boolean voiceInputOnly;
   private boolean voiceResumed;
   private boolean voiceOpen;
+  private NavigationDestinationAdapter navigation;
   private final android.os.Handler voiceHandler =
       new android.os.Handler(android.os.Looper.getMainLooper());
   private final Runnable voiceTimeout = () -> finishVoice(false);
@@ -93,6 +94,8 @@ public final class ReservationActivity extends ComponentActivity {
     super.onStart();
     model.observe(this::render);
     driving.start();
+    navigation = new NavigationDestinationAdapter(this, model::navigation);
+    navigation.start();
     render();
     model.run(MockRepository::connect);
   }
@@ -107,6 +110,8 @@ public final class ReservationActivity extends ComponentActivity {
     model.invalidatePreview("CLOSED");
     model.invalidateDestination("CLOSED");
     driving.stop();
+    if (navigation != null) navigation.close();
+    navigation = null;
     super.onStop();
   }
 
@@ -213,8 +218,7 @@ public final class ReservationActivity extends ComponentActivity {
     } else if (inputOnly) {
       reportVoice(destinationPanel.inputVoice(command), true);
     } else {
-      destinationPanel.searchVoice(command);
-      reportVoice(true, false);
+      reportVoice(destinationPanel.searchVoice(command), false);
     }
   }
 
