@@ -15,6 +15,7 @@
 
 | 문서 | 확인할 내용 | 상태 |
 | --- | --- | --- |
+| [UX 이슈·PR 통합 관계](UX_INTEGRATION_STATUS.md) | #5/#25/#26/#39 현재 잔여와 #27/#36/#44/#46 Git 포함 관계·통합 전 조건 | 문서/Git 점검, 병합 미실행 |
 | [목적지 MOCK 추천 화면](UX52_DESTINATION_MOCK.md) | #52/#53 초안 POST/GET·가변 후보·메모리 폐기·기기 증거 | 로컬 MOCK, 공동 인수 미완료 |
 | [Docker 서버·Pleos 인수](UX16_DOCKER_ACCEPTANCE.md) | #16 최신 서버4상태·인증·화면 수명·증거 | 앱 측 실행, 공동 결과 검토 대기 |
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
