@@ -182,6 +182,78 @@ class MockRepositoryTest {
     assertThrows(IllegalStateException.class, () -> repository.book("mock-1", true));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"ACCEPTED", "REJECTED", "UNKNOWN"})
+  void changeReceiptSurvivesRefreshAndRestart(String outcome) throws Exception {
+    Journal journal = new Journal();
+    Recording wire = new Recording(journal);
+    MockRepository repository = ready(journal, wire);
+    repository.search(2, 1, true);
+    prepareBooking(repository);
+    repository.book("mock-1", true);
+    repository.simulate("ACCEPTED");
+    String original = repository.snapshot().getJSONObject("reservation").getString("confirmedTime");
+    repository.change(true);
+    JSONObject change = repository.snapshot().getJSONObject("call");
+    repository.simulate(outcome);
+    repository.refresh();
+    MockRepository reopened = ready(journal, wire);
+    JSONObject state = reopened.snapshot();
+    assertEquals(change.getString("id"), state.getJSONObject("call").getString("id"));
+    assertEquals("CHANGE", state.getJSONObject("call").getString("purpose"));
+    assertEquals(outcome, state.getJSONObject("call").getString("status"));
+    JSONObject reservation = state.getJSONObject("reservation");
+    assertEquals(original, reservation.getString("originalRequestedTime"));
+    assertEquals(
+        "ACCEPTED".equals(outcome) ? change.getString("requestedTime") : original,
+        reservation.getString("confirmedTime"));
+    assertEquals(0, reservation.getInt("totalAdditionalCostKrw"));
+    assertEquals(!"UNKNOWN".equals(outcome), reservation.isNull("pendingChangeCallId"));
+    int writes = wire.writes.size();
+    assertThrows(IllegalStateException.class, () -> reopened.change(true));
+    assertEquals(writes, wire.writes.size());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"booking-time", "booking-cost", "change-time", "change-cost"})
+  void mismatchedAcceptanceStaysUnknown(String scenario) throws Exception {
+    MockRepository repository = searchable();
+    prepareBooking(repository);
+    repository.book("mock-1", true);
+    boolean change = scenario.startsWith("change");
+    if (change) {
+      repository.simulate("ACCEPTED");
+      repository.change(true);
+    }
+    JSONObject call = repository.snapshot().getJSONObject("call");
+    JSONObject event =
+        new JSONObject()
+            .put("eventId", java.util.UUID.randomUUID().toString())
+            .put("outcome", "ACCEPTED")
+            .put("observedAt", java.time.Instant.now().toString())
+            .put("explicitAcceptance", true)
+            .put(
+                "acceptedTime",
+                scenario.endsWith("time")
+                    ? java.time.Instant.parse(call.getString("requestedTime"))
+                        .plusSeconds(60)
+                        .toString()
+                    : call.getString("requestedTime"))
+            .put("additionalCostKrw", scenario.endsWith("cost") ? 100 : 0);
+    String path = "/mock/calls/" + call.getString("id") + "/outcomes";
+    JSONObject first = http(path, event, "fixture");
+    assertTrue(first.similar(http(path, event, "fixture")));
+    repository.refresh();
+    assertEquals("UNKNOWN", repository.snapshot().getJSONObject("call").getString("status"));
+    JSONObject reservation = repository.snapshot().getJSONObject("reservation");
+    assertEquals(change ? "CONFIRMED" : "UNKNOWN", reservation.getString("status"));
+    if (change) {
+      assertEquals(
+          reservation.getString("originalRequestedTime"), reservation.getString("confirmedTime"));
+      assertFalse(reservation.isNull("pendingChangeCallId"));
+    } else assertTrue(reservation.isNull("confirmedTime"));
+  }
+
   @Test
   void explicitApprovalAndBookableAreRequired() throws Exception {
     MockRepository repository = searchable();

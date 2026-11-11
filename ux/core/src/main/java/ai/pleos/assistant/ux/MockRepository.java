@@ -160,14 +160,22 @@ public final class MockRepository {
       if (!reservationId.equals(reservation.getString("id"))
           || !next.getString("searchId").equals(reservation.getString("searchId")))
         throw new IllegalStateException("RECOVERY_REFERENCE_MISMATCH");
-      boolean change = !reservation.isNull("pendingChangeCallId");
-      String callId = reservation.getString(change ? "pendingChangeCallId" : "bookingCallId");
+      // Keep the last verified change receipt after the server clears its pending reference.
+      boolean pendingChange = !reservation.isNull("pendingChangeCallId");
+      boolean change = pendingChange || next.has("lastChangeCallId");
+      String callId =
+          pendingChange
+              ? reservation.getString("pendingChangeCallId")
+              : change
+                  ? next.getString("lastChangeCallId")
+                  : reservation.getString("bookingCallId");
       JSONObject call = read("/calls/" + callId);
       if (!callId.equals(call.getString("id"))
           || !reservationId.equals(call.getString("reservationId"))
           || !next.getString("searchId").equals(call.getString("searchId"))
           || !(change ? "CHANGE" : "BOOKING").equals(call.getString("purpose")))
         throw new IllegalStateException("RECOVERY_REFERENCE_MISMATCH");
+      if (change) next.put("lastChangeCallId", callId);
       next.put("reservation", reservation).put("call", call);
     } else if (next.has("callId")) next.put("call", read("/calls/" + next.getString("callId")));
     persist(next);
@@ -184,7 +192,13 @@ public final class MockRepository {
     JSONObject durable = new JSONObject().put("tripId", source.getString("tripId"));
     for (String key :
         new String[] {
-          "searchId", "reservationId", "callId", "pending", "authBinding", "searchReconciliations"
+          "searchId",
+          "reservationId",
+          "callId",
+          "lastChangeCallId",
+          "pending",
+          "authBinding",
+          "searchReconciliations"
         }) if (source.has(key)) durable.put(key, source.get(key));
     journal.save(durable.toString());
   }
@@ -230,6 +244,11 @@ public final class MockRepository {
       state.remove("call");
     }
     if (!target.isEmpty()) state.put(target, result.getString("id"));
+    // Persist the response reference before GET: an operator may finish the change immediately.
+    if (pending.getString("path").endsWith("/changes")
+        && "reservationId".equals(target)
+        && !result.isNull("pendingChangeCallId"))
+      state.put("lastChangeCallId", result.getString("pendingChangeCallId"));
     state.remove("pending");
     try {
       persist();

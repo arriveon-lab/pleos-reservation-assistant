@@ -1,3 +1,7 @@
+## 2026-11-11 결과 대조 인계
+
+#40 zito outcome 인수안 대조 및 완료 CHANGE 참조/수락·거절 안내 보완. [상세](../docs/UX40_OUTCOME_REVIEW.md). verifyAll/UX116/MOCK smoke/별도 Pleos 화면 fixture PASS; 원 jointvalidation journal 불변. 서버 계약 변경 없음. 공동 인증분리 환경 인수, REJECTED 새 예약 UI, #4 일반 UNKNOWN 종료는 남음. #46 Draft 유지. 외부 전화/예약/유료 호출0.
+
 ## 2026-11-11 Gleo 이름/OPEN 후속
 
 APK label `어라이브온 · MOCK`, 스키마 invokeWord `어라이브온`, 무인수 OPEN_ARRIVEON 추가. 기존 destinationvalidation만 업데이트. OPEN 기기 검사/verifyAndroid PASS. 수정 후에도 실제 음성 앱 실행0/장소 오류. Gleo 프로세스만 재시작해 두 스키마 재로딩 확인, 추가 음성 결과는 아직 앱 실행 미확인. 추정으로 승인/서버 장애를 확정하거나 등록 DB/계정을 초기화하지 않는다. docs/GLEO_MOCK_SEARCH.md의 새 APK 해시와 검증 수준을 따른다.

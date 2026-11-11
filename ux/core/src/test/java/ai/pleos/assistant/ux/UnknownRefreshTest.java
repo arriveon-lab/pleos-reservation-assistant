@@ -89,7 +89,9 @@ class UnknownRefreshTest {
     var repo = f.ready();
     repo.refresh();
     assertEquals("UNKNOWN", repo.snapshot().getJSONObject("call").getString("status"));
-    assertTrue(new JSONObject(original).similar(new JSONObject(f.saved)));
+    JSONObject durable = new JSONObject(f.saved);
+    if (change) assertEquals("change", durable.remove("lastChangeCallId"));
+    assertTrue(new JSONObject(original).similar(durable));
     var reopened = f.ready();
     assertTrue(repo.snapshot().similar(reopened.snapshot()));
     assertEquals(0, f.writes);

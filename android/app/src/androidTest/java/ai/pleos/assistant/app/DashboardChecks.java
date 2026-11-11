@@ -96,7 +96,9 @@ final class DashboardChecks {
                   new JSONObject()
                       .put("status", status)
                       .put("originalRequestedTime", "2026-11-10T12:00:00Z")
-                      .put("confirmedTime", "2026-11-10T12:00:00Z")
+                      .put(
+                          "confirmedTime",
+                          "CONFIRMED".equals(status) ? "2026-11-10T12:00:00Z" : JSONObject.NULL)
                       .put("totalAdditionalCostKrw", 0);
               state
                   .put("reservation", reservation)
@@ -171,6 +173,35 @@ final class DashboardChecks {
       Thread.sleep(300);
       main(runner, () -> VehicleUiChecks.layout(activity.getWindow().getDecorView()));
       capture(runner, "change-unknown");
+      for (String outcome : new String[] {"ACCEPTED", "REJECTED"}) {
+        main(
+            runner,
+            () -> {
+              JSONObject state = new JSONObject(snapshot.get(model).toString());
+              state
+                  .getJSONObject("reservation")
+                  .put("pendingChangeCallId", JSONObject.NULL)
+                  .put(
+                      "confirmedTime",
+                      "ACCEPTED".equals(outcome) ? "2026-11-10T12:15:00Z" : "2026-11-10T12:00:00Z");
+              state.getJSONObject("call").put("status", outcome);
+              snapshot.set(model, state);
+              render(activity);
+              View root = activity.getWindow().getDecorView();
+              int hint =
+                  "ACCEPTED".equals(outcome)
+                      ? R.string.home_action_change_accepted
+                      : R.string.home_action_change_rejected;
+              if (!contains(root, activity.getString(hint))
+                  || contains(root, activity.getString(R.string.home_action_confirmed)))
+                throw new AssertionError("Completed change hidden by booking: " + outcome);
+            });
+        runner.waitForIdleSync();
+        Thread.sleep(300);
+        main(runner, () -> VehicleUiChecks.layout(activity.getWindow().getDecorView()));
+        capture(runner, "change-" + outcome.toLowerCase(java.util.Locale.ROOT));
+      }
+
       main(
           runner,
           () -> {

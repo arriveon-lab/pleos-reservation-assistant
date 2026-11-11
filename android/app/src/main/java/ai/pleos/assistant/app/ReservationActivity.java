@@ -605,6 +605,14 @@ public final class ReservationActivity extends ComponentActivity {
     JSONObject reservation = state.optJSONObject("reservation");
     if (reservation != null) {
       if (!reservation.isNull("pendingChangeCallId")) return R.string.home_action_unknown;
+      if ("CONFIRMED".equals(reservation.optString("status"))
+          && call != null
+          && "CHANGE".equals(call.optString("purpose"))) {
+        if ("ACCEPTED".equals(call.optString("status")))
+          return R.string.home_action_change_accepted;
+        if ("REJECTED".equals(call.optString("status")))
+          return R.string.home_action_change_rejected;
+      }
       return switch (reservation.optString("status")) {
         case "CONFIRMED" -> R.string.home_action_confirmed;
         case "PENDING" -> R.string.home_action_wait;

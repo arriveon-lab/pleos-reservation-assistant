@@ -1,5 +1,9 @@
 # 구현·검증 현황
 
+## 2026-11-11 #40 outcome 계약 대조와 변경 결과 보존
+
+서버 인수안과 앱을 대조해 완료된 CHANGE가 BOOKING 통화로 덮이는 문제를 수정했다. 검증된 변경 참조를 journal에 보존하고 수락/거절별 다음 행동을 표시한다. format/verifyAll·UX116개·MOCK smoke PASS, Pleos 별도 APK의 결과 화면 fixture PASS. 원 예약 journal 해시 동일. 시간/비용 불일치와 동일 이벤트 재전달 HTTP 검사 추가. 초기 기기 검사 렌더 대기 실패와 재검사, APK/증거는 [결과 대조 기록](UX40_OUTCOME_REVIEW.md)에 기록했다. 공동 운영자 인수, 예약 거절 후 새 예약 UI, 일반 UNKNOWN 종료는 미완료이며 #40 OPEN/PR #46 Draft 유지.
+
 ## 2026-11-11 Gleo 앱 이름·단순 열기 보완
 
 APK label을 어라이브온 · MOCK으로 맞추고 인원 없는 OPEN_ARRIVEON을 추가했다. verifyAndroid와 OPEN 무검색/journal 불변·기존 GLEO 기기 검사 PASS. Gleo 재시작 후 새 이름과 두 스키마 로딩 관측. 음성 앱 실행은 여전히 미확인이고 수정 직후 같은 장소 오류/Activity 실행0을 확인했다. 스키마 읽힘을 음성 실행/공식 승인 완료로 표시하지 않는다. 상세는 [Gleo 기록](GLEO_MOCK_SEARCH.md). 직전 d5021bf 원격 CI3개는 PASS이며 이번 수정 head의 CI와 구분한다.
