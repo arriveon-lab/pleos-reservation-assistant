@@ -16,7 +16,7 @@
 ## 지금 실행할 수 있는 흐름
 
 1. **제품 앱과 맞춰볼 추천 API**: Bearer 인증 후 `POST /api/experimental/destination-recommendations`, `GET /{id}`로 폴링한다. 기존 `viewId`, `generation`, `destination`, `party`, `maxWaitMinutes`, `requiredFeatures`, `preferredCuisines`, `userRequest`를 유지한다. `userRequest`의 음식 종류는 로컬에서 추출하고 외부 모델에는 정규화한 종류만 전달한다. 같은 화면의 세대 변경·close·만료 결과는 폐기한다.
-2. **주소 입력 웹 시험**: `POST /api/experimental/destination-recommendations/web`은 좌표 없이 `destination` 문자열, `requiredNeeds`, 선택적 `venueCategory`, `foodPreferenceText`를 받는다. 이것은 앱의 기존 목적지 POST와 다른 입력 계약이다. Python 시험 UI가 이 경로를 호출한다.
+2. **주소 입력 웹 시험**: Python 시험 UI는 `POST /api/experimental/destination-recommendations/web`에 도로명주소, 필수 조건, 선택적 업종·음식 취향·`arrivalAt`을 전달한다. `arrivalAt`은 한국 현지 시각의 예약 희망 날짜와 시간이다. 차량 앱이 쓰는 목적지 POST의 ETA 계약은 실기에서 검증한다.
 3. **오프라인 예약 API 통합**: 가상 공공 catalog 결과에만 `POST /{id}/phone-reservations`가 가능하다. 후보 선택·승인 → 조건 확인 → 예약 가능 확인 → 예약 요청 → 수락/거절/UNKNOWN을 검증한다. `nextCandidate`는 명시적 거절 때만 제시하며, 다음 POST에는 새 승인·새 멱등 키·직전 `previousAttemptId`가 필요하다. UNKNOWN·통신 장애로 자동 재발신하지 않는다.
 4. **실제 음성 시험**: 별도 Python 시험 화면에서 웹 후보 선택 → 시험 예약 생성 → 승인 → 등록/입력한 시험 휴대폰으로 발신한다. 카드에 표시한 실제 식당으로 전화한 것이 아니다. SQLite에 저장한 결과를 같은 세션이 조회한다. 이 경로는 제품 Spring 예약 DB 및 앱 인증 주체와 아직 통합되지 않았다.
 
@@ -28,9 +28,9 @@
 | --- | --- | --- |
 | 후보 | `webRecommendations[].ordinal/name/address/identitySourceUrl` | 순번은 해당 작업 안에서만 유효. 검증된 지점 ID·연락처를 서버가 별도 결합 |
 | 업종·음식 | `venueCategory`, `preferredCuisines`, `businessDetails.CUISINE` | 식당/카페를 구분하고 인용된 음식 근거로 필터링. 모호한 취향은 재질문 |
-| 조건 | `assessments`, `remainingNeeds`, `reviewSignals` | UNKNOWN/CONFLICT 보존. 후기를 매장 확인으로 승격하지 않음 |
-| 추천 순위 | 충족 근거 → 후기 주의/상충 적음 → 긍정 조건 많음 | 별점·전체 리뷰 수는 현재 미사용. 일반 웹 결과의 거리는 정밀 계산하지 않음 |
-| 매장 안내 | `businessDetails.OPENING_HOURS/BREAK_TIME`, PARKING 근거 | 출처·관측/만료 시각과 함께 표시. 도착 시각 영업 여부는 별도 판단 |
+| 조건 | `assessments`, `remainingQuestions`, `reviewSignals` | UNKNOWN/CONFLICT 보존. 확인이 필요한 조건을 표시 |
+| 추천 순위 | 충족 근거 → 후기 주의·상충 적음 → 긍정 조건 많음 → 확인된 방문자 리뷰 수 | 선택형 도로명주소 검색에서 출처와 집계일을 확인한 네이버 방문자 리뷰 수를 사용 |
+| 매장 안내 | `businessDetails.OPENING_HOURS/BREAK_TIME/LAST_ORDER`, PARKING 근거 | 출처·관측/만료 시각 표시. 웹 시험에서는 방문 시간에 맞춰 매일 적용되는 일정으로 확인된 후보를 거름 |
 | 네이버 | `naverPlaceUrl` 및 공개 출처 | 범용 자동 플레이스/리뷰 수집 아님. 구미 30일·성수 7일 한정 보완 자료는 원 관측 시각 유지 |
 | 결과 | 전화 `CONFIRMED/DECLINED/UNKNOWN/FAILED`, 통화/예약 참조 | 제품 정규화 결과와 매핑하고 저장된 결과만 안내. 통화 종료를 예약 확정으로 표시하지 않음 |
 

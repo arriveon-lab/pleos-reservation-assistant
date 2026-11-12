@@ -42,11 +42,20 @@ class DestinationWebApprovalConfiguration {
       @Value("${app.destination-recommendations.web.runtime-max-output-tokens:0}")
           int runtimeOutputLimit,
       @Value("${app.destination-recommendations.web.runtime-max-calls-per-startup:0}")
-          int runtimeMaxCalls) {
-    if (System.getenv("OPENAI_API_KEY") == null || System.getenv("OPENAI_API_KEY").isBlank())
+          int runtimeMaxCalls,
+      @Value("${app.destination-recommendations.web.place-lookup-port:0}") int lookupPort,
+      @Value("${app.destination-recommendations.web.place-lookup-fallback:false}")
+          boolean lookupFallback,
+      @Value("${app.destination-recommendations.web.place-lookup-enrich:false}")
+          boolean lookupEnrich) {
+    if ((lookupPort != 0 && !runtimeEnabled)
+        || ((lookupFallback || lookupEnrich) && lookupPort == 0))
+      throw new IllegalStateException("Place lookup requires runtime mode and a configured port");
+    boolean useGpt = lookupPort == 0 || lookupFallback || lookupEnrich;
+    String key = System.getenv("OPENAI_API_KEY");
+    if (useGpt && (key == null || key.isBlank()))
       throw new IllegalStateException("Approved web credential required");
-    var adapter =
-        new GptWebRecommendationAdapter(clock, transport, () -> System.getenv("OPENAI_API_KEY"));
+    var adapter = new GptWebRecommendationAdapter(clock, transport, () -> key);
     if (runtimeEnabled) {
       if (!view.isBlank()
           || !area.isBlank()
@@ -55,9 +64,20 @@ class DestinationWebApprovalConfiguration {
           || !until.isBlank()
           || generation != 0
           || outputLimit != 0) throw new IllegalStateException("Conflicting web access modes");
-      var web =
-          new RuntimeWebRecommendationGateway(
-              clock, adapter, runtimeModel, runtimeOutputLimit, runtimeMaxCalls);
+      RuntimeWebRecommendationGateway web =
+          useGpt
+              ? new RuntimeWebRecommendationGateway(
+                  clock, adapter, runtimeModel, runtimeOutputLimit, runtimeMaxCalls)
+              : null;
+      if (lookupPort != 0)
+        return new PlaceLookupGateway(
+            clock,
+            lookupPort,
+            System.getenv("PLACE_LOOKUP_TOKEN"),
+            web,
+            lookupFallback,
+            lookupEnrich,
+            gumiCatalogEnabled);
       if (!gumiCatalogEnabled) return web;
       return (request, deadline, current) -> {
         if (current.getAsBoolean() && clock.instant().isBefore(deadline)) {

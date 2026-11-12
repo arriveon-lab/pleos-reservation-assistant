@@ -642,7 +642,9 @@
           "CUISINE": { "$ref": "#/components/schemas/Evidence" },
           "MENU": { "$ref": "#/components/schemas/Evidence" },
           "OPENING_HOURS": { "$ref": "#/components/schemas/Evidence" },
-          "BREAK_TIME": { "$ref": "#/components/schemas/Evidence" }
+          "BREAK_TIME": { "$ref": "#/components/schemas/Evidence" },
+          "LAST_ORDER": { "$ref": "#/components/schemas/Evidence" },
+          "REVIEW_COUNT": { "$ref": "#/components/schemas/Evidence", "description": "Sourced Naver visitor-review count and snapshot timestamp. Comparable figures break ties after required needs and related reviews." }
         }
       },
       "Candidate": {

@@ -61,6 +61,11 @@
                     "maxLength": 160,
                     "description": "Optional food intent phrase, e.g. 양식 먹고 싶어. Sent only to the local recommendation service, which extracts supported cuisine labels before web search. Blank means no cuisine restriction."
                   },
+                  "arrivalAt": {
+                    "type": "string",
+                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$",
+                    "description": "Optional intended visit time in Asia/Seoul, forwarded to the recommendation service."
+                  },
                   "venueCategory": {
                     "type": "string",
                     "enum": [
@@ -969,6 +974,144 @@
                           "type": "null"
                         }
                       }
+                    },
+                    "LAST_ORDER": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "url",
+                        "title",
+                        "sourceType",
+                        "observedAt",
+                        "sourceUpdatedAt",
+                        "validUntil",
+                        "condition",
+                        "certainty",
+                        "scope",
+                        "appliesAt"
+                      ],
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "pattern": "^https://"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "sourceType": {
+                          "type": "string",
+                          "enum": [
+                            "MERCHANT_PAGE",
+                            "VISITOR_REVIEW",
+                            "OTHER"
+                          ]
+                        },
+                        "observedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sourceUpdatedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "condition": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "certainty": {
+                          "const": "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION"
+                        },
+                        "scope": {
+                          "const": "GENERAL"
+                        },
+                        "appliesAt": {
+                          "type": "null"
+                        }
+                      }
+                    },
+                    "REVIEW_COUNT": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "url",
+                        "title",
+                        "sourceType",
+                        "observedAt",
+                        "sourceUpdatedAt",
+                        "validUntil",
+                        "condition",
+                        "certainty",
+                        "scope",
+                        "appliesAt"
+                      ],
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "pattern": "^https://"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "sourceType": {
+                          "type": "string",
+                          "enum": [
+                            "MERCHANT_PAGE",
+                            "VISITOR_REVIEW",
+                            "OTHER"
+                          ]
+                        },
+                        "observedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sourceUpdatedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "condition": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "certainty": {
+                          "const": "REPORTED_WEB_NOT_MERCHANT_CONFIRMATION"
+                        },
+                        "scope": {
+                          "const": "GENERAL"
+                        },
+                        "appliesAt": {
+                          "type": "null"
+                        }
+                      }
                     }
                   }
                 },
@@ -1089,7 +1232,7 @@
                 }
               }
             },
-            "description": "Up to three WEB_SEARCH candidates ranked by supported required needs, then fewer review cautions and more positively reviewed needs. Ties preserve provider order. Includes cited branch and business details, review summaries and per-need visitor signals; review evidence is not merchant confirmation."
+            "description": "Up to three WEB_SEARCH candidates ranked by supported required needs, fewer review cautions, more positively reviewed needs, then comparable sourced visitor-review count if available. Remaining ties preserve candidate order."
           },
           "matches": {
             "type": "null"

@@ -37,7 +37,8 @@ class DestinationRecommendationController {
       String destination,
       Set<WebRecommendation.Need> requiredNeeds,
       WebRecommendation.VenueCategory venueCategory,
-      String foodPreferenceText) {}
+      String foodPreferenceText,
+      java.time.LocalDateTime arrivalAt) {}
 
   record Polled(
       UUID id,
@@ -141,7 +142,8 @@ class DestinationRecommendationController {
               needs,
               false,
               input.venueCategory(),
-              cuisines);
+              cuisines,
+              input.arrivalAt());
       UUID id = service.startWeb(actor.subject(), request);
       return new Started(id, service.poll(actor.subject(), id).orElseThrow().state());
     } catch (IllegalArgumentException error) {

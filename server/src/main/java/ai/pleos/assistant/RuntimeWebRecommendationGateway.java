@@ -2,11 +2,14 @@ package ai.pleos.assistant;
 
 import static ai.pleos.assistant.WebRecommendation.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 /**
  * Operator-enabled paid search for authenticated app requests. The process-wide cap limits calls
@@ -39,6 +42,27 @@ final class RuntimeWebRecommendationGateway implements DestinationRecommendation
 
   @Override
   public Result search(Request request, Instant deadline, BooleanSupplier current) {
+    return search(request, deadline, current, null);
+  }
+
+  Result search(Request request, Instant deadline, BooleanSupplier current, Result nearby) {
+    return search(request, deadline, current, nearby, null);
+  }
+
+  Result discover(
+      Request request,
+      Instant deadline,
+      BooleanSupplier current,
+      Function<JsonNode, Set<String>> verifyBranches) {
+    return search(request, deadline, current, null, verifyBranches);
+  }
+
+  private Result search(
+      Request request,
+      Instant deadline,
+      BooleanSupplier current,
+      Result nearby,
+      Function<JsonNode, Set<String>> verifyBranches) {
     Objects.requireNonNull(request);
     Objects.requireNonNull(deadline);
     Objects.requireNonNull(current);
@@ -53,7 +77,7 @@ final class RuntimeWebRecommendationGateway implements DestinationRecommendation
     var permit =
         new GptWebRecommendationAdapter.Permit(
             request, model, now.plusSeconds(31), maxOutputTokens);
-    return adapter.search(request, permit, deadline, current);
+    return adapter.search(request, permit, deadline, current, nearby, verifyBranches);
   }
 
   int consumedCalls() {

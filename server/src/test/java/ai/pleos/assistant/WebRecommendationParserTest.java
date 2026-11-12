@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 class WebRecommendationParserTest {
   static final Instant NOW = Instant.parse("2026-11-10T00:00:00Z");
@@ -41,6 +44,132 @@ class WebRecommendationParserTest {
 
   ObjectNode report(ObjectNode content, int candidate, int report) {
     return (ObjectNode) content.at("/candidates/" + candidate + "/reports/" + report);
+  }
+
+  @Test
+  @ExtendWith(OutputCaptureExtension.class)
+  void addressEnrichmentDistinguishesMissingFactsFromRejectedEvidence(CapturedOutput output)
+      throws Exception {
+    var root = response();
+    var body = content(root);
+    var candidate = ((ObjectNode) body.path("candidates").get(0)).deepCopy();
+    candidate.putArray("reports");
+    var nearby =
+        List.of(
+            new Candidate(
+                1,
+                candidate.path("name").asText(),
+                candidate.path("address").asText(),
+                URI.create(candidate.path("identitySourceUrl").asText()),
+                Fit.NEEDS_CONFIRMATION,
+                List.of(),
+                List.of(),
+                false,
+                false,
+                false));
+    body.putArray("candidates").add(candidate);
+    var message = (ObjectNode) root.at("/output/1/content/0");
+    message.put("text", body.toString());
+    parser.parse(
+        root.toString(), request, Mode.WEB_SEARCH, NOW, NOW.plusSeconds(300), List.of(), nearby);
+    assertThat(output.getOut())
+        .contains(
+            "matched=1, received={OPENING_HOURS=0, BREAK_TIME=0, PARKING=0}, accepted={OPENING_HOURS=0, BREAK_TIME=0, PARKING=0}");
+
+    var details = candidate.putArray("businessDetails");
+    details
+        .addObject()
+        .put("kind", "OPENING_HOURS")
+        .put("condition", "11:00–21:00")
+        .put("sourceUrl", "https://merchant.example/uncited")
+        .put("sourceType", "MERCHANT_PAGE")
+        .putNull("sourceUpdatedAt");
+    details.add(
+        ((ObjectNode) details.get(0))
+            .deepCopy()
+            .put("kind", "BREAK_TIME")
+            .put("condition", "15:00–17:00")
+            .put("sourceUrl", candidate.path("identitySourceUrl").asText()));
+    message.put("text", body.toString());
+    var result =
+        parser.parse(
+            root.toString(),
+            request,
+            Mode.WEB_SEARCH,
+            NOW,
+            NOW.plusSeconds(300),
+            List.of(),
+            nearby);
+    assertThat(result.candidates().getFirst().businessDetails())
+        .containsOnlyKeys(BusinessDetailKind.BREAK_TIME);
+    assertThat(output.getOut())
+        .contains(
+            "matched=1, received={OPENING_HOURS=1, BREAK_TIME=1, PARKING=0}, accepted={OPENING_HOURS=0, BREAK_TIME=1, PARKING=0}");
+    assertThat(output.getOut()).doesNotContain("https://merchant.example/uncited");
+  }
+
+  @Test
+  void addressResearchCannotAddBranchesAndCanExcludeAnExplicitParkingFailure() throws Exception {
+    var root = response();
+    var body = content(root);
+    var lookup = json.createObjectNode();
+    lookup.put("observedAt", NOW.toString());
+    var sources = lookup.putArray("sources");
+    var located = lookup.putArray("candidates");
+    for (int i = 0; i < 2; i++) {
+      var item = ((ObjectNode) body.path("candidates").get(i)).deepCopy();
+      item.put("venueCategory", "RESTAURANT");
+      item.putArray("reports");
+      item.remove("reviews");
+      sources
+          .addObject()
+          .put("url", item.path("identitySourceUrl").asText())
+          .put("title", "가상 상가정보");
+      located.add(item);
+    }
+    var nearby = parser.parsePlaceLookup(lookup.toString(), request, NOW);
+    assertThat(nearby.candidates()).hasSize(2);
+    var first = (ObjectNode) body.path("candidates").get(0);
+    first
+        .putArray("businessDetails")
+        .addObject()
+        .put("kind", "OPENING_HOURS")
+        .put("condition", "11:00–21:00")
+        .put("sourceUrl", first.path("identitySourceUrl").asText())
+        .put("sourceType", "MERCHANT_PAGE")
+        .putNull("sourceUpdatedAt");
+    report(body, 1, Need.PARKING.ordinal()).put("answer", "NO");
+    ((ObjectNode) root.at("/output/1/content/0")).put("text", body.toString());
+    var result =
+        parser.parse(
+            root.toString(),
+            request,
+            Mode.WEB_SEARCH,
+            NOW,
+            nearby.validUntil(),
+            List.of(),
+            nearby.candidates());
+    assertThat(result.candidates())
+        .extracting(Candidate::name)
+        .containsExactly(first.path("name").asText());
+    assertThat(result.candidates().getFirst().businessDetails())
+        .containsKey(BusinessDetailKind.OPENING_HOURS);
+    assertThat(result.excludedCandidates()).isEqualTo(1);
+
+    // An answer from the same street address with a different trade name is not a match.
+    ((ArrayNode) body.path("candidates")).removeAll().add(first.deepCopy().put("name", "다른 가상 지점"));
+    ((ObjectNode) root.at("/output/1/content/0")).put("text", body.toString());
+    var mismatched =
+        parser.parse(
+            root.toString(),
+            request,
+            Mode.WEB_SEARCH,
+            NOW,
+            nearby.validUntil(),
+            List.of(),
+            nearby.candidates());
+    assertThat(mismatched.state()).isEqualTo(State.FAILED);
+    assertThat(mismatched.failureReason()).isEqualTo(FailureReason.UNMATCHED_IDENTITY_SOURCE);
   }
 
   @Test

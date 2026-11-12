@@ -44,7 +44,9 @@ public final class WebRecommendation {
     CUISINE,
     MENU,
     OPENING_HOURS,
-    BREAK_TIME
+    BREAK_TIME,
+    LAST_ORDER,
+    REVIEW_COUNT
   }
 
   public enum SourceType {
@@ -117,7 +119,27 @@ public final class WebRecommendation {
       @com.fasterxml.jackson.annotation.JsonProperty(required = true)
           boolean personalizationConsent,
       @JsonIgnore VenueCategory venueCategory,
-      @JsonIgnore Set<String> preferredCuisines) {
+      @JsonIgnore Set<String> preferredCuisines,
+      @JsonIgnore java.time.LocalDateTime arrivalAt) {
+    public Request(
+        UUID viewId,
+        long generation,
+        String area,
+        Set<Need> requiredNeeds,
+        boolean personalizationConsent,
+        VenueCategory venueCategory,
+        Set<String> preferredCuisines) {
+      this(
+          viewId,
+          generation,
+          area,
+          requiredNeeds,
+          personalizationConsent,
+          venueCategory,
+          preferredCuisines,
+          null);
+    }
+
     public Request(
         UUID viewId,
         long generation,
@@ -389,6 +411,11 @@ public final class WebRecommendation {
       return reviewSignals.stream().filter(signal -> signal.verdict() == Verdict.YES).count();
     }
 
+    private int visitorReviewCount() {
+      var evidence = businessDetails.get(BusinessDetailKind.REVIEW_COUNT);
+      return evidence == null ? -1 : WebRecommendation.visitorReviewCount(evidence.condition());
+    }
+
     @Override
     public String toString() {
       return "WebCandidate[content omitted]";
@@ -447,12 +474,22 @@ public final class WebRecommendation {
                 Comparator.comparingInt(
                         (Candidate candidate) -> candidate.remainingQuestions().size())
                     .thenComparingLong(Candidate::reviewCautions)
-                    .thenComparing(Comparator.comparingLong(Candidate::reviewSupport).reversed()))
+                    .thenComparing(Comparator.comparingLong(Candidate::reviewSupport).reversed())
+                    .thenComparing(
+                        Comparator.comparingInt(Candidate::visitorReviewCount).reversed()))
             .limit(3)
             .toList();
     var ranked = new ArrayList<Candidate>();
     for (Candidate candidate : ordered) ranked.add(candidate.withOrdinal(ranked.size() + 1));
     return List.copyOf(ranked);
+  }
+
+  private static final java.util.regex.Pattern NAVER_VISITOR_COUNT =
+      java.util.regex.Pattern.compile("네이버 방문자 리뷰 ([1-9][0-9]{0,7})개");
+
+  static int visitorReviewCount(String condition) {
+    var match = NAVER_VISITOR_COUNT.matcher(condition);
+    return match.matches() ? Integer.parseInt(match.group(1)) : -1;
   }
 
   static Result empty(Mode mode, State state) {

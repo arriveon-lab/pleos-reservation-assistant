@@ -1,0 +1,84 @@
+[
+  {
+    "name": "비채나",
+    "address": "서울특별시 송파구 올림픽로 300",
+    "observedAt": "2026-11-12T00:02:00Z",
+    "validUntil": "2026-11-19T00:02:00Z",
+    "facts": {
+      "OPENING_HOURS": {
+        "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/bicena",
+        "title": "미쉐린 가이드 비채나",
+        "sourceType": "OTHER",
+        "condition": "매일 점심 11:30–14:30, 저녁 18:00–22:00"
+      },
+      "BREAK_TIME": {
+        "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/bicena",
+        "title": "미쉐린 가이드 비채나",
+        "sourceType": "OTHER",
+        "condition": "14:30–18:00 (점심·저녁 영업시간 사이)"
+      },
+      "PARKING": {
+        "url": "https://app.lottehotel.com/seoul-signiel/ko/about/faq",
+        "title": "시그니엘 서울 주차 안내",
+        "sourceType": "MERCHANT_PAGE",
+        "answer": "YES",
+        "condition": "롯데월드타워 주차장 이용 가능. 호텔 안내 기준 중식 3시간, 석식 4시간 무료"
+      }
+    }
+  },
+  {
+    "name": "진가와잠실롯데월드몰점",
+    "address": "서울특별시 송파구 올림픽로 300",
+    "observedAt": "2026-11-12T00:02:00Z",
+    "validUntil": "2026-11-19T00:02:00Z",
+    "facts": {
+      "OPENING_HOURS": {
+        "url": "https://www.next-dining.com/brands/jinkawa",
+        "title": "진가와 운영사 잠실롯데월드몰점 안내",
+        "sourceType": "MERCHANT_PAGE",
+        "condition": "매일 10:30–22:00"
+      },
+      "BREAK_TIME": {
+        "url": "https://www.next-dining.com/brands/jinkawa",
+        "title": "진가와 운영사 잠실롯데월드몰점 안내",
+        "sourceType": "MERCHANT_PAGE",
+        "condition": "매일 15:00–17:00"
+      },
+      "PARKING": {
+        "url": "https://www.lotteshopping.com/store/main?cstrCd=0002&cstrFlrCd=03&cstrTownCd=C00401&store_code=0400",
+        "title": "롯데 공식 월드몰 주차 안내",
+        "sourceType": "MERCHANT_PAGE",
+        "answer": "YES",
+        "condition": "롯데월드몰 공용 유료 주차장 이용 가능. 매장 할인은 별도 확인"
+      }
+    }
+  },
+  {
+    "name": "해목",
+    "aliases": ["해목 롯데월드몰점"],
+    "address": "서울특별시 송파구 올림픽로 300",
+    "observedAt": "2026-11-12T00:02:00Z",
+    "validUntil": "2026-11-19T00:02:00Z",
+    "facts": {
+      "OPENING_HOURS": {
+        "url": "https://www.tabling.co.kr/restaurant/7170",
+        "title": "해목 롯데월드몰점 테이블링 매장 안내",
+        "sourceType": "MERCHANT_PAGE",
+        "condition": "매일 10:30–22:00"
+      },
+      "BREAK_TIME": {
+        "url": "https://www.tabling.co.kr/restaurant/7170",
+        "title": "해목 롯데월드몰점 테이블링 매장 안내",
+        "sourceType": "MERCHANT_PAGE",
+        "condition": "브레이크타임 없음"
+      },
+      "PARKING": {
+        "url": "https://www.lotteshopping.com/store/main?cstrCd=0002&cstrFlrCd=03&cstrTownCd=C00401&store_code=0400",
+        "title": "롯데 공식 월드몰 주차 안내",
+        "sourceType": "MERCHANT_PAGE",
+        "answer": "YES",
+        "condition": "롯데월드몰 공용 유료 주차장 이용 가능. 매장 할인은 별도 확인"
+      }
+    }
+  }
+]
