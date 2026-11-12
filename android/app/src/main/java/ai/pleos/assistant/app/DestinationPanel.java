@@ -17,7 +17,7 @@ final class DestinationPanel {
   private final Button highChair, stepFree;
   private final Button search, navigationRetry, demoConfirm;
   private final List<View> inputs = new ArrayList<>();
-  private final TextView navigationLabel;
+  private final TextView navigationLabel, stageLabel;
   private final MockPhonePanel phonePanel;
   private final boolean wide;
   private int adultCount = 2, childCount = 1, detail = -1;
@@ -38,18 +38,18 @@ final class DestinationPanel {
     view.addView(root);
     LinearLayout header = row();
     root.addView(header);
-    TextView title = text(header, activity.getString(R.string.destination_title), 32);
+    TextView title = text(header, activity.getString(R.string.final_brand), 32);
     title.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
     button(header, R.string.destination_exit, false, model::closeDestination);
     text(
         root,
         activity.getString(
-            BuildConfig.REAL_PLACE_DEMO
-                ? R.string.real_place_notice
-                : R.string.destination_short_notice),
+            BuildConfig.REAL_PLACE_DEMO ? R.string.real_place_notice : R.string.final_mock_badge),
         22);
+    stageLabel = text(root, activity.getString(R.string.final_steps), 20);
     form = column();
     root.addView(form);
+    text(form, activity.getString(R.string.final_input_title), 36);
     LinearLayout conditions = wide ? row() : column();
     form.addView(conditions);
     LinearLayout people = VehicleUi.card(activity);
@@ -99,7 +99,7 @@ final class DestinationPanel {
     results = column();
     root.addView(results);
     phonePanel = new MockPhonePanel(activity, model);
-    root.addView(phonePanel.view, 2);
+    root.addView(phonePanel.view);
   }
 
   boolean inputVoice(ai.pleos.assistant.ux.GleoSearchCommand command) {
@@ -202,6 +202,13 @@ final class DestinationPanel {
 
   void update() {
     phonePanel.update();
+    stageLabel.setText(
+        activity.getString(
+            model.phone != null && model.phone.hasRequest()
+                ? R.string.final_result_step
+                : "RESULTS".equals(model.destinationView().state())
+                    ? R.string.final_candidates_step
+                    : R.string.final_steps));
     if (BuildConfig.MOCK_PHONE_DEMO
         && model.phone != null
         && model.phone.hasRequest()
@@ -329,7 +336,8 @@ final class DestinationPanel {
             JSONObject c = state.candidates().getJSONObject(i);
             LinearLayout card = VehicleUi.card(activity);
             addCard(cards, card, wide);
-            text(card, c.getString("name"), 28);
+            text(card, activity.getString(R.string.final_candidate_number, i + 1), 20);
+            text(card, c.getString("name"), 30);
             text(card, c.getString("address"), 22);
             JSONArray assessments = c.getJSONArray("assessments");
             for (int j = 0; j < assessments.length(); j++) {
@@ -343,7 +351,7 @@ final class DestinationPanel {
             List<String> missing = new ArrayList<>();
             for (int q = 0; q < questions.length(); q++)
               missing.add(needLabel(questions.getString(q)));
-            if (!missing.isEmpty())
+            if (assessments.length() == 0 && !missing.isEmpty())
               text(
                   card,
                   activity.getString(R.string.destination_missing, String.join(" · ", missing)),

@@ -25,7 +25,10 @@ android {
             providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean().toString(),
         )
         if (providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean()) {
-            applicationId = "ai.pleos.assistant.mock.ec2validation"
+            applicationId =
+                if (providers.gradleProperty("mockUiValidation").orElse("false").get().toBoolean())
+                    "ai.pleos.assistant.mock.uivalidation"
+                else "ai.pleos.assistant.mock.ec2validation"
         }
         buildConfigField(
             "boolean",

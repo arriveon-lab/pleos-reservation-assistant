@@ -223,3 +223,7 @@ APK SHA256: `4859c51dd836c89d40eb70409053e273f0c45b2717fe7e42abbd382c80a705ff`.
 후속 수동 경로 보완: EC2 MOCK 빌드에 `가상 서울숲으로 연습` 버튼을 추가했다. 선택 시 SDK 리스너를 닫고 가상 목적지로 입력을 설정하며, 기존 명시 확인 뒤 검색한다. 실제 내비 목적지는 변경하지 않는다. 기본/실제조회 빌드에는 노출하지 않으며 진행·보관 중 전화 요청은 덮어쓰지 않는다. 기존 예약이 있는 설치는 결과 조회를 유지한다. 재시작/복귀 시 내비를 다시 읽으므로 가상 목적지는 재선택한다. PHONE_REPEAT/UNKNOWN도 reflection 목적지 주입 대신 이 제품 버튼을 사용하도록 변경했다.
 
 후속 최종 APK `d655aa56b48a1b198d8d35ee0b3a5ecf7387f6283717aaccf832f62b20ea076d`: format/verifyAll/test APK와 실제 버튼 경로 PHONE_UNKNOWN/PHONE_REPEAT PASS, 기존 journal 동일. 위 기기 화면·로그를 이 최종 실행 증거로 갱신했다. 직전 e746d88 CI4개 PASS(run43171189193/naming43171191505); 후속 커밋 CI는 별도 확인한다.
+
+## 2026-11-12 최종 UI Android 적용·영속 복구
+
+단계별 UI·큰 승인창·결과 계층·대화 상세·주야간 색상을 적용하고 전용 설치에서 실제 SharedPreferences로 새 예약을 저장했다. 앱 업데이트/강제 종료 뒤 같은 attemptId·대화와 서버 GET 성공(신규 POST0)을 확인했다. 야간840dp 승인창 잘림을 수정하고 버튼 앱 경계 검사를 통과했다. 기존 EC2 설치도 데이터 보존 업데이트 및 기존 예약 GET 복구 PASS, 기존3설치 journal 동일. [세부 검증](UX56_FINAL_UI_VALIDATION.md). 실제 전화·실예약·외부 추천0, #56 OPEN/PR Draft 유지.

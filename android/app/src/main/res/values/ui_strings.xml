@@ -116,7 +116,7 @@
   <string name="real_place_notice">실제 식당 조회 시험 · 전화·예약 요청은 차단됩니다</string>
   <string name="real_place_navigation_notice">내비 목적지를 확인한 뒤 1회 조회합니다. 시연 중 목적지를 변경하지 마세요. 검색 정보는 빈자리·예약 확정을 뜻하지 않습니다.</string>
   <string name="phone_conversation_show">모의 대화 내역 보기</string>
-  <string name="phone_conversation_hide">대화 내역 접기</string>
+  <string name="phone_conversation_hide">예약 결과로 돌아가기</string>
   <string name="phone_conversation_notice">서버가 제공한 모의 대화입니다. 실제 통화·예약이 아닙니다.</string>
   <string name="phone_conversation_empty">서버에서 받은 대화 내역이 없습니다. 예약 상태는 위 결과를 확인해 주세요.</string>
   <string name="phone_speaker_agent">예약 비서</string>
@@ -127,4 +127,18 @@
   <string name="phone_mock_destination">가상 서울숲으로 연습</string>
   <string name="phone_mock_destination_name">가상 서울숲</string>
   <string name="phone_mock_destination_notice">이 MOCK 서버는 가상 서울숲 전용입니다. 실제 내비 목적지는 바꾸지 않습니다.</string>
+  <string name="final_brand">ArriveOn</string>
+  <string name="final_steps">01 조건 확인 → 02 식당 선택 → 03 예약 승인 → 04 결과</string>
+  <string name="final_candidates_step">02 · 식당 선택</string>
+  <string name="final_approval_step">03 · 마지막 확인</string>
+  <string name="final_result_step">04 · 예약 결과</string>
+  <string name="final_input_title">어떤 조건으로 찾을까요?</string>
+  <string name="final_candidate_number">후보 %1$d</string>
+  <string name="final_approval_summary">%1$s (한국 시각) · 총 %2$d명</string>
+  <string name="final_approval_conditions">필수 조건 · %1$s</string>
+  <string name="final_approval_notice">가상 예약자 · 추가 비용 0원\n조건 확인 후 모의 예약을 요청합니다.\n연습 시각이며 내비 ETA로 계산하지 않습니다.</string>
+  <string name="final_conversation_title">모의 대화 내역</string>
+  <string name="final_debug">개발 시험 설정</string>
+  <string name="final_result_summary">%1$s %2$s · %3$d명</string>
+  <string name="final_mock_badge">MOCK · 실제 전화·예약 없음</string>
 </resources>

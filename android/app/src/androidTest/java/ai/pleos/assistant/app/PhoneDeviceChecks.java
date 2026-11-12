@@ -23,11 +23,12 @@ final class PhoneDeviceChecks {
     this.runner = runner;
   }
 
-  void run(String fixture) throws Exception {
+  void run(String fixture, int width) throws Exception {
     check(
         java.util.Set.of(
                 "ai.pleos.assistant.mock.integrationvalidation",
                 "ai.pleos.assistant.mock.ec2validation",
+                "ai.pleos.assistant.mock.uivalidation",
                 "ai.pleos.assistant.mock.ec2navigationvalidation",
                 "ai.pleos.assistant.mock.realplacevalidation",
                 "ai.pleos.assistant.mock.realplacefiltervalidation")
@@ -38,6 +39,26 @@ final class PhoneDeviceChecks {
             runner.startActivitySync(
                 new Intent(runner.getTargetContext(), ReservationActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    if (width > 0 && activity.getResources().getConfiguration().screenWidthDp != width) {
+      var monitor = runner.addMonitor(ReservationActivity.class.getName(), null, false);
+      try (var descriptor =
+              runner
+                  .getUiAutomation()
+                  .executeShellCommand(
+                      "am task resize "
+                          + activity.getTaskId()
+                          + " "
+                          + (2535 - width)
+                          + " 90 2535 1300");
+          var input = new android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor)) {
+        input.readAllBytes();
+      }
+      activity = (ReservationActivity) runner.waitForMonitorWithTimeout(monitor, 5000);
+      runner.removeMonitor(monitor);
+      check(
+          activity != null && activity.getResources().getConfiguration().screenWidthDp == width,
+          "resize failed");
+    }
     model = (ReservationViewModel) field(activity, "model");
     if (BuildConfig.REAL_PLACE_DEMO && fixture.equals("PHONE_NAVI_RESTAURANTS")) {
       await(() -> !model.busy());
@@ -243,11 +264,40 @@ final class PhoneDeviceChecks {
     }
     if (fixture.equals("PHONE_RESTORE")) {
       check(model.phone.hasRequest(), "saved request missing after restart");
+      String savedAttempt = model.phone.receipt().getString("attemptId");
+      var wireField = model.phone.getClass().getDeclaredField("wire");
+      wireField.setAccessible(true);
+      var originalWire = (PreviewController.Transport) wireField.get(model.phone);
+      var successfulGets = new java.util.concurrent.atomic.AtomicInteger();
+      wireField.set(
+          model.phone,
+          (PreviewController.Transport)
+              (path, body, key) -> {
+                check(body == null && key == null, "restart sent a new reservation");
+                var answer = originalWire.exchange(path, body, key);
+                check(
+                    savedAttempt.equals(answer.optString("attemptId")),
+                    "server changed restored attempt");
+                successfulGets.incrementAndGet();
+                return answer;
+              });
       click(R.string.destination_open);
       click(R.string.phone_refresh);
       await(() -> !model.phone.busy());
       check(model.phone.state().equals("CONFIRMED"), "saved GET did not recover confirmation");
+      check(successfulGets.get() == 1, "restart must complete one real server GET");
+      check(model.phone.receipt().getInt("externalCalls") == 0, "restore external calls");
       capture("restored");
+      click(R.string.phone_conversation_show);
+      var savedTurns = model.phone.receipt().getJSONArray("conversation");
+      String text = main(() -> visibleText(activity.getWindow().getDecorView()));
+      check(savedTurns.length() > 0, "restored conversation missing");
+      for (int i = 0; i < savedTurns.length(); i++)
+        check(
+            text.contains(savedTurns.getJSONObject(i).getString("message")),
+            "restored conversation mismatch");
+      capture("restored-conversation");
+      click(R.string.phone_conversation_hide);
       check(original.equals(journal()), "legacy journal changed");
       return;
     }
@@ -305,6 +355,7 @@ final class PhoneDeviceChecks {
     check(model.destinationView().candidates().length() >= 2, "fictional candidates missing");
     capture("candidates");
     if (fixture.equals("PHONE_UNMET") || fixture.equals("PHONE_UNKNOWN")) {
+      click(R.string.final_debug);
       clickText(
           activity.getString(R.string.phone_scenario, activity.getString(R.string.phone_accept)));
       if (fixture.equals("PHONE_UNKNOWN"))
@@ -429,6 +480,28 @@ final class PhoneDeviceChecks {
   private void capture(String name) throws Exception {
     runner.waitForIdleSync();
     SystemClock.sleep(600); // Wait for dialog dim/exit animation before capturing evidence.
+    main(
+        () -> {
+          VehicleUiChecks.layout(activity.getWindow().getDecorView());
+          var panel = (DestinationPanel) field(activity, "destinationPanel");
+          var phone = field(panel, "phonePanel");
+          var approval = (android.app.AlertDialog) field(phone, "dialog");
+          if (approval != null && approval.isShowing()) {
+            VehicleUiChecks.layout(approval.getWindow().getDecorView());
+            int[] appPosition = new int[2];
+            int[] buttonPosition = new int[2];
+            View appWindow = activity.getWindow().getDecorView();
+            appWindow.getLocationOnScreen(appPosition);
+            View approve = approval.getButton(android.app.AlertDialog.BUTTON_POSITIVE);
+            approve.getLocationOnScreen(buttonPosition);
+            check(
+                buttonPosition[0] >= appPosition[0]
+                    && buttonPosition[0] + approve.getWidth()
+                        <= appPosition[0] + appWindow.getWidth(),
+                "approval button outside app window");
+          }
+          return null;
+        });
     VehicleUiChecks.capture(runner, "phone56-" + name);
   }
 

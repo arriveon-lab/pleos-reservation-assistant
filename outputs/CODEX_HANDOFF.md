@@ -1054,3 +1054,8 @@ SSH로 실제 WEB_SEARCH 서버18769의 Bearer1.1.0 API를 연결했다. 별도 
 ### 2026-11-12 Swagger MOCK 예약 대화·결과 UI
 
 EC2 MOCK 후보 선택→승인 취소/재승인→CONFIRMED/GET 동일 작업→서버 대화 내역 표시를 최종 APK PHONE_REPEAT로 확인. PHONE_UNKNOWN 새 승인 차단도 PASS. 승인창 가독성·확정시간·후보 안내 보완. verifyAll/test APK/smoke PASS, 기존 예약 journal 보존. 실제 전화·외부 추천0회. 새 반복검사는 메모리 격리로 신규 결과 재시작 영속성은 미검증. [기기 기록](../docs/UX56_MOCK_PHONE_INTEGRATION.md), [최종 화면 설계안](../docs/UX56_FINAL_APP_DESIGN.md). 설계안은 release 구현 완료와 구분, #56 OPEN/PR Draft.
+
+
+### 2026-11-12 최종 UI 적용·앱 재실행 복구
+
+설계안을 Android 단계별 후보/승인/결과/대화 화면과 주야간 색상에 반영. 실제 앱 저장소에 새 MOCK 예약을 남기고 force-stop 후 같은 예약ID·대화 및 실제 서버 GET1회/POST0 복구 PASS. 야간840dp 승인창 잘림 수정·경계 검사, UNKNOWN 추가 승인 차단, 기존 EC2 앱 업데이트·기존 예약 복구 PASS. 기존3설치 journal 해시 동일. verifyAll/verifyAndroid/test APK/smoke PASS. 실제 전화·외부 추천0, 실차/실제 후보 예약/공동 인수는 미완료. [검증 기록](../docs/UX56_FINAL_UI_VALIDATION.md). #56 OPEN/PR Draft.

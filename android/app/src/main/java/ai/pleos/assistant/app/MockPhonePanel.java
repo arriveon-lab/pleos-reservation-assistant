@@ -17,6 +17,7 @@ final class MockPhonePanel {
   private AlertDialog dialog;
   private int scenario;
   private boolean conversationOpen;
+  private boolean debugOpen;
   private String rendered = "";
   private static final String[] CASES = {"ACCEPT", "UNMET", "AMBIGUOUS", "DECLINE"};
   private static final int[] LABELS = {
@@ -58,32 +59,31 @@ final class MockPhonePanel {
           java.time.format.DateTimeFormatter.ofPattern("MM/dd HH:mm")
               .withZone(ZoneId.of("Asia/Seoul"))
               .format(java.time.Instant.parse(at));
+      LinearLayout content = VehicleUi.card(activity);
+      text(content, activity.getString(R.string.final_approval_step), 20);
+      text(content, activity.getString(R.string.phone_approve_title), 34);
+      text(content, name, 30);
+      text(content, activity.getString(R.string.final_approval_summary, time, party), 28);
+      text(content, activity.getString(R.string.final_approval_conditions, conditions), 24);
+      text(content, activity.getString(R.string.final_approval_notice), 20);
+      android.widget.ScrollView scroll = new android.widget.ScrollView(activity);
+      scroll.addView(content);
       dialog =
           new AlertDialog.Builder(activity)
-              .setTitle(R.string.phone_approve_title)
-              .setMessage(
-                  activity.getString(
-                      R.string.phone_approve_body,
-                      name,
-                      party,
-                      time,
-                      activity.getString(LABELS[scenario]),
-                      conditions))
+              .setView(scroll)
               .setNegativeButton(R.string.phone_cancel, null)
               .setPositiveButton(
                   R.string.phone_approve, (d, w) -> model.approvePhone(task, body, party))
               .create();
       dialog.show();
-      TextView message = dialog.findViewById(android.R.id.message);
-      if (message != null) VehicleUi.text(message, 24);
       VehicleUi.button(dialog.getButton(AlertDialog.BUTTON_POSITIVE), true);
       VehicleUi.button(dialog.getButton(AlertDialog.BUTTON_NEGATIVE), false);
       if (dialog.getWindow() != null) {
-        int width = activity.getResources().getDisplayMetrics().widthPixels;
+        int width = activity.getWindow().getDecorView().getWidth();
         dialog
             .getWindow()
             .setLayout(
-                Math.min(width - VehicleUi.dp(activity, 48), VehicleUi.dp(activity, 880)), -2);
+                Math.min(width - VehicleUi.dp(activity, 48), VehicleUi.dp(activity, 1100)), -2);
       }
     } catch (Exception invalid) {
       rendered = "";
@@ -105,13 +105,28 @@ final class MockPhonePanel {
             + model.phone.receipt()
             + model.canWrite()
             + scenario
+            + debugOpen
             + conversationOpen
             + model.phoneTask();
     if (signature.equals(rendered)) return;
     rendered = signature;
     view.removeAllViews();
-    label(activity.getString(R.string.phone_title), 26);
-    label(activity.getString(R.string.phone_notice), 20);
+    if (!model.phone.hasRequest()) {
+      button(
+          activity.getString(R.string.final_debug),
+          model.canWrite(),
+          () -> {
+            debugOpen = !debugOpen;
+            rendered = "";
+            update();
+          });
+      if (!debugOpen) return;
+    }
+    if (conversationOpen && !model.canWrite()) conversationOpen = false;
+    if (conversationOpen) {
+      renderConversation(model.phone.receipt());
+      return;
+    }
     if (!model.phone.hasRequest() || model.phone.state().equals("DECLINED"))
       button(
           activity.getString(R.string.phone_scenario, activity.getString(LABELS[scenario])),
@@ -133,19 +148,19 @@ final class MockPhonePanel {
               case "STORAGE_ERROR" -> R.string.phone_storage;
               default -> R.string.phone_choose;
             }),
-        24);
+        34);
     JSONObject receipt = model.phone.receipt();
     if (receipt.has("attemptId")) {
+      label(receipt.optString("restaurantName"), 30);
       label(
           activity.getString(
-              R.string.phone_receipt,
-              receipt.optString("restaurantName"),
+              R.string.final_result_summary,
               receipt.optString("date"),
               "CONFIRMED".equals(state)
                   ? receipt.optString("confirmedTime", activity.getString(R.string.phone_unknown))
                   : receipt.optString("requestedTime"),
               receipt.optInt("partySize")),
-          22);
+          36);
       label(
           activity.getString(
               R.string.phone_stages,
@@ -155,46 +170,58 @@ final class MockPhonePanel {
                   ? activity.getString(R.string.phone_requested)
                   : activity.getString(R.string.phone_not_requested)),
           20);
-      var conversation = receipt.optJSONArray("conversation");
       button(
-          activity.getString(
-              conversationOpen
-                  ? R.string.phone_conversation_hide
-                  : R.string.phone_conversation_show),
+          activity.getString(R.string.phone_conversation_show),
           model.canWrite(),
           () -> {
-            conversationOpen = !conversationOpen;
+            conversationOpen = true;
             rendered = "";
             update();
           });
-      if (conversationOpen && model.canWrite()) {
-        label(activity.getString(R.string.phone_conversation_notice), 20);
-        if (conversation == null || conversation.length() == 0)
-          label(activity.getString(R.string.phone_conversation_empty), 22);
-        else
-          for (int i = 0; i < conversation.length(); i++) {
-            JSONObject turn = conversation.optJSONObject(i);
-            if (turn == null || turn.optString("message").isBlank()) continue;
-            int speaker =
-                switch (turn.optString("speaker")) {
-                  case "agent" -> R.string.phone_speaker_agent;
-                  case "restaurant" -> R.string.phone_speaker_restaurant;
-                  default -> R.string.phone_speaker_other;
-                };
-            label(
-                activity.getString(
-                    R.string.phone_conversation_turn,
-                    activity.getString(speaker),
-                    turn.optString("message")),
-                22);
-          }
-      }
       JSONObject next = receipt.optJSONObject("nextCandidate");
       if ("DECLINED".equals(state) && next != null)
         label(activity.getString(R.string.phone_next, next.optInt("ordinal")), 22);
     }
     if (model.phone.hasRequest())
       button(activity.getString(R.string.phone_refresh), !model.phone.busy(), model.phone::refresh);
+  }
+
+  private void renderConversation(JSONObject receipt) {
+    label(activity.getString(R.string.final_conversation_title), 34);
+    label(activity.getString(R.string.phone_conversation_notice), 20);
+    var conversation = receipt.optJSONArray("conversation");
+    if (conversation == null || conversation.length() == 0)
+      label(activity.getString(R.string.phone_conversation_empty), 24);
+    else
+      for (int i = 0; i < conversation.length(); i++) {
+        JSONObject turn = conversation.optJSONObject(i);
+        if (turn == null || turn.optString("message").isBlank()) continue;
+        int speaker =
+            switch (turn.optString("speaker")) {
+              case "agent" -> R.string.phone_speaker_agent;
+              case "restaurant" -> R.string.phone_speaker_restaurant;
+              default -> R.string.phone_speaker_other;
+            };
+        LinearLayout card = VehicleUi.card(activity);
+        text(card, activity.getString(speaker), 20);
+        text(card, turn.optString("message"), 24);
+        view.addView(card);
+      }
+    button(
+        activity.getString(R.string.phone_conversation_hide),
+        true,
+        () -> {
+          conversationOpen = false;
+          rendered = "";
+          update();
+        });
+  }
+
+  private void text(LinearLayout parent, String value, int size) {
+    TextView t = new TextView(activity);
+    t.setText(value);
+    VehicleUi.text(t, size);
+    parent.addView(t);
   }
 
   private String statusLabel(String state) {
@@ -218,10 +245,12 @@ final class MockPhonePanel {
   private void button(String text, boolean enabled, Runnable action) {
     Button b = new Button(activity);
     b.setText(text);
-    VehicleUi.button(b, false);
+    VehicleUi.button(b, text.equals(activity.getString(R.string.phone_refresh)));
     b.setMinHeight((int) (72 * activity.getResources().getDisplayMetrics().density));
     b.setEnabled(enabled);
     b.setOnClickListener(v -> action.run());
-    view.addView(b, new LinearLayout.LayoutParams(-1, -2));
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+    params.topMargin = VehicleUi.dp(activity, 12);
+    view.addView(b, params);
   }
 }
