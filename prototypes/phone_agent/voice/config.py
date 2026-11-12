@@ -62,6 +62,7 @@ class VoiceConfig:
     enabled: bool = False
     inbound_enabled: bool = False
     test_phone_input: bool = False
+    self_service_test: bool = False
     callback_test_booking_id: str = ""
     max_seconds: int = 180
     daily_calls: int = 1
@@ -104,13 +105,14 @@ class VoiceConfig:
             probe = env.get("PHONE_INPUT_LEVEL_PROBE", "false").lower()
             inbound = env.get("PHONE_INBOUND_ENABLED", "false").lower()
             test_phone_input = env.get("PHONE_TEST_PHONE_INPUT", "false").lower()
+            self_service_test = env.get("PHONE_CALLBACK_TEST_SELF_SERVICE", "false").lower()
             callback_test_booking_id = env.get("PHONE_CALLBACK_TEST_BOOKING_ID", "")
             interruption = env.get("PHONE_INTERRUPTION_MODE", "adaptive").lower()
             if (noise not in ("true", "false") or echo not in ("true", "false")
-                    or any(flag not in ("true", "false") for flag in (probe, inbound, test_phone_input))
+                    or any(flag not in ("true", "false") for flag in (probe, inbound, test_phone_input, self_service_test))
                     or not 0 <= echo_delay <= 500 or interruption not in ("adaptive", "vad")):
                 raise ValueError
-            if not 30 <= seconds <= 600 or not 1 <= daily <= 10:
+            if not 30 <= seconds <= 600 or not (1 <= daily <= 10 or daily == 0 and self_service_test == "true"):
                 raise ValueError
             if callback_test_booking_id and not re.fullmatch(r"[a-f0-9]{32}", callback_test_booking_id):
                 raise ValueError
@@ -128,7 +130,8 @@ class VoiceConfig:
             allowed_numbers=allowed, restaurant_numbers=mapping,
             enabled=env.get("PHONE_LIVE_ENABLED", "false").lower() == "true",
             inbound_enabled=inbound == "true",
-            test_phone_input=test_phone_input == "true", callback_test_booking_id=callback_test_booking_id,
+            test_phone_input=test_phone_input == "true", self_service_test=self_service_test == "true",
+            callback_test_booking_id=callback_test_booking_id,
             max_seconds=seconds, daily_calls=daily, database=env.get("PHONE_DATABASE", cls.database),
             agent_name=env.get("PHONE_AGENT_NAME", cls.agent_name), secrets_dir=str(folder),
             stt_model=env.get("PHONE_STT_MODEL", cls.stt_model),

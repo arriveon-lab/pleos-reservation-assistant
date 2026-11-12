@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from ..service import DomainError, identifier, require, required_conditions, timestamp
+from . import callback_test
 from .config import ConfigurationError, normalize_number
 
 
@@ -128,12 +129,13 @@ class LiveWorkflow:
 
     def _capacity(self):
         calls = self._calls()
-        today = datetime.now(timezone.utc).date().isoformat()
-        deleted = self.service.db.execute(
-            "SELECT calls FROM deleted_live_call_usage WHERE utc_day=?", (today,)).fetchone()
-        used = sum(c["createdAt"].startswith(today) for c in calls) + (deleted[0] if deleted else 0)
-        require(used < self.config.daily_calls,
-                "CALL_LIMIT", "실전화 테스트의 일일 통화 상한에 도달했어요.")
+        if self.config.daily_calls:
+            today = datetime.now(timezone.utc).date().isoformat()
+            deleted = self.service.db.execute(
+                "SELECT calls FROM deleted_live_call_usage WHERE utc_day=?", (today,)).fetchone()
+            used = sum(c["createdAt"].startswith(today) for c in calls) + (deleted[0] if deleted else 0)
+            require(used < self.config.daily_calls,
+                    "CALL_LIMIT", "실전화 테스트의 일일 통화 상한에 도달했어요.")
         require(not any(c["status"] in ("RESERVED", "DISPATCHING", "ACTIVE", "RESULT_SAVED") for c in calls),
                 "CALL_ACTIVE", "진행 중인 실제 통화가 있어요.")
 
@@ -199,6 +201,10 @@ class LiveWorkflow:
                         "SONIOX_TEST_ONLY", "Soniox는 등록한 휴대폰으로 거는 시험전화에서만 사용할 수 있어요.", 403)
             if entered is None:
                 require(target in self.config.allowed_numbers, "TARGET_NOT_ALLOWED", "허용한 식당 테스트 번호를 설정해 주세요.")
+            if self.config.self_service_test:
+                registered_owner, window = callback_test.active_window(self.service)
+                require(window and registered_owner == owner and entered == window["phone"],
+                        "CALLBACK_TEST_REGISTRATION_REQUIRED", "같은 브라우저에서 등록한 시험 휴대폰으로 발신해 주세요.", 403)
             self._capacity()
             call = {"id": call_id, "bookingId": booking_id, "requestedVersion": version,
                     "direction": "outbound", "purpose": "CHANGE_CONFIRMATION" if changing else "BOOKING",
@@ -297,6 +303,15 @@ class LiveWorkflow:
     def begin_inbound(self, caller, trunk_id, room, called_number=None):
         self.config.require_live("inbound")
         caller = normalize_number(caller)
+        if self.config.self_service_test:
+            require(trunk_id == self.config.inbound_trunk_id, "CALLER_NOT_ALLOWED", "시험 수신 연결을 확인해 주세요.", 403)
+
+            def test_callback():
+                self._capacity()
+                owner, booking = callback_test.match_booking(self.service, self.config, caller, called_number)
+                return self._save_inbound(room, booking["restaurantId"], owner, booking)
+
+            return self._atomic(test_callback)
         require(caller in self.config.allowed_numbers and trunk_id == self.config.inbound_trunk_id,
                 "CALLER_NOT_ALLOWED", "허용한 수신 테스트 통화가 아니에요.", 403)
         restaurants = [key for key, number in self.config.restaurant_numbers.items() if number == caller]
@@ -312,15 +327,19 @@ class LiveWorkflow:
                 matches = [b for b in self.service._list(bound_owner, "booking")
                            if b["restaurantId"] == restaurants[0] and b["status"] == "CONFIRMED"
                            and b.get("mode") == "LIVE" and not b.get("liveTest")]
-            call = {"id": identifier(), "direction": "inbound", "status": "ACTIVE",
-                    "purpose": "CALLBACK", "ownerBound": bound_owner is not None,
-                    "room": room, "restaurantId": restaurants[0], "bookingId": None,
-                    "nonce": identifier(), "createdAt": timestamp(), "inviteRequested": False}
-            if len(matches) == 1:
-                call.update(bookingId=matches[0]["id"], bookingVersion=matches[0]["version"])
-            self.service._put(bound_owner or "inbound", "live_call", call)
-            return call
+            booking = matches[0] if len(matches) == 1 else None
+            return self._save_inbound(room, restaurants[0], bound_owner, booking)
         return self._atomic(operation)
+
+    def _save_inbound(self, room, restaurant_id, owner, booking):
+        call = {"id": identifier(), "direction": "inbound", "status": "ACTIVE",
+                "purpose": "CALLBACK", "ownerBound": owner is not None,
+                "room": room, "restaurantId": restaurant_id, "bookingId": None,
+                "nonce": identifier(), "createdAt": timestamp(), "inviteRequested": False}
+        if booking:
+            call.update(bookingId=booking["id"], bookingVersion=booking["version"])
+        self.service._put(owner or "inbound", "live_call", call)
+        return call
 
     def identify(self, call_id, name, day, current_time):
         def operation():
