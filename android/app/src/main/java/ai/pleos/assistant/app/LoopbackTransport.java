@@ -30,6 +30,8 @@ final class LoopbackTransport implements AuthSession.Wire {
     if (BuildConfig.REAL_PLACE_DEMO) {
       boolean permitted =
           path.equals("/status")
+              || path.equals("/searches/reconcile")
+              || path.matches("/searches/[a-f0-9-]{36}")
               || path.equals("/anonymous-sessions")
               || path.equals("/anonymous-sessions/refresh")
               || path.equals("/experimental/destination-recommendations")

@@ -33,7 +33,16 @@ android {
             providers.gradleProperty("realPlaceDemo").orElse("false").get().toBoolean().toString(),
         )
         if (providers.gradleProperty("realPlaceDemo").orElse("false").get().toBoolean()) {
-            applicationId = "ai.pleos.assistant.mock.realplacevalidation"
+            applicationId =
+                if (
+                    providers
+                        .gradleProperty("realPlaceFilterValidation")
+                        .orElse("false")
+                        .get()
+                        .toBoolean()
+                )
+                    "ai.pleos.assistant.mock.realplacefiltervalidation"
+                else "ai.pleos.assistant.mock.realplacevalidation"
         }
         versionCode = 1
         versionName = "0.1.0-mock"

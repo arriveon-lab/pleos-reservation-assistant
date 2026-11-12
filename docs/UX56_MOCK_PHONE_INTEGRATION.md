@@ -129,3 +129,23 @@ adb reverse tcp:8083 tcp:18091
 - 이번 단계는 Mac SSH/adb reverse에 의존하는 개발용 조회 연결이다. 실제 차량 독립 HTTPS 배포 연결이나 전화 공동 인수 완료는 아니다. 현재 경로 응답 연관성은 여전히 UNVERIFIED/사용자 확인 데모로 구분한다.
 
 출처 대조: [감성커피](https://www.diningcode.com/profile.php?rid=YazD7jicBSyK), [이자와](https://www.diningcode.com/profile.php?rid=wQibM5jrWpZd), [오지버거](https://www.diningcode.com/profile.php?rid=fq7heKPigxRq). 공개 페이지의 현재 영업 여부를 실시간 확인한 것으로 해석하지 않는다.
+
+
+## 2026-11-12 #62 카페 제외 재검증 — 기존 인증에서 차단
+
+[#62](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/62) `b4d9783`와 [서버 담당 인계](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/56#issuecomment-6815286588)를 확인했다. 기존 `userRequest=주차 가능한 식당 추천`에서 RESTAURANT를 해석하므로 앱 계약 변경은 없다. 서버 담당자는 EC2 배포·가상 응답의 식당2/카페1→식당2를 확인했지만 실제 장소/기기 재시험은 수행하지 않았다. 이 보고와 이번 실제 기기 결과를 구분한다.
+
+사용자가 추가 추천1회를 승인하여 기존 `work/ux56-real/search-attempted`를 보존하고 `work/ux56-cafe-filter`/port18092로 별도 1회 gateway를 준비했다. 기존 realplacevalidation 앱을 업데이트 설치하고 버튼 검사 `PHONE_NAVI_RESTAURANTS`를 실행했으나 **추천 전송 전 중단**됐다. 해당 설치에는 기존 `/searches` 미확인 요청이 있고, 조회 전용 전송이 이 경로를 차단한다. 첫 검사는 canWrite 대기 timeout이었다. 같은 인증의 기존 계약 `/searches/reconcile`로 대조를 시도했지만 완료 영수증이 생기지 않았고, 후속 기기 검사에서 `AUTH_PHASE=BLOCKED`를 직접 확인했다. 인증 실패의 정확한 서버 원인은 첫 시도에 HTTP 상태를 수집하지 않아 확정하지 않는다. 원 요청/인증을 삭제하거나 새 사용자로 대체하지 않았다.
+
+수정 및 검증:
+- 실제조회 전용 빌드에서 일반 가상 후보 찾기·미리보기 버튼을 비활성화했다. 잘못된 경로가 미확인 요청을 더 만들지 않도록 한다. 기본 MOCK 앱 동작은 유지한다.
+- 같은 인증으로 기존 검색을 대조하는 POST `/searches/reconcile`과 그 결과의 GET `/searches/{id}`만 전송/gateway 허용 목록에 추가했다. 신규 일반 검색·전화·예약 POST는 계속 차단한다. 복구 성공은 이번 기기에서 미검증이다.
+- `PHONE_NAVI_RESTAURANTS`는 SDK 목적지/전송 일치, RESULTS/후보 존재, 모든 venueCategory=RESTAURANT, 이름·주소/UI 일치, 예약 journal 보존을 검사한다. BLOCKED 인증이면 즉시 중단하며 인증 원문은 출력하지 않는다. 성공하지 않은 검사를 PASS로 세지 않는다.
+- gateway는 요청 종류·HTTP 상태·허용된 형식의 오류 코드만 출력한다. 토큰/요청 body/좌표/주소는 로그에 남기지 않는다.
+- 별도 `realPlaceFilterValidation=true` 설치 옵션은 기존 설치 보존용으로 빌드만 준비했다. **설치·신규 인증·추천은 아직 실행하지 않았다.** 기존 미확인 요청을 새 주체로 우회하지 않는 원칙에 따라 사용자에게 검증 분리 여부를 질문한 상태다.
+- format, verifyAll, test APK 빌드, smoke-test.py PASS(UP-TO-DATE 포함). gateway 허용 목록 검사에서 대조/결과 GET 허용 및 신규 일반 검색/전화/예약 거부 PASS. 별도 옵션 APK 빌드는 기기 검증 통과가 아니다.
+- 실제 추천 POST **0회**, 전화/예약 **0회**. 추가 추천 1회 표식은 아직 생성되지 않았다. #62의 실제 응답에서 카페가 제외됐는지와 카드 표시는 **미검증**이다.
+- 보존된 기존 journal 파일 SHA256: `9edb71e74e7303f3887b19939d503666611fb766e28c934dab7e8e3acecc2b25`. 원문 인증/요청은 앱 내부에 유지한다.
+- 로컬 증거: `work/ux56-cafe-filter/{pre-recovery-timeout,recovery-failure,device,gateway,build,isolated-build,smoke}.log`, `preserved-journal.sha256`, `captures/ux56/cafe-filter-auth-blocked.png`.
+
+다음 단계: 기존 주체의 서버 복구가 가능하면 같은 인증으로 대조를 완료한다. 별도 검증 설치가 승인되면 기존 기록은 그대로 두고 승인된 추천1회만 실행해 반환 업종/카드/UNKNOWN 표시를 대조한다. #56 OPEN, PR #59 Draft 유지. 실차·현재 경로 연관성·공동 인수·실제 전화/예약 완료로 표시하지 않는다.

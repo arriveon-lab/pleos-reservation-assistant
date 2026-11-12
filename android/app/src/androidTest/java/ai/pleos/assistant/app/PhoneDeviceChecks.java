@@ -29,7 +29,8 @@ final class PhoneDeviceChecks {
                 "ai.pleos.assistant.mock.integrationvalidation",
                 "ai.pleos.assistant.mock.ec2validation",
                 "ai.pleos.assistant.mock.ec2navigationvalidation",
-                "ai.pleos.assistant.mock.realplacevalidation")
+                "ai.pleos.assistant.mock.realplacevalidation",
+                "ai.pleos.assistant.mock.realplacefiltervalidation")
             .contains(runner.getTargetContext().getPackageName()),
         "isolated installation required");
     activity =
@@ -38,6 +39,37 @@ final class PhoneDeviceChecks {
                 new Intent(runner.getTargetContext(), ReservationActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     model = (ReservationViewModel) field(activity, "model");
+    if (BuildConfig.REAL_PLACE_DEMO && fixture.equals("PHONE_NAVI_RESTAURANTS")) {
+      await(() -> !model.busy());
+      var repository = field(model, "repository");
+      var auth = field(repository, "transport");
+      String phase = ((org.json.JSONObject) field(auth, "state")).optString("phase");
+      android.util.Log.i("ArriveOnNaviCheck", "AUTH_PHASE=" + phase);
+      check(!"BLOCKED".equals(phase), "existing identity blocked; preserve records");
+      await(() -> model.connected() || model.canCreateIdentity());
+      var savedRecovery = journal();
+      var beforeRecovery =
+          savedRecovery == null || savedRecovery.isEmpty()
+              ? new org.json.JSONObject()
+              : new org.json.JSONObject(savedRecovery);
+      var pending = beforeRecovery.optJSONObject("pending");
+      if (pending != null) {
+        check("/searches".equals(pending.optString("path")), "unexpected pending command");
+        click(R.string.reconcile_search);
+        await(() -> !model.busy());
+        var afterRecovery = new org.json.JSONObject(journal());
+        var history = afterRecovery.getJSONArray("searchReconciliations");
+        var receipt = history.getJSONObject(history.length() - 1);
+        check(
+            pending.toString().equals(receipt.getJSONObject("command").toString())
+                && !afterRecovery.has("pending"),
+            "reconciliation did not preserve original command");
+        android.util.Log.i(
+            "ArriveOnNaviCheck",
+            "ORIGINAL_COMMAND_PRESERVED=true recovery="
+                + receipt.getJSONObject("result").getString("state"));
+      }
+    }
     await(() -> !model.busy() && (model.canCreateIdentity() || model.canWrite()));
     if (main(model::canCreateIdentity)) {
       await(() -> model.restriction().allowsInput());
@@ -45,7 +77,7 @@ final class PhoneDeviceChecks {
     }
     await(model::canWrite);
     String original = journal();
-    if (fixture.equals("PHONE_NAVI_QUERY")) {
+    if (fixture.equals("PHONE_NAVI_QUERY") || fixture.equals("PHONE_NAVI_RESTAURANTS")) {
       String originalPhone =
           runner
               .getTargetContext()
@@ -103,13 +135,22 @@ final class PhoneDeviceChecks {
       click(R.string.destination_search);
       await(
           () ->
-              java.util.Set.of("RESULTS", "EMPTY", "FILTERED", "FAILED")
+              java.util.Set.of("RESULTS", "EMPTY", "FILTERED", "FAILED", "APPROVAL_REQUIRED")
                   .contains(model.destinationView().state()));
       check(requestMatches.get(), "SDK destination request mismatch");
       var view = main(model::destinationView);
+      boolean restaurantsOnly = fixture.equals("PHONE_NAVI_RESTAURANTS");
+      if (restaurantsOnly) {
+        check(
+            view.state().equals("RESULTS") && view.candidates().length() > 0,
+            "no restaurant results");
+      }
       if (view.state().equals("RESULTS")) {
         for (int i = 0; i < view.candidates().length(); i++) {
           var item = view.candidates().getJSONObject(i);
+          if (restaurantsOnly) {
+            check("RESTAURANT".equals(item.optString("venueCategory")), "non-restaurant candidate");
+          }
           String text = main(() -> visibleText(activity.getWindow().getDecorView()));
           check(
               text.contains(item.getString("name")) && text.contains(item.getString("address")),
@@ -146,6 +187,8 @@ final class PhoneDeviceChecks {
               + view.state()
               + " displayedCandidates="
               + view.candidates().length()
+              + " restaurantsOnlyChecked="
+              + restaurantsOnly
               + " serverResultReceived="
               + (response.get() != null));
       return;

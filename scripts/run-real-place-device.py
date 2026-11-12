@@ -16,9 +16,9 @@ ROOT = '/api/experimental/destination-recommendations'
 
 def permitted(method, path):
     if method == 'GET':
-        return path == '/api/v1/status' or bool(re.fullmatch(ROOT + r'/[a-f0-9-]{36}', path))
+        return path == '/api/v1/status' or bool(re.fullmatch(r'/api/v1/searches/[a-f0-9-]{36}', path)) or bool(re.fullmatch(ROOT + r'/[a-f0-9-]{36}', path))
     if method == 'POST':
-        return path in ('/api/v1/anonymous-sessions', '/api/v1/anonymous-sessions/refresh', ROOT) or bool(re.fullmatch(ROOT + r'/views/[a-f0-9-]{36}/close', path))
+        return path in ('/api/v1/searches/reconcile', '/api/v1/anonymous-sessions', '/api/v1/anonymous-sessions/refresh', ROOT) or bool(re.fullmatch(ROOT + r'/views/[a-f0-9-]{36}/close', path))
     return False
 
 def run(state, port, upstream):
@@ -52,6 +52,15 @@ def run(state, port, upstream):
                 connection.request(self.command, self.path, body, headers)
                 response = connection.getresponse()
                 data = response.read(262145)
+                route = self.path if self.path in (ROOT, '/api/v1/status', '/api/v1/searches/reconcile') else 'AUTH_OR_RESULT'
+                code = ''
+                if response.status != 200:
+                    try:
+                        code = json.loads(data).get('code', '')
+                    except (ValueError, AttributeError):
+                        pass
+                safe_code = code if isinstance(code, str) and re.fullmatch(r'[A-Z_]{1,80}', code) else ''
+                print(f'{self.command} {route} HTTP={response.status} code={safe_code}', flush=True)
                 if len(data) > 262144:
                     self.send_error(502); return
                 if self.command == 'GET' and self.path.startswith(ROOT + '/') and response.status == 200:

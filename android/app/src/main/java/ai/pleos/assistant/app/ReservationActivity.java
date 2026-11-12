@@ -606,7 +606,7 @@ public final class ReservationActivity extends ComponentActivity {
         text(getString(R.string.home_pet_unavailable), 20);
         button(
             R.string.search,
-            model.canWrite() && !unresolvedCall,
+            !BuildConfig.REAL_PLACE_DEMO && model.canWrite() && !unresolvedCall,
             v -> {
               try {
                 int adultCount = Integer.parseInt(adults.getText().toString());
@@ -634,7 +634,10 @@ public final class ReservationActivity extends ComponentActivity {
         text(getString(R.string.home_results_hint), 22);
         content = mainPanel;
       }
-      button(R.string.preview_open, model.canWrite(), v -> model.openPreview());
+      button(
+          R.string.preview_open,
+          !BuildConfig.REAL_PLACE_DEMO && model.canWrite(),
+          v -> model.openPreview());
       button(R.string.destination_open, model.canWrite(), v -> model.openDestination());
       content = page;
       diagnostics();

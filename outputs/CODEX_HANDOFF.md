@@ -1016,3 +1016,12 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 ## 2026-11-12 UX-56 실제 추천 서버 1회 연결
 
 SSH로 실제 WEB_SEARCH 서버18769의 Bearer1.1.0 API를 연결했다. 별도 realplacevalidation 빌드·조회1회 gateway로 실제 내비 목적지→추천→기기 표시를 확인했다. 반환은 식당2+카페1이며 이름/주소/주차UNKNOWN 표시 일치. 전화/예약은 차단했고 실행하지 않았다. verifyAll/test APK 및 로컬 추가검색409/예약403 통과. 카페 혼입과 독립 HTTPS/실기/공동 인수는 잔여다. [실행·증거·한계](../docs/UX56_MOCK_PHONE_INTEGRATION.md).
+
+
+### 2026-11-12 #62 기기 재검증 차단과 조회 전용 UI 보완
+
+- 서버 #62 b4d9783 인계 확인. 기존 식당 요청 형식 유지, 서버 배포 보고와 실제 기기 검증을 구분한다.
+- 기존 realplacevalidation 설치의 `/searches` 미확인 기록과 `AUTH_PHASE=BLOCKED`로 추가 추천 전송 전 중단. 기록/인증 삭제 없음, 추천·전화·예약0회. 카페 제외 기기 성공은 아직 미검증.
+- 실제조회 빌드의 일반 검색/미리보기 버튼 비활성화, 같은 인증의 검색 대조/결과 GET만 허용. 식당 전용 기기 assertion·안전한 gateway 상태 로그 추가. 복구 성공은 미검증.
+- format/verifyAll/test APK/smoke-test.py PASS. 별도 검증 설치 옵션은 빌드만 준비하고 분리 여부 사용자 답변 대기. 기존 1회 승인 표식과 원 기록 보존.
+- [절차·차단 원인·증거·다음 단계](../docs/UX56_MOCK_PHONE_INTEGRATION.md)의 마지막 기록 참조. #56 OPEN/PR #59 Draft 유지.
