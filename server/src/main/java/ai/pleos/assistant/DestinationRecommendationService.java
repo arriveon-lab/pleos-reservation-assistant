@@ -170,6 +170,17 @@ public final class DestinationRecommendationService implements AutoCloseable {
       String area,
       PlaceQuery destinationWindow,
       PlaceRecommendationPlanner.Requirements requirements) {
+    return start(owner, viewId, generation, area, destinationWindow, requirements, null);
+  }
+
+  UUID start(
+      String owner,
+      UUID viewId,
+      long generation,
+      String area,
+      PlaceQuery destinationWindow,
+      PlaceRecommendationPlanner.Requirements requirements,
+      WebRecommendation.VenueCategory venueCategory) {
     if (!WebRecommendation.text(area, 80)) throw new IllegalArgumentException("Invalid area");
     Objects.requireNonNull(destinationWindow);
     Objects.requireNonNull(requirements);
@@ -182,7 +193,7 @@ public final class DestinationRecommendationService implements AutoCloseable {
               area,
               webNeeds(requirements.requiredFeatures()),
               false,
-              null,
+              venueCategory,
               requirements.preferredCuisines()));
     }
     return jobs.submit(

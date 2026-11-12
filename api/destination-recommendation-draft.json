@@ -205,7 +205,7 @@
         "properties": {
           "viewId": { "type": "string", "format": "uuid" },
           "generation": { "type": "integer", "minimum": 1 },
-          "userRequest": { "type": "string", "minLength": 1, "maxLength": 300, "description": "Transient Korean utterance. Server maps supported needs and never stores or forwards raw text." },
+          "userRequest": { "type": "string", "minLength": 1, "maxLength": 300, "description": "Transient Korean utterance. In WEB_SEARCH mode, clear requests for a restaurant (e.g. 주차 가능한 식당 추천) filter candidates to RESTAURANT. The server maps supported needs and never stores or forwards raw text." },
           "destination": {
             "type": "object",
             "additionalProperties": false,
