@@ -2,6 +2,31 @@
 
 확인일 2026-11-04. 이 Mac(arm64)에 사용자의 Google SDK 약관 동의를 받은 뒤 **빌드용 SDK 설치와 프로젝트 연결을 완료**했습니다. 경로는 `~/Library/Android/sdk`, Command-line Tools 22.0, Platform 35 rev 2, Build-Tools 35.0.0, Platform-Tools 37.0.1입니다. Android Studio·Emulator·Pleos 이미지는 아직 설치하지 않았습니다. APK/Lint 실행 결과는 [STATUS](STATUS.md)에 별도로 기록합니다.
 
+## 2026-11-08 Windows D드라이브 설치
+
+위 Mac 기록과 별도로, 사용자의 D드라이브 설치 요청 및 Pleos/Google SDK 약관 명시 동의 후 다음 환경을 준비했습니다. 사용 통계 선택은 사용자가 직접 완료했습니다.
+
+| 항목 | 설치 위치·확인 결과 |
+| --- | --- |
+| JDK | `D:\Java\temurin-21.0.13+9`, Java 21.0.13+9 실행 확인 |
+| Android SDK | `D:\Android\Sdk`, Platform 35 / Build Tools 35.0.0 / Platform-Tools 37.0.1 |
+| Emulator | D드라이브 SDK의 37.2.13. AEHD 2.2 가용성 확인, Windows 보안/가상화 설정 변경 없음 |
+| Pleos 이미지 | `D:\Android\Sdk\system-images\android-34\android-automotive\x86_64` |
+| AVD | `D:\Android\Avd\Pleos_Connect_v2.1.0.avd`, Cold boot / RAM 4096MB / 4 core / host GPU |
+| Studio | 기존 Android Studio 2026.2.2 Patch 1 초기 설정 완료. 새 캐시/로그는 `D:\Android\Studio` |
+| 실제 부팅 | ADB device 연결, boot_completed=1, Android 14/API 34, `RELEASE.release_connect_v2.1.0 test-keys`, 42dot |
+
+공식 Windows 이미지 ZIP은 약 4.09GB, 압축 해제 후 약 18.29GiB입니다. `D:\Android\Downloads\crp_car_emulator.zip`의 크기 4,087,751,964 bytes와 공식 배포 SHA-1 `b4f858d5bcc6c71506d7edfc872bcb9e5a11acaa`를 대조했습니다. 다운로드 중 멈춤은 파일을 지우지 않고 이어받아 해결했습니다. 배포 XML의 package path/revision(`pleos_car_emulator`/2)과 ZIP 원본 source.properties(`android-automotive`/1)가 달라, 최종 설치는 Studio가 해석한 ZIP 식별자의 경로를 사용합니다. 원 이미지와 source.properties는 수정하지 않았습니다. Studio 목록에는 일반 Automotive 이름으로 표시되지만 실제 image.sysdir과 부팅 버전으로 Pleos임을 확인했습니다.
+
+로컬 전용 `local.properties`는 D드라이브 SDK, `gradle-local.properties`는 Android opt-in, `.gradle/config.properties`는 D드라이브 JDK로 연결했습니다. 세 파일은 Git 제외입니다. 사용자 환경변수 ANDROID_HOME/ANDROID_AVD_HOME/STUDIO_PROPERTIES도 D드라이브 경로를 가리킵니다. 시스템 PATH/JAVA_HOME, C드라이브 기존 SDK·다른 사용자의 AVD는 변경하지 않았습니다. 변경 전 사용자 환경변수는 Git 제외 `work/veh01/user-environment.before.json`에 기록했습니다.
+
+다음 파일을 더블클릭하면 새 로그인 전에도 D드라이브 환경이 적용됩니다.
+
+- `D:\Android\Start-Pleos.cmd`: Pleos Cold boot 실행
+- `D:\Android\Open-Android-Studio.cmd`: D드라이브 SDK/AVD/캐시·Gradle JDK를 적용해 기존 Studio 실행
+
+부팅 확인 후 emulator는 종료했습니다. 첫 실행의 ADB 자동 경로 감지 문제는 재실행 시 D드라이브 platform-tools를 PATH에 명시해 해결했고, 두 번째 실행에서는 ADB device와 약 40초 부팅 로그를 확인했습니다. 보안 승인이나 ADB 키 복사로 우회하지 않았습니다. 화면 캡처 도구 시간 초과로 그래픽 홈 화면은 시각 검증하지 못했습니다. APK 설치·앱 실행·NaviHelper 목적지/ETA 수신은 별도 후속 단계입니다. 아래 공통 설치 절차와 기존 Mac 검증 이력은 계속 참고할 수 있습니다.
+
 ## 팀 공통 기준
 
 | 항목 | 프로젝트 기준 | 역할 |
@@ -115,3 +140,9 @@ Virtual Console은 emulator 실행 후 `adb forward tcp:8088 tcp:8088`로 연결
 ## 완료 기준
 
 SDK 파일 확인 → APK 생성 → Pleos emulator 실행 → 실제 NaviHelper 콜백 수신을 각각 구분합니다. 첫 단계만으로 Android 세팅 전체 완료라고 표시하지 않습니다. 실기기 검증 전 source=PLEOS 서버 입력 차단은 유지합니다.
+
+### 2026-11-09 검증 환경 추가 관측
+
+현재 호스트는 MX450 2GB/Intel Iris Xe, RAM 약 8GB입니다. [최신 공식 구성 안내](https://document.pleos.ai/en/docs/connect/guide/getting-started/application-development/configure-pleos-connect-emulator)의 최소 GPU 예시는 RTX 3060 Laptop 6GB 또는 RX 6600M/RX 6700S 8GB 이상입니다. 현재 환경에서 초기화/목적지/TripInfo 수신은 관측했으나 그래픽·장기 실행 안정성을 보장하지 않습니다. GPU 부족을 모든 오류의 원인으로 확정하지도 않습니다. 추가 설치/구매는 진행하지 않았습니다.
+
+표준 geo fix 주입은 Android GPS에 반영됐지만 이번 내비 도착/재탐색 시도에서는 위치 이동을 확인하지 못했습니다. 공식 Pleos 재생 경로 확인이 필요합니다. 주입 이후 기기 시간대는 Asia/Seoul로 관측됐으며 수동 시각/시간대 변경은 없었습니다. 새 시험 전에 persist.sys.timezone과 date를 읽고 UTC 관측 시각과 UI 시각을 분리합니다. 상세 증거/한계는 STATUS를 따릅니다.

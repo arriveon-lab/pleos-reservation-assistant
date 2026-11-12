@@ -5,7 +5,8 @@ let state, tripId, busy = false, polling = false, stateVersion = 0, liveDialing 
 let webSearching = false;
 const labels = {AWAITING_APPROVAL:'승인 대기',READY:'발신 준비',CALLING:'실제 통화 중',CONFIRMED:'예약 확정',DECLINED:'예약 불가',UNKNOWN:'결과 미확인',FAILED:'연결 실패'};
 const venueLabels = {RESTAURANT: '식당', CAFE: '카페', UNKNOWN: '업종 미확인'};
-const businessDetailLabels = {CUISINE: '음식 종류', MENU: '메뉴', OPENING_HOURS: '영업시간', BREAK_TIME: '브레이크타임'};
+const businessDetailLabels = {CUISINE: '음식 종류', MENU: '메뉴', OPENING_HOURS: '영업시간', BREAK_TIME: '브레이크타임',
+  LAST_ORDER: '마지막 주문', REVIEW_COUNT: '방문자 리뷰 수'};
 const changes = {AWAITING_USER:'사용자 확인 대기',RECONFIRMING:'식당 재확인 대기',APPLIED:'변경 완료',REJECTED:'변경 거절',UNKNOWN:'변경 결과 미확인'};
 const changeButtons = '<button data-action="approve-change">변경 승인</button><button data-action="reject-change" class="outline">거절</button>';
 const scenarios = {ACCEPT:'명확한 수락 + 필수 조건 가능',DECLINE:'예약 거절',AMBIGUOUS:'애매한 답변',DISCONNECT:'통화 중 연결 끊김',REQUIREMENT_UNKNOWN:'필수 조건 미확인',REQUIREMENT_UNAVAILABLE:'필수 조건 충족 불가',BUSY:'통화 중',TIME_MISMATCH:'다른 시간 제안',COST_REQUIRED:'추가 비용 요구',ARS:'자동 안내 응답'};
@@ -155,7 +156,11 @@ function citation(url, label) {
 }
 function webSourceLabel(url, fallback) {
   try {
-    if (new URL(url).hostname === 'www.gumi.go.kr') return '구미시 맛집 안내';
+    const link = new URL(url);
+    const host = link.hostname;
+    if (host === 'www.data.go.kr' && link.pathname === '/data/15083033/fileData.do') return '소상공인시장진흥공단 상가정보';
+    if (host === 'www.gumi.go.kr') return '구미시 맛집 안내';
+    if (['pcmap.place.naver.com', 'm.place.naver.com', 'map.naver.com'].includes(host)) return '네이버 플레이스';
   } catch {}
   return fallback;
 }
@@ -163,9 +168,14 @@ function renderWebCandidates(candidates, searchId) {
   $('#web-search-results').innerHTML = candidates.map((candidate) => {
     const businessDetails = Object.entries(businessDetailLabels).map(([kind, label]) => {
       const detail = candidate.businessDetails?.[kind];
-      if (!detail) return '';
+      if (!detail) {
+        return ['OPENING_HOURS', 'BREAK_TIME'].includes(kind) ? `<li><b>${label}</b> 미확인</li>` : '';
+      }
       const source = detail.sourceType === 'MERCHANT_PAGE' ? '업체 안내 출처' : '웹 출처';
-      return `<li><b>${label}</b> ${escape(detail.condition)} ${citation(detail.url, webSourceLabel(detail.url, source))}</li>`;
+      const asOf = kind === 'REVIEW_COUNT' && detail.sourceUpdatedAt
+        ? ` · ${new Intl.DateTimeFormat('ko-KR', {timeZone: 'Asia/Seoul'}).format(new Date(detail.sourceUpdatedAt))} 기준`
+        : '';
+      return `<li><b>${label}</b> ${escape(detail.condition)}${escape(asOf)} ${citation(detail.url, webSourceLabel(detail.url, source))}</li>`;
     }).join('');
     const assessments = candidate.assessments.map(({need, verdict, evidence}) => {
       const facts = evidence.map((item) => `<li>${escape(item.condition)} ${citation(item.url, webSourceLabel(item.url, '출처'))}</li>`);
@@ -180,20 +190,20 @@ function renderWebCandidates(candidates, searchId) {
       `<li><b>${escape(webNeeds[need] || need)}</b> · ${escape(reviewLabels[verdict] || '미확인')}
         <ul>${evidence.map((item) => `<li>${escape(item.condition)} ${citation(item.url, '후기 출처')}</li>`).join('')}</ul></li>`).join('');
     const category = venueLabels[candidate.venueCategory] || venueLabels.UNKNOWN;
-    const place = candidate.venueCategory === 'CAFE' ? '카페' : candidate.venueCategory === 'RESTAURANT' ? '식당' : '장소';
+    const selection = candidate.venueCategory === 'RESTAURANT' ? '이 식당으로'
+      : candidate.venueCategory === 'CAFE' ? '이 카페로' : '이 장소로';
     const placeLink = candidate.naverPlaceUrl ? citation(candidate.naverPlaceUrl, '네이버 플레이스에서 보기') : '';
     return `<article class="booking"><h3>${escape(candidate.name)} <span class="badge">${escape(category)}</span></h3>
       <p class="recommendation-reason">추천 ${escape(candidate.ordinal)} · 필수 조건 충족 근거 ${confirmedNeeds}/${candidate.assessments.length}개</p>
       <p class="details">${escape(candidate.address)} ${citation(candidate.identitySourceUrl, webSourceLabel(candidate.identitySourceUrl, '지점 출처'))}
         ${placeLink ? `· ${placeLink}` : ''}</p>
-      ${businessDetails ? `<h4>매장 정보</h4><ul class="web-evidence">${businessDetails}</ul>`
-        : '<p class="muted">메뉴·영업시간·브레이크타임 미확인</p>'}
+      <h4>매장 정보</h4><ul class="web-evidence">${businessDetails}</ul>
       <ul class="web-evidence">${assessments}</ul>
       ${reviews ? `<h4>방문 후기 요약</h4><ul class="web-evidence">${reviews}</ul>`
         : '<p class="muted">방문 후기 미수집 · 실제 리뷰가 없다는 뜻은 아니에요.</p>'}
       ${reviewSignals ? `<h4>내 조건과 관련된 후기</h4><ul class="web-evidence">${reviewSignals}</ul><p class="muted">방문자의 경험이며, 업체의 현재 정책은 별도 확인이 필요해요.</p>` : ''}
       ${searchId ? `<button type="button" class="outline" data-search-id="${escape(searchId)}"
-        data-ordinal="${escape(candidate.ordinal)}">이 ${place}로 시험 예약 만들기</button>` : ''}
+        data-ordinal="${escape(candidate.ordinal)}">${selection} 시험 예약 만들기</button>` : ''}
     </article>`;
   }).join('');
 }
@@ -201,12 +211,25 @@ $('#web-search-form').venueCategory.addEventListener('change', () => {
   $('#web-search-status').textContent = '';
   $('#web-search-results').replaceChildren();
 });
+function webArrivalTime() {
+  const booking = $('#booking-form');
+  return booking.date.value && booking.time.value ? `${booking.date.value}T${booking.time.value}` : undefined;
+}
+for (const field of ['date', 'time']) {
+  $('#booking-form').elements[field].addEventListener('input', () => {
+    if ($('#web-search-results').children.length) {
+      $('#web-search-status').textContent = '예약 날짜나 시간이 바뀌었어요. 후보를 다시 검색해 주세요.';
+      $('#web-search-results').replaceChildren();
+    }
+  });
+}
 $('#web-search-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   if (webSearching || !state?.webSearch?.configured) return;
   const form = event.currentTarget;
   const destination = form.destination.value.trim();
   const foodPreferenceText = form.foodPreferenceText.value.trim();
+  const arrivalAt = webArrivalTime();
   const venueCategory = form.venueCategory.value || undefined;
   const categoryLabel = venueLabels[venueCategory] || '식당·카페';
   const conditions = readConditions();
@@ -220,26 +243,32 @@ $('#web-search-form').addEventListener('submit', async (event) => {
     const response = await fetch('/api/web-recommendations', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-Prototype-Request': '1'},
-      body: JSON.stringify({destination, conditions, venueCategory, foodPreferenceText}),
+      body: JSON.stringify({destination, conditions, venueCategory, foodPreferenceText, arrivalAt}),
     });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error?.message || '웹검색을 완료하지 못했어요.');
+    if (arrivalAt !== webArrivalTime()) {
+      status.textContent = '예약 날짜나 시간이 바뀌었어요. 후보를 다시 검색해 주세요.';
+      return;
+    }
     const result = body.result;
     const foodLabel = result?.preferredCuisines?.length ? `음식 취향: ${result.preferredCuisines.join(' 또는 ')} · ` : '';
     if (result?.webState === 'RESULTS' && result.webRecommendations.length) {
       renderWebCandidates(result.webRecommendations, body.searchId);
-      const source = result.webRecommendations.every(
-        (candidate) => webSourceLabel(candidate.identitySourceUrl, '') === '구미시 맛집 안내'
-      ) ? '구미시 맛집 안내' : '웹검색';
+      const sources = new Set(result.webRecommendations.map(
+        (candidate) => webSourceLabel(candidate.identitySourceUrl, '웹검색')
+      ));
+      const source = [...sources].join(' · ');
       status.textContent = `${destination} · ${foodLabel}${source} 후보 ${result.webRecommendations.length}곳 · 필수 조건 충족 근거를 우선하고, 조건이 비슷하면 관련 후기의 주의·긍정 언급을 반영해요. 도착 시 대기와 예약 가능 여부는 별도 확인이 필요해요.`;
     } else if (['EMPTY', 'FILTERED'].includes(result?.webState)) {
       status.textContent = `${foodLabel}선택한 종류와 조건의 근거를 갖춘 ${categoryLabel} 후보를 찾지 못했어요. 음식 취향이나 검색 지역을 바꿔 다시 찾아볼 수 있어요.`;
     } else {
       const messages = {
         BUDGET_EXHAUSTED: '이 실행의 웹검색 한도를 사용했어요.',
-        HTTP_UNAUTHORIZED: 'OpenAI API 키 인증을 확인해 주세요.',
+        HTTP_BAD_REQUEST: '도로명과 건물번호를 확인해 주세요. 등록된 상가가 없는 주소는 검색되지 않을 수 있어요.',
+        HTTP_UNAUTHORIZED: '검색 서비스 인증 설정을 확인해 주세요.',
         CREDENTIAL_MISSING: 'OpenAI API 키 설정을 확인해 주세요.',
-        HTTP_RATE_LIMITED: 'OpenAI 웹검색 요청 한도를 확인해 주세요.',
+        HTTP_RATE_LIMITED: '검색 서비스의 요청 한도에 도달했어요.',
       };
       status.textContent = messages[result?.webFailureReason] || '웹검색 결과를 받을 수 없었어요.';
     }

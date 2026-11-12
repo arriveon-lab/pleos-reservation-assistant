@@ -1,0 +1,1824 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Place preview — experimental MOCK contract draft",
+    "version": "0.2.0-draft",
+    "description": "Default disabled (404). Opt-in app.place-preview.enabled=true is MOCK-only and uses main anonymous-session Bearer authentication (v1 contract 1.1.0). Trusted Servlet Principal ownership, no header/body owner or fake-login fallback. UI/navigation/data-policy agreement remains pending; do not deploy publicly. All bodies are no-store. No DB/place cache, reservation linkage or live calls. Optional explicit requirements return a transient recommendationPlan; query plus requirements define generation identity. No ETA or call authorization is inferred."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8080/api/experimental"
+    }
+  ],
+  "x-status": "DRAFT_REQUIRES_TEAM_REVIEW",
+  "x-authentication-dependency": "Uses main #21 merged at 1b37bc2: server-issued anonymous access token with stable subject. Real token HTTP integration is verified with scripts/preview-token-smoke.py; UI token storage and lifecycle remain #26.",
+  "paths": {
+    "/place-previews": {
+      "post": {
+        "operationId": "openPlacePreviewDraft",
+        "description": "Create an ephemeral session. No provider call. Creation is bounded but not idempotent; do not automatically retry.",
+        "x-server-principal-required": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MOCK contract result; not a real reservation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, field or UUID",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid trusted server principal",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PREVIEW_NOT_FOUND intentionally conflates unknown, expired, removed/restarted and foreign-owner IDs. It is NOT an acknowledgement of successful cancellation/closure. Hide old results; do not infer the cause, redispatch or restore them.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Session capacity reached",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registry closed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/place-previews/{id}/queries": {
+      "post": {
+        "operationId": "queryPlacePreviewDraft",
+        "description": "One async result. In-flight same generation/query joins; completed generation never replays places or re-dispatches. New intent increments generation. No polling/cache.",
+        "x-server-principal-required": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MOCK contract result; not a real reservation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Result"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, field or UUID",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid trusted server principal",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PREVIEW_NOT_FOUND intentionally conflates unknown, expired, removed/restarted and foreign-owner IDs. It is NOT an acknowledgement of successful cancellation/closure. Hide old results; do not infer the cause, redispatch or restore them.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Session capacity reached",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registry closed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/place-previews/{id}/cancel": {
+      "post": {
+        "operationId": "cancelPlacePreviewDraft",
+        "description": "Fence this generation even if no work is running. cancelledWork reports whether pending work was cancelled; it is not provider-call reversal.",
+        "x-server-principal-required": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MOCK contract result; not a real reservation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cancelled"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, field or UUID",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid trusted server principal",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PREVIEW_NOT_FOUND intentionally conflates unknown, expired, removed/restarted and foreign-owner IDs. It is NOT an acknowledgement of successful cancellation/closure. Hide old results; do not infer the cause, redispatch or restore them.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Session capacity reached",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registry closed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/place-previews/{id}/close": {
+      "post": {
+        "operationId": "closePlacePreviewDraft",
+        "description": "Remove session and cancel pending work. Repeated close returns the same not-found shape as an unknown session.",
+        "x-server-principal-required": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "MOCK contract result; not a real reservation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Closed"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON, field or UUID",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid trusted server principal",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PREVIEW_NOT_FOUND intentionally conflates unknown, expired, removed/restarted and foreign-owner IDs. It is NOT an acknowledgement of successful cancellation/closure. Hide old results; do not infer the cause, redispatch or restore them.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Session capacity reached",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Registry closed",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                },
+                "description": "no-store"
+              },
+              "Referrer-Policy": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-referrer"
+                },
+                "description": "no-referrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "Query": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude",
+          "radiusMeters",
+          "limit"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "radiusMeters": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20000
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          }
+        }
+      },
+      "QueryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation",
+          "query"
+        ],
+        "properties": {
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "query": {
+            "$ref": "#/components/schemas/Query"
+          },
+          "requirements": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecommendationRequirements"
+              }
+            ],
+            "description": "Optional, no invented party defaults. Any condition change requires a new generation; null/omitted preserves the listing-only path."
+          }
+        }
+      },
+      "CancelRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generation"
+        ],
+        "properties": {
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewId",
+          "mode"
+        ],
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        }
+      },
+      "Closed": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewId",
+          "state",
+          "mode"
+        ],
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "const": "CLOSED"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        }
+      },
+      "Cancelled": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewId",
+          "generation",
+          "cancelledWork",
+          "state",
+          "mode"
+        ],
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "cancelledWork": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "const": "CANCEL_REQUESTED"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        }
+      },
+      "Place": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "cuisine",
+          "address",
+          "distanceMeters",
+          "parking",
+          "childFriendly",
+          "reservationAvailability",
+          "bookable"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cuisine": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "distanceMeters": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "parking": {
+            "type": "string",
+            "const": "UNKNOWN"
+          },
+          "childFriendly": {
+            "type": "string",
+            "const": "UNKNOWN"
+          },
+          "reservationAvailability": {
+            "type": "string",
+            "const": "UNKNOWN"
+          },
+          "bookable": {
+            "const": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "Result": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewId",
+          "generation",
+          "state",
+          "placeSource",
+          "reservationMode",
+          "places",
+          "fetchedAt",
+          "expiresAt",
+          "failure",
+          "rejectedRecords",
+          "mode",
+          "recommendationPlan"
+        ],
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "RESULTS",
+              "EMPTY",
+              "FILTERED",
+              "FAILED",
+              "SUPERSEDED",
+              "CANCELLED",
+              "TIMED_OUT",
+              "STALE_GENERATION",
+              "REQUEST_CONFLICT",
+              "ALREADY_FINISHED",
+              "CLOSED"
+            ]
+          },
+          "placeSource": {
+            "type": "string",
+            "const": "MOCK"
+          },
+          "reservationMode": {
+            "type": "string",
+            "const": "MOCK"
+          },
+          "places": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "$ref": "#/components/schemas/Place"
+            }
+          },
+          "fetchedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "failure": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "AUTHENTICATION",
+              "FORBIDDEN",
+              "RATE_LIMITED",
+              "TIMEOUT",
+              "CANCELLED",
+              "UPSTREAM_UNAVAILABLE",
+              "INVALID_RESPONSE",
+              "INVALID_QUERY",
+              null
+            ]
+          },
+          "rejectedRecords": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          },
+          "recommendationPlan": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecommendationPlan"
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "enum": [
+                    "RESULTS",
+                    "EMPTY",
+                    "FILTERED"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "fetchedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "failure": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "places": {
+                  "maxItems": 0
+                },
+                "fetchedAt": {
+                  "type": "null"
+                },
+                "expiresAt": {
+                  "type": "null"
+                },
+                "rejectedRecords": {
+                  "const": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "RESULTS"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "places": {
+                  "minItems": 1
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "EMPTY"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "places": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "FAILED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "failure": {
+                  "type": "string",
+                  "enum": [
+                    "AUTHENTICATION",
+                    "FORBIDDEN",
+                    "RATE_LIMITED",
+                    "TIMEOUT",
+                    "CANCELLED",
+                    "UPSTREAM_UNAVAILABLE",
+                    "INVALID_RESPONSE",
+                    "INVALID_QUERY"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "failure": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "FILTERED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "places": {
+                  "maxItems": 0
+                },
+                "recommendationPlan": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "not": {
+                    "enum": [
+                      "RESULTS",
+                      "EMPTY",
+                      "FILTERED"
+                    ]
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "recommendationPlan": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "RESULTS"
+                },
+                "recommendationPlan": {
+                  "type": "object"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "recommendationPlan": {
+                  "properties": {
+                    "state": {
+                      "const": "RESULTS"
+                    },
+                    "provider": {
+                      "const": "MOCK"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "EMPTY"
+                },
+                "recommendationPlan": {
+                  "type": "object"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "recommendationPlan": {
+                  "properties": {
+                    "state": {
+                      "const": "EMPTY"
+                    },
+                    "provider": {
+                      "const": "MOCK"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "FILTERED"
+                },
+                "recommendationPlan": {
+                  "type": "object"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "recommendationPlan": {
+                  "properties": {
+                    "state": {
+                      "const": "FILTERED"
+                    },
+                    "provider": {
+                      "const": "MOCK"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "mode"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "INVALID_REQUEST",
+              "PREVIEW_AUTHENTICATION_REQUIRED",
+              "PREVIEW_NOT_FOUND",
+              "PREVIEW_SESSION_LIMIT",
+              "PREVIEW_UNAVAILABLE"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "const": "MOCK"
+          }
+        }
+      },
+      "RecommendationRequirements": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "party",
+          "maxWaitMinutes",
+          "requiredFeatures",
+          "preferredCuisines"
+        ],
+        "properties": {
+          "party": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "adults",
+              "children"
+            ],
+            "properties": {
+              "adults": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "children": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              }
+            }
+          },
+          "maxWaitMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "requiredFeatures": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "childFriendly",
+                "parking",
+                "highChair",
+                "stepFreeAccess"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 4,
+            "uniqueItems": true
+          },
+          "preferredCuisines": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30,
+              "pattern": "\\S"
+            },
+            "minItems": 0,
+            "maxItems": 8,
+            "uniqueItems": true
+          }
+        }
+      },
+      "RecommendationPlan": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "provider",
+          "requirements",
+          "listingFetchedAt",
+          "displayValidUntil",
+          "scannedRecords",
+          "rejectedRecords",
+          "duplicateRecords",
+          "outsideWindowRecords",
+          "failure",
+          "candidates"
+        ],
+        "properties": {
+          "state": {
+            "enum": [
+              "RESULTS",
+              "EMPTY",
+              "FILTERED",
+              "FAILED"
+            ]
+          },
+          "provider": {
+            "enum": [
+              "MOCK",
+              "KAKAO",
+              "SEOUL_OPEN_DATA"
+            ]
+          },
+          "requirements": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "party",
+              "maxWaitMinutes",
+              "requiredFeatures",
+              "preferredCuisines"
+            ],
+            "properties": {
+              "party": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "adults",
+                  "children"
+                ],
+                "properties": {
+                  "adults": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20
+                  },
+                  "children": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10
+                  }
+                }
+              },
+              "maxWaitMinutes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 120
+              },
+              "requiredFeatures": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "childFriendly",
+                    "parking",
+                    "highChair",
+                    "stepFreeAccess"
+                  ]
+                },
+                "minItems": 0,
+                "maxItems": 4,
+                "uniqueItems": true
+              },
+              "preferredCuisines": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 30,
+                  "pattern": "\\S"
+                },
+                "minItems": 0,
+                "maxItems": 8,
+                "uniqueItems": true
+              }
+            }
+          },
+          "listingFetchedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "displayValidUntil": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scannedRecords": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 15
+          },
+          "rejectedRecords": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "duplicateRecords": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 15
+          },
+          "outsideWindowRecords": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 15
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AUTHENTICATION",
+                  "FORBIDDEN",
+                  "RATE_LIMITED",
+                  "TIMEOUT",
+                  "CANCELLED",
+                  "UPSTREAM_UNAVAILABLE",
+                  "INVALID_RESPONSE",
+                  "INVALID_QUERY"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ordinal",
+                "name",
+                "cuisine",
+                "address",
+                "straightLineDistanceMeters",
+                "qualification",
+                "bookable",
+                "inquiryDispatchAllowed",
+                "reasons",
+                "missingInformation",
+                "questions"
+              ],
+              "properties": {
+                "ordinal": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "cuisine": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "address": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "straightLineDistanceMeters": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 20030
+                },
+                "qualification": {
+                  "const": "NEEDS_CONFIRMATION"
+                },
+                "bookable": {
+                  "const": false
+                },
+                "inquiryDispatchAllowed": {
+                  "const": false
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "WITHIN_SEARCH_WINDOW",
+                      "PREFERRED_CUISINE_MATCH"
+                    ]
+                  },
+                  "minItems": 1,
+                  "maxItems": 2,
+                  "uniqueItems": true
+                },
+                "missingInformation": {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "CUISINE",
+                      "ADDRESS",
+                      "PHONE"
+                    ]
+                  },
+                  "minItems": 0,
+                  "maxItems": 3,
+                  "uniqueItems": true
+                },
+                "questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "field",
+                      "scope",
+                      "certainty",
+                      "arrivalTimeRequired",
+                      "prompt"
+                    ],
+                    "properties": {
+                      "field": {
+                        "enum": [
+                          "childFriendly",
+                          "parking",
+                          "highChair",
+                          "stepFreeAccess",
+                          "arrivalWaitMinutes",
+                          "reservationAvailable"
+                        ]
+                      },
+                      "scope": {
+                        "enum": [
+                          "GENERAL",
+                          "ARRIVAL"
+                        ]
+                      },
+                      "certainty": {
+                        "const": "UNKNOWN"
+                      },
+                      "arrivalTimeRequired": {
+                        "type": "boolean"
+                      },
+                      "prompt": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": {
+                            "field": {
+                              "enum": [
+                                "arrivalWaitMinutes",
+                                "reservationAvailable"
+                              ]
+                            }
+                          }
+                        },
+                        "then": {
+                          "properties": {
+                            "scope": {
+                              "const": "ARRIVAL"
+                            },
+                            "arrivalTimeRequired": {
+                              "const": true
+                            }
+                          }
+                        },
+                        "else": {
+                          "properties": {
+                            "scope": {
+                              "const": "GENERAL"
+                            },
+                            "arrivalTimeRequired": {
+                              "const": false
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "minItems": 2,
+                  "maxItems": 6
+                }
+              }
+            },
+            "minItems": 0,
+            "maxItems": 3
+          }
+        },
+        "title": "REC-08 transient listing recommendation plan — draft, no product HTTP endpoint",
+        "description": "Listing-only shortlist. UNKNOWN questions never authorize calling or booking. Times describe listing receipt/display validity, not merchant fact freshness or permission to retain data.",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "RESULTS"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "candidates": {
+                  "minItems": 1
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "candidates": {
+                  "maxItems": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "FAILED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "failure": {
+                  "type": "string"
+                },
+                "listingFetchedAt": {
+                  "type": "null"
+                },
+                "displayValidUntil": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "failure": {
+                  "type": "null"
+                },
+                "listingFetchedAt": {
+                  "type": "string"
+                },
+                "displayValidUntil": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "EMPTY"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "scannedRecords": {
+                  "const": 0
+                },
+                "rejectedRecords": {
+                  "const": 0
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "FILTERED"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "scannedRecords": {
+                  "minimum": 1
+                },
+                "outsideWindowRecords": {
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "x-authentication-candidate": "#21 is merged into main at 1b37bc2; this branch integrates that main without changing the auth implementation."
+}

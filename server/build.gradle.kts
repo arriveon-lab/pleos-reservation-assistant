@@ -12,7 +12,11 @@ version = "0.1.0-SNAPSHOT"
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
 
+// Isolated JVM client-check dependency; never on server or Spring test runtime classpaths.
+val previewClientJson by configurations.creating
+
 dependencies {
+    previewClientJson("org.json:json:20240303")
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -32,11 +36,16 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.test {
+    // The following schema check consumes this fixture even when tests are restored from cache.
+    outputs
+        .file(layout.buildDirectory.file("rec08/mock-recommendation-plan.json"))
+        .withPropertyName("recommendationPlanEvidence")
     useJUnitPlatform()
     // The REC-08 contract checker also needs this evidence when tests are restored from cache.
     outputs
         .file(layout.buildDirectory.file("rec08/mock-recommendation-plan.json"))
         .withPropertyName("mockRecommendationPlan")
+    outputs.file(layout.buildDirectory.file("contract-exchanges/place-preview.json"))
     // These apply to the isolated test JVM, not the Gradle daemon or developer's global settings.
     jvmArgs("-Djdk.httpclient.disableRetryConnect=true", "-Djdk.httpclient.redirects.retrylimit=1")
     systemProperty("placeTestClasspath", sourceSets.test.get().runtimeClasspath.asPath)
@@ -91,3 +100,43 @@ val smokeClasspath by
     }
 
 tasks.named("check") { dependsOn(smokeClasspath) }
+
+val previewClientClasspath by
+    tasks.registering {
+        val destination = layout.buildDirectory.file("preview-client-classpath.txt")
+        inputs.files(previewClientJson)
+        outputs.file(destination)
+        doLast { destination.get().asFile.writeText(previewClientJson.asPath) }
+    }
+
+tasks.named("check") { dependsOn(previewClientClasspath) }
+
+// Device acceptance fixtures use real app tokens, never the synthetic smoke-test Principal.
+tasks.register<JavaExec>("previewAcceptance") {
+    group = "verification"
+    description = "Serve an explicit loopback MOCK preview fixture for joint device acceptance."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "ai.pleos.assistant.PreviewAcceptanceApplication"
+    workingDir = rootProject.projectDir
+    args(
+        providers.gradleProperty("previewFixture").getOrElse("RESULTS"),
+        providers.gradleProperty("previewPort").getOrElse("18082"),
+        providers.gradleProperty("previewDatabase").getOrElse("work/rec05-acceptance/auth"),
+    )
+}
+
+// Explicit development image: real auth plus only these two test-only launch helpers.
+tasks.register<Sync>("previewAcceptanceDist") {
+    dependsOn(tasks.testClasses)
+    into(layout.buildDirectory.dir("preview-acceptance"))
+    from(sourceSets.main.get().output) { into("classes") }
+    from(sourceSets.test.get().output.classesDirs) {
+        include(
+            "ai/pleos/assistant/PreviewAcceptanceApplication*.class",
+            "ai/pleos/assistant/PreviewAcceptanceHealthCheck.class",
+        )
+        into("classes")
+    }
+    from(configurations.testRuntimeClasspath) { into("lib") }
+}

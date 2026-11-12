@@ -7,10 +7,12 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
 import urllib.error
+from urllib.error import HTTPError
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +33,7 @@ if args.check_contract:
     contract_module = importlib.util.module_from_spec(contract_spec)
     contract_spec.loader.exec_module(contract_module)
     validate_exchange = contract_module.validate_exchange
+    contract_module.validate_preview_exchanges()
 
 
 def free_port():
@@ -101,6 +104,15 @@ with tempfile.TemporaryDirectory(prefix="pleos-smoke-") as tmp:
             auth_smoke = importlib.util.module_from_spec(auth_spec)
             auth_spec.loader.exec_module(auth_smoke)
             check_after_restart = auth_smoke.exercise(base, validate_exchange)
+            subprocess.run([sys.executable, str(ROOT / "scripts/preview-contract-probe.py"),
+                            "--base-url", base], check=True)
+            request = urllib.request.Request(base + "/api/experimental/place-previews", data=b"{}",
+                                             headers={"Content-Type": "application/json"})
+            try:
+                opener.open(request, timeout=5)
+                raise AssertionError("Preview must be disabled by default")
+            except HTTPError as error:
+                assert error.code == 404
         finally:
             stop(process)
         process = start()
@@ -121,6 +133,32 @@ with tempfile.TemporaryDirectory(prefix="pleos-smoke-") as tmp:
             print("PASS: test-only Principal, Flyway migrations, HTTP workflow, owned H2 restart persistence")
             if args.check_contract:
                 print("PASS: HTTP requests and responses match OpenAPI 3.1")
+        finally:
+            stop(process)
+        process = start("--app.place-preview.enabled=true")
+        try:
+            subprocess.run([sys.executable, str(ROOT / "scripts/preview-contract-probe.py"),
+                            "--base-url", base, "--enabled"], check=True)
+            request = urllib.request.Request(base + "/api/experimental/place-previews", data=b"{}",
+                                             headers={"Content-Type": "application/json",
+                                                      "X-Owner": "fictional-owner",
+                                                      "Authorization": "Bearer fictional-token"})
+            try:
+                opener.open(request, timeout=5)
+                raise AssertionError("Opt-in preview must not invent authentication")
+            except HTTPError as error:
+                assert error.code == 401
+                assert error.headers["Cache-Control"] == "no-store"
+                assert json.load(error)["code"] == "PREVIEW_AUTHENTICATION_REQUIRED"
+            print("PASS: packaged preview default-off 404 and opt-in unauthenticated/spoofed 401")
+            if args.check_contract:
+                token_spec = importlib.util.spec_from_file_location(
+                    "preview_token_smoke", ROOT / "scripts/preview-token-smoke.py")
+                token_smoke = importlib.util.module_from_spec(token_spec)
+                token_spec.loader.exec_module(token_smoke)
+                token_smoke.exercise(base)
+            subprocess.run([sys.executable, str(ROOT / "scripts/preview-session-demo.py"),
+                            "--base-url", base], check=True)
         finally:
             stop(process)
         live = subprocess.run(["java", "-jar", str(jar), "--app.mode=LIVE", "--server.port=0"],

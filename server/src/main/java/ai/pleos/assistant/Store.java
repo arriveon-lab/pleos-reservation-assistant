@@ -60,6 +60,23 @@ public class Store {
       Object request,
       Class<T> type,
       Supplier<T> action) {
+    var cached = completedCommand(actor, scope, key, request, type);
+    if (cached.isPresent()) return cached.get();
+    String fingerprint = hash(request);
+    T result = action.get();
+    jdbc.update(
+        "INSERT INTO commands (user_id,mode,scope,idempotency_key,request_hash,response_json) VALUES (?,'MOCK',?,?,?,?)",
+        userId(actor),
+        scope,
+        key,
+        fingerprint,
+        encode(result));
+    return result;
+  }
+
+  // Caller must hold a workflow transaction. The same mutex arbitrates search and closure.
+  public <T> Optional<T> completedCommand(
+      RequestActor actor, String scope, String key, Object request, Class<T> type) {
     if (key == null || !key.matches("[A-Za-z0-9._:-]{1,100}"))
       throw ApiError.bad("INVALID_KEY", "Idempotency-Key가 필요합니다(영문/숫자/._:-, 100자 이하).");
     lock();
@@ -75,24 +92,17 @@ public class Store {
       var row = cached.getFirst();
       if (!fingerprint.equals(row.get("REQUEST_HASH")))
         throw ApiError.conflict("KEY_REUSED", "같은 키에 다른 요청을 보낼 수 없습니다.");
-      return decode(
-          jdbc.queryForObject(
-              "SELECT response_json FROM commands WHERE user_id=? AND mode='MOCK' AND scope=? AND idempotency_key=?",
-              String.class,
-              userId,
-              scope,
-              key),
-          type);
+      return Optional.of(
+          decode(
+              jdbc.queryForObject(
+                  "SELECT response_json FROM commands WHERE user_id=? AND mode='MOCK' AND scope=? AND idempotency_key=?",
+                  String.class,
+                  userId,
+                  scope,
+                  key),
+              type));
     }
-    T result = action.get();
-    jdbc.update(
-        "INSERT INTO commands (user_id,mode,scope,idempotency_key,request_hash,response_json) VALUES (?,'MOCK',?,?,?,?)",
-        userId,
-        scope,
-        key,
-        fingerprint,
-        encode(result));
-    return result;
+    return Optional.empty();
   }
 
   public <T> T get(String table, String id, Class<T> type) {

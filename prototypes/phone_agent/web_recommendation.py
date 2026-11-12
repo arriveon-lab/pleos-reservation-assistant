@@ -1,4 +1,5 @@
 """Fetch a transient WEB_SEARCH result from the loopback recommendation server."""
+from datetime import datetime
 import http.client
 import json
 import re
@@ -51,6 +52,15 @@ def search_web(port, payload):
     }
     if category is not None:
         query["venueCategory"] = category
+    if payload.get("arrivalAt") is not None:
+        arrival = payload["arrivalAt"]
+        require(isinstance(arrival, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}", arrival),
+                "INVALID_ARRIVAL", "방문 날짜와 시간을 확인해 주세요.", 400)
+        try:
+            datetime.fromisoformat(arrival)
+        except ValueError:
+            raise DomainError("INVALID_ARRIVAL", "방문 날짜와 시간을 확인해 주세요.", 400) from None
+        query["arrivalAt"] = arrival
     token = request(port, "POST", "/api/v1/anonymous-sessions", {}).get("accessToken")
     require(isinstance(token, str) and token, "INVALID_WEB_RESPONSE", "추천 서버 인증에 실패했어요.", 502)
     started = request(port, "POST", BASE + "/web", query, token)

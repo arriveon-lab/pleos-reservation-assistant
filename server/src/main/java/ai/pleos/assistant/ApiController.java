@@ -45,6 +45,14 @@ public class ApiController {
     return workflow.getSearch(RequestActor.from(request), id);
   }
 
+  @PostMapping("/searches/reconcile")
+  public WorkflowService.SearchResolution reconcileSearch(
+      HttpServletRequest request,
+      @RequestHeader("Idempotency-Key") String key,
+      @Valid @RequestBody SearchRequest body) {
+    return workflow.reconcileSearch(RequestActor.from(request), key, body);
+  }
+
   @GetMapping("/searches/{id}/calls")
   public List<CallTask> getCalls(HttpServletRequest request, @PathVariable String id) {
     return workflow.getCalls(RequestActor.from(request), id);

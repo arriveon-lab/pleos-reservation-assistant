@@ -1,0 +1,42 @@
+# Overlay for the EC2 phone prototype. Use with compose.yml and compose.integration.yml.
+services:
+  address-lookup:
+    image: arriveon-phone:${PHONE_RELEASE:-local}
+    network_mode: host
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    mem_limit: 96m
+    cpus: 0.5
+    env_file:
+      - ${PHONE_DEPLOY_ROOT:-/opt/arriveon-integration}/config/place-lookup.env
+    volumes:
+      - ${PHONE_DEPLOY_ROOT:-/opt/arriveon-integration}/address-lookup/address-place-lookup.py:/lookup/address-place-lookup.py:ro
+      - ${PHONE_DEPLOY_ROOT:-/opt/arriveon-integration}/address-lookup/places.sqlite3:/lookup/places.sqlite3:ro
+      - ${PHONE_DEPLOY_ROOT:-/opt/arriveon-integration}/address-lookup/address-place-evidence.json:/lookup/address-place-evidence.json:ro
+    command: [python, /lookup/address-place-lookup.py, serve, --index, /lookup/places.sqlite3, --evidence, /lookup/address-place-evidence.json, --port, "18770"]
+    healthcheck:
+      test: [CMD, python, -c, "import socket; socket.create_connection(('127.0.0.1', 18770), 2).close()"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  recommendation:
+    depends_on:
+      address-lookup:
+        condition: service_healthy
+    env_file:
+      - ${PHONE_DEPLOY_ROOT:-/opt/arriveon-integration}/config/place-lookup.env
+    environment:
+      SPRING_APPLICATION_JSON: >-
+        {"app":{"destination-recommendations":{"web":{"place-lookup-port":18770,
+        "place-lookup-fallback":true,"place-lookup-enrich":${ADDRESS_LOOKUP_ENRICH:-false}}}}}
+    volumes:
+      - ${PHONE_DEPLOY_ROOT:-/opt/arriveon-integration}/address-lookup/recommendation.jar:/app/recommendation.jar:ro
+
+  api:
+    volumes:
+      - ${PHONE_DEPLOY_ROOT:-/opt/arriveon-integration}/address-lookup/app.js:/app/prototypes/phone_agent/static/app.js:ro

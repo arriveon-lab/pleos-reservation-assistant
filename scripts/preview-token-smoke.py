@@ -64,13 +64,21 @@ def exercise(base):
     result = api(path + "/queries", query, a["accessToken"])
     assert result["state"] == "RESULTS" and len(result["places"]) == 3
     assert all(not place["bookable"] for place in result["places"])
+    assert result["recommendationPlan"] is None
     for suffix, body in [("/queries", query), ("/cancel", {"generation": 1}), ("/close", {})]:
         api(path + suffix, body, b["accessToken"], expected=404)
     key = str(uuid.uuid4())
     refreshed = api("/api/v1/anonymous-sessions/refresh", {"refreshToken": a["refreshToken"]}, key=key)
     assert api("/api/v1/anonymous-sessions/refresh", {"refreshToken": a["refreshToken"]}, key=key) == refreshed
+    query = json.loads((ROOT / "api/examples/place-preview-recommendation-query.json").read_text())
     query["generation"] = 2
-    assert api(path + "/queries", query, refreshed["accessToken"])["state"] == "RESULTS"
+    planned = api(path + "/queries", query, refreshed["accessToken"])
+    assert planned["state"] == "RESULTS"
+    plan = planned["recommendationPlan"]
+    assert len(plan["candidates"]) == len(planned["places"]) == 3
+    assert plan["listingFetchedAt"] == planned["fetchedAt"]
+    assert plan["displayValidUntil"] == planned["expiresAt"]
+    assert all(not c["bookable"] and not c["inquiryDispatchAllowed"] for c in plan["candidates"])
     api(path + "/cancel", {"generation": 2}, refreshed["accessToken"])
     api(path + "/close", {}, refreshed["accessToken"])
     api(path + "/queries", query, refreshed["accessToken"], expected=404)

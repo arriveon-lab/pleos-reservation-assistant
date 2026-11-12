@@ -141,6 +141,24 @@ class KakaoPlaceSearchAdapterTest {
     }
   }
 
+  @Test
+  void keyword_lookup_matches_exact_branch_without_sending_web_address_or_phone() {
+    try (var adapter = adapter(Duration.ofSeconds(3))) {
+      var result =
+          (PlaceSearchResult.Success)
+              adapter.lookup(
+                  QUERY,
+                  java.util.List.of(new PlaceIdentityLookup.Identity("가상 성수 테스트식당", "가상 도로명 주소 A")),
+                  () -> true);
+      assertThat(result.places()).hasSize(1);
+      assertThat(result.places().getFirst().address()).isEqualTo("가상 도로명 주소 A");
+      assertThat(received.get().path()).isEqualTo("/v2/local/search/keyword.json");
+      assertThat(received.get().query()).contains("category_group_code=FD6", "radius=1000");
+      assertThat(received.get().query()).doesNotContain("주소", "phone", "0212345678");
+      assertThat(requests).hasValue(1);
+    }
+  }
+
   @ParameterizedTest
   @CsvSource({
     "400,INVALID_QUERY",

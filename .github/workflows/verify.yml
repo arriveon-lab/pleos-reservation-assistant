@@ -25,11 +25,38 @@ jobs:
           python-version: '3.12'
       - run: ./gradlew --no-daemon -PincludeAndroid=false verify
       - run: python -m pip install -r scripts/requirements-quality.txt
-      - run: python -m unittest discover -s scripts/tests -p 'test_seoul_place_quality.py'
+      - run: python -m unittest discover -s scripts/tests -p 'test_seoul_place*.py'
       - run: python scripts/seoul-place-quality.py
+      - run: python -m unittest discover -s scripts/tests -p 'test_preview_session_demo.py'
       - run: python scripts/seoul-place-quality.py --pilot-screening
+      - run: python scripts/check-public-catalog.py
       - run: python scripts/check-recommendation-plan.py
+      # Read pinned app core only; do not build/modify the other owner's working branch.
+      - uses: actions/checkout@v4
+        with:
+          ref: 26e80cfd72182b97963171ff8ff896f198f1d2d0
+          path: work/rec05-app-source
+          persist-credentials: false
+      - run: python scripts/check-preview-app-compatibility.py --app-root work/rec05-app-source
       - run: python scripts/smoke-test.py --check-contract
+      - run: python scripts/check-web-recommendation.py
+      - run: python scripts/check-place-lookup.py
+      - run: python -m unittest discover -s scripts/tests -p test_address_place_lookup.py
+      - run: python scripts/mock-agent-integration.py --verify
+      - run: python scripts/check-phone-contract.py --integration
+  docker:
+    name: MOCK Compose checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r scripts/requirements-dev.txt
+      - run: docker compose config --quiet
+      - run: docker compose build
+      - run: python scripts/check-preview-compose.py --no-build
   android:
     name: Android checks
     runs-on: ubuntu-24.04
@@ -47,3 +74,13 @@ jobs:
       # The hosted image includes SDK 35 and build-tools 35.0.0. Fail clearly if that changes.
       - run: python scripts/setup-android.py --sdk "$ANDROID_HOME"
       - run: ./gradlew --no-daemon -PincludeAndroid=true verifyAndroid
+      - name: Preserve Android lint and MOCK APK evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-mock-evidence
+          path: |
+            android/app/build/reports/lint-results-debug.*
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/probe/build/reports/lint-results-debug.*
+          if-no-files-found: warn
