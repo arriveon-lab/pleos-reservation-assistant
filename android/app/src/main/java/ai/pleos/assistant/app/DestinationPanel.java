@@ -15,7 +15,7 @@ final class DestinationPanel {
   private final ReservationViewModel model;
   private final LinearLayout root, form, results;
   private final Button highChair, stepFree;
-  private final Button search, navigationRetry;
+  private final Button search, navigationRetry, demoConfirm;
   private final List<View> inputs = new ArrayList<>();
   private final TextView navigationLabel;
   private final boolean wide;
@@ -50,6 +50,11 @@ final class DestinationPanel {
     text(people, activity.getString(R.string.destination_where), 26);
     navigationLabel = text(people, activity.getString(R.string.navigation_missing), 24);
     navigationRetry = button(people, R.string.navigation_retry, false, activity::retryNavigation);
+    demoConfirm =
+        button(people, R.string.navigation_demo_confirm, false, model::confirmDemoNavigation);
+    demoConfirm.setVisibility(BuildConfig.NAVIGATION_DEMO ? View.VISIBLE : View.GONE);
+    if (BuildConfig.NAVIGATION_DEMO)
+      text(people, activity.getString(R.string.navigation_demo_notice), 20);
     stepper(people, true);
     stepper(people, false);
     LinearLayout needs = VehicleUi.card(activity);
@@ -183,6 +188,12 @@ final class DestinationPanel {
         java.util.Set.of("CONNECTING", "READING").contains(model.navigationState());
     navigationRetry.setEnabled(model.restriction().allowsInput() && !navigationLoading);
     var navigation = model.navigationDestination();
+    demoConfirm.setEnabled(
+        BuildConfig.NAVIGATION_DEMO
+            && model.canWrite()
+            && navigation != null
+            && navigation.validFields()
+            && model.navigationState().equals("UNVERIFIED"));
     navigationLabel.setText(
         navigation == null
             ? activity.getString(
@@ -193,9 +204,11 @@ final class DestinationPanel {
                   default -> R.string.navigation_missing;
                 })
             : activity.getString(
-                model.navigationReady()
-                    ? R.string.navigation_ready
-                    : R.string.navigation_unverified,
+                navigation.demoConfirmed()
+                    ? R.string.navigation_demo_ready
+                    : model.navigationReady()
+                        ? R.string.navigation_ready
+                        : R.string.navigation_unverified,
                 navigation.name()));
     search.setText(loading ? R.string.destination_searching : R.string.destination_search);
     for (View v : inputs) {

@@ -62,3 +62,31 @@ ETA는 이 추천 요청에 필요하지 않다. 원시 ETA를 도착 시각으�
 - Lint 오류0/경고15, 억제 추가 없음. SDK XML 버전 경고는 기존과 동일하며 빌드 성공.
 
 검색 차단 해제는 **미완료**다. #1/#47에서 응답이 현재 목적지에 속함을 확인할 지원 방식/순서 보장과 변경·취소·늦은 응답 기기 근거가 필요하다. 앱 재조회 기능의 성공을 해당 보장 또는 공동 인수 완료로 표시하지 않는다. ETA 입력 및 기존 예약은 변경하지 않았다.
+
+## 2026-11-12 목적지 고정 데모 · 버튼 검증
+
+사용자 요청에 따라 ‘내비 목적지를 먼저 설정하고 시연 중 변경하지 않는다’는 데모 조건을 추가했다. 이전의 제품 기본 검색 차단은 유지하며 `-PnavigationDemo=true`로 빌드한 앱에서만 목적지 확인 버튼을 제공한다. 기본값은 false다.
+
+### 동작과 실행
+
+내비 목적지 수신 → 추천 화면 → ‘이 목적지 확인 · 데모에 사용’ → 인원 ± 버튼 → ‘이 조건으로 후보 찾기’. 이름·좌표는 SDK 수신 그대로이며 별도 가상 목적지로 바꾸지 않는다. 내비 화면과 일치하는 공개 목적지를 사용자가 확인하는 데모 조건이고 SDK 응답 연관성의 공식 보증은 아니다.
+
+내부 `demoConfirmed`와 `currentRouteVerified`를 분리했다. 확인 후에도 후자는 false이며 두 값 모두 서버 payload에 추가하지 않는다. 재조회·수신 이벤트·화면 이탈·주행 제한 시 확인을 해제한다. 누락/잘못된 좌표·이름은 데모에서도 검색할 수 없다. 기존 MOCK 표식·loopback 연결·외부 호출 차단은 유지한다. 추천 결과를 예약 후보 ID로 승격하지 않는다.
+
+빌드(기존 SDK/Java21 환경):
+
+```sh
+./gradlew -PincludeAndroid=true -PnavigationDemo=true :android:app:assembleDebug
+```
+
+이번 기기 검증은 기존 격리 init script를 더해 `ai.pleos.assistant.mock.destinationvalidation`에 설치했다. 원래 jointvalidation 설치·인증·예약 기록을 변경하지 않았다. 데모 APK는 `work/navigation-demo/demo.apk`, SHA256 `73fc824382da2179519831bc0b473fd1bfc248fb1c8dfcf3a66b308d28b83d85`다. 별도 앱 설치의 mock-recovery.xml SHA256 `cd53323c4c0e83e38df13804d60091ab6ff4da8c6658a567023d64524590f60d`가 전후 동일하다.
+
+### 실제 검사
+
+- 데모 옵션 format/verifyAll/assembleDebugAndroidTest PASS, UX124개 실패/오류/skip0. 기본 옵션 verifyAndroid PASS 및 생성 BuildConfig.NAVIGATION_DEMO=false 확인. 서버 결과는 UP-TO-DATE 포함. Lint 오류0, 기존 경고 억제 추가 없음.
+- Pleos Connect2.1.0/API34의 NAVI_DEMO 계측 PASS. 실제 SDK 목적지 수신 후 확인 전 검색 차단, 화면 버튼 확인 후 이름·좌표 보존/SDK verified=false, 아이 + 버튼, 실제 loopback MOCK HTTP 후보3곳 표시를 검사했다. Gleo 세션·음성 Intent·음성 발화 검사는 이번에 수행하지 않았다.
+- 화면 돌아가기 후 확인 해제, 다시 확인→수동 재조회 후 확인 해제 PASS. 취소 이벤트는 listener에 주입했으며 검색 차단·후보 폐기를 확인했다. 실제 내비 앱에서 취소/변경한 기기 인수로 세지 않는다.
+- 실제 수신 목적지 원문은 로그·캡처·fixture에 저장하지 않았다. 후보는 가상 공급자 결과이며 실제 식당 추천 정확도나 실제 예약 성공으로 세지 않는다.
+- MOCK smoke PASS: 기존 HTTP·H2 재시작·LIVE 차단. 로컬 증거 `work/navigation-demo/buttons.log`, `default-build.log`, `smoke.log`, `captures/navigation-demo/cancelled.png`(목적지 제거 상태). 최종 데모 APK를 설치한 상태로 일반 앱 실행을 복원했다.
+
+남은 것: 실제 내비 응답 연관성 보증/자동 활성화, 추천 후보→문의/예약의 서버 계약 연결, 공동 인수. 이번 데모 허용은 위 항목의 완료 선언이 아니다.

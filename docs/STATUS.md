@@ -408,3 +408,7 @@ SET_PARTY_SIZE로 추천 입력 화면의 인원만 설정하도록 추가했다
 ## 2026-11-11 내비 재조회와 대기 종료
 
 #1/#47 최신 답변·공식 가이드·NaviHelper3.0.5 소스 재검토: 현재 경로 연관성 보장 여전히 없음. 수동 재조회/10초 응답 대기 종료/상태 안내를 추가했다. verifyAll·MOCK smoke·실제 SDK 재수신과 주입 timeout/이전 listener 방어·NAVIGATION/GLEO 회귀 PASS, 기록 보존. 실제 무응답/단절·검색 차단 해제·공동 인수는 미완료. [근거·검사·APK](UX_NAVIGATION_BACKEND_HANDOFF.md).
+
+## 2026-11-12 내비 목적지 확인 데모
+
+사용자 지정 목적지 고정 데모 조건으로 navigationDemo=true 옵션과 명시적 목적지 확인 버튼 추가. SDK 검증과 demoConfirmed 분리, 기본 앱 차단 유지. 실제 SDK 목적지→확인/인원/검색 버튼→MOCK3후보, 이탈/재조회 확인 해제·취소 이벤트 주입 차단 PASS. 음성 테스트 미실행. verifyAll/UX124·기본 verifyAndroid·MOCK smoke PASS, 기존 journal 보존. [APK·절차·증거·한계](UX_NAVIGATION_BACKEND_HANDOFF.md). 추천→전화/예약 및 공동 인수는 미완료.

@@ -72,6 +72,61 @@ final class DestinationDeviceChecks {
     }
     await(model::canWrite, 15000);
     String journal = journal();
+    if (fixture.equals("NAVI_DEMO")) {
+      check(BuildConfig.NAVIGATION_DEMO, "demo flag required");
+      click(R.string.destination_open);
+      panel = field(activity, "destinationPanel");
+      await(() -> model.navigationState().equals("UNVERIFIED"), 15000);
+      var received = main(model::navigationDestination);
+      check(!main(model::navigationReady), "search allowed before confirmation");
+      // Use only visible buttons: no Gleo invocation and no voice Intent.
+      click(R.string.navigation_demo_confirm);
+      check(main(model::navigationReady), "demo confirmation did not allow search");
+      check(
+          !main(() -> model.navigationDestination().currentRouteVerified()),
+          "demo claimed SDK proof");
+      check(
+          main(
+              () ->
+                  model.navigationDestination().name().equals(received.name())
+                      && model.navigationDestination().latitude() == received.latitude()
+                      && model.navigationDestination().longitude() == received.longitude()),
+          "demo changed destination");
+      main(
+          () -> {
+            findDescription(
+                    activity.getWindow().getDecorView(),
+                    activity.getString(R.string.destination_children_more))
+                .performClick();
+            return null;
+          });
+      click(R.string.destination_search);
+      await(() -> model.destinationView().state().equals("RESULTS"), 15000);
+      check(
+          main(() -> model.destinationView().candidates().length() == 3),
+          "MOCK candidates missing");
+      // Actual SDK name/coordinates must not enter screenshot/log fixtures.
+      click(R.string.destination_exit);
+      check(!main(model::navigationReady), "exit retained demo consent");
+      click(R.string.destination_open);
+      click(R.string.navigation_demo_confirm);
+      click(R.string.navigation_retry);
+      await(() -> model.navigationState().equals("UNVERIFIED"), 15000);
+      check(!main(model::navigationReady), "refresh retained demo consent");
+      click(R.string.navigation_demo_confirm);
+      var sdkListener =
+          (ai.pleos.playground.navi.helper.listener.NaviHelperEventListener)
+              field(field(activity, "navigation"), "listener");
+      sdkListener.onRouteCancelled();
+      runner.waitForIdleSync();
+      check(!main(model::navigationReady), "cancel retained demo consent");
+      check(
+          main(() -> model.destinationView().candidates().length() == 0),
+          "cancel retained results");
+      capture("NAVI_DEMO-cancelled");
+      check(journal.equals(journal()), "demo changed reservation journal");
+      return;
+    }
     if (fixture.equals("NAVI_RECOVERY")) {
       click(R.string.destination_open);
       panel = field(activity, "destinationPanel");

@@ -17,7 +17,16 @@ public final class DestinationController implements AutoCloseable {
 
   /** SDK-independent destination. Field validity alone never proves current-route association. */
   public record Destination(
-      String name, double latitude, double longitude, boolean currentRouteVerified) {
+      String name,
+      double latitude,
+      double longitude,
+      boolean currentRouteVerified,
+      boolean demoConfirmed) {
+    public Destination(
+        String name, double latitude, double longitude, boolean currentRouteVerified) {
+      this(name, latitude, longitude, currentRouteVerified, false);
+    }
+
     public boolean validFields() {
       return name != null
           && !name.isBlank()
@@ -31,7 +40,7 @@ public final class DestinationController implements AutoCloseable {
     }
 
     public boolean usable() {
-      return validFields() && currentRouteVerified;
+      return validFields() && (currentRouteVerified || demoConfirmed);
     }
   }
 

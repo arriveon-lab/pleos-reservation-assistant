@@ -9,6 +9,11 @@ android {
         minSdk = 28
         targetSdk = 35
         testInstrumentationRunner = "ai.pleos.assistant.app.DrivingDeviceChecks"
+        buildConfigField(
+            "boolean",
+            "NAVIGATION_DEMO",
+            providers.gradleProperty("navigationDemo").orElse("false").get().toBoolean().toString(),
+        )
         versionCode = 1
         versionName = "0.1.0-mock"
     }

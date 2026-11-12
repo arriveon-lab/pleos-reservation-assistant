@@ -289,6 +289,19 @@ class DestinationControllerTest {
   }
 
   @Test
+  void explicitDemoConfirmationDoesNotClaimSdkVerification() throws Exception {
+    var destination = new DestinationController.Destination("가상 데모", 37, 127, false, true);
+    assertFalse(destination.currentRouteVerified());
+    assertTrue(destination.usable());
+    var body =
+        new DestinationController.Input(destination, 2, 2, false, false)
+            .body(UUID.randomUUID().toString(), 1);
+    assertEquals(3, body.getJSONObject("destination").length());
+    assertFalse(body.toString().contains("demoConfirmed"));
+    assertFalse(new DestinationController.Destination("가상", Double.NaN, 127, false, true).usable());
+  }
+
+  @Test
   void missingUnverifiedAndMalformedNavigationNeverPosts() throws Exception {
     Wire w = new Wire();
     try (var c = controller(w, new AtomicLong())) {

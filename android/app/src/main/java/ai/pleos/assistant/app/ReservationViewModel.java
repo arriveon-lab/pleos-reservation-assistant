@@ -41,6 +41,22 @@ public final class ReservationViewModel extends AndroidViewModel {
     return navigationDestination != null && navigationDestination.usable();
   }
 
+  void confirmDemoNavigation() {
+    if (!BuildConfig.NAVIGATION_DEMO
+        || !canWrite()
+        || !destinationOpen
+        || navigationDestination == null
+        || !navigationDestination.validFields()
+        || !navigationState.equals("UNVERIFIED")) return;
+    var value = navigationDestination;
+    navigationDestination =
+        new DestinationController.Destination(
+            value.name(), value.latitude(), value.longitude(), false, true);
+    navigationState = "DEMO_CONFIRMED";
+    invalidateDestination("EDITING");
+    if (observer != null) observer.run();
+  }
+
   void navigation(DestinationController.Destination value, String state) {
     navigationDestination = value;
     navigationState = state;
@@ -189,7 +205,17 @@ public final class ReservationViewModel extends AndroidViewModel {
     if (observer != null) observer.run();
   }
 
+  private void clearDemoConfirmation() {
+    if (navigationDestination == null || !navigationDestination.demoConfirmed()) return;
+    var value = navigationDestination;
+    navigationDestination =
+        new DestinationController.Destination(
+            value.name(), value.latitude(), value.longitude(), false);
+    navigationState = "UNVERIFIED";
+  }
+
   void closeDestination() {
+    clearDemoConfirmation();
     destinationOpen = false;
     invalidateDestination("CLOSED");
     if (observer != null) observer.run();
@@ -255,6 +281,7 @@ public final class ReservationViewModel extends AndroidViewModel {
 
   private void restrict(MockRepository.Restriction value) {
     restriction = value;
+    if (!value.allowsInput()) clearDemoConfirmation();
     if (preview != null) preview.allow(canWrite());
     if (destination != null) destination.allow(canWrite());
     if (repository != null) repository.restrict(value);
