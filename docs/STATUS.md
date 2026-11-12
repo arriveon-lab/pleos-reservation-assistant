@@ -944,3 +944,11 @@ SSH로 실제 WEB_SEARCH 서버18769의 Bearer1.1.0 API를 연결했다. 별도 
 - 실제조회 빌드의 일반 검색/미리보기 버튼 비활성화, 같은 인증의 검색 대조/결과 GET만 허용. 식당 전용 기기 assertion·안전한 gateway 상태 로그 추가. 복구 성공은 미검증.
 - format/verifyAll/test APK/smoke-test.py PASS. 별도 검증 설치 옵션은 빌드만 준비하고 분리 여부 사용자 답변 대기. 기존 1회 승인 표식과 원 기록 보존.
 - [절차·차단 원인·증거·다음 단계](UX56_MOCK_PHONE_INTEGRATION.md)의 마지막 기록 참조. #56 OPEN/PR #59 Draft 유지.
+
+
+### 2026-11-12 #62 별도 설치 후 실제 추천1회 결과
+
+- 사용자 승인 후 realplacefiltervalidation 별도 설치/인증. 기존 realplacevalidation journal SHA256 동일, 미확인 기록/인증 보존.
+- 실제 추천 POST1회 HTTP200 및 GET4회 HTTP200. 기기 검사는 no restaurant results로 실패했고 최종 응답 증거가 없어 원인/카페 제외 성공 미확정. 전화·예약0회, 추가 검색 없음.
+- 실패 전 화면/상태 및 gateway 오류 진단을 보완하고 format/verifyAll/test APK PASS. 진단 보완 후 기기 재실행은 미수행. 승인된 추가 추천1회는 소비됨.
+- 이전 e243ed8 CI4개 PASS(서버 의존성 해석 실패 작업 재실행 후). 상세는 UX56_MOCK_PHONE_INTEGRATION 마지막 절. #56 OPEN/PR #59 Draft.

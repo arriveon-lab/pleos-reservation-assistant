@@ -139,6 +139,10 @@ final class PhoneDeviceChecks {
                   .contains(model.destinationView().state()));
       check(requestMatches.get(), "SDK destination request mismatch");
       var view = main(model::destinationView);
+      android.util.Log.i(
+          "ArriveOnNaviCheck",
+          "SDK_REQUEST_MATCH=" + requestMatches.get() + " terminalUiState=" + view.state());
+      capture("actual-navi-query");
       boolean restaurantsOnly = fixture.equals("PHONE_NAVI_RESTAURANTS");
       if (restaurantsOnly) {
         check(
@@ -172,7 +176,6 @@ final class PhoneDeviceChecks {
                 + " listingExpiryPresent="
                 + (listing != null && !listing.isNull("displayValidUntil")));
       }
-      capture("actual-navi-query");
       check(original.equals(journal()) && !model.phone.hasRequest(), "query changed reservation");
       check(
           originalPhone.equals(

@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import re
+import time
 
 ROOT = '/api/experimental/destination-recommendations'
 
@@ -48,6 +49,7 @@ def run(state, port, upstream):
                 print('SEARCH_ATTEMPTED=1', flush=True)
             headers = {k: self.headers[k] for k in ('Authorization', 'Idempotency-Key', 'Content-Type') if k in self.headers}
             connection = http.client.HTTPConnection('127.0.0.1', upstream, timeout=15)
+            started = time.monotonic()
             try:
                 connection.request(self.command, self.path, body, headers)
                 response = connection.getresponse()
@@ -62,9 +64,13 @@ def run(state, port, upstream):
                 safe_code = code if isinstance(code, str) and re.fullmatch(r'[A-Z_]{1,80}', code) else ''
                 print(f'{self.command} {route} HTTP={response.status} code={safe_code}', flush=True)
                 if len(data) > 262144:
+                    print('GATEWAY_RESPONSE_TOO_LARGE', flush=True)
                     self.send_error(502); return
                 if self.command == 'GET' and self.path.startswith(ROOT + '/') and response.status == 200:
                     value = json.loads(data)
+                    result_state = value.get('state', '')
+                    safe_state = result_state if isinstance(result_state, str) and re.fullmatch(r'[A-Z_]{1,40}', result_state) else 'INVALID'
+                    print(f'RESULT_STATE={safe_state}', flush=True)
                     if value.get('state') not in ('QUEUED', 'RUNNING'):
                         # Public restaurant evidence only; no auth response or user request saved.
                         evidence = {k: value.get(k) for k in ('state', 'source', 'result', 'validUntil')}
@@ -77,7 +83,8 @@ def run(state, port, upstream):
                 self.send_header('Cache-Control', 'no-store')
                 self.send_header('Content-Length', str(len(data)))
                 self.end_headers(); self.wfile.write(data)
-            except (OSError, ValueError):
+            except (OSError, ValueError) as error:
+                print(f'GATEWAY_FAILURE={type(error).__name__} elapsedSeconds={time.monotonic() - started:.1f}', flush=True)
                 self.send_error(502, 'UPSTREAM_UNAVAILABLE')
             finally:
                 connection.close()

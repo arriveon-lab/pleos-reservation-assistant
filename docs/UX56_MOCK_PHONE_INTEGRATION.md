@@ -149,3 +149,16 @@ adb reverse tcp:8083 tcp:18091
 - 로컬 증거: `work/ux56-cafe-filter/{pre-recovery-timeout,recovery-failure,device,gateway,build,isolated-build,smoke}.log`, `preserved-journal.sha256`, `captures/ux56/cafe-filter-auth-blocked.png`.
 
 다음 단계: 기존 주체의 서버 복구가 가능하면 같은 인증으로 대조를 완료한다. 별도 검증 설치가 승인되면 기존 기록은 그대로 두고 승인된 추천1회만 실행해 반환 업종/카드/UNKNOWN 표시를 대조한다. #56 OPEN, PR #59 Draft 유지. 실차·현재 경로 연관성·공동 인수·실제 전화/예약 완료로 표시하지 않는다.
+
+
+### 같은 날 후속 — 사용자 승인 후 분리 설치·추천1회 수행
+
+사용자가 별도 검증 설치를 승인했다. 기존 realplacevalidation은 유지하고 `realPlaceFilterValidation=true`의 `ai.pleos.assistant.mock.realplacefiltervalidation`을 별도로 설치했다. 신규 인증 HTTP200, 추천 POST **정확히 1회 HTTP200**, 이후 작업 GET HTTP200 4회를 gateway에서 관측했다. 추천1회 표식은 소비됐으며 삭제/재시도하지 않았다. 실제 전화/예약은 0회다.
+
+기기 검사는 `FAIL: AssertionError: no restaurant results`로 끝났다. 이 assertion 전에 SDK 목적지/실제 전송 body 일치 검사를 통과했지만, 후보 존재/RESULTS 조건을 충족하지 못했다. gateway에는 최종 result.json이 생성되지 않았고, 당시 로그에는 GET 응답의 상태 본문 및 로컬 전송 예외가 없어 **빈 결과인지, 실패 응답인지, 통신 오류인지 확정할 수 없다**. 원격 추천 컨테이너의 해당 시간 로그도 비어 있었다. 이를 서버 카페 필터 실패 또는 식당만 표시 성공으로 해석하지 않는다. 자동 화면 종료/close 이후의 화면을 결과 화면으로 제출하지 않는다.
+
+기존 설치 journal SHA256을 다시 확인해 위 값과 같음을 확인했다. 신규 시험 인증을 기존 미확인 요청의 복구로 간주하지 않는다. 추가 기기 실행은 하지 않고 다음 실패에서 원인을 남기도록 assertion 전에 UI 상태/스크린샷을 기록하고 gateway에 상태·오류 종류·경과시간 로그를 보완했다. 이 진단 보완은 빌드/검사만 통과했고 기기 재실행은 미수행이다. 후보/카페 업종 대조·카드 표시는 여전히 미검증이다.
+
+증거: `work/ux56-cafe-filter/device.log`(후속 실패), `blocked-identity.log`(기존 인증 차단), `gateway.log`(추천 POST1회/GET/close), `search-attempted`, `final-build.log`. 최종 응답과 오류 원인을 보존할 수 있는 재실행이 필요하다. 추가 외부 추천 승인은 이번 1회에 포함되지 않으므로 임의로 재검색하지 않는다.
+
+`e243ed8` CI는 기존 Spotless/JGit 의존성 해석 실패 후 실패한 Server and contract 작업만 재실행하여 최종4개 PASS했다(run43163347561, naming43163403593). 최신 진단/기록 후속 커밋 CI는 PR에서 별도로 확인한다. #56 OPEN/PR #59 Draft 유지.
