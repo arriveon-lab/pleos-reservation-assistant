@@ -86,3 +86,17 @@ PHONE_FULL은 실제 SharedPreferences에 기록하고 PHONE_RESTORE가 강제 �
 EC2 빌드에서 verifyAll 및 test APK 빌드 통과. APK SHA256 `a8bd75cd7e989be1ff6ebe0f08cab9abf4e92c957afd69155fac52f03946bca8`. 에뮬레이터에서 신규 시험 세션 발급→가상 목적지 확인→후보 검색→선택→승인 취소→재승인→예약 확정→GET을 실제 버튼으로 검증했다. 로컬 중계나 adb reverse를 거치지 않는 HTTPS 요청이다. 기존 설치의 자격 증명을 옮기거나 재사용하지 않았다.
 
 EC2 기기 로그는 `work/ux56/ec2-{full,unmet,unknown,restore}.log`, 빌드 로그는 `ec2-build.log`. PHONE_FULL/RESTORE는 보호 저장의 같은 인증·예약 기록을 사용하며, UNMET/UNKNOWN은 반복용 메모리 phone Store를 사용한다. 모든 시나리오는 가상 목적지/가상 후보/가상 이름이며 실제 전화·유료 호출 0이다. 토큰 강제 만료·실제 서버 장애·실차 검증은 미수행이다.
+
+## 2026-11-12 실제 내비 고정 목적지 조회 — 추천 실패 확인
+
+요청에 따라 합성 목적지 주입을 제거하고 실제 NaviHelper 3.0.5 콜백을 사용하는 `PHONE_NAVI_QUERY` 기기 검사를 추가했다. 목적지 확인·검색 버튼만 누르며 음성/예약 POST는 호출하지 않는다. 공개 목적지의 SDK 이름·위도·경도와 실제 전송 body가 같은지 메모리에서 비교하고 원문은 로그에 남기지 않는다.
+
+- 실제 SDK 수신 → 화면 확인 → 데모 확인 → EC2 POST/GET까지 실행했다. `SDK_REQUEST_MATCH=true`.
+- 서버 작업의 외부 state는 RESULTS였지만 내부 `result.listing.state=FAILED`, `failure=INVALID_QUERY`, 후보 0개였다. 앱도 FAILED/후보0과 실패 안내를 표시했다. **실제 식당 추천과 상호·주소·근거 카드 대조는 미완료다.** 검사 도구의 PASS는 요청 일치·실패 관측·예약 기록 보존 검사 통과이지 추천 성공이 아니다.
+- 서버 `SeoulPlaceSearchAdapter`는 기준점 37.544/127.055에서 1km 이내 목적지와 최대 검색반경1km만 허용하고, 그 밖은 INVALID_QUERY를 반환한다. 현재 내비 목적지는 그 시범 범위 밖이다. 앱의 좌표를 성수로 바꾸거나 가상 후보를 실제 식당으로 표시하지 않았다.
+- 공개 `/pleos-mock/api/v1/status`는 여전히 `FICTIONAL_FIXTURES`, 외부 호출 false다. 실제 식당용 주소 조회는 별도 시험 서비스이며 공개 루트는 HTTP401, 문서상 SSH 터널18767/시험 화면 인증을 요구한다. 현재 로컬 터널과 EC2 연결 설정이 없어 해당 실제 조회를 실행하지 않았다. 무료 공공자료/유료 보강 비활성 경로의 앱용 주소·인증·지원 범위 인계가 필요하다.
+- 새 ec2navigationvalidation 설치의 최초 인증 준비가 시간 초과됐다. 해당 인증 시도/저장을 보존했고 원인을 확정하지 않았다. 재발급·삭제하지 않았다. 이미 인증된 ec2validation의 **같은 주체**로 조회만 수행했다. 기존 phone journal은 그대로 두고 검사 중 UI용 메모리 controller만 사용했다(save는 금지). 일반 예약 journal 및 phone journal 원문이 전후 동일함을 검사했다.
+- `format`, `verifyAndroid`, test APK 빌드 통과. 실제 제품 코드는 변경하지 않았고 기존 c40152d EC2 제품 APK를 사용했다. 초기 인증 timeout과 추천 실패를 숨기지 않는다.
+- 재현: EC2 옵션으로 test APK 빌드/설치 후 `adb shell am instrument --user 10 -w -e destinationFixture PHONE_NAVI_QUERY ai.pleos.assistant.mock.ec2validation.test/ai.pleos.assistant.app.DrivingDeviceChecks`.
+- 로컬 증거: `work/ux56/actual-navi-final.log`, `nav-final-build.log`, `captures/ux56/actual-navi-query.png`. 화면은 로컬에만 보존한다. 기기 로그 시각은 host UTC와 다르므로 같은 시각으로 합치지 않는다.
+- 실제 식당 응답을 확보한 뒤 이름·주소·출처·조건 UNKNOWN·관측/유효시각·화면 표시를 대조해야 한다. 기존 MOCK 예약 성공은 이 실제 데이터 인수의 증거가 아니다. #56 OPEN/PR Draft 유지.

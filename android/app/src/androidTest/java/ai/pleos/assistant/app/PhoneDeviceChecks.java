@@ -27,7 +27,8 @@ final class PhoneDeviceChecks {
     check(
         java.util.Set.of(
                 "ai.pleos.assistant.mock.integrationvalidation",
-                "ai.pleos.assistant.mock.ec2validation")
+                "ai.pleos.assistant.mock.ec2validation",
+                "ai.pleos.assistant.mock.ec2navigationvalidation")
             .contains(runner.getTargetContext().getPackageName()),
         "isolated installation required");
     activity =
@@ -43,6 +44,111 @@ final class PhoneDeviceChecks {
     }
     await(model::canWrite);
     String original = journal();
+    if (fixture.equals("PHONE_NAVI_QUERY")) {
+      String originalPhone =
+          runner
+              .getTargetContext()
+              .getSharedPreferences("mock-phone-recovery", Context.MODE_PRIVATE)
+              .getString("journal", "");
+      // Preserve the existing confirmed phone journal while inspecting navigation-only UI.
+      var phoneWire = (PreviewController.Transport) field(model.phone, "wire");
+      model.phone.close();
+      main(
+          () -> {
+            model.phone =
+                new MockPhoneController(
+                    phoneWire,
+                    new MockPhoneController.Store() {
+                      public String read() {
+                        return null;
+                      }
+
+                      public void save(String value) {
+                        throw new IllegalStateException("READ_ONLY_CHECK");
+                      }
+                    },
+                    () -> {});
+            return null;
+          });
+      click(R.string.destination_open);
+      await(() -> model.navigationState().equals("UNVERIFIED"));
+      var received = main(model::navigationDestination);
+      check(received != null && received.validFields(), "SDK destination missing");
+      var controller = field(model, "destination");
+      var wireField = controller.getClass().getDeclaredField("wire");
+      wireField.setAccessible(true);
+      var originalWire = (PreviewController.Transport) wireField.get(controller);
+      var requestMatches = new java.util.concurrent.atomic.AtomicBoolean();
+      var response = new java.util.concurrent.atomic.AtomicReference<org.json.JSONObject>();
+      wireField.set(
+          controller,
+          (PreviewController.Transport)
+              (path, body, key) -> {
+                if (path.equals("/experimental/destination-recommendations") && body != null) {
+                  var d = body.getJSONObject("destination");
+                  requestMatches.set(
+                      received.name().equals(d.getString("name"))
+                          && received.latitude() == d.getDouble("latitude")
+                          && received.longitude() == d.getDouble("longitude"));
+                }
+                var answer = originalWire.exchange(path, body, key);
+                if (answer.has("result")) response.set(answer);
+                return answer;
+              });
+      click(R.string.navigation_demo_confirm);
+      check(
+          !main(() -> model.navigationDestination().currentRouteVerified()),
+          "demo claimed SDK proof");
+      click(R.string.destination_search);
+      await(
+          () ->
+              java.util.Set.of("RESULTS", "EMPTY", "FILTERED", "FAILED")
+                  .contains(model.destinationView().state()));
+      check(requestMatches.get(), "SDK destination request mismatch");
+      var view = main(model::destinationView);
+      if (view.state().equals("RESULTS")) {
+        for (int i = 0; i < view.candidates().length(); i++) {
+          var item = view.candidates().getJSONObject(i);
+          String text = main(() -> visibleText(activity.getWindow().getDecorView()));
+          check(
+              text.contains(item.getString("name")) && text.contains(item.getString("address")),
+              "candidate UI mismatch");
+        }
+      }
+      if (response.get() != null) {
+        var answer = response.get();
+        var result = answer.optJSONObject("result");
+        var listing = result == null ? null : result.optJSONObject("listing");
+        android.util.Log.i(
+            "ArriveOnNaviCheck",
+            "serverState="
+                + answer.optString("state")
+                + " listingState="
+                + (listing == null ? "NONE" : listing.optString("state"))
+                + " listingFailure="
+                + (listing == null ? "NONE" : listing.optString("failure"))
+                + " listingExpiryPresent="
+                + (listing != null && !listing.isNull("displayValidUntil")));
+      }
+      capture("actual-navi-query");
+      check(original.equals(journal()) && !model.phone.hasRequest(), "query changed reservation");
+      check(
+          originalPhone.equals(
+              runner
+                  .getTargetContext()
+                  .getSharedPreferences("mock-phone-recovery", Context.MODE_PRIVATE)
+                  .getString("journal", "")),
+          "phone journal changed");
+      android.util.Log.i(
+          "ArriveOnNaviCheck",
+          "SDK_REQUEST_MATCH=true state="
+              + view.state()
+              + " displayedCandidates="
+              + view.candidates().length()
+              + " serverResultReceived="
+              + (response.get() != null));
+      return;
+    }
     if (fixture.equals("PHONE_RESTORE")) {
       check(model.phone.hasRequest(), "saved request missing after restart");
       click(R.string.destination_open);
@@ -139,6 +245,15 @@ final class PhoneDeviceChecks {
     check(attempt.equals(model.phone.receipt().getString("attemptId")), "GET changed attempt");
     capture(fixture.toLowerCase() + "-result");
     check(original.equals(journal()), "legacy journal changed");
+  }
+
+  private static String visibleText(View view) {
+    StringBuilder text = new StringBuilder();
+    if (view instanceof TextView label) text.append(label.getText());
+    if (view instanceof ViewGroup group)
+      for (int i = 0; i < group.getChildCount(); i++)
+        text.append("\n").append(visibleText(group.getChildAt(i)));
+    return text.toString();
   }
 
   private String journal() {

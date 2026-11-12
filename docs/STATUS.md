@@ -927,3 +927,7 @@ SET_PARTY_SIZE로 추천 입력 화면의 인원만 설정하도록 추가했다
 가상 catalog 추천→선택→명시적 승인→예약 결과와 DECLINED 재승인, UNKNOWN 차단, 강제 종료 후 GET 복구를 별도 설치로 검증했다. 음성·실제 전화·유료 호출 없음. 기존 두 설치 예약 XML 해시 동일. verifyAll/계약 smoke/HTTP 연동 통과. 작업 중 신규 EC2 인계를 확인해 고정 HTTPS 전송·MOCK 상태 확인·별도 ec2validation 설치를 추가했다. 세션 발급부터 버튼 예약 결과까지 EC2 직접 연결도 확인했다.
 
 세부 절차와 실제 실행/미검증 구분은 [UX56_MOCK_PHONE_INTEGRATION](../docs/UX56_MOCK_PHONE_INTEGRATION.md). 실제 Pleos 기기·현재 목적지 연관성·공동 인수는 미완료이므로 #56 OPEN/Draft 유지. 로컬 런처 18088의 데이터와 기존 예약 기록은 별도 보존한다.
+
+## 2026-11-12 UX-56 실제 내비 목적지 조회 결과
+
+실제 SDK 목적지와 EC2 요청의 이름·좌표 일치를 기기에서 확인했다. 그러나 서버 listing=FAILED/INVALID_QUERY, 후보0으로 실제 식당 추천은 실패했다. 현재 앱용 /pleos-mock은 가상 카탈로그·성수 기준점1km 제한이며, 실제 식당용 별도 시험 서버는 인증 인계가 필요하다. 기존 일반/전화 예약 journal을 보존했다. verifyAndroid/test APK 통과와 실제 추천 실패를 구분한다. [상세 기록](../docs/UX56_MOCK_PHONE_INTEGRATION.md).
