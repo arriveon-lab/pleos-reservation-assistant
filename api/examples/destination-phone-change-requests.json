@@ -1,0 +1,22 @@
+{
+  "callback": {
+    "action": "SIMULATE_CALLBACK",
+    "proposedTime": "19:30",
+    "reason": "가상 식당의 영업 사정"
+  },
+  "approve": {
+    "action": "DECIDE",
+    "changeId": "11111111111141118111111111111111",
+    "approve": true
+  },
+  "reject": {
+    "action": "DECIDE",
+    "changeId": "11111111111141118111111111111111",
+    "approve": false
+  },
+  "restaurantAccept": {
+    "action": "SIMULATE_RECONFIRMATION",
+    "changeId": "11111111111141118111111111111111",
+    "result": "ACCEPT"
+  }
+}

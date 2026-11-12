@@ -19,6 +19,7 @@
 2. **주소 입력 웹 시험**: Python 시험 UI는 `POST /api/experimental/destination-recommendations/web`에 도로명주소, 필수 조건, 선택적 업종·음식 취향·`arrivalAt`을 전달한다. `arrivalAt`은 한국 현지 시각의 예약 희망 날짜와 시간이다. 차량 앱이 쓰는 목적지 POST의 ETA 계약은 실기에서 검증한다.
 3. **오프라인 예약 API 통합**: 가상 공공 catalog 결과에만 `POST /{id}/phone-reservations`가 가능하다. 후보 선택·승인 → 조건 확인 → 예약 가능 확인 → 예약 요청 → 수락/거절/UNKNOWN을 검증한다. `nextCandidate`는 명시적 거절 때만 제시하며, 다음 POST에는 새 승인·새 멱등 키·직전 `previousAttemptId`가 필요하다. UNKNOWN·통신 장애로 자동 재발신하지 않는다.
 4. **실제 음성 시험**: 별도 Python 시험 화면에서 웹 후보 선택 → 시험 예약 생성 → 승인 → 등록/입력한 시험 휴대폰으로 발신한다. 카드에 표시한 실제 식당으로 전화한 것이 아니다. SQLite에 저장한 결과를 같은 세션이 조회한다. 이 경로는 제품 Spring 예약 DB 및 앱 인증 주체와 아직 통합되지 않았다.
+5. **가상 식당 회신과 변경 결정**: 확정 예약의 같은 `taskId`와 Bearer로 `GET /{id}/phone-reservations/change`에서 현재 확정 시각과 변경 요청을 읽는다. Swagger에서 식당 회신을 재현하고 앱은 `AWAITING_USER`에서만 예·아니오를 보낸다. 식당 재확인 수락 이후에만 새 시각이 확정된다. [변경 명세와 버튼 동작](../api/README.md#가상-전화-예약-연결)
 
 추천 상태 `RESULTS`는 검색 완료다. 후보의 `bookable=false`, `inquiryDispatchAllowed=false`는 유지한다. 영업시간·브레이크타임·주차 안내와 후기 근거는 예약 가능한 자리/도착 시 대기/매장의 예약 확정을 증명하지 않는다.
 
