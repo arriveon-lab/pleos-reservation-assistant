@@ -1059,3 +1059,9 @@ EC2 MOCK 후보 선택→승인 취소/재승인→CONFIRMED/GET 동일 작업�
 ### 2026-11-12 최종 UI 적용·앱 재실행 복구
 
 설계안을 Android 단계별 후보/승인/결과/대화 화면과 주야간 색상에 반영. 실제 앱 저장소에 새 MOCK 예약을 남기고 force-stop 후 같은 예약ID·대화 및 실제 서버 GET1회/POST0 복구 PASS. 야간840dp 승인창 잘림 수정·경계 검사, UNKNOWN 추가 승인 차단, 기존 EC2 앱 업데이트·기존 예약 복구 PASS. 기존3설치 journal 해시 동일. verifyAll/verifyAndroid/test APK/smoke PASS. 실제 전화·외부 추천0, 실차/실제 후보 예약/공동 인수는 미완료. [검증 기록](../docs/UX56_FINAL_UI_VALIDATION.md). #56 OPEN/PR Draft.
+
+### 2026-11-12 별도 시험 전화 및 도착·회신 UI 선구현
+
+별도 앱 전화 세션 로그인/번호 등록·합성 시험 식당 예약 READY를 EC2에서 확인. 승인된 실제 발신1건은 최대시간 종료로 UNKNOWN, 재발신 없음. 통합 세션/실제 후보 CONFIRMED 공동 인수는 미완료다. [전화 검증](../docs/UX56_PHONE_TRIAL_VALIDATION.md).
+
+Native 새 런처는 목적지·시연 ETA·예약 여유 시간, 조건/후보/승인/전화 진행/확정/식당 재연락/시간 변경·재확인 흐름을 제공한다. **API 미연결 UI 시연**이며 실제 서버 성공으로 세지 않는다. 기존 화면·기록/Gleo 수신은 보존. verifyAll·계측 UI 정상/거절/UNKNOWN/입력제한 PASS. [UI 구성·검증·연결 순서](../docs/UX56_DEMO_FLOW_UI.md). #56 OPEN/Draft 유지.

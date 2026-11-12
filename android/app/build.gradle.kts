@@ -14,7 +14,9 @@ android {
         minSdk = 28
         targetSdk = 35
         testInstrumentationRunner =
-            if (providers.gradleProperty("phoneTrialChecks").orElse("false").get().toBoolean())
+            if (providers.gradleProperty("demoFlowChecks").orElse("false").get().toBoolean())
+                "ai.pleos.assistant.app.DemoFlowDeviceChecks"
+            else if (providers.gradleProperty("phoneTrialChecks").orElse("false").get().toBoolean())
                 "ai.pleos.assistant.app.PhoneTrialDeviceChecks"
             else "ai.pleos.assistant.app.DrivingDeviceChecks"
         buildConfigField(
