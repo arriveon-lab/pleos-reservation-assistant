@@ -1,20 +1,96 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "ArriveOn 실전화 시험 번호",
-    "version": "1.0.0",
-    "description": "기존 전화 시험 화면과 같은 브라우저에서 진행합니다. START에 시험용 010 번호를 입력하면 한 시간 동안 등록됩니다. 전화 시험 화면에서 같은 번호로 발신하고 예약을 확정한 뒤, 그 휴대폰에서 걸려온 070 번호로 회신합니다. 등록 상태는 GET으로 확인하고, 시험을 마치면 STOP으로 종료합니다. 실제 연결된 통화에는 통신료가 붙습니다."
+    "title": "ArriveOn 전화 시험",
+    "version": "1.1.0",
+    "description": "Pleos 앱과 연결하려면 먼저 앱에서 연결 코드를 발급한 뒤 아래 ‘Pleos 앱 시험 번호 연결’을 사용합니다. 브라우저 자체의 발신·수신 시험은 별도 등록 경로입니다."
   },
-  "servers": [{ "url": "/" }],
-  "security": [{ "operatorLogin": [] }],
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "operatorLogin": []
+    }
+  ],
   "paths": {
+    "/api/live/pleos-pairing": {
+      "post": {
+        "operationId": "claimPleosPhonePairing",
+        "summary": "Pleos 앱 시험 번호 연결",
+        "description": "앱에서 발급한 10자리 연결 코드와 본인의 국내 010 번호를 등록합니다. 코드는 5분 이내 한 번만 사용할 수 있고 등록은 1시간 동안 유지됩니다. MOCK은 외부 검색·전화가 없으며, LIVE는 앱에서 실제 검색과 휴대폰 시험 발신을 허용합니다. 각 연결에서 검색·통화는 각각 최대 3회이고 통화는 서버 공통 상한도 적용됩니다. 연결만으로 발신되지 않습니다.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "pairingCode",
+                  "testPhoneNumber",
+                  "mode"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "pairingCode": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 10
+                  },
+                  "testPhoneNumber": {
+                    "type": "string",
+                    "description": "본인의 010 시험 번호"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "MOCK",
+                      "LIVE"
+                    ],
+                    "default": "MOCK"
+                  }
+                }
+              },
+              "example": {
+                "pairingCode": "",
+                "testPhoneNumber": "",
+                "mode": "MOCK"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "등록 여부, 모드, 번호 끝 네 자리 및 만료 시각"
+          },
+          "400": {
+            "description": "코드·번호·모드 형식 오류"
+          },
+          "401": {
+            "description": "시험 운영자 로그인 필요"
+          },
+          "404": {
+            "description": "만료 또는 이미 사용된 코드"
+          },
+          "409": {
+            "description": "이미 연결되었거나 실전화 준비 안 됨"
+          }
+        }
+      }
+    },
     "/api/live/callback-test-target": {
       "get": {
         "operationId": "getTestPhone",
         "summary": "이 브라우저의 시험 번호 등록 상태",
         "responses": {
-          "200": { "description": "등록 여부, 등록 번호 끝 4자리와 만료 시각" },
-          "401": { "description": "기존 시험 화면 로그인 필요" }
+          "200": {
+            "description": "등록 여부, 등록 번호 끝 4자리와 만료 시각"
+          },
+          "401": {
+            "description": "기존 시험 화면 로그인 필요"
+          }
         }
       },
       "post": {
@@ -26,33 +102,70 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["action"],
+                "required": [
+                  "action"
+                ],
                 "properties": {
-                  "action": { "enum": ["START", "STOP"] },
-                  "phoneNumber": { "type": "string", "description": "START에 사용할 국내 010 번호" }
+                  "action": {
+                    "enum": [
+                      "START",
+                      "STOP"
+                    ]
+                  },
+                  "phoneNumber": {
+                    "type": "string",
+                    "description": "START에 사용할 국내 010 번호"
+                  }
                 }
               },
               "examples": {
-                "start": { "summary": "010 번호를 입력해 등록", "value": { "action": "START", "phoneNumber": "" } },
-                "stop": { "summary": "시험 종료", "value": { "action": "STOP" } }
+                "start": {
+                  "summary": "010 번호를 입력해 등록",
+                  "value": {
+                    "action": "START",
+                    "phoneNumber": ""
+                  }
+                },
+                "stop": {
+                  "summary": "시험 종료",
+                  "value": {
+                    "action": "STOP"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "이 브라우저의 등록 상태" },
-          "400": { "description": "유효한 010 번호 또는 동작이 필요함" },
-          "401": { "description": "기존 시험 화면 로그인 필요" },
-          "404": { "description": "이 브라우저에서 종료할 등록이 없음" },
-          "409": { "description": "실전화가 진행 중이거나 다른 브라우저에서 시험 중" },
-          "503": { "description": "수신 허용 설정을 적용하지 못함" }
+          "200": {
+            "description": "이 브라우저의 등록 상태"
+          },
+          "400": {
+            "description": "유효한 010 번호 또는 동작이 필요함"
+          },
+          "401": {
+            "description": "기존 시험 화면 로그인 필요"
+          },
+          "404": {
+            "description": "이 브라우저에서 종료할 등록이 없음"
+          },
+          "409": {
+            "description": "실전화가 진행 중이거나 다른 브라우저에서 시험 중"
+          },
+          "503": {
+            "description": "수신 허용 설정을 적용하지 못함"
+          }
         }
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "operatorLogin": { "type": "http", "scheme": "basic", "description": "기존 전화 시험 화면 로그인" }
+      "operatorLogin": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "기존 전화 시험 화면 로그인"
+      }
     }
   }
 }

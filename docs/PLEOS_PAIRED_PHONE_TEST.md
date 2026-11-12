@@ -1,0 +1,30 @@
+# Pleos 앱의 전화 시험 연결
+
+시험 APK에는 기본 제품 모드와 분리된 debug 앱 ID `ai.pleos.assistant.pairedphone`를 사용합니다. 앱은 [EC2 HTTPS 게이트웨이](https://43.201.115.170/pleos-phone/api/v1/status)에 직접 연결합니다. SSH 터널이나 Swagger의 브라우저 세션을 앱에 복사할 필요는 없습니다.
+
+1. 정차 상태에서 시험 APK를 열고 **체험 연결 시작 → 목적지 주변 추천 및 전화 시험 → 연결 코드 발급**을 누릅니다.
+2. [전화 시험 Swagger](https://43.201.115.170/phone-test/docs/)에 기존 시험 운영자 계정으로 로그인합니다. **Pleos 앱 시험 번호 연결 → Try it out**에서 앱의 10자리 코드, 본인의 010 번호, `mode`를 입력합니다.
+3. `MOCK`은 가상 후보·가상 전화에만 사용합니다. `LIVE`는 실제 웹검색과 등록 휴대폰 발신을 허용합니다. 등록 자체로 검색하거나 발신하지 않습니다.
+4. 앱에서 번호 끝 네 자리를 확인합니다. 실제 시험에서는 내비 목적지를 지정합니다. 가상 시험에서는 **가상 서울숲으로 연습**도 사용할 수 있습니다. 인원과 조건을 고르고 후보를 찾습니다.
+5. 카드의 **이 후보로 전화 시험**에서 가상 예약자 이름과 날짜·시간을 확인하고 승인합니다. 실전화는 후보 식당 번호 대신 등록 휴대폰에만 걸립니다. 전화를 받은 시험자가 식당 직원 역할을 맡습니다.
+6. 화면 위의 **최근 전화 시험 결과**에 상태·일시·인원·필수 조건을 표시합니다. 재실행하면 같은 앱 인증으로 최근 결과를 다시 조회합니다. `UNKNOWN`은 미확인이며 재발신하지 않습니다. 사용 후 **시험 번호 연결 해제**를 누릅니다.
+
+코드는 한 번 사용하거나 5분이 지나면 무효입니다. 번호 연결은 한 시간 동안 유효하며, 연결당 검색·통화 각각 3회와 서버 공통 통화 제한을 적용합니다. 실제 통화는 설정상 최대 60초입니다. 시험 번호 전체는 앱 결과에 전달하지 않습니다. 기존 브라우저 수신 시험과 별개이며 이 앱 경로는 **발신과 결과 조회**를 다룹니다.
+
+앱의 익명 세션 소유자는 토큰 갱신 후에도 유지됩니다. 게이트웨이는 인증 서버의 루프백 경로로 소유자를 확인하고, 최신 추천 결과에서 후보와 조건을 다시 조회합니다. 공개 API로 식당 번호, 시험 번호, 결과 상태를 주입할 수 없습니다. 코드와 번호를 등록하는 운영자 API는 기존 HTTPS Basic 인증을 사용합니다. 상세 계약은 [앱 시험 API](../api/pleos-phone-test.openapi.json) 및 [Swagger 운영자 API](../prototypes/phone_agent/live-test.openapi.json) 참고.
+
+```bash
+./gradlew -PincludeAndroid=true -PrealPlaceDemo=true -PpairedPhoneDemo=true -PnavigationDemo=true verifyAll
+python -m unittest prototypes.phone_agent.test_paired_phone
+```
+
+EC2에는 기존 추천 JAR에 루프백 앱 인증 조회를 추가하고, 전화 API 컨테이너에만 연결 게이트웨이를 추가합니다. 기본 앱과 기존 MOCK·브라우저 전화 경로는 별도로 유지합니다. 전화 API가 워커와 같은 SQLite 경로를 사용해야 하므로 Compose 배포 시 `PHONE_DEPLOY_ROOT=/opt/arriveon-integration`을 지정합니다. 게이트웨이는 `PHONE_PLEOS_PAIRING=1`인 경우에만 동작합니다.
+
+재배포할 때는 [Compose 옵션](../prototypes/phone_agent/deploy/compose.pleos-paired-phone.yml)과 기존 HTTPS 서버 블록에 넣는 [Nginx 위치 설정](../prototypes/phone_agent/deploy/nginx.pleos-paired-phone.conf)을 사용합니다. 배포 전 진행 중 통화가 없는지 확인하고, 이전 이미지·JAR·Nginx/Swagger 파일을 보관합니다.
+
+## 2026-11-12 검증
+
+- 최종 APK를 Pleos Connect 2.1.0 Mac 에뮬레이터에 설치했습니다. EC2 HTTPS 연결, 코드 등록, 가상 후보 3곳, 선택 승인, 가상 확정·필수 조건 및 앱 재실행 후 결과 복구를 확인했습니다.
+- 승인받은 실제 판교역 검색 요청 1회로 후보 2곳을 확인했습니다. 찌마기 판교역점을 선택한 뒤 등록 휴대폰으로만 1회 발신했습니다. 통화가 연결됐으며, 이름이 포함된 최종 수락 근거가 부족해 서버와 앱 모두 예약 결과를 미확인으로 표시했습니다. 식당에 연락하거나 재발신하지 않았습니다.
+- 실전화 대화에서는 날짜·시간·인원 가능, 주차 가능·대기 약 10분, 추가 비용 없음 답을 받았습니다. 에이전트가 비용 확인 직후 이름으로 최종 예약을 부탁하는 단계를 건너뛰고 보류로 종료했습니다. 앱 결과 전달은 확인했으며, 이 음성 흐름은 별도 보완이 필요합니다.
+- `verifyAll`, OpenAPI smoke, 전화 프로토타입 테스트 174건 통과. APK SHA-256: `31c98c25eeecc4dc7fc494235305e1df333168bb3cfd2a5899bea6d412b7925c`.

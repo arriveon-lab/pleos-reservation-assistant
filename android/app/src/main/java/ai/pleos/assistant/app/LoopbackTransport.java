@@ -22,8 +22,12 @@ final class LoopbackTransport implements AuthSession.Wire {
     boolean destination =
         path.matches("/experimental/destination-recommendations(/[a-zA-Z0-9-]+)*");
     boolean preview = destination || path.matches("/experimental/place-previews(/[a-zA-Z0-9-]+)*");
+    boolean paired =
+        BuildConfig.PAIRED_PHONE_DEMO
+            && path.matches("/paired-phone(/(disconnect|calls)(/[a-f0-9-]{36})?)?");
     if (!BuildConfig.DEBUG
-        || (!preview
+        || (!paired
+            && !preview
             && !path.matches(
                 "/(status|searches|reservations|calls|anonymous-sessions)(/[a-zA-Z0-9-]+)*")))
       throw new IllegalStateException("LOCAL_DEBUG_ONLY");
@@ -38,7 +42,7 @@ final class LoopbackTransport implements AuthSession.Wire {
               || path.matches("/experimental/destination-recommendations/[a-f0-9-]{36}")
               || path.matches(
                   "/experimental/destination-recommendations/views/[a-f0-9-]{36}/close");
-      if (!permitted) throw new IllegalStateException("RECOMMENDATION_ONLY");
+      if (!permitted && !paired) throw new IllegalStateException("RECOMMENDATION_ONLY");
     } else if (BuildConfig.EC2_MOCK_DEMO) {
       if (!BuildConfig.MOCK_PHONE_DEMO) throw new IllegalStateException("MOCK_DEMO_REQUIRED");
       requireEc2Mock();
@@ -46,18 +50,20 @@ final class LoopbackTransport implements AuthSession.Wire {
     HttpURLConnection connection =
         (HttpURLConnection)
             new URL(
-                    (BuildConfig.REAL_PLACE_DEMO
-                            ? "http://127.0.0.1:8083"
-                            : BuildConfig.EC2_MOCK_DEMO
-                                ? "https://43.201.115.170/pleos-mock"
-                                : "http://127.0.0.1:" + (destination ? "8081" : "8080"))
+                    (BuildConfig.PAIRED_PHONE_DEMO
+                            ? "https://43.201.115.170/pleos-phone"
+                            : BuildConfig.REAL_PLACE_DEMO
+                                ? "http://127.0.0.1:8083"
+                                : BuildConfig.EC2_MOCK_DEMO
+                                    ? "https://43.201.115.170/pleos-mock"
+                                    : "http://127.0.0.1:" + (destination ? "8081" : "8080"))
                         + "/api"
                         + (preview ? "" : "/v1")
                         + path)
                 .openConnection(Proxy.NO_PROXY);
     try {
       connection.setConnectTimeout(5000);
-      connection.setReadTimeout(10000);
+      connection.setReadTimeout(paired && body != null && path.endsWith("/calls") ? 45000 : 10000);
       connection.setInstanceFollowRedirects(false);
       connection.setUseCaches(false);
       connection.setRequestProperty("Accept", "application/json");
@@ -89,9 +95,11 @@ final class LoopbackTransport implements AuthSession.Wire {
             int value;
             while (buffer.size() <= 4096 && (value = input.read()) != -1) buffer.write(value);
             byte[] error = buffer.toByteArray();
-            if (error.length <= 4096)
-              errorCode =
-                  new JSONObject(new String(error, StandardCharsets.UTF_8)).optString("code");
+            if (error.length <= 4096) {
+              JSONObject parsed = new JSONObject(new String(error, StandardCharsets.UTF_8));
+              if (parsed.optJSONObject("error") != null) parsed = parsed.getJSONObject("error");
+              errorCode = parsed.optString("code");
+            }
           }
         } catch (Exception unreadable) {
           // Keep the HTTP failure even if its optional JSON body is absent or malformed.

@@ -201,7 +201,12 @@ class LiveWorkflow:
                         "SONIOX_TEST_ONLY", "Soniox는 등록한 휴대폰으로 거는 시험전화에서만 사용할 수 있어요.", 403)
             if entered is None:
                 require(target in self.config.allowed_numbers, "TARGET_NOT_ALLOWED", "허용한 식당 테스트 번호를 설정해 주세요.")
-            if self.config.self_service_test:
+            if booking.get("pleosPairedTest"):
+                from ..paired_phone import registered_target
+                require(self.config.self_service_test and self.config.test_phone_input
+                        and entered and entered == registered_target(self.service, owner, booking["pleosPairedTest"]),
+                        "PAIRING_REQUIRED", "현재 앱에 연결된 시험 번호만 사용할 수 있어요.", 403)
+            elif self.config.self_service_test:
                 registered_owner, window = callback_test.active_window(self.service)
                 require(window and registered_owner == owner and entered == window["phone"],
                         "CALLBACK_TEST_REGISTRATION_REQUIRED", "같은 브라우저에서 등록한 시험 휴대폰으로 발신해 주세요.", 403)

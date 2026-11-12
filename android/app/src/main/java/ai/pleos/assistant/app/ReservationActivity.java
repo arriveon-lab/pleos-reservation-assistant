@@ -114,8 +114,11 @@ public final class ReservationActivity extends ComponentActivity {
   }
 
   void useMockDestination() {
-    if (!BuildConfig.EC2_MOCK_DEMO
-        || BuildConfig.REAL_PLACE_DEMO
+    boolean mockPair =
+        BuildConfig.PAIRED_PHONE_DEMO
+            && model.pairedStatus.optBoolean("active")
+            && "MOCK".equals(model.pairedStatus.optString("mode"));
+    if ((!mockPair && (!BuildConfig.EC2_MOCK_DEMO || BuildConfig.REAL_PLACE_DEMO))
         || !model.canWrite()
         || (model.phone != null && model.phone.hasRequest())) return;
     if (navigation != null) navigation.close();
@@ -138,6 +141,7 @@ public final class ReservationActivity extends ComponentActivity {
     voiceOpen = false;
     finishVoice(false);
     if (approval != null) approval.dismiss();
+    if (destinationPanel != null) destinationPanel.dismiss();
     model.observe(null);
     model.invalidatePreview("CLOSED");
     model.invalidateDestination("CLOSED");
@@ -417,8 +421,11 @@ public final class ReservationActivity extends ComponentActivity {
     JSONObject state = model.snapshot();
     LinearLayout page = content;
     text(getString(R.string.ui_brand), 32);
-    text(getString(R.string.ui_mock), 20);
-    if (BuildConfig.DEBUG)
+    text(
+        getString(
+            BuildConfig.PAIRED_PHONE_DEMO ? R.string.paired_phone_trial_notice : R.string.ui_mock),
+        20);
+    if (BuildConfig.DEBUG && !BuildConfig.PAIRED_PHONE_DEMO)
       button(
           R.string.trial_open,
           model.restriction().allowsInput(),
@@ -668,7 +675,10 @@ public final class ReservationActivity extends ComponentActivity {
           R.string.preview_open,
           !BuildConfig.REAL_PLACE_DEMO && model.canWrite(),
           v -> model.openPreview());
-      button(R.string.destination_open, model.canWrite(), v -> model.openDestination());
+      button(
+          BuildConfig.PAIRED_PHONE_DEMO ? R.string.paired_phone_open : R.string.destination_open,
+          model.canWrite(),
+          v -> model.openDestination());
       content = page;
       diagnostics();
 

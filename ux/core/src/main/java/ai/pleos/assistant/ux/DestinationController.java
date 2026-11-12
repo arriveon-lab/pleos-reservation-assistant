@@ -103,6 +103,11 @@ public final class DestinationController implements AutoCloseable {
     }
   }
 
+  public synchronized String webPhoneTask() {
+    tick();
+    return allowed && !catalog && "RESULTS".equals(state) ? taskId : null;
+  }
+
   public synchronized String mockPhoneTask() {
     tick();
     return allowed && catalog && "RESULTS".equals(state) ? taskId : null;
