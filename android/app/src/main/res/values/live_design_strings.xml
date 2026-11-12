@@ -1,0 +1,46 @@
+<resources>
+  <string name="live_mode">EC2 시험 연결 · 발신은 등록 번호로만</string>
+  <string name="live_destination">내비에서 받은 목적지 · 시연 전 확인</string>
+  <string name="live_no_destination">내비 목적지를 설정해 주세요</string>
+  <string name="live_destination_notice">내비에 표시된 목적지와 위 이름이 같은지 확인하세요. SDK 응답의 현재 경로 연관성은 미검증입니다. 이번 시연에서 목적지를 고정해 사용합니다.</string>
+  <string name="live_confirm_destination">이 목적지로 시연 검색 허용</string>
+  <string name="live_pair_title">시험 번호 연결</string>
+  <string name="live_pair_steps">연결 코드를 발급한 뒤 phone-test Swagger의 ‘Pleos 앱 시험 번호 연결’에 코드와 개발자 시험 번호를 등록하세요. 반드시 mode를 LIVE로 지정하세요. 생략하거나 MOCK이면 실제 검색·발신이 실행되지 않으며 이 앱에서 차단합니다. 기존 웹 번호 등록만으로 앱에 연결되지는 않습니다.</string>
+  <string name="live_pair_code">연결 코드 발급</string>
+  <string name="live_pair_refresh">서버 상태 다시 확인</string>
+  <string name="live_bound">등록 번호 끝자리 %1$s · %2$s</string>
+  <string name="live_search_notice">LIVE에서는 실제 웹검색을 호출합니다. 연결당 검색·전화 각 3회 제한, 등록 유효시간 1시간입니다. 검색 비용은 서버 공급자 설정에 따라 발생할 수 있습니다.</string>
+  <string name="live_call_notice">LIVE에서는 선택한 식당의 예약 내용을 등록된 개발자 번호로 전화합니다. 식당의 실제 번호에는 발신하지 않습니다. 최대 60초이며 공급자 통화·AI 요금이 발생할 수 있습니다. 정확한 금액은 서버 계약에서 제공하지 않습니다. 아래 승인 버튼을 누르면 즉시 요청합니다.</string>
+  <string name="live_approve">등록 번호 전화 시험 승인</string>
+  <string name="live_confirmed">예약 확정 응답을 받았어요</string>
+  <string name="live_result_title">전화 시험 진행·결과</string>
+  <string name="live_status">서버 상태: %1$s</string>
+  <string name="live_error">서버 확인이 필요합니다: %1$s</string>
+  <string name="live_change_unavailable">현재 앱용 API에는 대화 내역·예약 변경 요청·변경 동의/거절 경로가 없습니다. 이 화면에서는 변경이나 취소가 전송되지 않습니다. 결과 미확인 시 재발신하지 않고 조회만 합니다.</string>
+  <string name="live_candidates">서버가 반환한 후보 %1$d곳 · 예약 가능 여부는 문의 전 미확인</string>
+  <string name="live_mock_blocked">현재 연결은 실제 검색·발신용이 아닙니다. 가상 예약은 전화하지 않습니다. 연결 해제 후 LIVE로 다시 등록하세요.</string>
+  <string name="live_disconnect_mock">가상 연결 해제 · LIVE 재등록 준비</string>
+  <string name="live_result_mode">통화 결과 모드: %1$s</string>
+  <string name="live_search_hint">실제 주변 식당을 검색합니다. 식당 선택 후 승인하면 등록한 개발자 번호로 시험 전화가 걸립니다.</string>
+  <string name="live_new_demo">새 시연 처음부터 시작</string>
+  <string name="live_new_demo_notice">완료된 결과를 접고 새 조건을 입력합니다. 기존 예약을 취소하지 않으며 검색·전화는 자동 실행하지 않습니다. 통화 진행 중·결과 미확인 상태에서는 사용할 수 없습니다.</string>
+  <string name="live_demo_trigger">가상 연락 · 20분 지연 알림 띄우기</string>
+  <string name="live_demo_alert_title">식당에서 예약 시간 변경을 요청했어요</string>
+  <string name="live_demo_alert_body">시연용 가상 연락
+
+%1$s
+“식당 사정으로 예약을 20분 늦춰 주실 수 있을까요?”
+
+기존 예약  %2$s
+변경 제안  %3$s
+
+아래 선택은 화면 시연이며 실제 예약에는 반영되지 않습니다.</string>
+  <string name="live_demo_accept">변경 수락 · 시연</string>
+  <string name="live_demo_keep">기존 시간 유지 · 시연</string>
+  <string name="live_demo_later">나중에</string>
+  <string name="live_demo_badge">예약 변경 시연 · 가상 처리</string>
+  <string name="live_demo_accepted">변경 수락을 선택했어요 · 제안 시각 %1$s</string>
+  <string name="live_demo_kept">기존 시간 %1$s 유지를 선택했어요</string>
+  <string name="live_demo_unchanged">실제 서버 예약은 아래 확정 시각 그대로입니다. 변경 요청·식당 재확인은 전송되지 않았습니다.</string>
+  <string name="live_demo_next_day">다음 날 %1$s</string>
+</resources>

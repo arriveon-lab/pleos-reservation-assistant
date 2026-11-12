@@ -32,6 +32,7 @@ public final class MockPhoneController implements AutoCloseable {
       String saved = store.read();
       if (saved != null) {
         journal = new JSONObject(saved);
+        if (!journal.has("taskId") && journal.optJSONArray("history") != null) return;
         UUID.fromString(journal.getString("taskId"));
         journal.getJSONObject("approval");
         journal.getString("key");
@@ -106,6 +107,7 @@ public final class MockPhoneController implements AutoCloseable {
               .put("approval", copy(body))
               .put("partySize", partySize);
       if (hasRequest()) pending.put("previous", copy(journal));
+      else if (journal.has("history")) pending.put("history", journal.getJSONArray("history"));
       store.save(pending.toString()); // Persist exact approval/key before any POST.
       journal = pending;
       busy = true;
@@ -118,6 +120,33 @@ public final class MockPhoneController implements AutoCloseable {
       storageFailed = true;
       state = "STORAGE_ERROR";
       changed.run();
+    }
+  }
+
+  /** Explicit demo reset after a terminal result; never resets an unresolved request. */
+  public synchronized boolean canStartNew() {
+    return allowed
+        && !closed
+        && !busy
+        && !storageFailed
+        && hasRequest()
+        && Set.of("CONFIRMED", "DECLINED").contains(state);
+  }
+
+  public synchronized boolean startNew() {
+    if (!canStartNew()) return false;
+    try {
+      JSONObject next = new JSONObject().put("history", new org.json.JSONArray());
+      store.save(next.toString());
+      journal = next;
+      state = "IDLE";
+      changed.run();
+      return true;
+    } catch (Exception failure) {
+      storageFailed = true;
+      state = "STORAGE_ERROR";
+      changed.run();
+      return false;
     }
   }
 

@@ -26,6 +26,30 @@ final class SearchRecoveryDeviceChecks {
     ReservationViewModel model = (ReservationViewModel) field.get(activity);
     await(runner, () -> !model.busy() && model.connected() && model.restriction().allowsInput());
     if (!restart) {
+      Field repositoryField = ReservationViewModel.class.getDeclaredField("repository");
+      repositoryField.setAccessible(true);
+      Object repository = repositoryField.get(model);
+      Field transportField = repository.getClass().getDeclaredField("transport");
+      transportField.setAccessible(true);
+      Object auth = transportField.get(repository);
+      Field wireField = auth.getClass().getDeclaredField("wire");
+      wireField.setAccessible(true);
+      var originalWire = (ai.pleos.assistant.ux.AuthSession.Wire) wireField.get(auth);
+      var failureCode = new java.util.concurrent.atomic.AtomicReference<String>("NONE");
+      wireField.set(
+          auth,
+          (ai.pleos.assistant.ux.AuthSession.Wire)
+              (path, body, key, bearer) -> {
+                try {
+                  return originalWire.exchange(path, body, key, bearer);
+                } catch (Exception failure) {
+                  failureCode.set(
+                      failure instanceof ai.pleos.assistant.ux.AuthSession.HttpFailure http
+                          ? "HTTP_" + http.status + ":" + http.code
+                          : failure.getClass().getSimpleName());
+                  throw failure;
+                }
+              });
       JSONObject before = main(runner, () -> new JSONObject(model.snapshot().toString()));
       JSONObject pending = before.getJSONObject("pending");
       if (!"/searches".equals(pending.getString("path")))
@@ -37,7 +61,13 @@ final class SearchRecoveryDeviceChecks {
                 activity.getWindow().getDecorView(), activity.getString(R.string.reconcile_search));
             return null;
           });
-      await(runner, () -> !model.busy() && !model.snapshot().has("pending"));
+      try {
+        await(runner, () -> !model.busy() && !model.snapshot().has("pending"));
+      } catch (AssertionError timeout) {
+        throw new AssertionError("recovery failed: " + failureCode.get());
+      } finally {
+        wireField.set(auth, originalWire);
+      }
       JSONObject after = main(runner, () -> model.snapshot());
       var history = after.getJSONArray("searchReconciliations");
       JSONObject record = history.getJSONObject(history.length() - 1);

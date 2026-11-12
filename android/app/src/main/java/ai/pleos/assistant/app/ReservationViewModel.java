@@ -27,12 +27,80 @@ public final class ReservationViewModel extends AndroidViewModel {
   private DestinationController destination;
   ai.pleos.assistant.ux.MockPhoneController phone;
   private AuthSession pairedAuth;
+  private SharedPreferences pairedJournal;
+
+  boolean pairedAttempted() {
+    return pairedJournal != null && pairedJournal.contains("attempt");
+  }
+
   JSONObject pairedStatus = new JSONObject();
   String pairingCode = "";
   String pairedError = "";
   boolean pairedBusy;
   private boolean pairedRefreshing;
   private long nextPairedPoll;
+
+  private boolean currentPairedResult(JSONObject result) {
+    if (!pairedAttempted()) return true;
+    try {
+      return new JSONObject(pairedJournal.getString("attempt", "{}"))
+          .getString("key")
+          .equals(result.optString("id"));
+    } catch (org.json.JSONException invalid) {
+      return false;
+    }
+  }
+
+  boolean pairedLiveReady() {
+    return ai.pleos.assistant.ux.LiveTrialPolicy.ready(pairedStatus, java.time.Instant.now());
+  }
+
+  boolean canStartNewPairedDemo() {
+    if (!canWrite() || pairedBusy || pairedRefreshing || pairedJournal == null) return false;
+    JSONObject latest = pairedStatus.optJSONObject("latest");
+    if (latest == null) return !pairedAttempted();
+    return !latest.optString("id").isEmpty()
+        && currentPairedResult(latest)
+        && (ai.pleos.assistant.ux.LiveTrialPolicy.confirmed(latest)
+            || ("LIVE".equals(latest.optString("mode"))
+                && "DECLINED".equals(latest.optString("status"))));
+  }
+
+  boolean startNewPairedDemo() {
+    if (!canStartNewPairedDemo()) return false;
+    JSONObject latest = pairedStatus.optJSONObject("latest");
+    if (latest == null) {
+      invalidateDestination("EDITING");
+      return true;
+    }
+    String id = latest.optString("id");
+    if (!pairedJournal.edit().putString("completedDemo", id).remove("attempt").commit()) {
+      pairedError = "STORAGE_ERROR";
+      return false;
+    }
+    pairedStatus.remove("latest");
+    pairedError = "";
+    invalidateDestination("EDITING");
+    return true;
+  }
+
+  private void hideCompletedDemo() {
+    JSONObject latest = pairedStatus.optJSONObject("latest");
+    if (latest != null
+        && pairedJournal != null
+        && latest.optString("id").equals(pairedJournal.getString("completedDemo", ""))) {
+      pairedStatus.remove("latest");
+    }
+  }
+
+  private void forgetCompletedMockAttempt(JSONObject latest) {
+    if (latest == null
+        || !"MOCK".equals(latest.optString("mode"))
+        || !java.util.Set.of("CONFIRMED", "DECLINED").contains(latest.optString("status"))
+        || !pairedAttempted()
+        || !currentPairedResult(latest)) return;
+    if (!pairedJournal.edit().remove("attempt").commit()) pairedError = "STORAGE_ERROR";
+  }
 
   String pairedTask() {
     return BuildConfig.PAIRED_PHONE_DEMO && destination != null ? destination.webPhoneTask() : null;
@@ -45,7 +113,8 @@ public final class ReservationViewModel extends AndroidViewModel {
         || pairedBusy
         || (quiet && pairedRefreshing)
         || !destinationOpen
-        || (body != null && !canWrite())) return;
+        || (body != null && !canWrite())
+        || (path.equals("/calls") && body != null && !pairedLiveReady())) return;
     if (quiet) pairedRefreshing = true;
     else {
       pairedBusy = true;
@@ -57,6 +126,8 @@ public final class ReservationViewModel extends AndroidViewModel {
           JSONObject result = null;
           String error = "";
           try {
+            if (path.equals("/calls") && body != null && !pairedLiveReady())
+              throw new IllegalStateException("LIVE_REQUIRED");
             result = pairedAuth.exchange("/paired-phone" + path, body, key);
             if (path.equals("/disconnect"))
               result = pairedAuth.exchange("/paired-phone", null, null);
@@ -78,12 +149,20 @@ public final class ReservationViewModel extends AndroidViewModel {
                   pairingCode = response.optString("pairingCode");
                 } else if (path.equals("/calls")) {
                   try {
-                    pairedStatus.put("latest", response);
+                    if (currentPairedResult(response)) pairedStatus.put("latest", response);
+                    else pairedError = "RESULT_MISMATCH";
                   } catch (org.json.JSONException impossible) {
                     throw new IllegalStateException(impossible);
                   }
                 } else {
                   pairedStatus = response;
+                  hideCompletedDemo();
+                  JSONObject latest = pairedStatus.optJSONObject("latest");
+                  forgetCompletedMockAttempt(latest);
+                  if (latest != null && !currentPairedResult(latest)) {
+                    pairedStatus.remove("latest");
+                    pairedError = "RESULT_MISMATCH";
+                  }
                   if (response.optBoolean("active") || path.equals("/disconnect")) pairingCode = "";
                 }
                 nextPairedPoll = android.os.SystemClock.elapsedRealtime() + 2500;
@@ -93,18 +172,30 @@ public final class ReservationViewModel extends AndroidViewModel {
   }
 
   void approvePairedPhone(String task, int ordinal, String day, String time, String name) {
-    if (!canWrite() || !task.equals(pairedTask()) || !pairedStatus.optBoolean("active")) return;
+    if (!canWrite()
+        || pairedBusy
+        || pairedAttempted()
+        || task == null
+        || !task.equals(pairedTask())
+        || !pairedLiveReady()) return;
     try {
-      pairedRequest(
-          "/calls",
+      var body =
           new JSONObject()
               .put("taskId", task)
               .put("candidateOrdinal", ordinal)
               .put("date", day)
               .put("time", time)
-              .put("reservationName", name),
-          java.util.UUID.randomUUID().toString(),
-          false);
+              .put("reservationName", name);
+      String key = java.util.UUID.randomUUID().toString();
+      if (!pairedJournal
+          .edit()
+          .putString("attempt", new JSONObject().put("key", key).put("body", body).toString())
+          .commit()) {
+        pairedError = "STORAGE_ERROR";
+        if (observer != null) observer.run();
+        return;
+      }
+      pairedRequest("/calls", body, key, false);
     } catch (org.json.JSONException impossible) {
       throw new IllegalStateException(impossible);
     }
@@ -221,7 +312,11 @@ public final class ReservationViewModel extends AndroidViewModel {
               new KeystoreVault(application));
       if (!auth.canCreate() && preferences.getString("journal", null) == null)
         throw new IllegalStateException("RECOVERY_STORAGE_MISSING");
-      if (BuildConfig.PAIRED_PHONE_DEMO) pairedAuth = auth;
+      if (BuildConfig.PAIRED_PHONE_DEMO) {
+        pairedAuth = auth;
+        pairedJournal =
+            application.getSharedPreferences("paired-call-recovery", Context.MODE_PRIVATE);
+      }
       preview =
           new PreviewController(
               auth::exchangeTransient,
@@ -371,7 +466,7 @@ public final class ReservationViewModel extends AndroidViewModel {
   void searchDestination(DestinationController.Input input) {
     if (canWrite()
         && destinationOpen
-        && (!BuildConfig.PAIRED_PHONE_DEMO || pairedStatus.optBoolean("active"))
+        && (!BuildConfig.PAIRED_PHONE_DEMO || pairedLiveReady())
         && navigationReady()
         && navigationDestination.equals(input.destination())) destination.search(input);
     else invalidateDestination("NAVIGATION_REQUIRED");

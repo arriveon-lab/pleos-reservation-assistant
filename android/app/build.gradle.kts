@@ -57,6 +57,10 @@ android {
                     "ai.pleos.assistant.mock.realplacefiltervalidation"
                 else "ai.pleos.assistant.mock.realplacevalidation"
         }
+        if (providers.gradleProperty("mockDesignValidation").orElse("false").get().toBoolean()) {
+            require(providers.gradleProperty("ec2MockDemo").orNull == "true")
+            applicationId = "ai.pleos.assistant.mock.designvalidation"
+        }
         val pairedPhone =
             providers.gradleProperty("pairedPhoneDemo").orElse("false").get().toBoolean()
         buildConfigField("boolean", "PAIRED_PHONE_DEMO", pairedPhone.toString())
