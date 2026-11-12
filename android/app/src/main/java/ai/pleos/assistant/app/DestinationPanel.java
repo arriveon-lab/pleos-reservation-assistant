@@ -41,7 +41,13 @@ final class DestinationPanel {
     TextView title = text(header, activity.getString(R.string.destination_title), 32);
     title.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
     button(header, R.string.destination_exit, false, model::closeDestination);
-    text(root, activity.getString(R.string.destination_short_notice), 22);
+    text(
+        root,
+        activity.getString(
+            BuildConfig.REAL_PLACE_DEMO
+                ? R.string.real_place_notice
+                : R.string.destination_short_notice),
+        22);
     form = column();
     root.addView(form);
     LinearLayout conditions = wide ? row() : column();
@@ -55,7 +61,13 @@ final class DestinationPanel {
         button(people, R.string.navigation_demo_confirm, false, model::confirmDemoNavigation);
     demoConfirm.setVisibility(BuildConfig.NAVIGATION_DEMO ? View.VISIBLE : View.GONE);
     if (BuildConfig.NAVIGATION_DEMO)
-      text(people, activity.getString(R.string.navigation_demo_notice), 20);
+      text(
+          people,
+          activity.getString(
+              BuildConfig.REAL_PLACE_DEMO
+                  ? R.string.real_place_navigation_notice
+                  : R.string.navigation_demo_notice),
+          20);
     stepper(people, true);
     stepper(people, false);
     LinearLayout needs = VehicleUi.card(activity);

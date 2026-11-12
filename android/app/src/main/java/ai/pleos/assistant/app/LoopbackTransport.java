@@ -27,16 +27,28 @@ final class LoopbackTransport implements AuthSession.Wire {
             && !path.matches(
                 "/(status|searches|reservations|calls|anonymous-sessions)(/[a-zA-Z0-9-]+)*")))
       throw new IllegalStateException("LOCAL_DEBUG_ONLY");
-    if (BuildConfig.EC2_MOCK_DEMO) {
+    if (BuildConfig.REAL_PLACE_DEMO) {
+      boolean permitted =
+          path.equals("/status")
+              || path.equals("/anonymous-sessions")
+              || path.equals("/anonymous-sessions/refresh")
+              || path.equals("/experimental/destination-recommendations")
+              || path.matches("/experimental/destination-recommendations/[a-f0-9-]{36}")
+              || path.matches(
+                  "/experimental/destination-recommendations/views/[a-f0-9-]{36}/close");
+      if (!permitted) throw new IllegalStateException("RECOMMENDATION_ONLY");
+    } else if (BuildConfig.EC2_MOCK_DEMO) {
       if (!BuildConfig.MOCK_PHONE_DEMO) throw new IllegalStateException("MOCK_DEMO_REQUIRED");
       requireEc2Mock();
     } else if (destination) requireDestinationMock(path.endsWith("/phone-reservations"));
     HttpURLConnection connection =
         (HttpURLConnection)
             new URL(
-                    (BuildConfig.EC2_MOCK_DEMO
-                            ? "https://43.201.115.170/pleos-mock"
-                            : "http://127.0.0.1:" + (destination ? "8081" : "8080"))
+                    (BuildConfig.REAL_PLACE_DEMO
+                            ? "http://127.0.0.1:8083"
+                            : BuildConfig.EC2_MOCK_DEMO
+                                ? "https://43.201.115.170/pleos-mock"
+                                : "http://127.0.0.1:" + (destination ? "8081" : "8080"))
                         + "/api"
                         + (preview ? "" : "/v1")
                         + path)

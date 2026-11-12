@@ -28,7 +28,8 @@ final class PhoneDeviceChecks {
         java.util.Set.of(
                 "ai.pleos.assistant.mock.integrationvalidation",
                 "ai.pleos.assistant.mock.ec2validation",
-                "ai.pleos.assistant.mock.ec2navigationvalidation")
+                "ai.pleos.assistant.mock.ec2navigationvalidation",
+                "ai.pleos.assistant.mock.realplacevalidation")
             .contains(runner.getTargetContext().getPackageName()),
         "isolated installation required");
     activity =
@@ -317,7 +318,7 @@ final class PhoneDeviceChecks {
   }
 
   private void await(Callable<Boolean> condition) throws Exception {
-    long until = SystemClock.elapsedRealtime() + 20000;
+    long until = SystemClock.elapsedRealtime() + (BuildConfig.REAL_PLACE_DEMO ? 120000 : 20000);
     while (SystemClock.elapsedRealtime() < until) {
       if (main(condition)) return;
       Thread.sleep(100);

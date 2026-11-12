@@ -1012,3 +1012,7 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 ## 2026-11-12 UX-56 실제 내비 목적지 조회 결과
 
 실제 SDK 목적지와 EC2 요청의 이름·좌표 일치를 기기에서 확인했다. 그러나 서버 listing=FAILED/INVALID_QUERY, 후보0으로 실제 식당 추천은 실패했다. 현재 앱용 /pleos-mock은 가상 카탈로그·성수 기준점1km 제한이며, 실제 식당용 별도 시험 서버는 인증 인계가 필요하다. 기존 일반/전화 예약 journal을 보존했다. verifyAndroid/test APK 통과와 실제 추천 실패를 구분한다. [상세 기록](../docs/UX56_MOCK_PHONE_INTEGRATION.md).
+
+## 2026-11-12 UX-56 실제 추천 서버 1회 연결
+
+SSH로 실제 WEB_SEARCH 서버18769의 Bearer1.1.0 API를 연결했다. 별도 realplacevalidation 빌드·조회1회 gateway로 실제 내비 목적지→추천→기기 표시를 확인했다. 반환은 식당2+카페1이며 이름/주소/주차UNKNOWN 표시 일치. 전화/예약은 차단했고 실행하지 않았다. verifyAll/test APK 및 로컬 추가검색409/예약403 통과. 카페 혼입과 독립 HTTPS/실기/공동 인수는 잔여다. [실행·증거·한계](../docs/UX56_MOCK_PHONE_INTEGRATION.md).

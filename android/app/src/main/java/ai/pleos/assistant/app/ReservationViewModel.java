@@ -28,7 +28,9 @@ public final class ReservationViewModel extends AndroidViewModel {
   ai.pleos.assistant.ux.MockPhoneController phone;
 
   String phoneTask() {
-    return BuildConfig.MOCK_PHONE_DEMO && destination != null ? destination.mockPhoneTask() : null;
+    return !BuildConfig.REAL_PLACE_DEMO && BuildConfig.MOCK_PHONE_DEMO && destination != null
+        ? destination.mockPhoneTask()
+        : null;
   }
 
   void approvePhone(String task, JSONObject body, int party) {

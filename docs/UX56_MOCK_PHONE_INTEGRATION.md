@@ -100,3 +100,32 @@ EC2 기기 로그는 `work/ux56/ec2-{full,unmet,unknown,restore}.log`, 빌드 �
 - 재현: EC2 옵션으로 test APK 빌드/설치 후 `adb shell am instrument --user 10 -w -e destinationFixture PHONE_NAVI_QUERY ai.pleos.assistant.mock.ec2validation.test/ai.pleos.assistant.app.DrivingDeviceChecks`.
 - 로컬 증거: `work/ux56/actual-navi-final.log`, `nav-final-build.log`, `captures/ux56/actual-navi-query.png`. 화면은 로컬에만 보존한다. 기기 로그 시각은 host UTC와 다르므로 같은 시각으로 합치지 않는다.
 - 실제 식당 응답을 확보한 뒤 이름·주소·출처·조건 UNKNOWN·관측/유효시각·화면 표시를 대조해야 한다. 기존 MOCK 예약 성공은 이 실제 데이터 인수의 증거가 아니다. #56 OPEN/PR Draft 유지.
+
+## 2026-11-12 실제 추천 서버 직접 연결·승인된 1회 조회
+
+사용자가 SSH 키를 제공하고 추천 에이전트 1회 시험을 승인했다. 원격 설정을 읽기 전용으로 확인했다. 실제 추천 프로세스는 loopback18769, source=WEB_SEARCH, runtime-model=gpt-6-luna, runtime-max-calls-per-startup=3이다. 주소 조회 보강은 false, 텍스트 fallback은 true다. 서버 설정·프로세스·상한은 변경하거나 초기화하지 않았다.
+
+브라우저 cookie/Basic 비밀번호를 복사하지 않고 실제 추천 Spring 서버의 동일 Bearer1.1.0 API를 사용한다. `realPlaceDemo` 기본 false; true이면 별도 `ai.pleos.assistant.mock.realplacevalidation` 패키지와 8083 조회 전용 전송을 사용한다. release 전송 차단은 유지한다. 기존 MOCK/EC2 패키지와 인증/예약 기록을 공유하지 않는다.
+
+```bash
+ssh -i ~/pleos.pem -o ExitOnForwardFailure=yes -N -L 127.0.0.1:18769:127.0.0.1:18769 ubuntu@43.201.115.170
+python3 scripts/run-real-place-device.py
+adb reverse tcp:8083 tcp:18091
+./gradlew -PincludeAndroid=true -PnavigationDemo=true -PrealPlaceDemo=true verifyAll :android:app:assembleDebugAndroidTest
+```
+
+실행 전 `JAVA_HOME`은 Java21을 사용한다. 조회 게이트웨이는 인증·추천 POST/GET·close만 허용하고, 추천 전송 전에 `work/ux56-real/search-attempted`를 배타 생성한다. 응답 유실·재시작에도 추가 검색은 409이며 기록을 삭제해서 한도를 우회하지 않는다. 전화/예약 경로403을 로컬에서 확인했고 upstream으로 전달하지 않았다. 기본 `/status`의 FICTIONAL_FIXTURES 표시는 기존 예약용 값이며, 실제 추천 결과의 source=WEB_SEARCH 및 조회 경로와 구분한다.
+
+실행 결과:
+- 실제 NaviHelper 목적지를 확인 버튼으로 승인하고 요청했다. SDK의 이름·위도·경도와 서버 전송 body 일치. 실제 검색 POST는 1회, 자동 재검색 없음.
+- 실제 서버 RESULT/WEB RESULTS 및 후보3개를 수신했다. 이름·전체 주소의 응답/UI 일치를 기기 검사로 확인했고 screenshot을 직접 검토했다. 주차3개 모두 UNKNOWN→미확인, 전화/예약 불가 표시 유지.
+- 반환은 **식당2곳과 카페1곳**이다. 감성커피 판교아이스퀘어점(CAFE, 창업로17 F동105호), 이자와 판교아이스퀘어점(RESTAURANT, F동212호), 오지버거 판교1호점(RESTAURANT, B동102-1호). 세 곳 모두 응답의 공개 출처 페이지에서 상호/도로명주소를 대조했다. 세 식당 확보 또는 매장 조건/영업 여부 확정으로 세지 않는다.
+- 응답 identityVerified/bookable/inquiryDispatchAllowed=false. businessDetails와 reviews는 비어 있다. 주차 후기 문구가 있어도 매장 확인으로 승격하지 않았다. 매장별 영업시간·실시간 빈자리·실제 전화는 미검증이다.
+- 일반 목적지 POST는 userRequest에 식당 요청을 보내지만 venueCategory 필드가 없고, 별도 /web 입력에만 존재한다. 카페 혼입 문제는 서버 인계/후속 범위로 남긴다. 1회 승인 이후 추가 검색해서 3개를 채우지 않았다.
+- 기존 일반/전화 journal 보존 검사 PASS. 별도 신규 앱만 설치했다. 실제 전화/예약 POST는 0회; 차단 확인 요청은 Mac gateway에서403으로 끝났으며 서버로 전달하지 않았다.
+- format/verifyAll/test APK PASS, gateway 허용 경로 검사 PASS, 실제 소비 후 두 번째 검색409·예약경로403 확인. 초기 sandbox 포트 바인딩 실패는 권한 있는 실행으로 해결했고 검색 전이었다.
+- 실제 제품 APK SHA256 `ce5b27be72d3167531783b6a772f296035d5dde9cd6dffed2e892aaa416c9842`.
+- 로컬 증거: `work/ux56-real/build.log`, `device.log`, `result.json`, `tested.apk`, `captures/ux56/real-place-result.png`. 원문 인증 응답·키는 기록하지 않는다. 결과의 원 관측/유효시각을 변경하지 않았고 유효기한 후 현재 후보로 재생하지 않는다.
+- 이번 단계는 Mac SSH/adb reverse에 의존하는 개발용 조회 연결이다. 실제 차량 독립 HTTPS 배포 연결이나 전화 공동 인수 완료는 아니다. 현재 경로 응답 연관성은 여전히 UNVERIFIED/사용자 확인 데모로 구분한다.
+
+출처 대조: [감성커피](https://www.diningcode.com/profile.php?rid=YazD7jicBSyK), [이자와](https://www.diningcode.com/profile.php?rid=wQibM5jrWpZd), [오지버거](https://www.diningcode.com/profile.php?rid=fq7heKPigxRq). 공개 페이지의 현재 영업 여부를 실시간 확인한 것으로 해석하지 않는다.

@@ -27,6 +27,14 @@ android {
         if (providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean()) {
             applicationId = "ai.pleos.assistant.mock.ec2validation"
         }
+        buildConfigField(
+            "boolean",
+            "REAL_PLACE_DEMO",
+            providers.gradleProperty("realPlaceDemo").orElse("false").get().toBoolean().toString(),
+        )
+        if (providers.gradleProperty("realPlaceDemo").orElse("false").get().toBoolean()) {
+            applicationId = "ai.pleos.assistant.mock.realplacevalidation"
+        }
         versionCode = 1
         versionName = "0.1.0-mock"
     }

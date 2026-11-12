@@ -119,4 +119,6 @@
   <string name="phone_available">있음</string>
   <string name="phone_unavailable">없음</string>
   <string name="phone_base_conditions">주차 · 최대 대기 15분 · 아동 동반 시 이용 가능</string>
+  <string name="real_place_notice">실제 식당 조회 시험 · 전화·예약 요청은 차단됩니다</string>
+  <string name="real_place_navigation_notice">내비 목적지를 확인한 뒤 1회 조회합니다. 시연 중 목적지를 변경하지 마세요. 검색 정보는 빈자리·예약 확정을 뜻하지 않습니다.</string>
 </resources>
