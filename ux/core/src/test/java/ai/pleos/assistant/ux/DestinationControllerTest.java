@@ -331,4 +331,64 @@ class DestinationControllerTest {
       assertEquals(0, w.starts.get());
     }
   }
+
+  @Test
+  void onlyCurrentCatalogCanSupplyMockPhoneTask() throws Exception {
+    Wire web = new Wire();
+    try (var c = controller(web, new AtomicLong())) {
+      c.search(INPUT);
+      for (int i = 0; i < 200 && !c.view().state().equals("RESULTS"); i++) Thread.sleep(10);
+      assertEquals("RESULTS", c.view().state());
+      assertNull(c.mockPhoneTask());
+    }
+    Wire catalog =
+        new Wire() {
+          @Override
+          public JSONObject exchange(String path, JSONObject body, String key) throws Exception {
+            JSONObject response = super.exchange(path, body, key);
+            if (body == null) {
+              response.put(
+                  "source",
+                  new JSONObject()
+                      .put("provider", "SEOUL_OPEN_DATA")
+                      .put("catalogUrl", "https://example.invalid/catalog"));
+              JSONArray candidates =
+                  new JSONArray()
+                      .put(
+                          new JSONObject()
+                              .put("ordinal", 1)
+                              .put("name", "가상 식당")
+                              .put("address", "가상 주소")
+                              .put("bookable", false)
+                              .put("inquiryDispatchAllowed", false));
+              response.put(
+                  "result",
+                  new JSONObject()
+                      .put(
+                          "listing",
+                          new JSONObject()
+                              .put("state", "RESULTS")
+                              .put("provider", "SEOUL_OPEN_DATA")
+                              .put("displayValidUntil", response.getString("validUntil"))
+                              .put("candidates", candidates)));
+            }
+            return response;
+          }
+        };
+    try (var c = controller(catalog, new AtomicLong())) {
+      c.search(INPUT);
+      for (int i = 0; i < 200 && !c.view().state().equals("RESULTS"); i++) Thread.sleep(10);
+      assertEquals(catalog.id, c.mockPhoneTask());
+      assertEquals(
+          "UNKNOWN",
+          c.view()
+              .candidates()
+              .getJSONObject(0)
+              .getJSONArray("assessments")
+              .getJSONObject(0)
+              .getString("verdict"));
+      c.invalidate("CANCELLED");
+      assertNull(c.mockPhoneTask());
+    }
+  }
 }

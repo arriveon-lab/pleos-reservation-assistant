@@ -1000,3 +1000,11 @@ Android 환경은 이 Mac의 `~/Library/Android/sdk`에 설치했습니다. 루�
 ## 2026-11-12 내비 목적지 확인 데모
 
 사용자 지정 목적지 고정 데모 조건으로 navigationDemo=true 옵션과 명시적 목적지 확인 버튼 추가. SDK 검증과 demoConfirmed 분리, 기본 앱 차단 유지. 실제 SDK 목적지→확인/인원/검색 버튼→MOCK3후보, 이탈/재조회 확인 해제·취소 이벤트 주입 차단 PASS. 음성 테스트 미실행. verifyAll/UX124·기본 verifyAndroid·MOCK smoke PASS, 기존 journal 보존. [APK·절차·증거·한계](../docs/UX_NAVIGATION_BACKEND_HANDOFF.md). 추천→전화/예약 및 공동 인수는 미완료.
+
+## 2026-11-12 UX-56 MOCK 전화 예약 및 EC2 연결
+
+#46 최신 main 충돌을 `8fa56d9`에서 양쪽 문서 보존 후 해결했다. #46 Draft의 원격 검사 4개 통과. #56은 `feat/56-mock-phone-integration`에서 진행한다.
+
+가상 catalog 추천→선택→명시적 승인→예약 결과와 DECLINED 재승인, UNKNOWN 차단, 강제 종료 후 GET 복구를 별도 설치로 검증했다. 음성·실제 전화·유료 호출 없음. 기존 두 설치 예약 XML 해시 동일. verifyAll/계약 smoke/HTTP 연동 통과. 작업 중 신규 EC2 인계를 확인해 고정 HTTPS 전송·MOCK 상태 확인·별도 ec2validation 설치를 추가했다. 세션 발급부터 버튼 예약 결과까지 EC2 직접 연결도 확인했다.
+
+세부 절차와 실제 실행/미검증 구분은 [UX56_MOCK_PHONE_INTEGRATION](../docs/UX56_MOCK_PHONE_INTEGRATION.md). 실제 Pleos 기기·현재 목적지 연관성·공동 인수는 미완료이므로 #56 OPEN/Draft 유지. 로컬 런처 18088의 데이터와 기존 예약 기록은 별도 보존한다.

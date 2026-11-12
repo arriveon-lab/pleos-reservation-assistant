@@ -14,6 +14,19 @@ android {
             "NAVIGATION_DEMO",
             providers.gradleProperty("navigationDemo").orElse("false").get().toBoolean().toString(),
         )
+        buildConfigField(
+            "boolean",
+            "MOCK_PHONE_DEMO",
+            providers.gradleProperty("mockPhoneDemo").orElse("false").get().toBoolean().toString(),
+        )
+        buildConfigField(
+            "boolean",
+            "EC2_MOCK_DEMO",
+            providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean().toString(),
+        )
+        if (providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean()) {
+            applicationId = "ai.pleos.assistant.mock.ec2validation"
+        }
         versionCode = 1
         versionName = "0.1.0-mock"
     }

@@ -26,7 +26,8 @@ final class DestinationDeviceChecks {
 
   static void run(Instrumentation runner, String fixture, int width, float fontScale)
       throws Exception {
-    new DestinationDeviceChecks(runner).execute(fixture, width, fontScale);
+    if (fixture.startsWith("PHONE_")) new PhoneDeviceChecks(runner).run(fixture);
+    else new DestinationDeviceChecks(runner).execute(fixture, width, fontScale);
   }
 
   private void execute(String fixture, int width, float fontScale) throws Exception {

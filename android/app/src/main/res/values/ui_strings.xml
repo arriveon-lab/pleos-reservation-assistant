@@ -83,4 +83,40 @@
   <string name="navigation_demo_confirm">이 목적지 확인 · 데모에 사용</string>
   <string name="navigation_demo_notice">데모 전용 · 내비와 같은 목적지인지 확인해 주세요. 시연 중 목적지를 변경하지 마세요. 식당·문의·예약 결과는 MOCK입니다.</string>
   <string name="navigation_demo_ready">데모 확인 목적지 · %1$s</string>
+  <string name="phone_select">이 식당 선택</string>
+  <string name="phone_candidate">MOCK 예약 후보 %1$d</string>
+  <string name="phone_title">가상 전화 예약 연습</string>
+  <string name="phone_notice">가상 catalog 전용 · 실제 전화 없음 · 내비 ETA를 사용하지 않습니다.</string>
+  <string name="phone_accept">수락</string>
+  <string name="phone_unmet">조건 불충족</string>
+  <string name="phone_unknown">결과 미확인</string>
+  <string name="phone_decline">예약 거절</string>
+  <string name="phone_scenario">가상 응답: %1$s · 눌러 변경</string>
+  <string name="phone_approve_title">가상 문의·예약을 승인할까요?</string>
+  <string name="phone_approve_body">%1$s
+총 %2$d명 · %3$s (한국 시각)
+예약자: 가상 예약자 · 추가 비용 0원
+필수 조건: %5$s
+조건 확인 후 예약을 요청합니다.
+내비 ETA가 아닌 연습 예약 시각입니다.
+가상 응답: %4$s</string>
+  <string name="phone_cancel">취소</string>
+  <string name="phone_approve">이 조건으로 승인</string>
+  <string name="phone_sending">가상 조건 문의·예약 결과 확인 중</string>
+  <string name="phone_confirmed">모의 예약 확정 · 실제 예약 아님</string>
+  <string name="phone_declined">모의 예약 거절 · 다음 후보는 다시 승인해 주세요.</string>
+  <string name="phone_uncertain">결과 미확인 · 새 예약 대신 기존 작업을 조회해 주세요.</string>
+  <string name="phone_failed">가상 작업 실패 · 자동으로 다시 요청하지 않습니다.</string>
+  <string name="phone_storage">예약 기록을 안전하게 저장하지 못했습니다. 새 요청은 차단됩니다.</string>
+  <string name="phone_choose">후보를 선택하고 조건을 확인한 뒤 승인해 주세요.</string>
+  <string name="phone_receipt">%1$s · %2$s %3$s · %4$d명</string>
+  <string name="phone_stages">조건: %1$s · 빈자리: %2$s · 예약 요청: %3$s</string>
+  <string name="phone_requested">진행함</string>
+  <string name="phone_not_requested">진행하지 않음</string>
+  <string name="phone_next">다음 후보 %1$d번을 선택하면 별도 승인이 필요합니다.</string>
+  <string name="phone_refresh">저장된 예약 결과 조회</string>
+  <string name="phone_met">충족</string>
+  <string name="phone_available">있음</string>
+  <string name="phone_unavailable">없음</string>
+  <string name="phone_base_conditions">주차 · 최대 대기 15분 · 아동 동반 시 이용 가능</string>
 </resources>

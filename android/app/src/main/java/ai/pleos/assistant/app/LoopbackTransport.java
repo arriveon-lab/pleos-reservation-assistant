@@ -27,12 +27,16 @@ final class LoopbackTransport implements AuthSession.Wire {
             && !path.matches(
                 "/(status|searches|reservations|calls|anonymous-sessions)(/[a-zA-Z0-9-]+)*")))
       throw new IllegalStateException("LOCAL_DEBUG_ONLY");
-    if (destination) requireDestinationMock();
+    if (BuildConfig.EC2_MOCK_DEMO) {
+      if (!BuildConfig.MOCK_PHONE_DEMO) throw new IllegalStateException("MOCK_DEMO_REQUIRED");
+      requireEc2Mock();
+    } else if (destination) requireDestinationMock(path.endsWith("/phone-reservations"));
     HttpURLConnection connection =
         (HttpURLConnection)
             new URL(
-                    "http://127.0.0.1:"
-                        + (destination ? "8081" : "8080")
+                    (BuildConfig.EC2_MOCK_DEMO
+                            ? "https://43.201.115.170/pleos-mock"
+                            : "http://127.0.0.1:" + (destination ? "8081" : "8080"))
                         + "/api"
                         + (preview ? "" : "/v1")
                         + path)
@@ -95,9 +99,40 @@ final class LoopbackTransport implements AuthSession.Wire {
     }
   }
 
+  // Fixed #56 trial deployment. Keep platform TLS/hostname validation and reject redirects.
+  // Its handoff explicitly specifies PUBLIC_CATALOG and fictional phone scenarios.
+  private void requireEc2Mock() throws Exception {
+    HttpURLConnection c =
+        (HttpURLConnection)
+            new URL("https://43.201.115.170/pleos-mock/api/v1/status")
+                .openConnection(Proxy.NO_PROXY);
+    try {
+      c.setConnectTimeout(5000);
+      c.setReadTimeout(5000);
+      c.setInstanceFollowRedirects(false);
+      c.setUseCaches(false);
+      if (c.getResponseCode() != 200) throw new IllegalStateException("EC2_MOCK_REQUIRED");
+      try (InputStream in = c.getInputStream()) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int value;
+        while (out.size() <= 4096 && (value = in.read()) != -1) out.write(value);
+        byte[] bytes = out.toByteArray();
+        if (bytes.length > 4096) throw new IllegalStateException("EC2_MOCK_REQUIRED");
+        JSONObject status = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
+        if (!"MOCK".equals(status.optString("mode"))
+            || !"FICTIONAL_FIXTURES".equals(status.optString("dataSource"))
+            || !"1.1.0".equals(status.optString("contractVersion"))
+            || status.optBoolean("externalCallsEnabled", true))
+          throw new IllegalStateException("EC2_MOCK_REQUIRED");
+      }
+    } finally {
+      c.disconnect();
+    }
+  }
+
   // #53 can execute paid web calls even with the reservation service in MOCK mode. Only the
   // explicitly marked, separate test harness is accepted; stock/live servers fail closed.
-  private void requireDestinationMock() throws Exception {
+  private void requireDestinationMock(boolean phone) throws Exception {
     HttpURLConnection c =
         (HttpURLConnection)
             new URL("http://127.0.0.1:8081/mock-capabilities").openConnection(Proxy.NO_PROXY);
@@ -114,7 +149,10 @@ final class LoopbackTransport implements AuthSession.Wire {
         if (bytes.length > 4096) throw new IllegalStateException("DESTINATION_MOCK_REQUIRED");
         JSONObject marker = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
         if (!"MOCK".equals(marker.getString("destinationRecommendationsMode"))
-            || marker.getBoolean("externalCallsEnabled"))
+            || marker.getBoolean("externalCallsEnabled")
+            || (phone
+                && (!BuildConfig.MOCK_PHONE_DEMO
+                    || !"MOCK".equals(marker.optString("phoneReservationsMode")))))
           throw new IllegalStateException("DESTINATION_MOCK_REQUIRED");
       }
     } finally {

@@ -25,6 +25,16 @@ public final class ReservationViewModel extends AndroidViewModel {
   private MockRepository repository;
   private PreviewController preview;
   private DestinationController destination;
+  ai.pleos.assistant.ux.MockPhoneController phone;
+
+  String phoneTask() {
+    return BuildConfig.MOCK_PHONE_DEMO && destination != null ? destination.mockPhoneTask() : null;
+  }
+
+  void approvePhone(String task, JSONObject body, int party) {
+    if (canWrite() && destinationOpen && task.equals(phoneTask())) phone.approve(task, body, party);
+  }
+
   private boolean destinationOpen;
   private DestinationController.Destination navigationDestination;
   private String navigationState = "UNAVAILABLE";
@@ -136,6 +146,26 @@ public final class ReservationViewModel extends AndroidViewModel {
                       }),
               java.time.Clock.systemUTC(),
               android.os.SystemClock::elapsedRealtimeNanos);
+      var phonePreferences =
+          application.getSharedPreferences("mock-phone-recovery", Context.MODE_PRIVATE);
+      phone =
+          new ai.pleos.assistant.ux.MockPhoneController(
+              auth::exchangeTransient,
+              new ai.pleos.assistant.ux.MockPhoneController.Store() {
+                public String read() {
+                  return phonePreferences.getString("journal", null);
+                }
+
+                public void save(String value) throws Exception {
+                  if (!phonePreferences.edit().putString("journal", value).commit())
+                    throw new IllegalStateException("PHONE_STORAGE_FAILED");
+                }
+              },
+              () ->
+                  main.post(
+                      () -> {
+                        if (!closed && observer != null) observer.run();
+                      }));
       repository =
           new MockRepository(
               auth,
@@ -281,6 +311,7 @@ public final class ReservationViewModel extends AndroidViewModel {
 
   private void restrict(MockRepository.Restriction value) {
     restriction = value;
+    if (phone != null) phone.allow(canWrite());
     if (!value.allowsInput()) clearDemoConfirmation();
     if (preview != null) preview.allow(canWrite());
     if (destination != null) destination.allow(canWrite());
@@ -291,6 +322,7 @@ public final class ReservationViewModel extends AndroidViewModel {
   void run(Action action) {
     if (busy || repository == null || closed) return;
     busy = true;
+    if (phone != null) phone.allow(false);
     if (preview != null) preview.allow(false);
     if (destination != null) destination.allow(false);
     if (observer != null) observer.run();
@@ -345,6 +377,7 @@ public final class ReservationViewModel extends AndroidViewModel {
     main.removeCallbacks(expiry);
     if (preview != null) preview.close();
     if (destination != null) destination.close();
+    if (phone != null) phone.close();
     if (repository != null) repository.restrict(MockRepository.Restriction.UNKNOWN);
     worker.shutdownNow();
   }

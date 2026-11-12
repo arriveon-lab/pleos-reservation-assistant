@@ -85,7 +85,7 @@ public final class DestinationController implements AutoCloseable {
   private String viewId, taskId, state = "IDLE";
   private Instant expires;
   private JSONArray candidates = new JSONArray();
-  private boolean allowed, closed, polling, cleanupFailed;
+  private boolean allowed, closed, polling, cleanupFailed, catalog;
 
   public DestinationController(
       PreviewController.Transport wire, Runnable changed, Clock clock, LongSupplier nano) {
@@ -101,6 +101,11 @@ public final class DestinationController implements AutoCloseable {
     } catch (Exception impossible) {
       throw new IllegalStateException(impossible);
     }
+  }
+
+  public synchronized String mockPhoneTask() {
+    tick();
+    return allowed && catalog && "RESULTS".equals(state) ? taskId : null;
   }
 
   public synchronized void allow(boolean value) {
@@ -174,24 +179,42 @@ public final class DestinationController implements AutoCloseable {
                 throw new IllegalArgumentException();
               JSONArray found = new JSONArray();
               if ("RESULTS".equals(next)) {
-                if (!"WEB_SEARCH".equals(response.getJSONObject("source").getString("provider")))
-                  throw new IllegalArgumentException();
-                JSONObject result = response.getJSONObject("result");
-                next = result.getString("webState");
-                if (!Set.of(
-                        "RESULTS",
-                        "EMPTY",
-                        "FILTERED",
-                        "FAILED",
-                        "CANCELLED",
-                        "EXPIRED",
-                        "APPROVAL_REQUIRED",
-                        "ALREADY_REQUESTED")
-                    .contains(next)) throw new IllegalArgumentException();
-                if ("RESULTS".equals(next)) {
-                  found = result.getJSONArray("webRecommendations");
-                  validate(found);
-                  if (found.length() == 0) next = "EMPTY";
+                if ("SEOUL_OPEN_DATA"
+                    .equals(response.getJSONObject("source").getString("provider"))) {
+                  JSONObject listing = response.getJSONObject("result").getJSONObject("listing");
+                  if (!"SEOUL_OPEN_DATA".equals(listing.getString("provider")))
+                    throw new IllegalArgumentException();
+                  tighten(Instant.parse(listing.getString("displayValidUntil")));
+                  next = listing.getString("state");
+                  if (!Set.of("RESULTS", "EMPTY", "FILTERED", "FAILED").contains(next))
+                    throw new IllegalArgumentException();
+                  found =
+                      "RESULTS".equals(next)
+                          ? catalogCandidates(
+                              listing.getJSONArray("candidates"),
+                              response.getJSONObject("source").getString("catalogUrl"))
+                          : new JSONArray();
+                  catalog = true;
+                } else {
+                  if (!"WEB_SEARCH".equals(response.getJSONObject("source").getString("provider")))
+                    throw new IllegalArgumentException();
+                  JSONObject result = response.getJSONObject("result");
+                  next = result.getString("webState");
+                  if (!Set.of(
+                          "RESULTS",
+                          "EMPTY",
+                          "FILTERED",
+                          "FAILED",
+                          "CANCELLED",
+                          "EXPIRED",
+                          "APPROVAL_REQUIRED",
+                          "ALREADY_REQUESTED")
+                      .contains(next)) throw new IllegalArgumentException();
+                  if ("RESULTS".equals(next)) {
+                    found = result.getJSONArray("webRecommendations");
+                    validate(found);
+                    if (found.length() == 0) next = "EMPTY";
+                  }
                 }
               }
               if (!clock.instant().isBefore(expires) || nano.getAsLong() >= expiresNanos) {
@@ -207,6 +230,41 @@ public final class DestinationController implements AutoCloseable {
             fail(token, error);
           }
         });
+  }
+
+  private JSONArray catalogCandidates(JSONArray source, String url) throws Exception {
+    if (source.length() > 3) throw new IllegalArgumentException();
+    url(url);
+    Set<Integer> seen = new java.util.HashSet<>();
+    JSONArray found = new JSONArray();
+    for (int i = 0; i < source.length(); i++) {
+      JSONObject c = new JSONObject(source.getJSONObject(i).toString());
+      int ordinal = c.getInt("ordinal");
+      if (ordinal < 1
+          || ordinal > 3
+          || !seen.add(ordinal)
+          || c.getBoolean("bookable")
+          || c.getBoolean("inquiryDispatchAllowed")) throw new IllegalArgumentException();
+      text(c, "name", 200);
+      text(c, "address", 300);
+      JSONArray assessments = new JSONArray();
+      JSONArray missing = new JSONArray();
+      for (String need :
+          new String[] {"PARKING", "CHILD_FRIENDLY", "HIGH_CHAIR", "STEP_FREE_ACCESS"}) {
+        assessments.put(
+            new JSONObject()
+                .put("need", need)
+                .put("verdict", "UNKNOWN")
+                .put("evidence", new JSONArray()));
+        missing.put(need);
+      }
+      c.put("identitySourceUrl", url)
+          .put("assessments", assessments)
+          .put("remainingQuestions", missing)
+          .put("reviews", new JSONArray());
+      found.put(c);
+    }
+    return found;
   }
 
   private void validate(JSONArray found) throws Exception {
@@ -324,6 +382,7 @@ public final class DestinationController implements AutoCloseable {
     ++epoch;
     viewId = null;
     taskId = null;
+    catalog = false;
     expires = null;
     candidates = new JSONArray();
     polling = false;

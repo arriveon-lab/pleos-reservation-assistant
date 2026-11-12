@@ -18,6 +18,7 @@ final class DestinationPanel {
   private final Button search, navigationRetry, demoConfirm;
   private final List<View> inputs = new ArrayList<>();
   private final TextView navigationLabel;
+  private final MockPhonePanel phonePanel;
   private final boolean wide;
   private int adultCount = 2, childCount = 1, detail = -1;
   private String rendered = "";
@@ -80,6 +81,8 @@ final class DestinationPanel {
     button(form, R.string.preview_cancel, false, () -> model.invalidateDestination("CANCELLED"));
     results = column();
     root.addView(results);
+    phonePanel = new MockPhonePanel(activity, model);
+    root.addView(phonePanel.view, 2);
   }
 
   boolean inputVoice(ai.pleos.assistant.ux.GleoSearchCommand command) {
@@ -181,6 +184,16 @@ final class DestinationPanel {
   }
 
   void update() {
+    phonePanel.update();
+    if (BuildConfig.MOCK_PHONE_DEMO
+        && model.phone != null
+        && model.phone.hasRequest()
+        && !model.phone.state().equals("DECLINED")) {
+      form.setVisibility(View.GONE);
+      results.setVisibility(View.GONE);
+      return;
+    }
+    results.setVisibility(View.VISIBLE);
     DestinationController.View state = model.destinationView();
     boolean loading = java.util.Set.of("LOADING", "QUEUED", "RUNNING").contains(state.state());
     search.setEnabled(model.canWrite() && model.navigationReady() && !loading);
@@ -220,7 +233,12 @@ final class DestinationPanel {
     form.setVisibility(hasResults ? View.GONE : View.VISIBLE);
     if (!hasResults) detail = -1;
     String signature =
-        state.state() + state.candidates() + state.cleanupFailed() + model.canWrite() + detail;
+        state.state()
+            + state.candidates()
+            + state.cleanupFailed()
+            + model.canWrite()
+            + detail
+            + (model.phone == null ? "" : model.phone.state() + model.phone.busy());
     if (signature.equals(rendered)) return;
     rendered = signature;
     results.removeAllViews();
@@ -307,6 +325,29 @@ final class DestinationPanel {
                   card,
                   activity.getString(R.string.destination_missing, String.join(" · ", missing)),
                   22);
+            if (model.phoneTask() != null) {
+              int ordinal = c.getInt("ordinal");
+              Button select =
+                  button(
+                      card,
+                      R.string.phone_select,
+                      true,
+                      () ->
+                          phonePanel.select(
+                              ordinal,
+                              c.optString("name"),
+                              adultCount + childCount,
+                              activity.getString(R.string.phone_base_conditions)
+                                  + (highChair.isSelected()
+                                      ? " · " + activity.getString(R.string.destination_high_chair)
+                                      : "")
+                                  + (stepFree.isSelected()
+                                      ? " · " + activity.getString(R.string.destination_step_free)
+                                      : "")));
+              select.setContentDescription(activity.getString(R.string.phone_candidate, ordinal));
+              select.setEnabled(
+                  model.canWrite() && model.phone.canApprove(model.phoneTask(), ordinal));
+            }
             button(
                 card,
                 R.string.destination_details_show,
