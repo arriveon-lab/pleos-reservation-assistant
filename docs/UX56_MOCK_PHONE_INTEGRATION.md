@@ -162,3 +162,18 @@ adb reverse tcp:8083 tcp:18091
 증거: `work/ux56-cafe-filter/device.log`(후속 실패), `blocked-identity.log`(기존 인증 차단), `gateway.log`(추천 POST1회/GET/close), `search-attempted`, `final-build.log`. 최종 응답과 오류 원인을 보존할 수 있는 재실행이 필요하다. 추가 외부 추천 승인은 이번 1회에 포함되지 않으므로 임의로 재검색하지 않는다.
 
 `e243ed8` CI는 기존 Spotless/JGit 의존성 해석 실패 후 실패한 Server and contract 작업만 재실행하여 최종4개 PASS했다(run43163347561, naming43163403593). 최신 진단/기록 후속 커밋 CI는 PR에서 별도로 확인한다. #56 OPEN/PR #59 Draft 유지.
+
+
+## 2026-11-12 MOCK 전화 예약 재검증 — 기존 기록 보존
+
+사용자 요청으로 EC2 MOCK 경로만 사용해 `PHONE_REPEAT` 기기 검사를 실행했다. 실제조회/추천 에이전트 호출은 필요하지 않아 이번 승인1회를 소비하지 않았다. 실제 전화·실예약·유료 검색은 0회다.
+
+- EC2 `/pleos-mock/api/v1/status`에서 MOCK/FICTIONAL_FIXTURES/externalCallsEnabled=false/계약1.1.0을 확인했다.
+- 기존 ec2validation 앱을 최신 코드8b8acc1과 navigationDemo/mockPhoneDemo/ec2MockDemo 옵션으로 업데이트하고 다시 활성화했다. 다른 사용 중지 앱과 기록은 유지했다.
+- 가상 성수 목적지·가상 후보3개 → 첫 식당 선택 → 승인 대화 → 취소(요청 없음) → 재선택·명시적 승인 → CONFIRMED → GET으로 같은 attemptId 유지까지 실제 기기 PASS.
+- 화면에서 `모의 예약 확정 · 실제 예약 아님`, 가상 공공데이터 식당0, 성인2/아이1 총3명, 2026-11-13 19:00(KST), 조건 충족·빈자리 있음·예약 요청 진행함을 확인했다. 이는 가상 서버 응답이며 실제 매장의 상태/예약이 아니다.
+- PHONE_REPEAT는 이번 전화 요청을 메모리 Store로 격리한다. 서버에는 새 MOCK 요청이 생성되지만 기존 앱의 영속 phone journal은 덮어쓰지 않는다. 이번 신규 결과의 앱 재실행 복구 검사는 미수행이며 기존 PHONE_FULL/RESTORE 증거와 구분한다.
+- ec2validation 일반/전화 journal 및 기존 realplacevalidation, realplacefiltervalidation, jointvalidation, destinationvalidation의 기록 비교에서 변경 없음. ec2validation phone SHA256은 `b38c69af87f472e04bd5c5bb948e99aa92a98f5b167cb78cf02da4d4fe804b71`로 동일하다. 인증 삭제/초기화/새 주체 생성은 하지 않았다.
+- verifyAndroid/test APK 빌드 PASS(캐시·UP-TO-DATE 포함), 제품 APK SHA256 `569f7e8c0cbe90ba0a49cd2c25b4e4f16f7ddcce9d25b912a0d3013aa92f3a6d`. 제품/테스트 코드 수정 없음.
+- 증거: `work/ux56-mock-retest/build.log`, `device.log`, `journals-before.json`, `journals-after.json`; 화면 `captures/ux56/mock-retest/{candidates,approval,result}.png`.
+- 승인 대화의 본문/버튼은 차량 화면에서 작게 보인다. 기능 검증은 통과했지만 차량 UI 가독성 최종 인수로 세지 않는다. 실제 내비 목적지·실제 식당·실통화·음성 예약은 이번 범위 밖이다. #56 OPEN/PR Draft 유지.

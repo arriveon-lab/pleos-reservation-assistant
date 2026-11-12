@@ -1033,3 +1033,11 @@ SSH로 실제 WEB_SEARCH 서버18769의 Bearer1.1.0 API를 연결했다. 별도 
 - 실제 추천 POST1회 HTTP200 및 GET4회 HTTP200. 기기 검사는 no restaurant results로 실패했고 최종 응답 증거가 없어 원인/카페 제외 성공 미확정. 전화·예약0회, 추가 검색 없음.
 - 실패 전 화면/상태 및 gateway 오류 진단을 보완하고 format/verifyAll/test APK PASS. 진단 보완 후 기기 재실행은 미수행. 승인된 추가 추천1회는 소비됨.
 - 이전 e243ed8 CI4개 PASS(서버 의존성 해석 실패 작업 재실행 후). 상세는 UX56_MOCK_PHONE_INTEGRATION 마지막 절. #56 OPEN/PR #59 Draft.
+
+
+### 2026-11-12 MOCK 전화 예약 기기 재검증 PASS
+
+- EC2 MOCK의 가상 식당3개 → 선택 → 승인 취소(요청 없음) → 재승인 → CONFIRMED → 같은 attemptId GET 확인까지 PHONE_REPEAT PASS.
+- 기존 ec2validation 일반/전화 및 다른 검증 앱 기록 비교에서 변경 없음. 전화 요청 상태는 이번 반복 검사에서 메모리로 격리했다. 신규 결과의 재실행 복구는 미검증.
+- verifyAndroid/test APK 빌드 PASS. 실제 전화·실예약·추천 에이전트 호출0회. 실제 내비/실제 식당 연결 성공과 구분한다.
+- 증거 work/ux56-mock-retest, captures/ux56/mock-retest. 승인 대화 가독성 개선은 남아 있다. 상세는 UX56_MOCK_PHONE_INTEGRATION 마지막 절. #56 OPEN/PR Draft.
