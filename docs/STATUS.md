@@ -51,6 +51,161 @@
 - 가상 catalog 3곳의 접수/폴링/인증·소유권·무효화를 테스트했고 `./gradlew -PincludeAndroid=false format verify`를 통과했습니다. 실제 매장 데이터, 후기/GPT 조건 판정, 전화 확인·예약, 제품 Android 호출은 아직 없으므로 **실제 추천 3곳 완료로 세지 않습니다.** 실제 유료 API/전화 호출은 이번 변경에서 0회입니다.
 - Kakao 또는 공공 목록과 **독립적으로 검색한** GPT 웹 근거의 동일 지점 대조를 순수 평가기로 추가했습니다. 전체 상호·주소 일치만 후보로 남기고 다른 지점/중복 식별/만료 결과/주차 조건 누락을 제외합니다. Kakao 후보를 GPT 입력으로 보내는 코드는 없습니다. 가상 테스트이며 실제 GPT 호출, 최종 추천·예약 확정은 아닙니다.
 
+## 2026-11-11 음성 제외 핵심 흐름 보완
+
+명시적 예약 거절 후 기록을 보관하고 새 조건·후보·문의·승인으로 진행하는 흐름을 구현했다. UNKNOWN/미완료/확정 예약과 변경 거절에는 새 예약 준비를 제공하지 않는다. 저장 실패·제한·응답 유실·재실행 보존을 포함한 UX121개, verifyAll/MOCK smoke PASS. Pleos의 재예약 UI+로컬 HTTP 흐름, 넓은/좁은 창·150%·주야간, 실제 CarUx 초기 조회/재진입과 주입 제한 검증 PASS. 두 설치 journal 전후 동일. [검증·초기 실패·고정 APK·잔여](UX_NONVOICE_COMPLETION.md). #4 UNKNOWN 종료 계약, #40 공동 운영자 환경, #25 실제 moving/단절, #1 목적지/ETA 근거는 미제공·미검증으로 유지한다. 음성 개발 제외, 이슈 OPEN/PR #46 Draft 유지.
+
+## 2026-11-11 #40 outcome 계약 대조와 변경 결과 보존
+
+서버 인수안과 앱을 대조해 완료된 CHANGE가 BOOKING 통화로 덮이는 문제를 수정했다. 검증된 변경 참조를 journal에 보존하고 수락/거절별 다음 행동을 표시한다. format/verifyAll·UX116개·MOCK smoke PASS, Pleos 별도 APK의 결과 화면 fixture PASS. 원 예약 journal 해시 동일. 시간/비용 불일치와 동일 이벤트 재전달 HTTP 검사 추가. 초기 기기 검사 렌더 대기 실패와 재검사, APK/증거는 [결과 대조 기록](UX40_OUTCOME_REVIEW.md)에 기록했다. 공동 운영자 인수, 예약 거절 후 새 예약 UI, 일반 UNKNOWN 종료는 미완료이며 #40 OPEN/PR #46 Draft 유지.
+
+## 2026-11-11 Gleo 앱 이름·단순 열기 보완
+
+APK label을 어라이브온 · MOCK으로 맞추고 인원 없는 OPEN_ARRIVEON을 추가했다. verifyAndroid와 OPEN 무검색/journal 불변·기존 GLEO 기기 검사 PASS. Gleo 재시작 후 새 이름과 두 스키마 로딩 관측. 음성 앱 실행은 여전히 미확인이고 수정 직후 같은 장소 오류/Activity 실행0을 확인했다. 스키마 읽힘을 음성 실행/공식 승인 완료로 표시하지 않는다. 상세는 [Gleo 기록](GLEO_MOCK_SEARCH.md). 직전 d5021bf 원격 CI3개는 PASS이며 이번 수정 head의 CI와 구분한다.
+
+## 2026-11-11 Gleo 인원 입력·MOCK 추천 연결
+
+공식 Gleo 스키마·Activity 명령 수신·검증된 인원 반영과 MOCK 검색을 추가했다. 실제 음성에서 명령 생성/패키지 접두사 action 전달을 관측해 해당 형식을 추가 지원한다. 최종 APK의 직접 Intent 실행에서 성인2/아이2·후보3곳 표시, 잘못된 입력/중복/제한/UNKNOWN 주입 차단과 journal 보존 PASS. verifyAll(UX109)·최종 verifyAndroid·MOCK smoke PASS. 실제 Gleo 음성→최종 앱 검색 성공은 아직 미확인, 문서상 승인/공동 인수도 미완료다. [상세 증거·범위](GLEO_MOCK_SEARCH.md). 기존 이슈 OPEN/PR Draft 유지.
+
+
+## 2026-11-11 이슈·PR 상태 대조
+
+#5/#25/#26/#39의 현재 완료/잔여와 #27/#36/#44/#46 통합 관계를 [점검표](UX_INTEGRATION_STATUS.md)에 정리했다. #36→#44→#46 선조 관계, #27은 코드 기반 이전이며 직접 선조 아님. #46을 통합 검토 기준으로 두되 네 PR 모두 Draft·이슈OPEN 유지, 병합/종료 없음. #54와 음식 선호 반영을 활성 후속 작업으로 안내하던 본문을 정정했다. 문서/원격 상태 점검이며 새 기기 검증 없음.
+
+## 2026-11-11 음식 선호 선택 MVP 제외
+
+사용자 결정으로 음식5종 다중 선택·전체 해제와 선택 요약/미반영 안내를 제거했다. 앱 Input에서도 음식 목록을 제거하고 기존 #53 계약의 preferredCuisines=[]만 전송한다. 목적지·인원·필수 주차/선택 조건, 후보 비교와 안전/복구 동작은 유지한다. #52의 음식 선호 서버 전달·추천 반영 협업 요청 댓글을 삭제하고 [철회 안내](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/52#issuecomment-6790589103)를 남겼다. 이 작업은 더 이상 앱 MVP 잔여/서버 대기 항목이 아니다. 다른 담당자의 API·범위·배정은 변경하지 않았다.
+
+format/verifyAll PASS(UX107개 실패0, 캐시/UP-TO-DATE 포함). 같은 새 APK로 Pleos 주간/기본 글꼴1682dp·840dp 조건→후보3곳/상세→입력 변경/취소→제한/UNKNOWN 주입→재실행 PASS. 실제 HTTP에서 preferredCuisines=[]와 requiredFeatures=[parking,highChair] 확인. 원래 예약 journal 바이트 동일. 실제 moving/공동 인수 아님. 새 APK SHA256 `11b72ec152782d7bbfa1172439af4edc32c3f9fcf660aaf20ed1a6e39dc1133e`, 증거 captures/no-cuisine/, work/no-cuisine/. 이번 변경 후5분/응답 유실 전체 검사는 재실행하지 않았으며 앞선 cab4564의 검증과 구분한다.
+
+아래 음식 선택/서버 요청 문장은 당시 이력이며 현재 요구사항이 아니다.
+
+
+## 2026-11-11 추천 만료·실패·강제 종료·창 전환 회귀
+
+제품7092c0e의 같은 별도 APK로 실제300148ms 만료, GET404, POST 응답 유실, close503, 결과/검색 중 프로세스 force-stop 후 재진입, 840↔1682 창4회 PASS. 기존 예약 XML 바이트 동일. 검사 도구에 화면 생성 대기와 실패 fixture를 추가했으며 제품/계약은 변경하지 않았다. format/verifyAll·UX107개 재실행·MOCK smoke PASS. 자세한 절차/한계/증거는 [UX52_DESTINATION_MOCK](UX52_DESTINATION_MOCK.md) 최신 절을 따른다. 실제 주행·전체 OEM 창·음식 추천 반영·공동 인수는 미완료이며 기존 UNKNOWN 기록을 유지한다.
+
+
+## 2026-11-11 추천 조건 선택·가로 후보 비교 개선
+
+목적지/인원±/필수 조건을 큰 버튼으로, 음식 선호를 한식·일식·중식·양식·분식 다중 선택으로 바꿨다. 결과는 별도 비교 화면에 가로3열(좁은 창/확대는 세로)로 표시하고 상세 보기를 분리했다. 선택/전체 해제와 preferredCuisines 요청 전송 확인. #53 WEB_SEARCH는 아직 음식 취향을 공급자에 전달하지 않아 실제 추천 반영은 미완료이며 화면·#52 협업 요청에 구분한다.
+
+같은 APK로 Pleos 주간1682dp/100%, 야간840dp/150%의 실제 선택→HTTP→후보/상세·제한·journal 불변 검사 PASS. 초기 resize 직후 진입 실패 후 안정 창 재검사 PASS를 기록했다. format/verifyAll/MOCK smoke PASS, UX107개 결과·기존 Lint4개, 실제 moving/음식별 결과 변화·공동 인수 아님. 증거/해시/한계는 [목적지 추천 검증](UX52_DESTINATION_MOCK.md) 최신 절. 기존 기록·담당·OPEN/Draft 유지.
+
+## 2026-11-11 #53 초안 기반 목적지 MOCK 추천 연결
+
+앱 구현427bcb9. PR #46 충돌을 main286f2a1과 양측 기록 보존으로 해결하고, #53 cc393399의 인증 POST/GET·webRecommendations 배열·2/3곳 가변 후보·출처/후기/UNKNOWN 표시를 별도 화면에 연결했다. 변경/이탈/주행 제한/만료 시 메모리 선폐기·close, 예약 권한 승격/자동 재검색 없음. 기본 MOCK과 기존 예약/인증 journal을 보존했다.
+
+별도 destinationvalidation APK로 실제 Pleos 주간1682dp에서 THREE/TWO/EMPTY/FAILED/LATE/EXPIRED/NO_MARKER7개 fixture PASS. 서버는 #53 실제 서비스+가상 WebGateway, 유료 호출0. 3초 만료/개발 주행 제한은 fixture이며 실제5분/실제 moving/공동 인수 완료가 아니다. 원래 jointvalidation journal XML 전체 SHA256 일치, 기존8080→18082/앱 복원. format/verifyAll/MOCK smoke PASS, UX106개 결과·새12개, 서버313개는UP-TO-DATE, 기존Lint4개 유지.
+
+[고정 계약·APK·절차·초기 실패·증거·재현·한계](UX52_DESTINATION_MOCK.md). #52 실제 목적지 연관성/Gleo/전화 계약, #25 전체 창·실제 신호, #4 일반 UNKNOWN 종료/#40 공동 시연은 남는다. #54 not planned 유지, 기존 담당/OPEN/Draft 유지·병합 없음.
+
+## 2026-11-10 현재 Pleos 창 경계 검사 완료
+
+#25/#39: 동일 최신 제품 APK에서1682/1100/1099dp 주간100%,840dp 야간100%·150%의5조합 기기 검사 PASS. BOOKING/CHANGE UNKNOWN 상태별 렌더 이후 실측 검사와 너비 인자를 기기 테스트에 추가했다. 실제 UNKNOWN 하단 조회 버튼 스크롤 접근·보관 journal 전체 동일 확인. 제품/API 변경 없음, format/verifyAll PASS; smoke는 이번 재실행 아님. 상세 해시·절차·초기 실패·증거는 docs/UX39_VEHICLE_UI.md 최신 절.
+
+현재 환경에서 가능한 위 검사는 완료. OEM 전체 Connect-S/W/실제 주행 신호/물리 회전은 미검증이며 #25 기존 협업 요청 대기, 일반 UNKNOWN 종료는 #4 서버 계약 대기다. #19 통합·#40 공동 인수와 전체 #39 완료로 확대하지 않는다. 서버/앱/원래 글꼴·주간·1682dp 창 복원, OPEN/Draft 유지.
+
+## 2026-11-10 일반 UNKNOWN 조회 대조와 보존
+
+#26: 예약/연결 통화의 참조·목적 검증과 전체 GET/저장 성공 후 상태 교체, UNKNOWN 조회 전용·종료 미지원 안내를 구현했다. 부분 실패/404/저장 실패에 기존 상태와 pending을 보존한다. UX94개 결과·format/verifyAll/MOCK smoke·기기 dashboard PASS. Pleos 실제 CHANGE/UNKNOWN 조회/단절 복구/재실행 후 journal 전체 동일, 원21:19/요청21:34/0원 유지. BOOKING UNKNOWN·404·저장 실패 등은 fixture 검증이다.
+
+PR #19 a5ae15e 계약에 일반 UNKNOWN 해결/종료 API가 없어 종료는 미구현이며 #4 서버 계약→#26 연결이 남는다. 검색 reconcile을 재사용하지 않는다. 상세 APK/절차/증거/실패 시도는 docs/UX26_AUTH_HANDOFF.md 최신 절. 기존 기록·담당·OPEN/Draft 유지, 표준 MOCK18082/앱 실행 유지. 공동 인수/실제 주행 검증 아님.
+
+## 2026-11-10 최소 MVP 범위와 핵심 검증
+
+#54를 사용자 지시에 따라 미구현/not planned로 종료했고 #5/#25/#26/#39 및 다른 담당 이슈는 유지했다. docs/PLAN.md 최신 순서에 따라 0원 변경 수락(21:04→21:19)·서버10분 간격·실제 대기 후 같은 pending 재전송·두 번째 변경UNKNOWN·재실행/재변경 차단을 확인했다. 변경 통화2건, 원 확정21:19/요청21:34/0원 유지.
+
+cddc1cd: 서버 lastChangeRequestedAt+600초 기준의 안내·조기 명령 저장/전송 차단 추가. 기존 pending 원본은 보존했다. UX82개·format/verifyAll/MOCK smoke·기기 cooldown/제한 fixture PASS. 실제 서버 단절 복구와 초기 fixture 오설정 실패/재검사, 고정 APK·증거는 docs/UX39_VEHICLE_UI.md 최신 절. 실제 차량 신호/일반 UNKNOWN 해결/공동 시연은 남는다. 표준 MOCK18082와 앱 UNKNOWN 결과 화면 유지, 로컬 운영자/오류 도구 종료. 확장·제출 산출물 보류를 완료로 표시하지 않는다.
+
+
+## 2026-11-10 #39 단계별 안내3곳 수정 완료
+
+검색/문의/예약/변경 단계별 다음 행동을 구분하고 UNKNOWN/미해결 변경을 우선한다. 새 검색·예약 뒤 과거 복구 안내를 숨기되 기록은 보존한다. 전화 요약은 문의/예약/변경 목적을 구분한다. 실제 Pleos의 기존 CONFIRMED 조회·화면과 journal 불변, 기기 fixture의 대기/거절/UNKNOWN/변경 우선 안내를 확인했다. format/verifyAll/MOCK smoke PASS, Lint 기존4개 유지. 고정 APK·증거·미검증은 docs/UX39_VEHICLE_UI.md 최신 절. 전체 인수는 미완료, OPEN/Draft 유지. 사용자 확인용 앱과 표준 MOCK18082/adb8080→18082 실행 유지.
+
+
+## 2026-11-10 새 UI 실제 MOCK 예약 흐름 검증
+
+f854836의 기존 APK로 Pleos에서 직접 후보 검색→전화 문의→서버 ANSWERED→앱 GET→명시 예약 승인→PENDING→서버 ACCEPTED→CONFIRMED→재실행을 확인했다. UI fixture가 아닌 실제 HTTP/DB 흐름이며, 수락은 별도 로컬 합성 운영자 도구다. #40 공동 인수/배포 권한 분리 검증은 아니다. 기존 인증 연결·trip·검색 복구 기록 보존, 문의/예약 통화 각각1건, 요청/확정 시각 일치·0원 확인. 제품 코드 변경 없음. 상세 실패/증거/한계는 docs/UX39_VEHICLE_UI.md 최신 절.
+
+사용자가 직접 확인하도록 jointvalidation 예약 결과 화면과 표준 Docker MOCK 서버18082, adb8080→18082를 켜뒀다. 임시 운영자 도구는 정지했다. 단계별 연결 안내/과거 복구 안내/문의·예약 통화 명칭3곳은 #39 후속. 0원 변경·다른 결과·실제 차량/ETA·공동 시연은 남으며 OPEN/Draft 유지.
+
+
+## 2026-11-10 #39 사용자 대시보드·문구 재설계
+
+Pleos 공식 가이드에 따라 목적지/도착 시간·내 조건과 전화 문의/예약/후보 영역을 분리했다. 인원 ± 조작, 주/보조 버튼 대비, 처리 중 오류 중복 표시를 개선했다. 실제 ETA는 미연결, 반려견 조건은 현 예약 API 미적용으로 표시한다. 기존 인증/복구·권한·주행 제한 정책은 보존했다.
+
+최종 APK a54c096b1a23b0311e8df53c338d33dac4501874456e39980752f461e01543fb로 Pleos 주야간·840dp/150%·승인/제한/재생성 검사를 통과했다. 대시보드·결과/제한은 UI fixture이며 실제 CarUx 초기값/재연결과 구분한다. format/verifyAll/MOCK smoke PASS, 새 경고 정리 후 기존 Lint4개 유지. 서버/UX 캐시는 신규 실행 건수가 아니다. 상세 절차·초기 실패·PNG/로그·미검증은 docs/UX39_VEHICLE_UI.md 최신 절 참조. 실제 전체 예약 시연/주행/ETA/반려견 추천 적용은 남아 #39/#25 OPEN·#46 Draft 유지.
+
+
+## 2026-11-10 검색 복구·404 안내의 서버 검토 완료
+
+[서버 담당 검토 답변](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/16#issuecomment-6760438895)에 따라 서버a5ae15e/앱f41e4dc 고정 조합의 두 항목을 완료 근거로 반영한다.
+
+- [x] 오래된 검색: 원 인증/키/본문 대조, COMPLETED GET 확인, 원 명령+종료 응답의 원자적 저장 후 pending 해제 순서를 서버 담당이 계약과 대조했다. 기존 설치의 실제 종료·재시작·명시 새 검색 증거를 앱 측 기기 증거로 수용했다.
+- [x] PREVIEW_NOT_FOUND: 정리 성공으로 바꾸지 않고 후보 숨김·미확인 안내 유지에 동의했다. 추가 서버 계약 수정 요청 없음.
+- 서버 담당이 읽기 전용 checkout에서 SearchReconciliationTest 새13개를 직접 재실행해 실패/오류/skip0을 확인했다. 이는 서버 담당의 JVM 검증이며 기기·전체 UX80/서버385 재실행이 아니다.
+- 실제 기기의 저장 실패/응답 유실/COMPLETED 분기 미실행은 유지한다. 이 두 항목의 검토 완료를 #16/#26 전체 인수·실제 차량·#40·#1/#11/#17 완료로 확대하지 않는다.
+
+이번 변경은 검토 결과와 인계 상태의 문서 반영이며 제품 코드/API/기기/인증/journal을 변경하거나 기기 검사를 재실행하지 않았다. #25/#40/#1/#50/#11 협업 요청에는 확인 시점 새 답변이 없어 각 선행 조건을 유지한다. Assignee/OPEN/Draft 유지, PR 병합 없음.
+
+
+## 2026-11-10 #26 서버 대조 API·기존 pending 복구
+
+#16 새 답변/#19 a5ae15e에 맞춰 명시적 검색 확인·종료를 연결했다. 원 요청+대조 결과의 원자적 journal 저장 후에만 pending 해제, COMPLETED GET 검증·실패 시 차단 유지. UX80개·format/verifyAll/MOCK smoke PASS. 기존 jointvalidation 실제 Pleos에서 같은 인증 refresh→REJECTED_CLOSED→원 명령 보존→force-stop 재실행→명시 새 검색1회 성공했다. 고정 APK/image와 증거는 docs/UX16_DOCKER_ACCEPTANCE.md 최신 절 참조. 기존 요청 복구 미완료/서버 답변 대기라는 아래 기록은 과거 이력이다.404 미확인 안내는 서버 합의에 따라 유지. 응답 유실/저장 실패/COMPLETED는 JVM 회귀, 실제 기기는 REJECTED_CLOSED 분기다. 서버 담당의 최종 결과 검토·공동 인수 확정·실제 차량/#40/#1/#11은 남아 OPEN/Draft 유지.
+
+
+## 2026-11-10 #26 오래된 검색 요청·만료404 안내 보완
+
+#16의 추가 서버 답변은 아직 없다(#19 d415ef7 유지). 앱 오류 코드만 안전하게 전달하고400 INVALID_TIME/STALE_NAVIGATION을 원 pending에 보존해 재시작 후 안내한다. 원 요청/인증·새 검색 차단은 유지했다. 정확한404/PREVIEW_NOT_FOUND는 정리 미확인 안내로 구분하며 성공으로 바꾸지 않는다. UX67개·format/verifyAll/MOCK smoke·Pleos 오류 주입/안내 검사 PASS. 기존 두 설치 journal 해시 일치,8080→18080 복원. 상세 절차·고정 APK·증거는 docs/UX16_DOCKER_ACCEPTANCE.md의 최신 절을 따른다. 기존 요청의 실제 복구/입력 해제·서버404 의미 합의·공동 인수는 미완료, #16/#26 OPEN과 PR Draft 유지.
+
+
+## 2026-11-10 #16 두 취향·인원 경계·실제5분 만료
+
+사용자가 승인한 별도 boundaryvalidation 설치에서 한식+양식·인원2/1·1/0·20/10 정상3건,21/10·20/11·0/0의 앱 입력 차단/검색HTTP0을 확인했다. 서버 원본TTL300초 동안 실제 대기해 만료 전 유지·만료 후UI/결과 제거·자동query0을 확인했다. 정리404도 기록했다. [고정 APK·절차·증거](UX16_DOCKER_ACCEPTANCE.md) 참조. 제품/API 변경 없이 기기 instrumentation 추가, format·verifyAll·MOCK smoke 성공. 기존 jointvalidation의 INVALID_TIME 검색 pending은 보존했고 복구 완료가 아니다. 공동 결과 검토·실제 주행 장애·#40 시연·#1/#11은 미완료, Draft 유지.
+
+
+## 2026-11-10 #16 Docker 서버·Pleos 앱 측 인수 검증
+
+main4d65c01 및 후속2e873bc 충돌은 양측 STATUS/HANDOFF 기록을 보존한 merge로 해결했다. Android/UX 소스 변경 없음. 통합 후 verifyAll·MOCK smoke·격리 venv 품질40개/MOCK 성공. 원격 CI는 최신 PR head 기준으로 확인한다.
+
+앱cf35ead를 별도 jointvalidation APK로 빌드해 서버#19 d415ef7 Docker linux/arm64에 연결했다. 서버 직접 RESULTS/EMPTY/FILTERED/FAILED, 인증 갱신·Keystore 재실행·조건/목적지 변경·실제 STOPPED 복귀·중복 클릭 검증과 별도 늦은 응답/취소503/유실/3초 만료·개발 제한 검사를 수행했다. verifyAll·MOCK smoke PASS. 제품/API 수정 없음. [고정 APK/image·절차·증거·한계](UX16_DOCKER_ACCEPTANCE.md) 참조. 취소 실패 뒤 실제429와 HOME의 RESUMED 유지도 기록했다. 서버 담당의 결과 검토/공동 완료는 대기, 인원 경계/두 취향·실제5분 만료·실제 moving/장애·#40 예약 시연은 미완료다. OPEN/Draft 유지.
+
+
+## 2026-11-09 공동 인수 준비·추가 글자 확대 검사
+
+#40에 일반 앱/별도 운영자 시연 환경과 상태별 공동 절차, #16에 계약·fixture·수명·인증 공동 확인 조건을 게시했다. 서버 담당 준비/확인과 공동 실행은 아직 대기다. #39 동일 제품 APK로 Pleos840dp 창 주간150%/야간130% 실제 배율·승인창·입력 보존·수명/주입 제한 검사 PASS. 테스트 APK에 배율 확인·캡처 렌더 대기를 추가했고 제품/API 변경은 없다. 초기 fixture assertion 실패와 재실행 결과, 최종 캡처를 [UI 검증 기록](UX39_VEHICLE_UI.md)에 구분했다. format·verifyAll·MOCK smoke PASS. 실제 moving/장애·전체 창/물리 회전·#40 전체 시연·release/영상은 미완료, #16/#25/#39/#40 OPEN과 Draft 유지.
+
+
+## 2026-11-09 UX-04 차량 UI 개선 (#39 / #25)
+
+#36·#44를 보존하고 목적지/실제 ETA 미연결·현재 단계 우선 배치, 개발 진단 분리, 3개 후보의 같은 기준 비교, UNKNOWN/추정/만료 구분, 주야간 테마·adaptive icon·키패드/승인창을 개선했습니다. [동일 APK 검증](UX39_VEHICLE_UI.md): Pleos API34의 1682dp 가로/840dp 세로형 창, 실제 시스템 주야간 전환·초기 CarUx/수명·입력 보존, 주입 제한/결과 화면 검사 통과. UX62개·verifyAll·MOCK smoke·대비20개 성공. 실제 moving/장애·전체 Connect-S/W 조합·#40 공동 예약 시연·release/영상은 미완료입니다. #39/#25 OPEN과 Draft 유지, 다른 담당 범위 변경 없음.
+
+## 2026-11-09 UX-02 실제 CarUxRestrictions 연결 (#25)
+
+공개 SDK35 adapter·초기 UNKNOWN·제한/실패 차단·listener 해제·늦은 callback 무효화·승인/전송 직전 검사를 구현했습니다. Pleos API34에서 실제 초기값(false/0), 종료·재진입·Activity 재생성을 확인했고 제한/실패 주입 시 승인 창 종료와 이전 승인 차단을 검증했습니다. 실제 moving callback/서비스 장애·물리 회전·release/영상·공동 인수는 미완료입니다. [검증 기록](UX25_CAR_RESTRICTIONS.md)을 우선하며 아래 미연동 표기는 과거 이력입니다. verifyAll·UX58개·MOCK smoke 성공, 원격 CI는 PR 최신 head에서 별도 확인합니다. #25/#5 OPEN과 Draft를 유지하며 #1 담당 범위는 변경하지 않습니다.
+
+2026-11-09 추가: #19 최신 `5526f92`의 계약/제품 로직이 이전 검증본과 동일함을 대조하고 최신 격리 JAR로 Pleos 후보·조건·수명 시나리오를 다시 실행했습니다. `docs/UX26_PREVIEW_VALIDATION.md`에 실제/주입 결과를 구분했습니다. 공동 인수·실제 차량 제한 완료는 아닙니다.
+
+## 2026-11-09 UX-03 조건별 미리보기 초안 연결 (#26)
+
+- PR #19 최신 `285087b`(인증1.1.0 / 미리보기0.2.0-draft)와 댓글을 재확인하고 별도 조건 입력·후보3개 비교·UNKNOWN 질문·상태 안내·취소/수명 처리를 구현했습니다. 서버 코드는 격리해 실행했으며 공개 계약/다른 담당 소스를 변경하지 않았습니다.
+- 구현 커밋: core `027dec7`, Android `d23a0fc`. 실제 서버의 조건 배열 정렬을 집합으로 비교하도록 수정했고, 입력/선택72dp·본문24sp·후보 요약·완료 후 스크롤·KST 시각을 보완했습니다.
+- verify/verifyAll/최종 verifyAndroid·smoke 성공. UX43개 실행·실패/오류/skip0, 서버268개 기존 결과 UP-TO-DATE. 로컬 Lint 앱0오류/2경고, probe0/0, 새 억제 없음. 원격 최신 CI는 PR #36의 실제 결과를 따릅니다.
+- Pleos 별도 package에서 실제 PR19 MOCK 후보와 동일 주체 갱신, 주입 EMPTY/FILTERED/FAILED·만료·취소 실패/늦은 응답·유실·재실행, 모의 주행/UNKNOWN 차단을 확인했습니다. 서버 정리 실패 후 세션 한도429도 확인했으며 자동 재검색/새 주체로 우회하지 않습니다.
+- [절차·기대/실제 결과·증거·미검증](UX26_PREVIEW_VALIDATION.md). Git 제외 captures/ux26-preview 및 work/ux26-preview에 원본/로그가 있습니다. **초안 기반 검증이며 공동 인수 완료가 아닙니다.** #16/#26 공동 확인, #25 실제 CarUxRestrictions/release, #26 유료 변경/대조·복구가 남아 있습니다.
+- #5/#26 OPEN, #19/#27/#36 Draft, 외부 장소/전화/AI/유료 호출0회. 병합/자동 병합 없음. 아래 인증 연결 단계의 “미리보기 미구현”은 당시 이력입니다.
+
+## 2026-11-09 UX-03 인증 연결과 서버 인수안 검토 (#26)
+
+- 최신 main `abd9aa4` 기반 `feat/26-app-auth-session`에 #5의 앱/UX 기반을 가져왔습니다. 공유 #27 이력은 변경하지 않았고 서버·추천 변경을 보존했습니다. 두 PR은 기반이 겹치므로 통합 시 중복 반영을 검토해야 합니다.
+- #19 `285087b`의 0.2.0-draft와 현재 앱을 대조해 #16에 검토 댓글을 게시했습니다. 추천 ordinal과 예약 candidateId 분리, UNKNOWN 질문/발신 차단, 완료 세대 재검색 금지·화면 선무효화 기준입니다. 공동 합의/미리보기 UI 인수는 미완료입니다.
+- 인증 1.1.0 명시 발급, Keystore 암호화 저장, 직렬 갱신/동일 키 재전송, 같은 사용자 GET 복구, 레거시/유실 차단을 연결했습니다. 일반 토큰에는 운영자 권한이 없어 앱의 모의 수락 주입을 제거했습니다.
+- verifyAll·smoke 통과: UX26개(실제 JAR 인증12 + test-only 운영자 업무14), 서버268개(최초 실행 후 UP-TO-DATE). 별도 package의 Pleos 실제 발급/검색/갱신/force-stop GET·저장 유실 차단과 기존 앱의 레거시 차단을 확인했습니다. 실제 차량 제한/미리보기/유료 변경/release는 미완료입니다.
+- 원격 CI의 캐시된 서버 테스트에서 추천 예제 JSON이 복원되지 않는 실패를 확인했습니다. Test output 선언으로 수정하고 파일 삭제→FROM-CACHE 복원→추천 계약 검사 및 `smoke-test.py --check-contract`를 로컬에서 통과했습니다. 제품 서버 로직/계약 변경 없음.
+- 상세 계약·검증 수준·증거·제한: [UX-03 인수 기록](UX26_AUTH_HANDOFF.md). #5/#26 OPEN, PR Draft, 외부 장소/전화/AI/유료 호출0회, 병합 없음.
+
+
 ## 2026-11-10 VOICE-01 Telkit 채택 (#3)
 
 - 팀이 전화 회선으로 Telkit을 사용하기로 결정했습니다(사용자 전달). [업체 검토](calls/VENDOR_REVIEW.md#0-결정-telkit-채택-2026-11-10)에 Telkit 공개 문서·요금·약관을 다시 확인해 LiveKit SIP 연결 조건, 계정당 번호 1개, 동시 4통·발신 하루 500통, 발신 웹훅 없음, 녹음 없음, 요금을 정리했습니다. [INTEGRATIONS](INTEGRATIONS.md#전화-사업자-비교)·ISSUE_GUIDE·PLAN·목차의 미선정 표기를 고쳤습니다.
@@ -744,3 +899,23 @@ GitHub 업로드 직전 로컬 `verifyAll` 및 `smoke-test.py --check-contract`�
 - 공개 REST API·Spring bean·기존 WorkflowService 연결·Model/migration/의존성 변경 없음. navigation freshness/ETA 재검증, #4/#5 계약·공개 API/화면, 실제 인증/복구는 다음 작업입니다. #12는 OPEN·PR #14는 Draft로 유지하며 실제 Kakao 조회·전화·비용은 0회입니다.
 
 후속 복구 확인: 11:07:51.902254Z에 TripInfo rawEtaSeconds=666/POSITIVE를 수신했습니다. 이는 원시값 수신 확인이며 남은 시간/도착 시각으로 변환하지 않습니다.
+
+## 2026-11-11 운영자 시스템 없는 로컬 실행 도구
+
+기존 재예약 검사를 한 명령으로 실행하는 scripts/run-mock-rebooking.py와 [실행 안내](MOCK_REBOOKING_RUNNER.md)를 추가했다. 격리 임시 DB·loopback 서버·전용8082 연결, 기존 별도 APK의 synthetic HTTP 재예약 흐름 PASS. 종료/실패 시 자신이 만든 서버/연결만 정리하며 기존8080/8081 유지 확인. 제품/API/음성 변경 없음. 일반 앱/운영자 인증분리 및 #40 공동 인수는 미완료다.
+
+## 2026-11-11 Gleo 음성 인원 반영
+
+SET_PARTY_SIZE로 추천 입력 화면의 인원만 설정하도록 추가했다. verifyAll/기기 GLEO 주입 검사 PASS, 실제 사용자 발화→2/2 표시를05:08:53 기기 로그 및 화면으로 확인했다. journal 전후 동일. [검증 기록](GLEO_PARTY_INPUT.md). 음성 예약/실제 전화/실제 ETA/공동 인수는 미완료. 기존 미커밋 Gleo 작업은 별도로 보존한다.
+
+## 2026-11-11 내비 목적지 추천 연결 준비
+
+추천 화면 가상 목적지 선택 제거, NaviHelper3.0.5 읽기·목적지 무효화·#53 요청 매핑 추가. 실제 SDK 수신은 UNVERIFIED이며 현재 경로 연관성 입증 전 검색 차단. ETA 없는 추천 계약 유지. verifyAll/UX123·MOCK smoke·최종 APK NAVIGATION/GLEO 계측 PASS, 기존 기록 보존. 실제 내비 목적지 POST/공동 인수는 미완료. [구현·증거·남은 작업](UX_NAVIGATION_BACKEND_HANDOFF.md).
+
+## 2026-11-11 내비 재조회와 대기 종료
+
+#1/#47 최신 답변·공식 가이드·NaviHelper3.0.5 소스 재검토: 현재 경로 연관성 보장 여전히 없음. 수동 재조회/10초 응답 대기 종료/상태 안내를 추가했다. verifyAll·MOCK smoke·실제 SDK 재수신과 주입 timeout/이전 listener 방어·NAVIGATION/GLEO 회귀 PASS, 기록 보존. 실제 무응답/단절·검색 차단 해제·공동 인수는 미완료. [근거·검사·APK](UX_NAVIGATION_BACKEND_HANDOFF.md).
+
+## 2026-11-12 내비 목적지 확인 데모
+
+사용자 지정 목적지 고정 데모 조건으로 navigationDemo=true 옵션과 명시적 목적지 확인 버튼 추가. SDK 검증과 demoConfirmed 분리, 기본 앱 차단 유지. 실제 SDK 목적지→확인/인원/검색 버튼→MOCK3후보, 이탈/재조회 확인 해제·취소 이벤트 주입 차단 PASS. 음성 테스트 미실행. verifyAll/UX124·기본 verifyAndroid·MOCK smoke PASS, 기존 journal 보존. [APK·절차·증거·한계](UX_NAVIGATION_BACKEND_HANDOFF.md). 추천→전화/예약 및 공동 인수는 미완료.
