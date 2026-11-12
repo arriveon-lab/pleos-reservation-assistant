@@ -1,0 +1,12 @@
+<resources>
+  <color name="ui_background">#F4F6F9</color>
+  <color name="ui_surface">#FFFFFF</color>
+  <color name="ui_text">#172536</color>
+  <color name="ui_secondary">#46566A</color>
+  <color name="ui_accent">#17634B</color>
+  <color name="ui_on_accent">#FFFFFF</color>
+  <color name="ui_disabled">#DDE4EC</color>
+  <color name="ui_on_disabled">#46566A</color>
+  <color name="ui_outline">#697889</color>
+  <color name="icon_background">#17634B</color>
+</resources>
