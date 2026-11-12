@@ -177,3 +177,30 @@ adb reverse tcp:8083 tcp:18091
 - verifyAndroid/test APK 빌드 PASS(캐시·UP-TO-DATE 포함), 제품 APK SHA256 `569f7e8c0cbe90ba0a49cd2c25b4e4f16f7ddcce9d25b912a0d3013aa92f3a6d`. 제품/테스트 코드 수정 없음.
 - 증거: `work/ux56-mock-retest/build.log`, `device.log`, `journals-before.json`, `journals-after.json`; 화면 `captures/ux56/mock-retest/{candidates,approval,result}.png`.
 - 승인 대화의 본문/버튼은 차량 화면에서 작게 보인다. 기능 검증은 통과했지만 차량 UI 가독성 최종 인수로 세지 않는다. 실제 내비 목적지·실제 식당·실통화·음성 예약은 이번 범위 밖이다. #56 OPEN/PR Draft 유지.
+
+
+## 2026-11-12 실제 추천→식당 선택→내비 목적지 변경 PASS
+
+사용자가 목표를 실제 식당 조회/표시/선택/내비 목적지 변경으로 정정했다. 앞선 MOCK 검사는 이 목표의 완료 증거가 아니다. 미사용 상태였던 추천 에이전트1회 승인을 이번 실행에 사용했다. 전화/예약은 실행하지 않았다.
+
+구현:
+- 실제조회 데모의 RESTAURANT 카드에 `이 식당을 내비에서 찾기` 버튼을 추가했다. 정차 입력 허용·현재 RESULTS·후보 이름/주소/ordinal 일치·유효기간을 다시 확인한 뒤 호출한다. 만료/화면 종료/다른 후보는 전달하지 않는다.
+- 고정 NaviHelper3.0.5와 navi-data3.0.4 sources에서 `requestNavigationScreen(new NavigationScreenRequest.SearchPlace(name))`, NAVI_CUSTOM_MAP(Normal) 권한을 확인해 사용했다. API를 추정하거나 임의 intent를 만들지 않았다.
+- 현재 웹 추천 Candidate 계약은 좌표/내비 POI ID가 없다. 따라서 자동 requestRoute를 만들지 않고 **앱에서 선택→내비 검색 결과에서 지점/주소 확인→목적지로 선택** 단계를 사용한다. 좌표·POI 기반 한 번 클릭 직접 변경은 미구현이다. SDK 호출 반환은 목적지 변경 성공으로 세지 않는다.
+
+실행 결과:
+1. 기존 realplacefiltervalidation 앱을 업데이트해 같은 인증/기록으로 실행했다. 현재 SDK 목적지 `구미역 경부선`을 확인 버튼으로 승인했다. SDK 이름/좌표와 실제 추천 POST body 일치 PASS. 현재경로 연관성의 일반적 보장은 계속 UNVERIFIED이며 이번 고정 데모 관측과 구분한다.
+2. 새 `work/ux56-navigation-select`/gateway18093에서 실제 추천 POST1회만 전송. WEB_SEARCH/RESULTS, 멘야타누키(RESTAURANT) **1곳** 반환. 주소 `경북 구미시 금오산로12길 19, 1층`과 이름을 앱 카드와 대조했다. 3곳 확보로 표시하지 않는다. 주차 UNKNOWN, identityVerified/bookable/inquiryDispatchAllowed=false 유지.
+3. 카드 버튼으로 내비 SearchPlace 화면이 실제 열렸다. 내비 검색에서 같은 이름의 식당을 선택하고 상세의 도로명주소 `경상북도 구미시 금오산로12길 19`와 대조했다. 전화 아이콘은 누르지 않았다.
+4. 내비 `목적지로` 버튼을 눌러 길안내 목적지가 멘야타누키로 변경된 화면을 확인했다. 이후 PHONE_NAVI_READ로 SDK 목적지를 새로 조회해 선택한 후보 이름의 SHA256과 일치함을 검사했다. 실제내비→앱추천→내비변경→SDK재조회 연결 PASS.
+5. 구미 식당까지 표시된 장거리 경로는 에뮬레이터 현재 위치에서의 경로다. 조회 기준은 현재 차 위치가 아닌 원 목적지 구미역이다. 내비 자체 시간 표시는 앱 ETA 계약 검증으로 세지 않는다.
+6. 기존 일반/전화 journal 전후 해시 동일. 인증 삭제·새 주체 발급 없음. 추천1회 표식은 소비 후 보존하며 추가 검색0, 전화/예약0. 네이티브 장소 검색은 SDK 검색이며 추천 에이전트를 다시 호출하지 않는다.
+
+검증: format/verifyAll/test APK 빌드 PASS(캐시·UP-TO-DATE 포함). PHONE_NAVI_SELECT, PHONE_NAVI_READ 기기 PASS. 공통 검사 출력에 `MOCK fixture` 문구가 있지만 이번 realPlaceDemo 데이터/네이티브 내비 동작은 실제이며 가상 주입을 하지 않았다. 신규 선택 기능은 실제조회 데모에만 노출하고 MOCK 예약 경로는 변경하지 않는다.
+
+APK SHA256: `4859c51dd836c89d40eb70409053e273f0c45b2717fe7e42abbd382c80a705ff`.
+증거: `work/ux56-navigation-select/{build,final-build,device,readback,gateway,observations}.log`, `result.json`, `journals-after.json`, `search-attempted`; `captures/ux56/navigation-select/{recommendation,native-search,native-detail,native-route,readback}.png`. 전화번호가 보이는 내비 상세 캡처는 로컬에만 보관하고 저장소/이슈에 첨부하지 않는다.
+
+미검증: 다른 목적지/복수 지점 반복, 실차, 실제 전화·예약, 좌표/POI 기반 직접 목적지 변경, 변경/취소 직후 SDK 응답 연관성 보장. #56 OPEN/PR Draft를 유지한다. 기존 카페 제외 검증은 보류하되 이번 표본은 식당1/카페0으로 기록한다.
+
+근거: [Pleos 목적지 설정](https://document.pleos.ai/api-reference/connect-sdk-pleos/NaviHelper/destinations), [권한](https://document.pleos.ai/en/api-reference/connect-sdk-pleos/NaviHelper/declaring-permissions), 고정 navi-data3.0.4의 NavigationScreenRequest.kt/RouteInfo.kt와 NaviHelper3.0.5의 NaviHelper.kt. 이름/주소 확인 단계를 생략해 다른 지점을 목적지로 설정하지 않는다.

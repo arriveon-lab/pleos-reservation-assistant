@@ -230,6 +230,22 @@ public final class ReservationViewModel extends AndroidViewModel {
     return destination.view();
   }
 
+  boolean currentNavigationCandidate(int ordinal, String name, String address) {
+    if (!BuildConfig.REAL_PLACE_DEMO || !canWrite() || !destinationOpen) return false;
+    destination.tick();
+    var view = destination.view();
+    if (!"RESULTS".equals(view.state())) return false;
+    for (int i = 0; i < view.candidates().length(); i++) {
+      var item = view.candidates().optJSONObject(i);
+      if (item != null
+          && item.optInt("ordinal") == ordinal
+          && name.equals(item.optString("name"))
+          && address.equals(item.optString("address"))
+          && "RESTAURANT".equals(item.optString("venueCategory"))) return true;
+    }
+    return false;
+  }
+
   void openDestination() {
     if (!canWrite() || destination == null) return;
     destinationOpen = true;

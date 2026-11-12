@@ -100,6 +100,19 @@ public final class ReservationActivity extends ComponentActivity {
     model.run(MockRepository::connect);
   }
 
+  boolean selectNavigationRestaurant(int ordinal, String name, String address) {
+    boolean requested =
+        model.currentNavigationCandidate(ordinal, name, address)
+            && navigation != null
+            && navigation.searchPlace(name);
+    android.widget.Toast.makeText(
+            this,
+            requested ? R.string.navigation_place_next : R.string.navigation_place_failed,
+            android.widget.Toast.LENGTH_LONG)
+        .show();
+    return requested;
+  }
+
   void retryNavigation() {
     if (navigation == null || !model.restriction().allowsInput()) return;
     navigation.close();

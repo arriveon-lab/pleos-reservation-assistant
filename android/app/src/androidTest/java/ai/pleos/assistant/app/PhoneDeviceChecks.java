@@ -77,7 +77,27 @@ final class PhoneDeviceChecks {
     }
     await(model::canWrite);
     String original = journal();
-    if (fixture.equals("PHONE_NAVI_QUERY") || fixture.equals("PHONE_NAVI_RESTAURANTS")) {
+    if (fixture.equals("PHONE_NAVI_READ")) {
+      check(
+          !main(() -> model.currentNavigationCandidate(1, "not-a-candidate", "")),
+          "missing candidate allowed navigation");
+      click(R.string.destination_open);
+      await(() -> model.navigationState().equals("UNVERIFIED"));
+      var received = main(model::navigationDestination);
+      check(received != null && received.validFields(), "SDK destination missing");
+      byte[] digest =
+          java.security.MessageDigest.getInstance("SHA-256")
+              .digest(received.name().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      var hash = new StringBuilder();
+      for (byte value : digest) hash.append(String.format("%02x", value & 255));
+      android.util.Log.i("ArriveOnNaviCheck", "READBACK_NAME_SHA256=" + hash);
+      capture("native-destination-readback");
+      check(original.equals(journal()), "readback changed reservation");
+      return;
+    }
+    if (fixture.equals("PHONE_NAVI_QUERY")
+        || fixture.equals("PHONE_NAVI_RESTAURANTS")
+        || fixture.equals("PHONE_NAVI_SELECT")) {
       String originalPhone =
           runner
               .getTargetContext()
@@ -144,7 +164,7 @@ final class PhoneDeviceChecks {
           "SDK_REQUEST_MATCH=" + requestMatches.get() + " terminalUiState=" + view.state());
       capture("actual-navi-query");
       boolean restaurantsOnly = fixture.equals("PHONE_NAVI_RESTAURANTS");
-      if (restaurantsOnly) {
+      if (restaurantsOnly || fixture.equals("PHONE_NAVI_SELECT")) {
         check(
             view.state().equals("RESULTS") && view.candidates().length() > 0,
             "no restaurant results");
@@ -194,6 +214,31 @@ final class PhoneDeviceChecks {
               + restaurantsOnly
               + " serverResultReceived="
               + (response.get() != null));
+      if (fixture.equals("PHONE_NAVI_SELECT")) {
+        org.json.JSONObject selected = null;
+        for (int i = 0; i < view.candidates().length(); i++) {
+          var c = view.candidates().getJSONObject(i);
+          if ("RESTAURANT".equals(c.optString("venueCategory"))) {
+            selected = c;
+            break;
+          }
+        }
+        check(selected != null, "no selectable restaurant");
+        final int ordinal = selected.getInt("ordinal");
+        main(
+            () -> {
+              View button =
+                  description(
+                      activity.getWindow().getDecorView(),
+                      activity.getString(R.string.navigation_place_candidate, ordinal));
+              check(
+                  button != null && button.isEnabled(), "native navigation selection unavailable");
+              button.performClick();
+              return null;
+            });
+        SystemClock.sleep(2000);
+        capture("native-search-handoff");
+      }
       return;
     }
     if (fixture.equals("PHONE_RESTORE")) {

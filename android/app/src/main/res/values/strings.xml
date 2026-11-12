@@ -128,4 +128,8 @@
   <string name="gleo_invalid">인원을 확인해 주세요. 성인 1~20명, 아이 0~10명을 함께 말해 주세요.</string>
   <string name="gleo_blocked">음성 검색을 시작하지 못했어요. 정차·서버 연결·진행 중 요청을 확인한 뒤 다시 요청해 주세요.</string>
   <string name="gleo_started">말씀하신 인원으로 가상 목적지 주변을 검색해요. MOCK 연습이며 실제 예약은 하지 않아요.</string>
+  <string name="navigation_place_select">이 식당을 내비에서 찾기</string>
+  <string name="navigation_place_candidate">식당 %1$d 내비 검색</string>
+  <string name="navigation_place_next">내비 검색 결과에서 지점과 주소를 확인한 뒤 목적지로 선택해 주세요.</string>
+  <string name="navigation_place_failed">내비 검색을 열지 못했어요. 정차 상태와 내비 연결을 확인해 주세요.</string>
 </resources>

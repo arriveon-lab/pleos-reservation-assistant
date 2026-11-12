@@ -13,7 +13,7 @@ import android.os.Looper;
 import java.util.function.BiConsumer;
 import kotlin.Unit;
 
-/** Read-only NaviHelper3.0.5 adapter, based on #47 bbfb184. Never requests ETA or rerouting. */
+/** NaviHelper3.0.5 destination reads and explicit native place search; no ETA conversion. */
 final class NavigationDestinationAdapter implements AutoCloseable {
   private final Context context;
   private final BiConsumer<DestinationController.Destination, String> changed;
@@ -118,6 +118,21 @@ final class NavigationDestinationAdapter implements AutoCloseable {
           });
     } catch (RuntimeException failure) {
       fail(failure);
+    }
+  }
+
+  boolean searchPlace(String name) {
+    if (closed || helper == null || !listening || name == null || name.isBlank()) return false;
+    if (context.checkSelfPermission("pleos.car.permission.NAVI_CUSTOM_MAP")
+        != android.content.pm.PackageManager.PERMISSION_GRANTED) return false;
+    try {
+      helper.requestNavigationScreen(
+          new ai.pleos.playground.navi.data.NavigationScreenRequest.SearchPlace(name));
+      android.util.Log.i("ArriveOnNavi", "PLACE_SEARCH_REQUESTED");
+      return true;
+    } catch (RuntimeException failure) {
+      android.util.Log.i("ArriveOnNavi", "PLACE_SEARCH_FAILED");
+      return false;
     }
   }
 

@@ -960,3 +960,11 @@ SSH로 실제 WEB_SEARCH 서버18769의 Bearer1.1.0 API를 연결했다. 별도 
 - 기존 ec2validation 일반/전화 및 다른 검증 앱 기록 비교에서 변경 없음. 전화 요청 상태는 이번 반복 검사에서 메모리로 격리했다. 신규 결과의 재실행 복구는 미검증.
 - verifyAndroid/test APK 빌드 PASS. 실제 전화·실예약·추천 에이전트 호출0회. 실제 내비/실제 식당 연결 성공과 구분한다.
 - 증거 work/ux56-mock-retest, captures/ux56/mock-retest. 승인 대화 가독성 개선은 남아 있다. 상세는 UX56_MOCK_PHONE_INTEGRATION 마지막 절. #56 OPEN/PR Draft.
+
+
+### 2026-11-12 실제 식당 선택→내비 목적지 변경 기기 PASS
+
+- 실제 SDK 목적지 구미역→추천 POST1회→멘야타누키1곳(RESTAURANT)→앱 이름/주소 대조→내비 검색 버튼→같은 지점/주소 확인→목적지로 선택→길안내 및 SDK 이름 재조회 일치 PASS.
+- 현재 추천 계약에 좌표/내비 POI가 없어 공식 SearchPlace 화면을 열고 내비에서 최종 선택하는 방식이다. 앱 카드 한 번으로 requestRoute 직접 변경은 미구현.
+- format/verifyAll/test APK 및 PHONE_NAVI_SELECT/PHONE_NAVI_READ PASS. 기존 인증/예약 journal 보존, 전화·예약0회. 승인된 추천1회 소비, 추가 재검색 없음.
+- 증거 work/ux56-navigation-select, captures/ux56/navigation-select. 실제 식당3개 확보/실차/실통화/ETA·SDK 응답연관성 보장과 구분한다. 상세 UX56_MOCK_PHONE_INTEGRATION 마지막 절. #56 OPEN/PR Draft.

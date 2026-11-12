@@ -337,6 +337,21 @@ final class DestinationPanel {
                   card,
                   activity.getString(R.string.destination_missing, String.join(" · ", missing)),
                   22);
+            if (BuildConfig.REAL_PLACE_DEMO && "RESTAURANT".equals(c.optString("venueCategory"))) {
+              int ordinal = c.getInt("ordinal");
+              Button navigate =
+                  button(
+                      card,
+                      R.string.navigation_place_select,
+                      true,
+                      () ->
+                          activity.selectNavigationRestaurant(
+                              ordinal, c.optString("name"), c.optString("address")));
+              navigate.setContentDescription(
+                  activity.getString(R.string.navigation_place_candidate, ordinal));
+              navigate.setEnabled(model.canWrite());
+              text(card, activity.getString(R.string.navigation_place_next), 20);
+            }
             if (model.phoneTask() != null) {
               int ordinal = c.getInt("ordinal");
               Button select =
