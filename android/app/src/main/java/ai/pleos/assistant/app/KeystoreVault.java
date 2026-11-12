@@ -20,14 +20,20 @@ import org.json.JSONObject;
 
 /** Non-exportable key; atomic ciphertext in noBackupFilesDir. Never replaces a missing key. */
 final class KeystoreVault implements AuthSession.Vault {
-  private static final String ALIAS = "pleos-auth-v1";
+  private final String alias;
   private final AtomicFile file;
   private final SharedPreferences marker;
   private final KeyStore keys;
 
   KeystoreVault(Context context) throws Exception {
-    file = new AtomicFile(new File(context.getNoBackupFilesDir(), "auth-session.enc"));
-    marker = context.getSharedPreferences("auth-marker", Context.MODE_PRIVATE);
+    this(context, "pleos-auth-v1", "auth-session.enc", "auth-marker");
+  }
+
+  KeystoreVault(Context context, String alias, String filename, String markerName)
+      throws Exception {
+    this.alias = alias;
+    file = new AtomicFile(new File(context.getNoBackupFilesDir(), filename));
+    marker = context.getSharedPreferences(markerName, Context.MODE_PRIVATE);
     keys = KeyStore.getInstance("AndroidKeyStore");
     keys.load(null);
   }
@@ -38,19 +44,19 @@ final class KeystoreVault implements AuthSession.Vault {
     try {
       bytes = file.readFully();
     } catch (FileNotFoundException missing) {
-      if (marker.getBoolean("initialized", false) || keys.containsAlias(ALIAS))
+      if (marker.getBoolean("initialized", false) || keys.containsAlias(alias))
         throw new IllegalStateException("AUTH_STORAGE_MISSING");
       return null;
     }
-    if (!keys.containsAlias(ALIAS)) throw new IllegalStateException("AUTH_KEY_MISSING");
+    if (!keys.containsAlias(alias)) throw new IllegalStateException("AUTH_KEY_MISSING");
     JSONObject envelope = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
     if (envelope.getInt("version") != 1) throw new IllegalStateException("AUTH_STORAGE_INVALID");
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
     cipher.init(
         Cipher.DECRYPT_MODE,
-        keys.getKey(ALIAS, null),
+        keys.getKey(alias, null),
         new GCMParameterSpec(128, Base64.decode(envelope.getString("iv"), Base64.NO_WRAP)));
-    cipher.updateAAD(ALIAS.getBytes(StandardCharsets.UTF_8));
+    cipher.updateAAD(alias.getBytes(StandardCharsets.UTF_8));
     return new String(
         cipher.doFinal(Base64.decode(envelope.getString("data"), Base64.NO_WRAP)),
         StandardCharsets.UTF_8);
@@ -58,14 +64,14 @@ final class KeystoreVault implements AuthSession.Vault {
 
   @Override
   public synchronized void save(String value) throws Exception {
-    if (!keys.containsAlias(ALIAS)) {
+    if (!keys.containsAlias(alias)) {
       if (marker.getBoolean("initialized", false) || file.getBaseFile().exists())
         throw new IllegalStateException("AUTH_KEY_MISSING");
       KeyGenerator generator =
           KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
       generator.init(
           new KeyGenParameterSpec.Builder(
-                  ALIAS, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                  alias, KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
               .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
               .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
               .setKeySize(256)
@@ -75,8 +81,8 @@ final class KeystoreVault implements AuthSession.Vault {
     if (!marker.edit().putBoolean("initialized", true).commit())
       throw new IllegalStateException("AUTH_STORAGE_FAILED");
     Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-    cipher.init(Cipher.ENCRYPT_MODE, (SecretKey) keys.getKey(ALIAS, null));
-    cipher.updateAAD(ALIAS.getBytes(StandardCharsets.UTF_8));
+    cipher.init(Cipher.ENCRYPT_MODE, (SecretKey) keys.getKey(alias, null));
+    cipher.updateAAD(alias.getBytes(StandardCharsets.UTF_8));
     byte[] encrypted = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
     byte[] envelope =
         new JSONObject()

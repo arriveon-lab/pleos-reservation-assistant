@@ -418,6 +418,11 @@ public final class ReservationActivity extends ComponentActivity {
     LinearLayout page = content;
     text(getString(R.string.ui_brand), 32);
     text(getString(R.string.ui_mock), 20);
+    if (BuildConfig.DEBUG)
+      button(
+          R.string.trial_open,
+          model.restriction().allowsInput(),
+          v -> startActivity(new android.content.Intent(this, PhoneTrialActivity.class)));
     LinearLayout columns = new LinearLayout(this);
     boolean wide =
         getResources().getConfiguration().screenWidthDp >= 1100

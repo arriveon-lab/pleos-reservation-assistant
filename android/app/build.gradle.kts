@@ -5,10 +5,18 @@ android {
     compileSdk = 35
     useLibrary("android.car", false)
     defaultConfig {
+        buildConfigField(
+            "boolean",
+            "PHONE_TRIAL_DIAL",
+            providers.gradleProperty("phoneTrialDial").orElse("false").get().toBoolean().toString(),
+        )
         applicationId = "ai.pleos.assistant.mock"
         minSdk = 28
         targetSdk = 35
-        testInstrumentationRunner = "ai.pleos.assistant.app.DrivingDeviceChecks"
+        testInstrumentationRunner =
+            if (providers.gradleProperty("phoneTrialChecks").orElse("false").get().toBoolean())
+                "ai.pleos.assistant.app.PhoneTrialDeviceChecks"
+            else "ai.pleos.assistant.app.DrivingDeviceChecks"
         buildConfigField(
             "boolean",
             "NAVIGATION_DEMO",

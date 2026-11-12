@@ -6,6 +6,7 @@
       android:icon="@mipmap/ic_launcher"
       android:theme="@style/Theme.Reservation"
       android:supportsRtl="true">
+    <activity android:name=".PhoneTrialActivity" android:exported="false" android:resizeableActivity="true" />
     <activity android:name=".ReservationActivity" android:exported="true" android:resizeableActivity="true"
         android:launchMode="singleTop" android:windowSoftInputMode="adjustResize">
       <intent-filter>
