@@ -18,7 +18,7 @@ from .web_recommendation import booking_web_needs, search_web
 
 STATIC = Path(__file__).with_name("static")
 RECOMMENDATION_PATH = re.compile(
-    r"/api/internal/mock-recommendation-bookings/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})")
+    r"/api/internal/mock-recommendation-bookings/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})(/change)?")
 
 
 def load_test_restaurants(path):
@@ -136,7 +136,8 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                 path = urlsplit(self.path).path
                 recommendation = RECOMMENDATION_PATH.fullmatch(path)
                 if recommendation:
-                    self._json(200, service.recommendation_attempt(self._recommendation_owner(), recommendation[1]))
+                    handler = service.recommendation_change if recommendation[2] else service.recommendation_attempt
+                    self._json(200, handler(self._recommendation_owner(), recommendation[1]))
                     return
                 if path == "/api/state":
                     owner, cookie = self._owner(create=True)
@@ -178,6 +179,10 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                     raise DomainError("INVALID_JSON", "JSON을 확인해 주세요.", 400) from None
                 if not isinstance(body, dict):
                     raise DomainError("INVALID_INPUT", "요청은 JSON 객체여야 해요.", 400)
+                if recommendation and recommendation[2]:
+                    self._json(200, service.recommendation_change(
+                        owner, recommendation[1], body, self.headers.get("Idempotency-Key")))
+                    return
                 if self.path == "/api/web-recommendations":
                     snapshot = None
                     if service.web_test_enabled and "conditions" in body:

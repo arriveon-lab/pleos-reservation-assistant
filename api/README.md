@@ -83,6 +83,25 @@ Kakao Local 응답에는 별점·리뷰 수가 없습니다. `WEB_SEARCH` 결과
 `UNKNOWN`은 해당 예약의 결과 확인이 필요합니다. 같은 경로의 GET으로 최신 결과를 조회할
 수 있고, 추천이 만료되면 새 시도 승인에는 새 추천이 필요합니다.
 
+가상 예약이 확정되면 동일한 Bearer 세션으로
+`GET /api/experimental/destination-recommendations/{taskId}/phone-reservations/change`를 조회합니다.
+같은 경로의 POST로 [식당 회신과 사용자 결정 예제](examples/destination-phone-change-requests.json)를
+실행합니다. 각 새 동작에 새 `Idempotency-Key`를 사용하고, 응답이 유실되면 같은 키와 본문으로
+재시도하거나 GET으로 대조합니다. 변경 요청마다 응답의 실제 `change.id`를 사용합니다.
+
+| 상태 | 앱 표시와 동작 |
+| --- | --- |
+| `change: null` | 확정 시간 표시 |
+| `AWAITING_USER` | 식당 사유와 기존·제안 시각, 예·아니오 버튼 표시. `DECIDE`에 `approve`를 boolean으로 전송 |
+| `RECONFIRMING` | 예 선택 후 식당 재확인 대기. `confirmedTime`은 기존 시각 |
+| `APPLIED` | 식당의 가상 `ACCEPT` 이후 `confirmedTime` 갱신 |
+| `REJECTED` / `UNKNOWN` | 기존 `confirmedTime`을 보존하고 상태 안내 |
+
+시험 담당자가 `SIMULATE_CALLBACK`으로 변경 요청을 만들고 `SIMULATE_RECONFIRMATION`의
+`ACCEPT`, `DECLINE`, `DISCONNECT`로 식당 응답을 재현합니다. 실제 사용자 버튼은
+`DECIDE`만 실행합니다. 추천 화면을 닫거나 추천이 만료된 뒤에도 기존 예약의 변경 상태를
+같은 세션과 `taskId`로 다시 조회합니다.
+
 ## 실험 중인 장소 미리보기 계약
 
 2026-11-09: #21이 병합된 main `1b37bc2`를 반영했습니다. 미리보기는 실제 발급 Bearer 토큰과 안정적인 Principal을 사용하며 현재 v1 계약은 1.1.0입니다. `scripts/preview-session-demo.py`와 `scripts/preview-token-smoke.py`로 loopback MOCK의 발급·미리보기·갱신·폐기를 검증합니다. 인증 구현은 main 그대로 유지합니다.
