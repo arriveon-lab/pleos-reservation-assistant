@@ -1,0 +1,78 @@
+# Use with compose.yml and a separate Compose project on the test EC2 host.
+services:
+  api:
+    command:
+      - python
+      - -m
+      - prototypes.phone_agent
+      - --port
+      - "18767"
+      - --database
+      - /var/lib/arriveon-phone/phone-agent-prototype.sqlite3
+      - --recommendation-port
+      - "18769"
+      - --worker-health-port
+      - "18081"
+    depends_on:
+      recommendation:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18767/', timeout=2).close()"]
+
+  worker:
+    mem_limit: 1024m
+    restart: unless-stopped
+
+  recommendation:
+    image: eclipse-temurin:21-jre-alpine@sha256:ac05c3c42b7c2f1a52c9bd52f01041fa1958231b15ebeae7420429cbc5baf474
+    network_mode: host
+    user: "10001:10001"
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    mem_limit: 384m
+    working_dir: /tmp
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    env_file:
+      - ${PHONE_DEPLOY_ROOT:-/opt/arriveon-integration}/config/openai-web.env
+    volumes:
+      - ../../../server/build/libs/reservation-server-0.1.0-SNAPSHOT.jar:/app/recommendation.jar:ro
+    entrypoint: [java]
+    command:
+      - -Xms32m
+      - -Xmx144m
+      - -XX:ReservedCodeCacheSize=32m
+      - -XX:+ExitOnOutOfMemoryError
+      - -Djdk.httpclient.disableRetryConnect=true
+      - -Djdk.httpclient.redirects.retrylimit=1
+      - -jar
+      - /app/recommendation.jar
+      - --server.address=127.0.0.1
+      - --server.port=18769
+      - --server.tomcat.threads.max=16
+      - --server.tomcat.threads.min-spare=2
+      - --spring.datasource.url=jdbc:h2:mem:phone-web
+      - --spring.datasource.hikari.maximum-pool-size=4
+      - --app.mode=MOCK
+      - --app.destination-recommendations.enabled=true
+      - --app.destination-recommendations.source=WEB_SEARCH
+      - --app.destination-recommendations.web.enabled=true
+      - --app.destination-recommendations.web.runtime-enabled=true
+      - --app.destination-recommendations.web.gumi-catalog-enabled=${GUMI_CATALOG_ENABLED:-true}
+      - --app.destination-recommendations.web.runtime-model=gpt-6-luna
+      - --app.destination-recommendations.web.runtime-max-output-tokens=3072
+      - --app.destination-recommendations.web.runtime-max-calls-per-startup=${WEB_MAX_CALLS:-3}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:18769/api/v1/status"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

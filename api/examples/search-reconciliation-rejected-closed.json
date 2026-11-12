@@ -1,0 +1,7 @@
+{
+  "state": "REJECTED_CLOSED",
+  "mode": "MOCK",
+  "searchId": null,
+  "reason": "INVALID_TIME",
+  "resolvedAt": "2026-11-10T06:00:00Z"
+}

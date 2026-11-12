@@ -41,6 +41,8 @@ public final class PlaceRecommendationPlanner {
   public enum Field {
     CHILD_FRIENDLY("childFriendly"),
     PARKING("parking"),
+    HIGH_CHAIR("highChair"),
+    STEP_FREE_ACCESS("stepFreeAccess"),
     ARRIVAL_WAIT_MINUTES("arrivalWaitMinutes"),
     RESERVATION_AVAILABLE("reservationAvailable");
     private final String key;
@@ -71,7 +73,8 @@ public final class PlaceRecommendationPlanner {
           || requiredFeatures == null
           || preferredCuisines == null
           || requiredFeatures.stream().anyMatch(Objects::isNull)
-          || !Set.of("childFriendly", "parking").containsAll(requiredFeatures)
+          || !Set.of("childFriendly", "parking", "highChair", "stepFreeAccess")
+              .containsAll(requiredFeatures)
           || preferredCuisines.size() > 8
           || preferredCuisines.stream().anyMatch(s -> s == null || s.isBlank() || s.length() > 30))
         throw new IllegalArgumentException("Invalid recommendation requirements");
@@ -233,13 +236,24 @@ public final class PlaceRecommendationPlanner {
     if (requirements.party().children() > 0) fields.add("childFriendly");
     var questions = new ArrayList<Question>();
     for (String field : fields) {
+      Field questionField =
+          switch (field) {
+            case "parking" -> Field.PARKING;
+            case "childFriendly" -> Field.CHILD_FRIENDLY;
+            case "highChair" -> Field.HIGH_CHAIR;
+            case "stepFreeAccess" -> Field.STEP_FREE_ACCESS;
+            default -> throw new IllegalArgumentException("Unsupported recommendation feature");
+          };
+      String prompt =
+          switch (questionField) {
+            case PARKING -> "이 지점에서 주차가 가능한가요?";
+            case CHILD_FRIENDLY -> "아동 동반 이용이 가능한가요?";
+            case HIGH_CHAIR -> "아기의자가 준비되어 있나요? 필요한 수량도 확인해 주세요.";
+            case STEP_FREE_ACCESS -> "입구부터 좌석까지 계단 없이 이동할 수 있나요? 경사로·엘리베이터 동선을 확인해 주세요.";
+            default -> throw new IllegalArgumentException("Unsupported recommendation question");
+          };
       questions.add(
-          new Question(
-              field.equals("parking") ? Field.PARKING : Field.CHILD_FRIENDLY,
-              Model.Scope.GENERAL,
-              Model.Certainty.UNKNOWN,
-              false,
-              field.equals("parking") ? "주차가 가능한가요?" : "아동 동반 이용이 가능한가요?"));
+          new Question(questionField, Model.Scope.GENERAL, Model.Certainty.UNKNOWN, false, prompt));
     }
     String party =
         "성인 " + requirements.party().adults() + "명, 아동 " + requirements.party().children() + "명";
@@ -270,7 +284,7 @@ public final class PlaceRecommendationPlanner {
         State.FAILED, provider, requirements, null, null, 0, 0, 0, 0, failure, List.of());
   }
 
-  private static double distance(PlaceQuery query, PlaceSummary place) {
+  static double distance(PlaceQuery query, PlaceSummary place) {
     double lat1 = Math.toRadians(query.latitude()), lat2 = Math.toRadians(place.latitude());
     double lat = Math.sin((lat2 - lat1) / 2);
     double lon = Math.sin(Math.toRadians(place.longitude() - query.longitude()) / 2);

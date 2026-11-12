@@ -1,10 +1,95 @@
 # API v1 — 계약 1.1.0
 
+[목적지 추천 작업 초안](destination-recommendation-draft.json)과 [가상 요청](examples/destination-recommendation-request.json)은 #52의 기본 비활성 실험 API입니다. 명시적 `KAKAO` 선택 시 실시간 Local adapter를, `PUBLIC_CATALOG` 선택 시 별도 로컬 snapshot을 사용합니다. Bearer 인증으로 POST 접수·GET 소유자별 폴링·DELETE 화면 무효화를 제공합니다. 사용자 요청의 아기의자·무계단을 별도 조건으로 해석하고 주차를 필수 조사 조건으로 추가합니다. 별도 `source=WEB_SEARCH`는 Pleos 목적지의 공개 지역명·필수 조건만 OpenAI 웹검색에 전달하고 식당 최대 3곳의 후기 요약·조건 조사 근거를 반환합니다. Kakao 응답·주소·전화번호·좌표·사용자 발화는 GPT에 보내지 않습니다. 개발 실호출에는 정확한 요청·모델이 일치하는 일회성 허가를 사용하고, 실제 서비스용 반복 호출은 운영자가 명시적으로 켠 전역 호출 한도 모드로 분리했습니다. 프론트엔드 호출자는 @soyeong03에게 인계하며 이 PR에 구현하지 않습니다. 별도 승인된 실제 공급자 응답의 식당 3곳을 오프라인 파서와 인증된 POST/GET API에서 확인했습니다. 당시 세 곳의 주차·아기의자 판정은 UNKNOWN이었습니다. 이후 식당/카페·음식 취향·필수 조건 및 가상 전화 연결을 추가했습니다. 현재 시험/제품 경계는 [Pleos 연결 인계](../docs/PLEOS_AGENT_INTEGRATION_HANDOFF.md)를 따릅니다.
+
+실서비스 자동 검색을 켤 때는 서버 실행 환경에 `OPENAI_API_KEY`를 안전하게 설정하고 `app.destination-recommendations.enabled=true`, `source=WEB_SEARCH`, `web.enabled=true`, `web.runtime-enabled=true`, `web.runtime-model`, `web.runtime-max-output-tokens`(256~3072), `web.runtime-max-calls-per-startup`(1~1000)을 명시합니다. 운영 모드와 시험용 `approved-*` 설정을 함께 쓰면 시작이 거부됩니다. 기본은 모두 비활성이며 폴링은 새 GPT 호출을 만들지 않습니다. 호출 한도는 **서버 프로세스마다** 적용되어 재시작 시 초기화됩니다. 배포 전에는 별도 영속 일일 예산·요금 모니터링이 필요합니다. 이 모드의 실제 유료 호출은 아직 실행하지 않았고, 가짜 전송으로 다중 목적지·동시 요청 상한 및 가짜 키로 서버 시작만 확인했습니다.
+
+웹 후보가 Kakao 음식점 카테고리 첫 페이지에 없으면 상호만 키워드 검색으로 최대 3회 재조회하고, 상호·주소·목적지 반경이 일치하는 지점만 `result.matches.candidates`에 합칩니다. `result.listing.candidates`는 초기 목록 진단이며 최종 추천으로 표시하지 않습니다. 인용 주석 없는 웹 출처는 지점 식별에만 사용하고 조건은 UNKNOWN으로 남깁니다.
+
+Kakao Local 응답에는 별점·리뷰 수가 없습니다. `WEB_SEARCH` 결과의 `webRecommendations[].reviews`는 인용된 방문 후기의 짧은 요약과 출처이며, 수치 별점이나 매장 확정 사실이 아닙니다. 리뷰 근거가 없으면 빈 배열을 유지합니다.
+
+`result.webState=FAILED`이면 `result.webFailureReason`이 자격 증명 누락·HTTP 거절·응답 형식 오류·전송 오류를 구분합니다. 공급자 응답 본문이나 키는 이 계약에 포함되지 않습니다. 별도 `WEB_SEARCH` 공급자 응답에서는 식당 3곳을 받아 파서와 인증된 HTTP 폴링에서 오프라인 재생했습니다. 이 시험은 한 공개 목적지의 관측이며 다른 목적지나 조건에서 항상 3곳을 보장하지 않습니다. 추가 GPT 실호출은 새 승인이 필요합니다.
+
+`result.webCandidateCount`와 `result.identityLookupState`는 웹 후보가 있었는지, Kakao 상호 키워드 재조회가 일치 지점을 찾았는지 구분하는 비식별 진단입니다. `MATCHED`라도 최종 추천 여부는 `result.matches.candidates`만 기준으로 판단합니다. 별도 승인 시험 두 번에서는 웹 결과가 있었지만 지점 대조 `NO_MATCH`로 끝났습니다.
+
+[REC-13 실험 계약](../docs/REC13_WEB_RECOMMENDATION.md) — #50의 기본 비활성 MOCK 실험 API와 사용자 입력/직접 평가 전용 V5 테이블입니다. 기존 v1·앱 계약/아래 논리 ERD 제안을 대체하지 않습니다.
+[REC-12 로컬 catalog 계약](../docs/REC12_PUBLIC_CATALOG.md) — #48의 오프라인 코드 준비이며 제품 HTTP/DB/실제 발신 연결은 아닙니다.
+
 별도 인수 초안: [REC-08 추천·질문 계획](recommendation-plan-draft.schema.json)과 [가상 예제](examples/recommendation-plan-mock.json)는 제품 HTTP API가 아닌 순수 평가기 결과입니다. `./gradlew -PincludeAndroid=false :server:recommendationPlan`은 외부 호출 없이 가상 결과를 출력합니다. `verify` 뒤 `python scripts/check-recommendation-plan.py`로 초안·예제·Java 실행 증거를 대조합니다. v1 경로/스키마/버전은 바꾸지 않았으며 #16/#26 화면 계약 채택 전입니다.
 
 정의: [OpenAPI 3.1 JSON](openapi.json). 기본 URL `http://127.0.0.1:8080/api/v1`. 성공은 모두 HTTP 200, 요청 오류 400, 미인증 401, 권한 부족 403, 없음/타인 소유 404, 상태/중복 충돌 409. 오류 JSON은 `code`, `message`, `mode`입니다. 현재 모든 결과는 MOCK입니다.
 
 요청의 boolean·정수 필드는 OpenAPI `required`에 따라 0/false도 명시합니다. null이나 누락을 암묵적으로 승인/기본값으로 바꾸지 않습니다. 알 수 없는 필드, 정수에 소수/문자열을 보내는 요청도 거부합니다.
+
+## 전화 시험 화면의 웹검색
+
+`foodPreferenceText`에 `양식 먹고 싶어`를 보내면 서버가 `preferredCuisines=["양식"]`으로
+해석합니다. 목적지는 별도 필드이며 음식 종류는 한식·양식·일식·중식·분식·아시아음식을
+지원합니다. `양식 말고 한식`은 한식, `한식이나 양식`은 두 종류 중 하나로 해석합니다.
+빈 입력은 종류 제한 없음입니다. 제외한 종류만 있거나 해석이 불명확한 입력은 검색 전에
+`400 FOOD_PREFERENCE_UNCLEAR`로 다시 입력하도록 안내합니다. 원 발화는 모델에 보내지 않고
+공개 목적지·분류된 음식 종류·필수 조건 코드만 전달합니다. 마이크·음성 인식 연결은 포함하지 않습니다.
+
+선택한 음식 종류와 출처가 있는 `businessDetails.CUISINE`가 모두 일치하는 후보만 남긴 뒤
+필수 조건·후기 순위로 비교합니다. 음식 종류를 제한한 검색은 분류가 없는 구미 시험 목록을
+사용하지 않습니다. 후보가 부족해도 다른 음식으로 자동 대체하지 않습니다. 결과의
+`preferredCuisines`는 선택한 시험 예약의 조건·승인 snapshot에도 보존합니다.
+
+음식 취향을 지정한 웹검색은 여러 음식 키워드로 가까운 후보를 먼저 찾고, 3곳 미만이면
+인접 역세권을 포함해 목적지 약 2km까지 검색하도록 요청합니다. 매장명을 기준으로
+주차·유아의자 등 조건의 근거를 따로 찾습니다. 검색 도구는 추천 요청당 최대 3회 사용하고
+추천 서버는 식당을 최대 3곳 반환합니다. 웹에서 근거를 찾지 못한 조건은 미확인입니다.
+성수 양식 검색은 7일 동안 유효한 공개 매장 안내 검토본으로 조건 근거와 후보를 보완합니다.
+실검색의 불가 근거는 보완 자료로 덮지 않으며 제외된 지점을 다시 넣지 않습니다.
+
+시험 화면은 `POST /api/web-recommendations`에 공개 목적지 이름, 장소 종류와 선택한 조건을 보냅니다.
+전화 서버는 추천 서버의 `POST /api/experimental/destination-recommendations/web`으로 작업을
+만들고 같은 사용자 토큰으로 폴링합니다. 이 경로에는 목적지 좌표, 인원, 연락처가 필요하지
+않습니다. 식당 또는 카페를 선택하면 같은 업종으로 분류된 후보만 반환합니다. 전체를 선택하면
+업종 미확인 후보도 표시할 수 있습니다. 후보에는 지점 출처, 주소, 메뉴·영업시간·브레이크타임의
+웹 근거, 방문 후기 요약과 조건별 근거가 포함될 수 있습니다. 영업 안내는 일반적인 웹 보고입니다.
+
+조건이 불가로 판정된 후보를 제외한 뒤, 필수 조건의 충족 근거가 많은 순서로 상위 3곳을
+고릅니다. 충족 개수가 같으면 관련 후기의 주의·상충 조건이 적고 긍정 언급 조건이 많은
+순서이며, 같으면 공급자 순서를 유지합니다. 일반 웹검색은 가까운 후보부터 찾도록 요청하지만
+서버에서 실제 이동 거리를 계산하지는 않습니다. `reviewSignals`는 필수 조건별로 인용된
+방문자 경험을 합친 참고 정보입니다. 같은 조건의 리뷰를 많이 수집해도 가중치는 늘지 않으며,
+후기는 필수 조건과 예약 여부를 전화로 확인할 때 참고합니다. 기본 검색 순위는 조건 근거와 후기 내용으로 정합니다.
+음식·서비스 경험은 `reviews`에 요약하고, 조건별 긍정·주의 내용은 화면에서
+별도로 표시합니다. 공개 웹검색에서 확인하지 못한 후기는 빈 배열로 남깁니다.
+
+도로명주소에서 선택적으로 실행하는 후보 검색 보강은 웹에서 찾은 지점을 공공 상가 DB의 반경·업종·음식 분류·상호·도로명주소와 대조합니다.
+근거와 집계일이 있는 네이버 방문자 리뷰 수는 `businessDetails.REVIEW_COUNT`에 포함되며, 필수 조건과 관련 후기가 동률인 후보 사이에서 사용합니다.
+`arrivalAt`은 한국 현지 시각 `YYYY-MM-DDTHH:mm`입니다. 매장 안내에서 매일 적용된다고 명시한 영업시간·브레이크타임·마지막 주문 시간으로 방문이 어렵다고 확인된 후보를 제외합니다.
+일정 근거가 부족하거나 해석할 수 있는 형식과 다르면 별도 확인 대상으로 둡니다.
+
+통합 시험 환경은 구미시 3공단3로 302의 식당 검색에 구미시 맛집 안내에서 확인한 매장
+정보를 먼저 사용합니다. `GUMI_CATALOG_ENABLED=false`로 이 동작을 끌 수 있습니다. 캠퍼스 주소의
+좌표에서 직선 2km 안에 있는 목록에 위 조건 순위를 적용해 최대 3곳을 반환하고, 동점이면 가까운 순서입니다. 후기 자료는 없습니다. 영업시간·준비시간·주차의
+출처를 표시하며 이 목록은 2026년 11월 11일에 확인한 자료입니다. 카페와 다른 주소의 검색은
+기존 웹검색을 사용합니다. 구미 목록의 `naverPlaceUrl`은 상호·주소를 대조한 네이버 플레이스 지점을 엽니다.
+
+## 가상 전화 예약 연결
+
+차량 앱 또는 테스트 클라이언트는 기존 인증 토큰으로
+`POST /api/experimental/destination-recommendations/{id}/phone-reservations`를 호출합니다.
+본문은 [가상 승인 예제](examples/destination-phone-approval-request.json)를 참고해 실제
+선택한 순번과 미래의 예약 시각으로 채웁니다. 각 승인에 새 `Idempotency-Key`를 사용합니다.
+추천 서버는 인원·필수 조건과 후보 정보를 현재 추천 결과에서 가져옵니다.
+
+응답의 `nextCandidate`가 있으면 사용자에게 후보를 보여줍니다. 사용자가 승인할 때
+`candidateOrdinal`을 제시된 순번으로 바꾸고, `previousAttemptId`에 직전 시도의
+`attemptId`를 담아 다시 POST합니다. 승인했던 날짜·시간·예약자·조건은 이어집니다.
+`UNKNOWN`은 해당 예약의 결과 확인이 필요합니다. 같은 경로의 GET으로 최신 결과를 조회할
+수 있고, 추천이 만료되면 새 시도 승인에는 새 추천이 필요합니다.
+
+## 실험 중인 장소 미리보기 계약
+
+2026-11-09: #21이 병합된 main `1b37bc2`를 반영했습니다. 미리보기는 실제 발급 Bearer 토큰과 안정적인 Principal을 사용하며 현재 v1 계약은 1.1.0입니다. `scripts/preview-session-demo.py`와 `scripts/preview-token-smoke.py`로 loopback MOCK의 발급·미리보기·갱신·폐기를 검증합니다. 인증 구현은 main 그대로 유지합니다.
+
+[#16의 OpenAPI 초안](place-preview-draft.json)은 `/api/experimental`의 별도 MOCK 계약입니다. 기본 비활성(404)이고 명시적으로 켜도 검증된 서버 Principal이 없으면 401입니다. 익명 토큰 인증은 main과 연결했고 차량 화면·navigation 연결은 별도입니다. 위 v1 경로와 인증 계약 1.1.0을 유지합니다. [구현 범위와 화면 의미](../docs/REC05_PREVIEW_API.md), [가상 요청 예제](examples/place-preview-query.json)를 참고합니다. 이 초안을 팀 합의된 제품 API로 취급하지 않습니다.
+
+`verify` 후 `python scripts/check-contract.py --preview-exchanges`로 테스트가 생성한 가상 HTTP 교환을 초안과 대조합니다. `smoke-test.py --check-contract`는 이 대조와 JAR의 기본 404/opt-in 무인증 401도 검사합니다. 기존 v1 POST의 Idempotency-Key/snapshot 의미를 실험 경로에 그대로 적용하지 않습니다.
 
 | 메서드 | 경로 | 응답 |
 | --- | --- | --- |
@@ -102,3 +187,9 @@ Windows에서는 `.venv\Scripts\python`을 사용합니다. 전화 업체별 raw
 스모크 테스트는 배포 JAR의 무인증·위조 헤더 차단, 실제 토큰 발급·소유권·권한·갱신 재시도·폐기·재시작을 검증합니다. 이어 `src/test` 전용 운영자 주체로 예약 수락·UNKNOWN·변경 흐름을 검증합니다. 이 테스트 권한은 배포 JAR에 포함되지 않습니다. `verify`가 테스트 실행 classpath 파일을 생성하므로 스모크 전에 실행합니다.
 
 #16 통합 후 실제 Bearer 토큰으로 미리보기를 검증하려면 opt-in 루프백 서버에서 `.venv/bin/python scripts/preview-token-smoke.py --base-url http://127.0.0.1:8080`을 실행합니다. #16의 별도 초안 명세가 필요하며, 발급·갱신·미리보기 4개 연산·타인 접근·폐기 응답을 검사합니다. 테스트 토큰은 로그나 파일로 출력하지 않습니다.
+
+#16의 미리보기 초안은 `0.2.0-draft`이며 기존 v1 계약 `1.1.0`과 별도입니다. 선택적 `requirements`가 있으면 `recommendationPlan`을 함께 반환합니다. [조건 포함 요청](examples/place-preview-recommendation-query.json)·[가상 응답](examples/place-preview-recommendation-result.json)·[화면 인수안](../docs/REC05_UI_HANDOFF.md)을 대조합니다. 기존 요청은 계획 null을 반환하고, 취소·실패·늦은 응답에도 계획을 반환하지 않습니다. 확정 제품 계약/화면 연결이 아니며 기본 비활성 MOCK 경계를 유지합니다.
+
+## #16 오래된 검색 대조 추가 연산
+
+`POST /api/v1/searches/reconcile`은 같은 인증·원 Idempotency-Key·원 SearchRequest로 이미 처리된 검색(COMPLETED/searchId)을 찾거나 미처리·오래된 요청(REJECTED_CLOSED)을 영속 종료합니다. 새 검색은 실행하지 않으며 미래 입력/본문 불일치/오류는 해제 근거가 아닙니다. 핵심 호환 표식1.1.0은 기존 앱을 위해 유지합니다. [화면 저장·재시작·실패 처리 계약](../docs/REC05_SEARCH_RECOVERY.md)과 [종료 예제](examples/search-reconciliation-rejected-closed.json)를 대조하세요. 미리보기404/PREVIEW_NOT_FOUND는 취소/종료 성공이 아닙니다.

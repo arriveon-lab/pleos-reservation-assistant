@@ -2,13 +2,19 @@
 
 목적지·ETA·동행자의 필수 조건으로 식당을 비교하고, 누락 정보 문의에서 예약 결과 확인까지 연결하는 차량용 서비스입니다.
 
-현재 **로컬 MOCK 서버**를 실행하고 **SDK 진단용 debug APK**를 빌드할 수 있습니다. 성수동 이름을 사용한 가상 식당 3곳이며 실제 장소 검색·AI 모델·전화·예약이 아닙니다. `app.mode=LIVE`는 서버 시작 단계에서 차단됩니다. Pleos 기기 실행과 실통화 검증은 아직 없습니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
+현재 **로컬 MOCK 서버**와 **SDK 진단용 debug APK**를 빌드할 수 있습니다. Pleos emulator에서 probe 초기화·목적지·TripInfo 수신을 확인했지만 ETA 시간 기준은 미검증입니다. 별도 [전화예약 프로토타입](prototypes/phone_agent/README.md)은 Telkit·LiveKit 및 추천 서버와 웹 시험 화면을 연결하고 격리 전화 시험에서 CONFIRMED를 확인했습니다. 제품 앱과 실예약 DB 연결은 미완료이며 [Pleos 연결 인계](docs/PLEOS_AGENT_INTEGRATION_HANDOFF.md)에 남은 작업을 정리했습니다. 기본 서버의 `app.mode=LIVE`는 시작 단계에서 차단됩니다. 상세 검증 상태는 [STATUS](docs/STATUS.md)를 기준으로 합니다.
 
 [GitHub 저장소](https://github.com/arriveon-lab/pleos-reservation-assistant) · [작업 이슈](https://github.com/arriveon-lab/pleos-reservation-assistant/issues) · [CI 실행](https://github.com/arriveon-lab/pleos-reservation-assistant/actions)
 
 목적지 주변 장소의 독립 조회 도구는 [REC-04 시연 안내](docs/REC04_LIVE_SEARCH.md)를 따릅니다. 기본은 가상 화면이며, 실제 조회는 명시적 실행 모드·무료 설정·키 확인 후 1회 시연으로 진행합니다. 제품 서버의 실제 예약 연동과 구분합니다.
 
+[#16의 장소 미리보기 HTTP 초안](docs/REC05_PREVIEW_API.md)은 기본 비활성 MOCK sandbox입니다. 가상 인증 주체를 주입한 통합 테스트로 생성/검색/취소/종료를 검증했으며 실제 로그인·차량 화면 연결은 아직 없습니다.
+
+[#21 후보 인증과의 연동 검토](docs/REC05_TOKEN_INTEGRATION.md)에는 실제 서버 발급 토큰을 사용하는 개발용 호출자와 임시 통합 검증 결과를 기록했습니다. 인증 PR은 미병합이며 이 브랜치의 기본 실행 상태와 구분합니다.
+
 ## 빠른 시작
+
+팀원의 화면 인수용 MOCK 서버는 [Docker Compose 실행 안내](docs/REC05_DOCKER.md)를 권장합니다. Docker가 실행 중인 환경에서 저장소 루트의 `docker compose up --build --detach --wait`로 시작합니다. 네 가지 가상 상태·인증 DB 유지·에뮬레이터 연결/복구를 안내하며 실제 공급자/전화/GPT 연동이나 운영 배포가 아닙니다. 아래는 Java/Gradle 직접 실행 방식입니다.
 
 필수: JDK 21, Python 3.9+, 인터넷(첫 의존성 다운로드). 서버와 Android는 루트의 Gradle Wrapper 8.11.1 / Kotlin DSL을 공유합니다. 시스템 Gradle 설치는 필요 없습니다. 서버만 개발할 때 Android SDK는 필요 없습니다.
 
@@ -48,7 +54,7 @@ python3 scripts/smoke-test.py
 ```text
 server/       Java 21 / Spring Boot 3.5.16 / Flyway / H2
 api/          버전 명시 OpenAPI, 예제, 상태 의미
-android/      NaviHelper 원시값 수집용 probe (debug APK·Lint 확인, 기기 미검증)
+android/      NaviHelper 원시값 수집용 probe (APK·Lint·최초 SDK 수신 확인, ETA 기준 미검증)
 scripts/      로컬 MOCK 시연·패키지 실행 검증·계약 검증
 docs/         상태·팀 계획·연동 조사·조직 준비
 .github/      CI와 Issue/PR 템플릿

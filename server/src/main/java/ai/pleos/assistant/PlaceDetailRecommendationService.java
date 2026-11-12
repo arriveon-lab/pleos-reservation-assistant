@@ -78,9 +78,13 @@ public final class PlaceDetailRecommendationService {
               .distinct()
               .toList();
       var origin =
-          provider == PlaceSummary.Provider.MOCK
-              ? PlaceDetailEnricher.Origin.MOCK
-              : PlaceDetailEnricher.Origin.KAKAO;
+          switch (provider) {
+            case MOCK -> PlaceDetailEnricher.Origin.MOCK;
+            case KAKAO -> PlaceDetailEnricher.Origin.KAKAO;
+            case SEOUL_OPEN_DATA -> PlaceDetailEnricher.Origin.APPROVED_PUBLIC;
+            case WEB_SEARCH ->
+                throw new IllegalArgumentException("Web source has no place listing");
+          };
       boolean unambiguous = matches.size() == 1;
       var identity =
           new PlaceDetailEnricher.Identity(
@@ -94,6 +98,22 @@ public final class PlaceDetailRecommendationService {
         return hidden(generation, State.CANCELLED);
       if (report.outcome() == PlaceDetailEnricher.Outcome.EXPIRED)
         return hidden(generation, State.EXPIRED);
+      // JSON-LD has no verified high-chair or step-free field. Keep those required facts open
+      // for direct merchant confirmation even when other website details are available.
+      var remaining = new ArrayList<>(report.remainingQuestions());
+      if (requirements.requiredFeatures().contains("highChair")) remaining.add("HIGH_CHAIR");
+      if (requirements.requiredFeatures().contains("stepFreeAccess"))
+        remaining.add("STEP_FREE_ACCESS");
+      report =
+          new PlaceDetailEnricher.Report(
+              report.mode(),
+              report.outcome(),
+              report.validUntil(),
+              report.details(),
+              report.reasons(),
+              remaining,
+              report.bookable(),
+              report.inquiryDispatchAllowed());
       if (report.validUntil() != null && report.validUntil().isBefore(expiry))
         expiry = report.validUntil();
       output.add(new CandidateDetail(candidate.ordinal(), report));

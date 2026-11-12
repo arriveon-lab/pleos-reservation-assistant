@@ -1,5 +1,7 @@
 # Pleos 예약 비서 ERD 초안 v0.1
 
+[REC-13 검색 기반 추천·직접 피드백](REC13_WEB_RECOMMENDATION.md) — #50의 기본 비활성 MOCK 실험 API와 사용자 입력/직접 평가 전용 V5 테이블입니다. 기존 v1·앱 계약/아래 논리 ERD 제안을 대체하지 않습니다.
+
 작성일: 2026-11-06 · 공유본 갱신: 2026-11-07 KST. 상태: **팀 검토용 제안, DB·API 미적용**.
 
 기준: `api/README.md`, `api/openapi.json`, `Model.java`, `WorkflowService.java`, `Store.java`, Flyway V1/V2. 현재 구현은 H2 + JSON payload 중심이며, 아래는 팀 개발을 위한 논리 모델입니다. PostgreSQL/MySQL 선택과 물리 타입·인덱스 문법은 아직 확정하지 않습니다.

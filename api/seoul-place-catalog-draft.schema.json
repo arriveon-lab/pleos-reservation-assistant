@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arriveon-lab.github.io/contracts/seoul-place-catalog-0.1.0-draft",
+  "title": "Internal private local catalog; no HTTP endpoint or dispatch authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "sourceKind",
+    "datasetId",
+    "catalogUrl",
+    "licenseUrl",
+    "attribution",
+    "sourceCrs",
+    "targetCrs",
+    "acquiredAt",
+    "sourceSnapshotAt",
+    "entries",
+    "inputRows",
+    "rejectedRows"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0-draft"
+    },
+    "sourceKind": {
+      "const": "SEOUL_OPEN_DATA"
+    },
+    "datasetId": {
+      "const": "OA-18655"
+    },
+    "catalogUrl": {
+      "const": "https://data.seoul.go.kr/dataList/OA-18655/A/1/datasetView.do"
+    },
+    "licenseUrl": {
+      "const": "https://www.kogl.or.kr/info/licenseType1.do"
+    },
+    "attribution": {
+      "const": "서울특별시 성동구 · 서울 열린데이터광장 OA-18655 · 공공누리 제1유형"
+    },
+    "sourceCrs": {
+      "const": "EPSG:5174"
+    },
+    "targetCrs": {
+      "const": "EPSG:4326"
+    },
+    "acquiredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sourceSnapshotAt": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "catalogPlaceId",
+          "sourceRecordId",
+          "name",
+          "address",
+          "phone",
+          "latitude",
+          "longitude",
+          "rowModifiedRaw",
+          "rowUpdatedRaw",
+          "rowTimeZone",
+          "administrativeStatus",
+          "contactStatus"
+        ],
+        "properties": {
+          "catalogPlaceId": {
+            "type": "string",
+            "pattern": "^sdo-[0-9a-f]{32}$"
+          },
+          "sourceRecordId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^(02[0-9]{7,8}|0[3-6][0-9]{8,9}|070[0-9]{8})$"
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "rowModifiedRaw": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "rowUpdatedRaw": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "rowTimeZone": {
+            "const": "UNKNOWN"
+          },
+          "administrativeStatus": {
+            "const": "NORMAL_REPORTED"
+          },
+          "contactStatus": {
+            "const": "UNVERIFIED"
+          }
+        }
+      }
+    },
+    "inputRows": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    },
+    "rejectedRows": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+    }
+  }
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise actual server-issued tokens using fictional data; never print or persist tokens."""
 import json
+import copy
 import urllib.request
 import urllib.error
 import uuid
@@ -38,6 +39,19 @@ def exercise(base, validate=None):
         "requiredFeatures": ["parking"], "preferredCuisines": ["한식"], "learningConsent": False}
     key = str(uuid.uuid4())
     search = api("/searches", body, first["accessToken"], key)
+    closed_body = copy.deepcopy(body)
+    closed_body["navigation"]["eta"] = (now - timedelta(seconds=1)).isoformat()
+    closed_key = str(uuid.uuid4())
+    assert api("/searches", closed_body, first["accessToken"], closed_key, expected=400)["code"] == "INVALID_TIME"
+    api("/searches/reconcile", closed_body, key=closed_key, expected=401)
+    closed = api("/searches/reconcile", closed_body, first["accessToken"], closed_key)
+    assert closed["state"] == "REJECTED_CLOSED" and closed["searchId"] is None
+    assert api("/searches/reconcile", closed_body, first["accessToken"], closed_key) == closed
+    assert api("/searches", closed_body, first["accessToken"], closed_key, expected=409)["code"] == "SEARCH_COMMAND_CLOSED"
+    assert api("/searches/reconcile", body, first["accessToken"], closed_key, expected=409)["code"] == "KEY_REUSED"
+    completed = api("/searches/reconcile", body, first["accessToken"], key)
+    assert completed["state"] == "COMPLETED" and completed["searchId"] == search["id"]
+    assert api("/searches/reconcile", body, other["accessToken"], key, expected=409)["code"] == "REQUEST_NOT_CLOSABLE"
     assert api("/searches", body, first["accessToken"], key)["id"] == search["id"]
     separate = api("/searches", body, other["accessToken"], key)
     assert separate["id"] != search["id"]
@@ -60,6 +74,11 @@ def exercise(base, validate=None):
     print("PASS: issued Bearer tokens, ownership, role rejection, refresh/retry, revocation")
 
     def after_restart():
+        assert api("/searches/reconcile", closed_body, refreshed["accessToken"], closed_key) == closed
+        assert api("/searches", closed_body, refreshed["accessToken"], closed_key, expected=409)["code"] == "SEARCH_COMMAND_CLOSED"
+        assert api("/searches/reconcile", body, refreshed["accessToken"], key) == completed
+        api("/searches", body, refreshed["accessToken"], str(uuid.uuid4()))
+        print("PASS: old search closure, completed response reconciliation and explicit new search survive H2 restart")
         api("/searches/" + search["id"], token=refreshed["accessToken"])
         assert api("/anonymous-sessions/refresh", {"refreshToken": first["refreshToken"]}, key=refresh_key) == refreshed
         next_pair = api("/anonymous-sessions/refresh", {"refreshToken": refreshed["refreshToken"]}, key=str(uuid.uuid4()))

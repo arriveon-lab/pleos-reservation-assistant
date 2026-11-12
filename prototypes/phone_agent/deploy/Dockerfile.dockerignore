@@ -1,0 +1,11 @@
+**
+!prototypes/
+!prototypes/phone_agent/
+!prototypes/phone_agent/**
+**/__pycache__/
+**/*.pyc
+**/work/
+**/data/
+**/.env
+**/.env.*
+!prototypes/phone_agent/voice/.env.example

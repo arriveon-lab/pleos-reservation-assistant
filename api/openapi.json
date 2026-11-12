@@ -3,7 +3,7 @@
   "info": {
     "title": "Pleos Reservation Assistant — local MOCK API",
     "version": "1.1.0",
-    "description": "Local MOCK API with server-issued opaque Bearer tokens and ownership isolation. Apps obtain an anonymous installation identity without login. GET /status and POST anonymous-sessions issuance/refresh are public; other operations require an access token. Token issuance does not grant MOCK_OPERATOR. No external calls; LIVE is disabled. URL remains /api/v1 by the pre-release BE-02 decision."
+    "description": "Local MOCK API with server-issued opaque Bearer tokens and ownership isolation. Apps obtain an anonymous installation identity without login. GET /status and POST anonymous-sessions issuance/refresh are public; other operations require an access token. Token issuance does not grant MOCK_OPERATOR. No external calls; LIVE is disabled. URL remains /api/v1 by the pre-release BE-02 decision. Additive search-reconciliation operation is documented here; the core 1.1.0 compatibility marker remains unchanged for existing clients."
   },
   "servers": [
     {
@@ -141,7 +141,7 @@
           }
         },
         "x-authentication-required": true,
-        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted.",
+        "description": "Requires a valid server-issued access token. The verified subject owns the resource; inaccessible IDs return 404. Arbitrary owner headers or JSON identity fields are not trusted. A previously closed old command returns 409 SEARCH_COMMAND_CLOSED; it can never execute later.",
         "security": [
           {
             "BearerAuth": []
@@ -974,6 +974,85 @@
           }
         },
         "description": "Revoke this installation authentication session and every token generation. Does not delete owned records or create a replacement identity."
+      }
+    },
+    "/searches/reconcile": {
+      "post": {
+        "operationId": "reconcileSearchCommand",
+        "responses": {
+          "200": {
+            "description": "Durable reconciliation snapshot. COMPLETED is not a fresh search or reservation. REJECTED_CLOSED permits a separate explicit new search with a new key and fresh navigation; preserve tripId.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResolution"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "KEY_REUSED or REQUEST_NOT_CLOSABLE; keep original pending request unresolved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid verified Principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          }
+        },
+        "x-authentication-required": true,
+        "description": "Explicit recovery only: send the ORIGINAL search body and ORIGINAL Idempotency-Key with the same installation identity. Never executes search. Atomically returns COMPLETED and searchId for an existing matching command, or durably REJECTED_CLOSED for unprocessed past ETA / stale observation. A current or future-invalid request returns 409 REQUEST_NOT_CLOSABLE without closing it. Different body is KEY_REUSED. Retry exact inputs after lost response; never silently change key/time/identity.",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     }
   },
@@ -1845,6 +1924,76 @@
           "state",
           "mode"
         ]
+      },
+      "SearchResolution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "mode",
+          "searchId",
+          "reason",
+          "resolvedAt"
+        ],
+        "properties": {
+          "state": {
+            "enum": [
+              "COMPLETED",
+              "REJECTED_CLOSED"
+            ]
+          },
+          "mode": {
+            "const": "MOCK"
+          },
+          "searchId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "state": {
+                "const": "COMPLETED"
+              },
+              "searchId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "reason": {
+                "type": "null"
+              }
+            }
+          },
+          {
+            "properties": {
+              "state": {
+                "const": "REJECTED_CLOSED"
+              },
+              "searchId": {
+                "type": "null"
+              },
+              "reason": {
+                "enum": [
+                  "INVALID_TIME",
+                  "STALE_NAVIGATION"
+                ]
+              }
+            }
+          }
+        ]
       }
     },
     "parameters": {
@@ -1867,5 +2016,14 @@
         "description": "Server-issued pa_ token. Refresh tokens cannot authorize resource requests."
       }
     }
-  }
+  },
+  "x-experimental-contracts": [
+    {
+      "document": "place-preview-draft.json",
+      "status": "DRAFT_REQUIRES_TEAM_REVIEW",
+      "enabledByDefault": false,
+      "issue": 16,
+      "draftVersion": "0.2.0-draft"
+    }
+  ]
 }

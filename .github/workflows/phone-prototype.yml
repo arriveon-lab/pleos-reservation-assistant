@@ -1,0 +1,45 @@
+name: Phone prototype
+on:
+  pull_request:
+    paths:
+      - 'prototypes/phone_agent/**'
+      - 'scripts/check-phone-contract.py'
+      - '.github/workflows/phone-prototype.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'prototypes/phone_agent/**'
+      - 'scripts/check-phone-contract.py'
+      - '.github/workflows/phone-prototype.yml'
+permissions:
+  contents: read
+jobs:
+  offline-prototype:
+    name: Offline phone prototype
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest prototypes.phone_agent.test_service prototypes.phone_agent.test_food_preferences -v
+      - run: python -m py_compile prototypes/phone_agent/*.py
+      - run: node --check prototypes/phone_agent/static/app.js
+      - run: pip install -r scripts/requirements-dev.txt
+      - run: python scripts/check-phone-contract.py
+  optional-voice:
+    name: Voice adapter (no network calls)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: prototypes/phone_agent/voice/requirements.txt
+      - run: pip install -r prototypes/phone_agent/voice/requirements.txt
+      - run: python -m unittest discover -s prototypes/phone_agent -t . -v
+      - run: python -m py_compile prototypes/phone_agent/voice/*.py
+      - run: docker compose -f prototypes/phone_agent/deploy/compose.yml config --quiet
