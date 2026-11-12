@@ -4,6 +4,7 @@ on:
     types: [opened, edited, synchronize, reopened]
 permissions:
   contents: read
+  issues: read
 jobs:
   conventions:
     name: PR naming
@@ -17,3 +18,5 @@ jobs:
         with:
           python-version: '3.12'
       - run: python scripts/check-conventions.py --event-file "$GITHUB_EVENT_PATH"
+        env:
+          GH_TOKEN: ${{ github.token }}
