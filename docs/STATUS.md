@@ -1,3 +1,15 @@
+## 2026-11-11 음성 앱 실행 성공·간헐적 듣기 실패
+
+사용자가 음성 앱 실행 성공을 확인했다. 기기 로그에서도 04:49:02.951(기기 시각)의 destinationvalidation MAIN 실행 호출 UID가 Gleo의 사용자10 UID와 일치했다. OPEN_ARRIVEON callback 경로가 아니라 Gleo 일반 앱 실행 경로의 성공이다. 사용자 보고상 간헐적 실패는 듣기 창 미표시/미인식이며, 정확한 원인과 반복 성공률은 미확인이다.
+
+`scripts/open-gleo.command`를 추가했다. Finder에서 더블클릭하거나 저장소 루트에서 실행하면 기본 음성 서비스가 Gleo인지 확인한 뒤 듣기 세션을 요청한다. 창이 보인 뒤 “어라이브온 앱 열어줘”라고 말한다. 현재 Mac 입력 장치는 AirPods다. 이 도구는 ArriveOn 직접 실행·음성 주입·자동 재시도·예약 작업을 하지 않으며, STT나 호출어 인식 문제를 해결했다고 간주하지 않는다. 여러 기기는 ANDROID_SERIAL로 지정한다.
+
+초기 macOS Bash 빈 배열 오류를 수정한 후 실행 exit0 확인. 셸 문법·diff 검사 통과. APK 코드 변경 및 Gradle 재검증 없음. 실제 음성 성공과 안정성 미검증을 구분한다.
+
+## 2026-11-11 Gleo 음성 실행 재점검
+
+설치 APK의 OPEN 스키마·패키지 일치와 Activity resolve, Gleo 마이크 권한·기본 음성 서비스, 호스트 마이크 전달 ON을 재확인했다. Gleo만 재시작했으며 음성 세션 mShown=true를 확인했다. 사용자는 음성 인식 실패를 보고했고 실제 ArriveOn 음성 실행은 여전히 미확인이다. 코드/APK 변경·새 빌드 검사 없음. [상세](GLEO_MOCK_SEARCH.md).
+
 # 구현·검증 현황
 
 ## 2026-11-12 Pleos APK에서 Swagger 번호 연결과 전화 시험 (#56)
@@ -990,3 +1002,85 @@ EC2 MOCK 후보 선택→승인 취소/재승인→CONFIRMED/GET 동일 작업�
 별도 앱 전화 세션 로그인/번호 등록·합성 시험 식당 예약 READY를 EC2에서 확인. 승인된 실제 발신1건은 최대시간 종료로 UNKNOWN, 재발신 없음. 통합 세션/실제 후보 CONFIRMED 공동 인수는 미완료다. [전화 검증](UX56_PHONE_TRIAL_VALIDATION.md).
 
 Native 새 런처는 목적지·시연 ETA·예약 여유 시간, 조건/후보/승인/전화 진행/확정/식당 재연락/시간 변경·재확인 흐름을 제공한다. **API 미연결 UI 시연**이며 실제 서버 성공으로 세지 않는다. 기존 화면·기록/Gleo 수신은 보존. verifyAll·계측 UI 정상/거절/UNKNOWN/입력제한 PASS. [UI 구성·검증·연결 순서](UX56_DEMO_FLOW_UI.md). #56 OPEN/Draft 유지.
+
+
+### 2026-11-12 EC2 MOCK 검색 복구 경로 수정·기기 재검사
+
+기존 ec2validation/uivalidation의 `/searches` pending은 HTTPS 프록시가 `/searches/reconcile`을 허용하지 않아 HTTP404로 남아 있었다. EC2 `access/https.conf` 원본을 보호 백업하고 동시 변경 해시 대조·nginx -t 후 검색 reconcile 및 검색ID GET만 기존 Bearer 서버18771로 전달하도록 reload했다. 인증 없는 복구 요청401 확인. 서버/DB 재시작·인증 초기화·발신 없음. 배포 설정 변경이며 저장소의 main 변경으로 간주하지 않는다.
+
+같은 인증으로 REJECTED_CLOSED/INVALID_TIME 수신, 원 명령을 searchReconciliations에 보존하고 pending 해제. ec2validation의 인증 binding/여정 동일, 정상 토큰 갱신에 따른 암호문 변경과 주체 변경을 구분한다. 기존 phone journal 및 다른 실제조회 설치 기록 해시 동일. 두 설치 복구 PASS. ec2validation 재실행 후 PHONE_REPEAT(추천/승인 취소·재승인/확정/GET/서버 대화), PHONE_UNKNOWN(추가 승인 차단), PHONE_RESTORE(기존 영속 결과·대화 실제 GET) PASS. 새 PHONE_REPEAT 결과는 메모리 격리이며 신규 결과 영속 인수로 세지 않는다.
+
+기기 검사에 비밀값 없는 HTTP 오류 진단 추가·format/계측 APK 빌드 PASS. 근거 `work/mock-recovery-fix/`. 실제 전화·유료 검색0. 새 DemoFlow UI API 연결·paired-phone 실전화 인수는 여전히 미완료. 사용자 요청에 따라 이슈/PR 게시·push 없음.
+
+
+### 2026-11-12 제공 HTML 디자인·실제 MOCK API 연결
+
+새 FinalReservationActivity에 파란 주야간 디자인·목적지 요약·조건/후보/전체 승인/결과/대화 내역 적용. 기존 ViewModel·인증·예약 journal 재사용. 전용 검증 설치에서 실제 EC2 MOCK 후보→승인 전 뒤로 가기→4명/19:10 CONFIRMED→서버 대화 표시→force-stop 후 GET 복구 PASS. 헤더 보정 후 RESTORE·전체/야간840dp 결과 확인. 기존 ec2validation install -r 후 3명/19:00 결과 복구, 기존3설치 기록·인증 해시/파일 부재 동일. verifyAll/test APK/smoke PASS. 변경 동의·거절 API 미연결, 실제 전화·외부 추천0. 목적지/ETA는 명시된 MOCK 시연값. 실제 통합/음성/실차/새 UI 오류·주행 전환 전체 회귀와 구분. 사용자 요청대로 이슈·PR 게시/commit/push 없음. [상세 검증](UX56_HTML_DESIGN_MOCK_VALIDATION.md).
+
+
+### 2026-11-12 새 UI Gleo 연결 및 시연 초기화
+
+OPEN/SET_PARTY_SIZE/SEARCH_MOCK_RESTAURANTS의 bare·패키지 접두사 action을 FinalReservationActivity로 이동했다. singleTop 새 Intent 수신, 재생성 시 재검색 방지, 5초 준비 대기, 정차/연결/미확인 요청/중복 검색 차단, 범위 성인1–8·아이0–6을 적용했다. 검색은 현재 새 UI의 명시된 MOCK 서울숲 시연값이며 실제 내비 목적지/실제 식당 성공으로 표시하지 않는다. EC2 `/pleos-mock/api/v1/status`는 MOCK/FICTIONAL_FIXTURES/externalCallsEnabled=false다. 실제 전화 `/phone-test` 별도 화면은 그대로이며 새 UI의 실제 발신 연결로 간주하지 않는다.
+
+사용자 지시에 따라 시연의 ‘처음부터 다시 시작’은 완료(CONFIRMED/DECLINED) MOCK phone journal을 비우고 입력값을 초기화하며 인증은 유지한다. UNKNOWN/진행 중/저장 실패는 차단한다. core 재시작·초기화·UNKNOWN/저장 실패 테스트 추가, verifyAll PASS. 후속 결과화면 연결/기존 pending reconcile 버튼 추가 후 verifyAndroid PASS. EC2 앱 업데이트, 기존 pending을 같은 인증으로 reconcile, 초기화 버튼 실행, 외부 명령 주입 성인3/아이1→새 UI MOCK 후보3 확인 PASS. 실제 발신/승인 실행0. 증거 `work/gleo-final/injected-search.png`.
+
+Gleo 듣기 창은 열었으며 실제 발화 결과는 아직 대기 중이다. Intent 주입 통과와 실제 음성 통과를 구분한다. 이슈/PR 게시·push 없음.
+
+
+### 2026-11-12 음성 명령 분리
+
+사용자의 발화가 듣기 종료 전에 잘리는 현상에 맞춰 OPEN은 입력 화면만 열고, 다음 별도 SEARCH/SET_PARTY 명령을 받도록 안내·스키마·응답을 정리했다. 앱 열기만으로 검색하지 않는다. 화면에 두 단계와 짧은 발화 예시를 표시했다. verifyAndroid PASS, 업데이트 설치 후 OPEN→별도 SEARCH(3/1) Intent 주입으로 새 UI 후보3 확인 PASS. 실제 발화 두 단계는 아직 미검증이며 Gleo 듣기 시간 변경 또는 자동 연속 듣기 구현으로 간주하지 않는다. 실제 전화/예약 승인 없음.
+
+
+### 2026-11-12 새 UI EC2 paired 연결 준비
+
+원격 main e9ea91f/PR #64의 paired 계약을 읽고 필요한 클라이언트 변경을 기존 로컬 작업에 반영. 새 UI→EC2 HTTPS 익명 인증/번호 연결 코드·상태/내비 목적지 확인/실제 후보·승인/등록 번호 통화·결과 조회 연결. 발신 요청 key 영속 저장, 응답 유실 뒤 재발신 금지, 다른 요청 결과 ID 차단. 기본 MOCK 유지, opt-in pairedphone 앱만 기기에 남김. verifyAll·verifyAndroid·계측 가상 화면·smoke PASS. EC2 인증/등록 상태·실제 SDK 목적지 수신까지 기기 확인, LIVE 등록·실제 추천·실전화0회로 사용자 실행 대기. 실제 ETA 미연결. 앱용 계약에 예약 변경/회신/대화 경로와 bookingId가 없어 해당 연결은 미완료이며 임의 API를 만들지 않음. [절차·한계·필요 계약](UX56_FINAL_LIVE_CONNECTION.md). 이슈·PR 게시/commit/push 없음.
+
+
+## 2026-11-12 Gleo 듣기 직후 종료 진단
+
+사용자가 “운전석에서 듣는 중” 직후 종료를 보고했다. 현재 기기 로그에서 Gleo Spokesman 초기화가 `InvalidConfigError` / `ErrorNotExists`로 반복 실패하며 앱 내부 `files/assets.zip/SpeechRecognitionConfig.dat`를 열지 못하는 것을 확인했다. 기기 시각 05:11:48–05:29:49 사이 동일 오류 10,207건을 관측했다(기기는 PST를 출력하므로 이 시각을 KST로 해석하지 않는다).
+
+최근 세션은 기기 시각 05:28:09.045 ready → 05:28:14.010 closeStream → 05:28:15.013 onHide로 약5초 후 닫혔다. STT timeout reset 로그가 있지만 timeout 발생 자체는 확인하지 못했으므로 무음 시간초과로 단정하지 않는다. 모델 설정 누락은 확인된 이상이며, 해당 세션 종료와의 직접 인과는 미확인이다. 앞선 일반 MAIN 경로 음성 앱 실행 성공은 유지한다.
+
+제품 APK/권한/계정/데이터 변경·초기화 없음. Gleo 모델 자산 준비/설치 상태를 공식 복구 절차와 대조하는 것이 다음 진단이다. 임의 모델 파일 주입이나 앱 데이터 삭제는 수행하지 않았다. 원문 발화·인증 로그는 증거 문서에 보관하지 않는다.
+
+- 시연 직전 LIVE 연결 수정: MOCK 등록으로 가상 후보/모의 확정이 나온 원인 확인. LIVE 전용 검색·승인 가드, 모드별 결과 구분, 동일 번호 LIVE 재등록 및 에뮬레이터 조건 화면 확인. 실제 검색/발신 미실행; 변경 API 미연결. 상세 `docs/UX56_FINAL_LIVE_CONNECTION.md`.
+
+
+## 2026-11-12 Gleo 모델 복구 점검 — 재실행 검증 대기
+
+- Gleo4.2.0.15는 시스템 앱이며 모델 제공 앱4.1.21-coral-aosp가 별도로 설치되어 있다. 모델 제공 APK 안의 공식 spokesman1.17.1 ZIP에서 SpeechRecognitionConfig.dat(4827bytes)을 확인했다. 원본 부재가 아니라 사용자10의 Gleo 로딩 경로에서 파일을 못 여는 상태다. 저장공간은 약6.9GB 여유였다.
+- 모델 제공 서비스 시작/프로세스 재생성과 설치 APK에서 확인한 MODEL_PROVIDER_START receiver를 통한 재배포 요청을 수행했다. 공식 spokesman URI 읽기 권한 전달은 관측했지만 Gleo 설치 완료는 미확인. 별도 Speech Service는 기존 버전보다 낮다며1.17.1 갱신을 건너뛰었다. 버전 제한을 우회하지 않았다.
+- 이미 공유된 공식 spokesman URI/원본 버전으로 Gleo 수신 receiver 호출을 시도했으나 ADB 연결 종료로 결과 미확인. 모델 설치 성공으로 표시하지 않는다. 계정/앱 데이터 삭제, root, 권한 변경, 임의 모델 수정은 없었다.
+- 22:38:35 KST macOS crash report에서 에뮬레이터 HangDetector 종료(EXC_BAD_ACCESS),22:38:41에는 qemu 직접 실행의 라이브러리 로딩 실패를 확인했다. 이 오류와 모델 복구 요청의 인과는 미확인. 사용자에게 다른 작업의 종료/재시작 여부를 확인 중이며 다음은 공식 emulator 실행기로 재기동 후 모델 로딩과 음성 확인이다.
+
+
+## 2026-11-12 Gleo 모델 전달 차단 원인 확인 — 복구 미완료
+
+공식 실행기로 기존 AVD를 Cold Boot해 boot_completed=1/user10까지 복원했다. 재부팅 이후 `dumpsys activity broadcasts`에서 모델 제공 앱→Gleo의 SHARE_SPEECH_FILE 전달이 `skipped by policy at enqueue: Permission Denial`로 차단되는 것을 확인했다. 수신 Activity가 아니라 `ai.umos.ambientai/.AmbientAiReceiver`의 `ai.umos.gleo.permission.GLEO_RECEIVER` 요구사항이다. 제공 앱 Manifest에는 이 권한 요청이 없다. shell로 동일 수신 요청을 해도 같은 권한 거부이며 브로드캐스트 명령의 result=0은 실제 수신 성공이 아니다.
+
+설치 조합: Gleo4.2.0.15 / 모델 제공4.1.21-coral-aosp / 내장 spokesman1.17.1 / Pleos Connect2.1.0 arm64 revision2. 모델 ZIP에는 SpeechRecognitionConfig.dat 원본이 있다. 따라서 모델 전달 실패의 직접 원인은 설치된 패키지 간 권한 불일치로 확인됐으며, 모든 간헐적 음성 세션 종료를 이 하나의 원인으로 확정하지 않는다.
+
+공식 SDK 배포 XML의 최신 arm64 이미지도 revision2로 현재 설치본과 동일했다. Python 인증서 저장소 오류 후 시스템 curl의 인증서 검증을 유지해 조회했다. 업데이트로 적용할 새 revision은 확인하지 못했다. 제공 서비스 재시작·공식 재배포·Cold Boot 후에도 초기화 오류가 남아 완전 복구는 미완료다. 제조사 서명된 수정 모델 제공 APK 또는 수정 이미지가 필요하다. 임의 재서명/권한 우회/모델 파일 강제 주입/앱 데이터 삭제는 수행하지 않았다.
+
+공급자에 전달할 최소 재현: 위 버전의 사용자10 Cold Boot → 모델 제공 앱의 SHARE_SPEECH_FILE → GLEO_RECEIVER Permission Denial → Gleo Spokesman SpeechRecognitionConfig.dat ErrorNotExists 반복. 정상 기대는 공식 제공자가 권한을 갖고 모델을 전달해 Gleo 초기화가 성공하는 것이다. 이 문서는 문의용 근거이며 외부 문의를 전송한 것은 아니다. 증거 원본 APK·검사 출력·배포 XML은 Git 제외 work/gleo-repair에 보관한다. 기존 작업 파일은 보존했고 제품 코드·빌드 변경은 없다.
+
+### 2026-11-12 새 시연 시작
+
+개발 도구에 ‘새 시연 처음부터 시작’ 추가. LIVE CONFIRMED(확정 시각 포함)/DECLINED와 원 요청 ID가 일치할 때만 발신 잠금을 정리하고 이전 결과 ID를 로컬에 저장하여 이후 GET/재실행 시 같은 결과를 다시 열지 않는다. 새 결과와 UNKNOWN은 숨기지 않는다. 진행 중/결과 없음의 미해결 요청은 초기화 불가. 예약 요청이 없는 초기 화면에서는 조건만 초기화한다. 서버 예약 취소·기록 삭제·자동 검색/발신 없음; 인증과 LIVE 등록을 유지한다. verifyAndroid 및 Pleos PAIRED_VIEW 계측(가상 응답: UNKNOWN 차단, 완료 초기화, 늦은 동일 결과 숨김, 다른 결과 보존) PASS. 실제 발신은 실행하지 않았다.
+
+### 2026-11-12 가상 변경 연락 알림
+
+사용자 요청으로 개발 도구에 ‘가상 연락 · 20분 지연 알림 띄우기’를 추가. LIVE 확정 결과가 있을 때 현재 확정 시각+20분(자정 경계는 다음 날 표시)을 인앱 모달로 제안한다. 변경 수락/기존 시간 유지/나중에 선택, 시연용 가상 연락 표시. 선택 결과는 해당 예약 ID에만 메모리 표시하며 실제 서버 상태·시각·발신 journal은 수정하지 않는다. 실제 수신/변경 API 연결이 아니며 앱 재실행 시 가상 표시가 사라진다. 주행 입력 제한 또는 UNKNOWN에서는 실행하지 않고 화면 종료 시 모달을 닫는다.
+
+verifyAndroid·계측 APK 빌드 PASS. Pleos PAIRED_VIEW 주입 응답 검사에서 19:10→19:30 알림 표시, 수락/유지 처리 함수의 결과 표시와 서버 JSON 불변, UNKNOWN 차단 PASS. 실제 변경·전화·유료 검색0회. 알림은 시스템 푸시/실전화 수신이 아닌 앱 내 시연 모달이다.
+
+## 최종 시연 앱 게시 기준 (2026-11-12)
+
+최신 main e9ea91f 기반 feat/56-final-demo-ui에 앱 변경을 통합했다. 서버 구현/계약은 main을 보존한다. 기본 실행 MOCK, 실제 연결은 pairedPhoneDemo+realPlaceDemo+navigationDemo opt-in debug APK다.
+
+- 실제 연동: 사용자가 등록 시험 번호의 전화 수신·대화 인식을 확인했고 앱 LIVE CONFIRMED 표시/재실행 결과 복구를 관측했다. 실제 식당에 발신한 검증이나 공동 인수 완료가 아니다.
+- 검색/전화는 연결당 각3회, 등록1시간 및 서버 공통 전화 상한을 따른다. 새 시연 버튼은 로컬 화면/완료 요청만 정리하며 서버 한도를 초기화하지 않는다. 검색 한도 초과의 구체적 오류 문구 노출은 후속 개선이다.
+- ETA25분은 시연값, 변경 알림은 가상 화면이다. 실제 변경·식당 회신·대화 API, 안정적인 Gleo 음성 입력, 실차/공동 인수는 미완료. #63과 #56 OPEN 유지.
+- verifyAll/verifyAndroid/패키징 smoke와 기기 fixture 검증을 실제 LIVE 통화와 구분한다. 원격 CI는 PR 최신 실행 기준으로 확인한다.
