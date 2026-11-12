@@ -1,0 +1,58 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ArriveOn 실전화 시험 번호",
+    "version": "1.0.0",
+    "description": "기존 전화 시험 화면과 같은 브라우저에서 진행합니다. START에 시험용 010 번호를 입력하면 한 시간 동안 등록됩니다. 전화 시험 화면에서 같은 번호로 발신하고 예약을 확정한 뒤, 그 휴대폰에서 걸려온 070 번호로 회신합니다. 등록 상태는 GET으로 확인하고, 시험을 마치면 STOP으로 종료합니다. 실제 연결된 통화에는 통신료가 붙습니다."
+  },
+  "servers": [{ "url": "/" }],
+  "security": [{ "operatorLogin": [] }],
+  "paths": {
+    "/api/live/callback-test-target": {
+      "get": {
+        "operationId": "getTestPhone",
+        "summary": "이 브라우저의 시험 번호 등록 상태",
+        "responses": {
+          "200": { "description": "등록 여부, 등록 번호 끝 4자리와 만료 시각" },
+          "401": { "description": "기존 시험 화면 로그인 필요" }
+        }
+      },
+      "post": {
+        "operationId": "configureTestPhone",
+        "summary": "시험용 010 번호 등록 또는 종료",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "enum": ["START", "STOP"] },
+                  "phoneNumber": { "type": "string", "description": "START에 사용할 국내 010 번호" }
+                }
+              },
+              "examples": {
+                "start": { "summary": "010 번호를 입력해 등록", "value": { "action": "START", "phoneNumber": "" } },
+                "stop": { "summary": "시험 종료", "value": { "action": "STOP" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "이 브라우저의 등록 상태" },
+          "400": { "description": "유효한 010 번호 또는 동작이 필요함" },
+          "401": { "description": "기존 시험 화면 로그인 필요" },
+          "404": { "description": "이 브라우저에서 종료할 등록이 없음" },
+          "409": { "description": "실전화가 진행 중이거나 다른 브라우저에서 시험 중" },
+          "503": { "description": "수신 허용 설정을 적용하지 못함" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "operatorLogin": { "type": "http", "scheme": "basic", "description": "기존 전화 시험 화면 로그인" }
+    }
+  }
+}
