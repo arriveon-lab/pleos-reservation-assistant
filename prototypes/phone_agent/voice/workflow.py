@@ -20,6 +20,10 @@ COST_QUESTION = re.compile(
     r"(?:추가\s*(?:비용|요금|금)|별도\s*(?:비용|요금)|예약금|보증금)"
     r"[^.!?。！？]{0,36}(?:까요|나요|습니까|인가요|세요|시겠어요)\s*[.?!。！？]?$"
 )
+SHORT_NO_EXTRA_COST_REPLY = re.compile(
+    r"(?:(?:네|예|아니요)\s*[,，]?\s*)?(?:(?:비용|요금)(?:은|는|이|가)?\s*)?(?:따로\s*)?"
+    r"(?:없습니다|없어요|없네요|안\s*(?:들어요|듭니다))[.!…。！\s]*"
+)
 SHORT_COST_REPLY = re.compile(
     r"(?:(?:네|예|아니요)\s*[,，]?\s*)?(?:(?:비용|요금)(?:은|는|이|가)?\s*)?(?:따로\s*)?"
     r"(?:없습니다|없어요|없네요|있습니다|있어요|들어요|안\s*(?:들어요|듭니다))[.!。！\s]*"
@@ -81,7 +85,8 @@ def acknowledged_booking_name(events, evidence, name):
     quote = compact(evidence)
     # Acceptance intent comes from the model, not a fixed list of replies.
     # Keep a conservative veto for explicit qualifications, refusal, and pending checks.
-    if (not quote or re.search(r"다만|하지만|그런데|근데|대신|말고|됐지만|되었지만|"
+    if (not quote or SHORT_NO_EXTRA_COST_REPLY.fullmatch(evidence.strip())
+            or re.search(r"다만|하지만|그런데|근데|대신|말고|됐지만|되었지만|"
                               r"아니|불가|취소|안\s*(?:돼|되|됩)|못|잠시|잠깐|아직|"
                               r"확인해\s*볼|확인\s*중|다른\s*(?:이름|시간|날짜)|"
                               r"추가\s*비용.{0,8}(?:있|발생|필요)", evidence)):
@@ -106,6 +111,18 @@ def acknowledged_booking_name(events, evidence, name):
         return not re.search(r"다만|하지만|그런데|근데|대신|말고|취소|불가|안\s*(?:돼|되|됩)|못|"
                              r"다른\s*(?:이름|시간|날짜)|이름.{0,10}아니", later) and not pending
     return False
+
+
+def latest_no_extra_cost_reply(events):
+    """Short fee answers depend on the question they answer."""
+    if not events or events[-1]["speaker"] != "restaurant":
+        return False
+    reply = events[-1]["message"].strip()
+    if NO_EXTRA_COST_REPLY.fullmatch(reply):
+        return True
+    previous_agent = next((event["message"] for event in reversed(events[:-1])
+                           if event["speaker"] == "agent"), "")
+    return bool(COST_QUESTION.search(previous_agent.strip()) and SHORT_NO_EXTRA_COST_REPLY.fullmatch(reply))
 
 
 class LiveWorkflow:
@@ -448,6 +465,19 @@ class LiveWorkflow:
                        named_booking_request(event["message"], booking["reservationName"])
                        for event in self._call_events(owner, call_id))
 
+    def booking_waiting_for_request(self, call_id):
+        with self.service.lock:
+            owner, call = self._find(call_id)
+            booking = self.service._get(owner, "booking", call["bookingId"])
+            return self._waiting_for_request(booking, self._call_events(owner, call_id))
+
+    @staticmethod
+    def _waiting_for_request(booking, events):
+        return (booking.get("liveTest") and booking["status"] == "CALLING" and latest_no_extra_cost_reply(events)
+                and not any(event["speaker"] == "agent"
+                            and named_booking_request(event["message"], booking["reservationName"])
+                            for event in events))
+
     def cost_reply_needs_clarification(self, call_id):
         with self.service.lock:
             owner, _ = self._find(call_id)
@@ -509,8 +539,16 @@ class LiveWorkflow:
                                            and not (not changing and any(map(reports_required_fee, restaurant_replies)))),
                       "requiredConditionsConfirmed": required <= set(confirmed_requirements)}
             if booking.get("liveTest") and not changing:
-                # A complete no-fee reply is neither a final acceptance nor a reason to defer.
-                if evidence in recent[-1] and NO_EXTRA_COST_REPLY.fullmatch(recent[-1].strip()):
+                # Advance only when the approved details and required conditions match.
+                if self._waiting_for_request(booking, events):
+                    ready = all(checks[key] for key in ("dateMatches", "reservationNameMatches", "timeMatches",
+                                                       "partySizeMatches", "noAdditionalCost",
+                                                       "requiredConditionsConfirmed"))
+                    raise DomainError(
+                        "BOOKING_REQUEST_READY" if ready else "BOOKING_ACCEPTANCE_REQUIRED",
+                        "추가 비용이 없다는 답변입니다. 아직 남은 필수 조건을 확인하고, 모두 맞으면 "
+                        "승인된 예약자 이름으로 예약을 부탁한 뒤 상대의 답을 기다리세요.")
+                if evidence in recent[-1] and latest_no_extra_cost_reply(events):
                     raise DomainError(
                         "BOOKING_ACCEPTANCE_REQUIRED",
                         "추가 비용이 없다는 답변입니다. 아직 남은 필수 조건을 확인하고, 모두 맞으면 "

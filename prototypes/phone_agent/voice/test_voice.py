@@ -375,6 +375,7 @@ class LiveWorkflowTest(unittest.TestCase):
         named = "김예약 이름으로 예약 부탁드립니다."
         for prompt, reply, quote in [
             (named, "네, 다만 시간이 달라요.", "네"),
+            (named, "네, 따로 없습니다.", "네, 따로 없습니다."),
             (named, "네, 확인해 볼게요.", "네"),
             (named, "네, 추가 비용이 있습니다.", "네, 추가 비용이 있습니다."),
             (named, "네, 예약됐지만 다른 시간입니다.", "네, 예약됐지만 다른 시간입니다."),
@@ -915,22 +916,27 @@ class ConfigurationAndSDKTest(unittest.TestCase):
             ("agent", "계단 없이 입장이 가능할까요?"),
             ("restaurant", "네, 엘리베이터로 입장 가능합니다."),
             ("agent", "추가 비용이 있을까요?"),
-            ("restaurant", "추가 비용 따로 없습니다."),
+            ("restaurant", "네, 따로 없습니다."),
         ):
             workflow.transcript(call_id, speaker, message)
 
         approved_fields = (True, DAY, "19:00", "김예약", 2, 0, ["계단 없이 입장"])
-        for accepted in (True, False):
-            with self.subTest(accepted=accepted):
-                result = asyncio.run(agent.save_reservation_result(
-                    context, accepted, *approved_fields[1:], "추가 비용 따로 없습니다."))
-                self.assertEqual("BOOKING_ACCEPTANCE_REQUIRED", result["code"])
-                self.assertEqual("CALLING", service._get(owner, "booking", booking_id)["status"])
-                close.assert_not_awaited()
-                say.assert_not_awaited()
+        fee_reply = "네, 따로 없습니다."
+        result = asyncio.run(agent.finish_call(context))
+        self.assertFalse(result["ended"])
+        result = asyncio.run(agent.save_reservation_result(
+            context, False, *approved_fields[1:-1], [], fee_reply))
+        self.assertEqual("BOOKING_ACCEPTANCE_REQUIRED", result["code"])
+        say.assert_not_awaited()
+
+        with self.assertRaises(StopResponse):
+            asyncio.run(agent.save_reservation_result(context, False, *approved_fields[1:], fee_reply))
+        self.assertEqual("CALLING", service._get(owner, "booking", booking_id)["status"])
+        close.assert_not_awaited()
+        say.assert_awaited_once_with("김 예 약 이름으로 예약 부탁드립니다.", allow_interruptions=False)
 
         self.assertEqual("김 예 약", workflow.context(call_id)["spokenReservationName"])
-        workflow.transcript(call_id, "agent", "김 예 약 이름으로 예약 부탁드립니다.")
+        workflow.transcript(call_id, "agent", say.await_args.args[0])
         accepted = "네."
         workflow.transcript(call_id, "restaurant", accepted)
         with self.assertRaises(StopResponse):
