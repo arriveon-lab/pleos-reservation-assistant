@@ -193,3 +193,5 @@ Windows에서는 `.venv\Scripts\python`을 사용합니다. 전화 업체별 raw
 ## #16 오래된 검색 대조 추가 연산
 
 `POST /api/v1/searches/reconcile`은 같은 인증·원 Idempotency-Key·원 SearchRequest로 이미 처리된 검색(COMPLETED/searchId)을 찾거나 미처리·오래된 요청(REJECTED_CLOSED)을 영속 종료합니다. 새 검색은 실행하지 않으며 미래 입력/본문 불일치/오류는 해제 근거가 아닙니다. 핵심 호환 표식1.1.0은 기존 앱을 위해 유지합니다. [화면 저장·재시작·실패 처리 계약](../docs/REC05_SEARCH_RECOVERY.md)과 [종료 예제](examples/search-reconciliation-rejected-closed.json)를 대조하세요. 미리보기404/PREVIEW_NOT_FOUND는 취소/종료 성공이 아닙니다.
+
+Pleos 앱의 실전화 시험 연결은 별도의 [시험 전용 계약](pleos-phone-test.openapi.json)과 [설치·사용 안내](../docs/PLEOS_PAIRED_PHONE_TEST.md)를 사용합니다.

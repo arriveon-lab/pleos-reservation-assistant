@@ -57,8 +57,17 @@ android {
                     "ai.pleos.assistant.mock.realplacefiltervalidation"
                 else "ai.pleos.assistant.mock.realplacevalidation"
         }
-        versionCode = 1
-        versionName = "0.1.0-mock"
+        val pairedPhone =
+            providers.gradleProperty("pairedPhoneDemo").orElse("false").get().toBoolean()
+        buildConfigField("boolean", "PAIRED_PHONE_DEMO", pairedPhone.toString())
+        if (pairedPhone) {
+            require(providers.gradleProperty("realPlaceDemo").orNull == "true") {
+                "pairedPhoneDemo requires realPlaceDemo"
+            }
+            applicationId = "ai.pleos.assistant.pairedphone"
+        }
+        versionCode = if (pairedPhone) 2 else 1
+        versionName = if (pairedPhone) "0.2.0-paired-test" else "0.1.0-mock"
     }
     buildFeatures { buildConfig = true }
     compileOptions {

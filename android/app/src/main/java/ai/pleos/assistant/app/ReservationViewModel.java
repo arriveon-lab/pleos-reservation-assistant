@@ -26,6 +26,98 @@ public final class ReservationViewModel extends AndroidViewModel {
   private PreviewController preview;
   private DestinationController destination;
   ai.pleos.assistant.ux.MockPhoneController phone;
+  private AuthSession pairedAuth;
+  JSONObject pairedStatus = new JSONObject();
+  String pairingCode = "";
+  String pairedError = "";
+  boolean pairedBusy;
+  private boolean pairedRefreshing;
+  private long nextPairedPoll;
+
+  String pairedTask() {
+    return BuildConfig.PAIRED_PHONE_DEMO && destination != null ? destination.webPhoneTask() : null;
+  }
+
+  void pairedRequest(String path, JSONObject body, String key, boolean quiet) {
+    if (!BuildConfig.PAIRED_PHONE_DEMO
+        || pairedAuth == null
+        || closed
+        || pairedBusy
+        || (quiet && pairedRefreshing)
+        || !destinationOpen
+        || (body != null && !canWrite())) return;
+    if (quiet) pairedRefreshing = true;
+    else {
+      pairedBusy = true;
+      pairedError = "";
+    }
+    if (!quiet && observer != null) observer.run();
+    worker.execute(
+        () -> {
+          JSONObject result = null;
+          String error = "";
+          try {
+            result = pairedAuth.exchange("/paired-phone" + path, body, key);
+            if (path.equals("/disconnect"))
+              result = pairedAuth.exchange("/paired-phone", null, null);
+          } catch (AuthSession.HttpFailure failure) {
+            error = failure.code;
+          } catch (Exception failure) {
+            error = "UNAVAILABLE";
+          }
+          JSONObject response = result;
+          String code = error;
+          main.post(
+              () -> {
+                if (closed) return;
+                if (quiet) pairedRefreshing = false;
+                else pairedBusy = false;
+                if (response == null) {
+                  if (!quiet) pairedError = code.isEmpty() ? "UNAVAILABLE" : code;
+                } else if (path.equals("") && body != null) {
+                  pairingCode = response.optString("pairingCode");
+                } else if (path.equals("/calls")) {
+                  try {
+                    pairedStatus.put("latest", response);
+                  } catch (org.json.JSONException impossible) {
+                    throw new IllegalStateException(impossible);
+                  }
+                } else {
+                  pairedStatus = response;
+                  if (response.optBoolean("active") || path.equals("/disconnect")) pairingCode = "";
+                }
+                nextPairedPoll = android.os.SystemClock.elapsedRealtime() + 2500;
+                if (observer != null) observer.run();
+              });
+        });
+  }
+
+  void approvePairedPhone(String task, int ordinal, String day, String time, String name) {
+    if (!canWrite() || !task.equals(pairedTask()) || !pairedStatus.optBoolean("active")) return;
+    try {
+      pairedRequest(
+          "/calls",
+          new JSONObject()
+              .put("taskId", task)
+              .put("candidateOrdinal", ordinal)
+              .put("date", day)
+              .put("time", time)
+              .put("reservationName", name),
+          java.util.UUID.randomUUID().toString(),
+          false);
+    } catch (org.json.JSONException impossible) {
+      throw new IllegalStateException(impossible);
+    }
+  }
+
+  private void tickPaired() {
+    if (BuildConfig.PAIRED_PHONE_DEMO
+        && destinationOpen
+        && canWrite()
+        && android.os.SystemClock.elapsedRealtime() >= nextPairedPoll) {
+      pairedRequest("", null, null, true);
+    }
+  }
 
   String phoneTask() {
     return !BuildConfig.REAL_PLACE_DEMO && BuildConfig.MOCK_PHONE_DEMO && destination != null
@@ -98,6 +190,7 @@ public final class ReservationViewModel extends AndroidViewModel {
           if (closed || observer == null) return;
           if (preview != null) preview.tick();
           if (destination != null) destination.tick();
+          tickPaired();
           main.postDelayed(this, 1000);
         }
       };
@@ -128,6 +221,7 @@ public final class ReservationViewModel extends AndroidViewModel {
               new KeystoreVault(application));
       if (!auth.canCreate() && preferences.getString("journal", null) == null)
         throw new IllegalStateException("RECOVERY_STORAGE_MISSING");
+      if (BuildConfig.PAIRED_PHONE_DEMO) pairedAuth = auth;
       preview =
           new PreviewController(
               auth::exchangeTransient,
@@ -250,6 +344,7 @@ public final class ReservationViewModel extends AndroidViewModel {
     if (!canWrite() || destination == null) return;
     destinationOpen = true;
     destination.allow(true);
+    tickPaired();
     if (observer != null) observer.run();
   }
 
@@ -276,6 +371,7 @@ public final class ReservationViewModel extends AndroidViewModel {
   void searchDestination(DestinationController.Input input) {
     if (canWrite()
         && destinationOpen
+        && (!BuildConfig.PAIRED_PHONE_DEMO || pairedStatus.optBoolean("active"))
         && navigationReady()
         && navigationDestination.equals(input.destination())) destination.search(input);
     else invalidateDestination("NAVIGATION_REQUIRED");

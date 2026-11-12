@@ -1,0 +1,368 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pleos 전화 시험 APK",
+    "version": "0.2.0",
+    "description": "정차 시험 전용. 인증·목적지 추천 요청은 기존 계약을 사용하고 이 게이트웨이에서 앱 소유권과 등록 모드를 확인합니다."
+  },
+  "servers": [
+    {
+      "url": "https://43.201.115.170/pleos-phone"
+    }
+  ],
+  "security": [
+    {
+      "appBearer": []
+    }
+  ],
+  "paths": {
+    "/api/v1/paired-phone": {
+      "get": {
+        "operationId": "pairedPhoneStatus",
+        "summary": "현재 앱의 시험 번호와 최근 통화 결과",
+        "responses": {
+          "200": {
+            "description": "연결 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요"
+          }
+        }
+      },
+      "post": {
+        "operationId": "issuePleosPairingCode",
+        "summary": "5분 유효한 일회용 연결 코드 발급",
+        "responses": {
+          "200": {
+            "description": "연결 코드 발급",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingCode"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요"
+          },
+          "409": {
+            "description": "이미 연결됨"
+          },
+          "429": {
+            "description": "발급 요청이 너무 빠름"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "maxProperties": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paired-phone/disconnect": {
+      "post": {
+        "operationId": "disconnectPairedPhone",
+        "summary": "시험 번호 연결 해제",
+        "responses": {
+          "200": {
+            "description": "연결 해제",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "maxProperties": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/paired-phone/calls": {
+      "post": {
+        "operationId": "approvePairedCall",
+        "summary": "현재 추천 후보 시험 발신 승인",
+        "responses": {
+          "200": {
+            "description": "통화 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "요청 형식 오류"
+          },
+          "401": {
+            "description": "인증 필요"
+          },
+          "404": {
+            "description": "후보를 찾을 수 없음"
+          },
+          "409": {
+            "description": "만료 또는 발신 상태 충돌"
+          },
+          "429": {
+            "description": "시험 한도 도달"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DialRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/paired-phone/calls/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getPairedCall",
+        "summary": "현재 앱이 승인한 통화 결과",
+        "responses": {
+          "200": {
+            "description": "통화 결과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요"
+          },
+          "404": {
+            "description": "없거나 타인 소유"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "appBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "PairingCode": {
+        "type": "object",
+        "required": [
+          "pairingCode",
+          "expiresAt"
+        ],
+        "properties": {
+          "pairingCode": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 10
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PairingStatus": {
+        "type": "object",
+        "required": [
+          "active"
+        ],
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "phoneLast4": {
+            "type": "string",
+            "pattern": "^[0-9]{4}$"
+          },
+          "mode": {
+            "enum": [
+              "MOCK",
+              "LIVE"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "DialRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId",
+          "candidateOrdinal",
+          "date",
+          "time",
+          "reservationName"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "candidateOrdinal": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "time": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "reservationName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        }
+      },
+      "CallResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "mode",
+          "status",
+          "restaurantName",
+          "date",
+          "requestedTime",
+          "partySize",
+          "notice",
+          "requirements"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "enum": [
+              "MOCK",
+              "LIVE"
+            ]
+          },
+          "status": {
+            "enum": [
+              "RESERVED",
+              "CALLING",
+              "CONFIRMED",
+              "DECLINED",
+              "FAILED",
+              "UNKNOWN"
+            ]
+          },
+          "restaurantName": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "requestedTime": {
+            "type": "string"
+          },
+          "confirmedTime": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "partySize": {
+            "type": "integer"
+          },
+          "notice": {
+            "type": "string"
+          },
+          "requirements": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "transportStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

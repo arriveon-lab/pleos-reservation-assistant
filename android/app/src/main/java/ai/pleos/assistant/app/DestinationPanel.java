@@ -19,6 +19,8 @@ final class DestinationPanel {
   private final List<View> inputs = new ArrayList<>();
   private final TextView navigationLabel, stageLabel;
   private final MockPhonePanel phonePanel;
+  private final PairedPhonePanel pairedPanel;
+  private final Button pairedMockDestination;
   private final boolean wide;
   private int adultCount = 2, childCount = 1, detail = -1;
   private String rendered = "";
@@ -44,8 +46,14 @@ final class DestinationPanel {
     text(
         root,
         activity.getString(
-            BuildConfig.REAL_PLACE_DEMO ? R.string.real_place_notice : R.string.final_mock_badge),
+            BuildConfig.PAIRED_PHONE_DEMO
+                ? R.string.paired_phone_trial_notice
+                : BuildConfig.REAL_PLACE_DEMO
+                    ? R.string.real_place_notice
+                    : R.string.final_mock_badge),
         22);
+    pairedPanel = BuildConfig.PAIRED_PHONE_DEMO ? new PairedPhonePanel(activity, model) : null;
+    if (pairedPanel != null) root.addView(pairedPanel.view);
     stageLabel = text(root, activity.getString(R.string.final_steps), 20);
     form = column();
     root.addView(form);
@@ -68,6 +76,11 @@ final class DestinationPanel {
                   ? R.string.real_place_navigation_notice
                   : R.string.navigation_demo_notice),
           20);
+    pairedMockDestination =
+        pairedPanel == null
+            ? null
+            : button(people, R.string.phone_mock_destination, false, activity::useMockDestination);
+    if (pairedMockDestination != null) pairedMockDestination.setVisibility(View.GONE);
     if (BuildConfig.EC2_MOCK_DEMO && !BuildConfig.REAL_PLACE_DEMO) {
       inputs.add(
           button(people, R.string.phone_mock_destination, false, activity::useMockDestination));
@@ -200,8 +213,20 @@ final class DestinationPanel {
     return b;
   }
 
+  void dismiss() {
+    if (pairedPanel != null) pairedPanel.dismiss();
+  }
+
   void update() {
     phonePanel.update();
+    if (pairedPanel != null) {
+      pairedPanel.update();
+      boolean fixture =
+          model.pairedStatus.optBoolean("active")
+              && "MOCK".equals(model.pairedStatus.optString("mode"));
+      pairedMockDestination.setVisibility(fixture ? View.VISIBLE : View.GONE);
+      pairedMockDestination.setEnabled(model.canWrite());
+    }
     stageLabel.setText(
         activity.getString(
             model.phone != null && model.phone.hasRequest()
@@ -220,7 +245,11 @@ final class DestinationPanel {
     results.setVisibility(View.VISIBLE);
     DestinationController.View state = model.destinationView();
     boolean loading = java.util.Set.of("LOADING", "QUEUED", "RUNNING").contains(state.state());
-    search.setEnabled(model.canWrite() && model.navigationReady() && !loading);
+    search.setEnabled(
+        model.canWrite()
+            && model.navigationReady()
+            && !loading
+            && (pairedPanel == null || model.pairedStatus.optBoolean("active")));
     boolean navigationLoading =
         java.util.Set.of("CONNECTING", "READING").contains(model.navigationState());
     navigationRetry.setEnabled(model.restriction().allowsInput() && !navigationLoading);
@@ -262,6 +291,11 @@ final class DestinationPanel {
             + state.cleanupFailed()
             + model.canWrite()
             + detail
+            + (pairedPanel == null
+                ? ""
+                : model.pairedStatus.optBoolean("active")
+                    + "/"
+                    + model.pairedStatus.optJSONObject("latest"))
             + (model.phone == null ? "" : model.phone.state() + model.phone.busy());
     if (signature.equals(rendered)) return;
     rendered = signature;
@@ -284,9 +318,11 @@ final class DestinationPanel {
       text(
           results,
           activity.getString(
-              model.phoneTask() != null
-                  ? R.string.phone_candidate_notice
-                  : R.string.destination_not_bookable),
+              pairedPanel != null
+                  ? R.string.paired_phone_candidate_notice
+                  : model.phoneTask() != null
+                      ? R.string.phone_candidate_notice
+                      : R.string.destination_not_bookable),
           22);
       LinearLayout actions = row();
       results.addView(actions);
@@ -356,7 +392,9 @@ final class DestinationPanel {
                   card,
                   activity.getString(R.string.destination_missing, String.join(" · ", missing)),
                   22);
-            if (BuildConfig.REAL_PLACE_DEMO && "RESTAURANT".equals(c.optString("venueCategory"))) {
+            if (BuildConfig.REAL_PLACE_DEMO
+                && "RESTAURANT".equals(c.optString("venueCategory"))
+                && (pairedPanel == null || "LIVE".equals(model.pairedStatus.optString("mode")))) {
               int ordinal = c.getInt("ordinal");
               Button navigate =
                   button(
@@ -370,6 +408,37 @@ final class DestinationPanel {
                   activity.getString(R.string.navigation_place_candidate, ordinal));
               navigate.setEnabled(model.canWrite());
               text(card, activity.getString(R.string.navigation_place_next), 20);
+            }
+            if (pairedPanel != null
+                && model.pairedTask() != null
+                && "RESTAURANT".equals(c.optString("venueCategory"))) {
+              int ordinal = c.getInt("ordinal");
+              String task = model.pairedTask();
+              Button select =
+                  button(
+                      card,
+                      R.string.paired_phone_select,
+                      true,
+                      () ->
+                          pairedPanel.select(
+                              task,
+                              ordinal,
+                              c.optString("name"),
+                              adultCount + childCount,
+                              activity.getString(R.string.paired_phone_base_conditions)
+                                  + (childCount > 0
+                                      ? " · "
+                                          + activity.getString(
+                                              R.string.paired_phone_child_condition)
+                                      : "")
+                                  + (highChair.isSelected()
+                                      ? " · " + activity.getString(R.string.destination_high_chair)
+                                      : "")
+                                  + (stepFree.isSelected()
+                                      ? " · " + activity.getString(R.string.destination_step_free)
+                                      : "")));
+              select.setContentDescription(activity.getString(R.string.phone_candidate, ordinal));
+              select.setEnabled(model.canWrite() && model.pairedStatus.optBoolean("active"));
             }
             if (model.phoneTask() != null) {
               int ordinal = c.getInt("ordinal");

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from ..service import DomainError, identifier, require, required_conditions, timestamp
+from . import callback_test
 from .config import ConfigurationError, normalize_number
 
 
@@ -18,6 +19,10 @@ NO_EXTRA_COST_REPLY = re.compile(
 COST_QUESTION = re.compile(
     r"(?:추가\s*(?:비용|요금|금)|별도\s*(?:비용|요금)|예약금|보증금)"
     r"[^.!?。！？]{0,36}(?:까요|나요|습니까|인가요|세요|시겠어요)\s*[.?!。！？]?$"
+)
+SHORT_NO_EXTRA_COST_REPLY = re.compile(
+    r"(?:(?:네|예|아니요)\s*[,，]?\s*)?(?:(?:비용|요금)(?:은|는|이|가)?\s*)?(?:따로\s*)?"
+    r"(?:없습니다|없어요|없네요|안\s*(?:들어요|듭니다))[.!…。！\s]*"
 )
 SHORT_COST_REPLY = re.compile(
     r"(?:(?:네|예|아니요)\s*[,，]?\s*)?(?:(?:비용|요금)(?:은|는|이|가)?\s*)?(?:따로\s*)?"
@@ -80,7 +85,8 @@ def acknowledged_booking_name(events, evidence, name):
     quote = compact(evidence)
     # Acceptance intent comes from the model, not a fixed list of replies.
     # Keep a conservative veto for explicit qualifications, refusal, and pending checks.
-    if (not quote or re.search(r"다만|하지만|그런데|근데|대신|말고|됐지만|되었지만|"
+    if (not quote or SHORT_NO_EXTRA_COST_REPLY.fullmatch(evidence.strip())
+            or re.search(r"다만|하지만|그런데|근데|대신|말고|됐지만|되었지만|"
                               r"아니|불가|취소|안\s*(?:돼|되|됩)|못|잠시|잠깐|아직|"
                               r"확인해\s*볼|확인\s*중|다른\s*(?:이름|시간|날짜)|"
                               r"추가\s*비용.{0,8}(?:있|발생|필요)", evidence)):
@@ -107,6 +113,18 @@ def acknowledged_booking_name(events, evidence, name):
     return False
 
 
+def latest_no_extra_cost_reply(events):
+    """Short fee answers depend on the question they answer."""
+    if not events or events[-1]["speaker"] != "restaurant":
+        return False
+    reply = events[-1]["message"].strip()
+    if NO_EXTRA_COST_REPLY.fullmatch(reply):
+        return True
+    previous_agent = next((event["message"] for event in reversed(events[:-1])
+                           if event["speaker"] == "agent"), "")
+    return bool(COST_QUESTION.search(previous_agent.strip()) and SHORT_NO_EXTRA_COST_REPLY.fullmatch(reply))
+
+
 class LiveWorkflow:
     def __init__(self, service, config):
         self.service, self.config = service, config
@@ -128,12 +146,13 @@ class LiveWorkflow:
 
     def _capacity(self):
         calls = self._calls()
-        today = datetime.now(timezone.utc).date().isoformat()
-        deleted = self.service.db.execute(
-            "SELECT calls FROM deleted_live_call_usage WHERE utc_day=?", (today,)).fetchone()
-        used = sum(c["createdAt"].startswith(today) for c in calls) + (deleted[0] if deleted else 0)
-        require(used < self.config.daily_calls,
-                "CALL_LIMIT", "실전화 테스트의 일일 통화 상한에 도달했어요.")
+        if self.config.daily_calls:
+            today = datetime.now(timezone.utc).date().isoformat()
+            deleted = self.service.db.execute(
+                "SELECT calls FROM deleted_live_call_usage WHERE utc_day=?", (today,)).fetchone()
+            used = sum(c["createdAt"].startswith(today) for c in calls) + (deleted[0] if deleted else 0)
+            require(used < self.config.daily_calls,
+                    "CALL_LIMIT", "실전화 테스트의 일일 통화 상한에 도달했어요.")
         require(not any(c["status"] in ("RESERVED", "DISPATCHING", "ACTIVE", "RESULT_SAVED") for c in calls),
                 "CALL_ACTIVE", "진행 중인 실제 통화가 있어요.")
 
@@ -199,6 +218,15 @@ class LiveWorkflow:
                         "SONIOX_TEST_ONLY", "Soniox는 등록한 휴대폰으로 거는 시험전화에서만 사용할 수 있어요.", 403)
             if entered is None:
                 require(target in self.config.allowed_numbers, "TARGET_NOT_ALLOWED", "허용한 식당 테스트 번호를 설정해 주세요.")
+            if booking.get("pleosPairedTest"):
+                from ..paired_phone import registered_target
+                require(self.config.self_service_test and self.config.test_phone_input
+                        and entered and entered == registered_target(self.service, owner, booking["pleosPairedTest"]),
+                        "PAIRING_REQUIRED", "현재 앱에 연결된 시험 번호만 사용할 수 있어요.", 403)
+            elif self.config.self_service_test:
+                registered_owner, window = callback_test.active_window(self.service)
+                require(window and registered_owner == owner and entered == window["phone"],
+                        "CALLBACK_TEST_REGISTRATION_REQUIRED", "같은 브라우저에서 등록한 시험 휴대폰으로 발신해 주세요.", 403)
             self._capacity()
             call = {"id": call_id, "bookingId": booking_id, "requestedVersion": version,
                     "direction": "outbound", "purpose": "CHANGE_CONFIRMATION" if changing else "BOOKING",
@@ -297,6 +325,15 @@ class LiveWorkflow:
     def begin_inbound(self, caller, trunk_id, room, called_number=None):
         self.config.require_live("inbound")
         caller = normalize_number(caller)
+        if self.config.self_service_test:
+            require(trunk_id == self.config.inbound_trunk_id, "CALLER_NOT_ALLOWED", "시험 수신 연결을 확인해 주세요.", 403)
+
+            def test_callback():
+                self._capacity()
+                owner, booking = callback_test.match_booking(self.service, self.config, caller, called_number)
+                return self._save_inbound(room, booking["restaurantId"], owner, booking)
+
+            return self._atomic(test_callback)
         require(caller in self.config.allowed_numbers and trunk_id == self.config.inbound_trunk_id,
                 "CALLER_NOT_ALLOWED", "허용한 수신 테스트 통화가 아니에요.", 403)
         restaurants = [key for key, number in self.config.restaurant_numbers.items() if number == caller]
@@ -312,15 +349,19 @@ class LiveWorkflow:
                 matches = [b for b in self.service._list(bound_owner, "booking")
                            if b["restaurantId"] == restaurants[0] and b["status"] == "CONFIRMED"
                            and b.get("mode") == "LIVE" and not b.get("liveTest")]
-            call = {"id": identifier(), "direction": "inbound", "status": "ACTIVE",
-                    "purpose": "CALLBACK", "ownerBound": bound_owner is not None,
-                    "room": room, "restaurantId": restaurants[0], "bookingId": None,
-                    "nonce": identifier(), "createdAt": timestamp(), "inviteRequested": False}
-            if len(matches) == 1:
-                call.update(bookingId=matches[0]["id"], bookingVersion=matches[0]["version"])
-            self.service._put(bound_owner or "inbound", "live_call", call)
-            return call
+            booking = matches[0] if len(matches) == 1 else None
+            return self._save_inbound(room, restaurants[0], bound_owner, booking)
         return self._atomic(operation)
+
+    def _save_inbound(self, room, restaurant_id, owner, booking):
+        call = {"id": identifier(), "direction": "inbound", "status": "ACTIVE",
+                "purpose": "CALLBACK", "ownerBound": owner is not None,
+                "room": room, "restaurantId": restaurant_id, "bookingId": None,
+                "nonce": identifier(), "createdAt": timestamp(), "inviteRequested": False}
+        if booking:
+            call.update(bookingId=booking["id"], bookingVersion=booking["version"])
+        self.service._put(owner or "inbound", "live_call", call)
+        return call
 
     def identify(self, call_id, name, day, current_time):
         def operation():
@@ -424,6 +465,19 @@ class LiveWorkflow:
                        named_booking_request(event["message"], booking["reservationName"])
                        for event in self._call_events(owner, call_id))
 
+    def booking_waiting_for_request(self, call_id):
+        with self.service.lock:
+            owner, call = self._find(call_id)
+            booking = self.service._get(owner, "booking", call["bookingId"])
+            return self._waiting_for_request(booking, self._call_events(owner, call_id))
+
+    @staticmethod
+    def _waiting_for_request(booking, events):
+        return (booking.get("liveTest") and booking["status"] == "CALLING" and latest_no_extra_cost_reply(events)
+                and not any(event["speaker"] == "agent"
+                            and named_booking_request(event["message"], booking["reservationName"])
+                            for event in events))
+
     def cost_reply_needs_clarification(self, call_id):
         with self.service.lock:
             owner, _ = self._find(call_id)
@@ -485,8 +539,16 @@ class LiveWorkflow:
                                            and not (not changing and any(map(reports_required_fee, restaurant_replies)))),
                       "requiredConditionsConfirmed": required <= set(confirmed_requirements)}
             if booking.get("liveTest") and not changing:
-                # A complete no-fee reply is neither a final acceptance nor a reason to defer.
-                if evidence in recent[-1] and NO_EXTRA_COST_REPLY.fullmatch(recent[-1].strip()):
+                # Advance only when the approved details and required conditions match.
+                if self._waiting_for_request(booking, events):
+                    ready = all(checks[key] for key in ("dateMatches", "reservationNameMatches", "timeMatches",
+                                                       "partySizeMatches", "noAdditionalCost",
+                                                       "requiredConditionsConfirmed"))
+                    raise DomainError(
+                        "BOOKING_REQUEST_READY" if ready else "BOOKING_ACCEPTANCE_REQUIRED",
+                        "추가 비용이 없다는 답변입니다. 아직 남은 필수 조건을 확인하고, 모두 맞으면 "
+                        "승인된 예약자 이름으로 예약을 부탁한 뒤 상대의 답을 기다리세요.")
+                if evidence in recent[-1] and latest_no_extra_cost_reply(events):
                     raise DomainError(
                         "BOOKING_ACCEPTANCE_REQUIRED",
                         "추가 비용이 없다는 답변입니다. 아직 남은 필수 조건을 확인하고, 모두 맞으면 "

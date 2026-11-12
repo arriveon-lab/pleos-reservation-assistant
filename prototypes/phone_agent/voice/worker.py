@@ -68,7 +68,7 @@ INSTRUCTIONS = """너는 한국어 식당 예약 비서다. 짧고 자연스러�
 예약 가능 여부에 대한 '네'는 추가 비용이 없다는 뜻이 아니다. 추가 비용 답변을 받기 전에는 이름으로 예약을 부탁하지 않는다.
 testCall=true이면 시험 응답자에게 날짜·시간·인원의 예약 가능 여부와 필수 조건 및 비용을 먼저 확인한다.
 모두 맞으면 “{spokenReservationName} 이름으로 예약 부탁드립니다.” 형식으로 예약을 요청하고 답을 기다린다.
-“추가 비용 따로 없습니다”는 비용 조건을 충족한 답이다. 남은 조건을 확인하거나 이름으로 예약을 부탁한다.
+비용 질문 직후의 “네, 따로 없습니다”, “없어요”는 비용 조건을 충족한 답이다. 남은 조건을 확인하거나 이름으로 예약을 부탁한다.
 조건에 맞는 답을 받았으면 다음 확인을 이어간다. 긍정적인 조건 답변만으로 수락 또는 보류 결과를 제출하지 않는다.
 결과 도구가 BOOKING_ACCEPTANCE_REQUIRED를 반환하면 통화를 유지하고 메시지에 따라 다음 질문을 한다.
 식당이 말한 이름이 다르게 들리면 정확한 이름을 다시 말하고 재확인한다. 다른 이름을 임의로 같은 사람으로 간주하지 않는다.
@@ -165,6 +165,9 @@ class BookingVoiceAgent(Agent):
     def __init__(self, workflow, call_id, context, close_call, diagnostics=None, supervisor=None, store=None):
         self.workflow, self.call_id, self.close_call = workflow, call_id, close_call
         self.is_booking = context.get("purpose", "BOOKING") == "BOOKING"
+        self.is_test_booking = self.is_booking and context.get("testCall") is True
+        self.spoken_booking_name = context.get("spokenReservationName") or context.get("reservationName")
+        self.named_request_turn = None
         self.has_booking_name = bool(context.get("reservationName"))
         self.diagnostics = diagnostics or AudioDiagnostics()
         self.supervisor, self.store = supervisor, store
@@ -254,6 +257,13 @@ class BookingVoiceAgent(Agent):
             self.call_id, accepted=explicitly_accepted, day=confirmed_date, time=confirmed_time,
             reservation_name=confirmed_reservation_name, people=people, additional_cost=additional_cost_krw,
             confirmed_requirements=confirmed_requirements, evidence=restaurant_evidence))
+        if (result.get("code") == "BOOKING_REQUEST_READY" and self.spoken_booking_name
+                and self.named_request_turn is None):
+            await context.wait_for_playout()
+            self.named_request_turn = self.user_turns
+            await context.session.say(f"{self.spoken_booking_name} 이름으로 예약 부탁드립니다.",
+                                      allow_interruptions=False)
+            raise StopResponse()
         if not result.get("saved"):
             return result
         if self.supervisor:
@@ -335,6 +345,10 @@ class BookingVoiceAgent(Agent):
     @function_tool()
     async def finish_call(self, context: RunContext) -> dict:
         """대화를 마쳐야 하지만 결과를 저장하지 못할 때 안내 후 종료한다. 상대의 확인을 기다리는 중에는 사용하지 않는다."""
+        if self.is_test_booking and (self.named_request_turn == self.user_turns or await self._tool(
+                lambda: self.workflow.booking_waiting_for_request(self.call_id)) is True):
+            return {"ended": False, "code": "BOOKING_ACCEPTANCE_REQUIRED",
+                    "message": "남은 조건을 확인하고 예약자 이름으로 부탁한 뒤 식당의 답을 받아 결과를 저장하세요."}
         if self.supervisor:
             self.supervisor.closing = True
         closing = await self._booking_review_text() if self.is_booking else "안내 감사합니다. 통화를 마치겠습니다."
