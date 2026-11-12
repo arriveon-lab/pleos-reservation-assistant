@@ -1,6 +1,6 @@
 {
   "packageName": "@APPLICATION_ID@",
-  "appDescription": "ArriveOn provides MOCK restaurant recommendations near the verified current navigation destination using adult and child counts. It does not make calls or reservations.",
+  "appDescription": "ArriveOn recommends restaurants around a demo destination for adults and children using MOCK data.",
   "invokeWord": "어라이브온",
   "version": "0.1.0-mock",
   "actionCalls": [
@@ -9,7 +9,7 @@
       "function": {
         "component": "activity",
         "name": "OPEN_ARRIVEON",
-        "description": "Open the ArriveOn MOCK restaurant recommendation app without starting a search or making a call or reservation.",
+        "description": "Open the ArriveOn restaurant recommendation screen.",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -22,17 +22,17 @@
       "function": {
         "component": "activity",
         "name": "SEARCH_MOCK_RESTAURANTS",
-        "description": "Set adult and child counts and start a MOCK restaurant recommendation search near the verified current navigation destination displayed in ArriveOn.",
+        "description": "Find restaurant recommendations around the displayed demo destination for the specified numbers of adults and children using MOCK data.",
         "parameters": {
           "type": "object",
           "properties": {
             "adults": {
               "type": "number",
-              "description": "Whole number of adults, from 1 to 20."
+              "description": "Whole number of adults, from 1 to 8."
             },
             "children": {
               "type": "number",
-              "description": "Whole number of children, from 0 to 10."
+              "description": "Whole number of children, from 0 to 6."
             }
           },
           "required": [
@@ -47,17 +47,17 @@
       "function": {
         "component": "activity",
         "name": "SET_PARTY_SIZE",
-        "description": "Set the adult and child counts in the ArriveOn MOCK recommendation form without searching, making a call, or booking. Both counts must be explicitly provided.",
+        "description": "Set the numbers of adults and children in the ArriveOn form without starting a search.",
         "parameters": {
           "type": "object",
           "properties": {
             "adults": {
               "type": "number",
-              "description": "Whole number of adults, from 1 to 20."
+              "description": "Whole number of adults, from 1 to 8."
             },
             "children": {
               "type": "number",
-              "description": "Whole number of children, from 0 to 10."
+              "description": "Whole number of children, from 0 to 6."
             }
           },
           "required": [

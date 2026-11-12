@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Explicit device check: requires automotive baseline and a connected MOCK test installation. */
 public final class DrivingDeviceChecks extends Instrumentation {
   private int windowWidth;
+  private String finalFlow;
   private String destinationFixture;
   private boolean dashboard;
   private boolean rebooking;
@@ -24,6 +25,7 @@ public final class DrivingDeviceChecks extends Instrumentation {
   @Override
   public void onCreate(Bundle arguments) {
     super.onCreate(arguments);
+    finalFlow = arguments.getString("finalFlow", "");
     destinationFixture = arguments.getString("destinationFixture", "");
     windowWidth =
         Integer.parseInt(
@@ -44,6 +46,13 @@ public final class DrivingDeviceChecks extends Instrumentation {
   public void onStart() {
     Bundle result = new Bundle();
     try {
+      if (!finalFlow.isEmpty()) {
+        if (finalFlow.equals("PAIRED_VIEW")) PairedFinalUiChecks.run(this);
+        else FinalFlowChecks.run(this, finalFlow);
+        result.putString("stream", "PASS final API UI " + finalFlow + "\n");
+        finish(Activity.RESULT_OK, result);
+        return;
+      }
       if (rebooking) {
         RebookingDeviceChecks.run(this);
         result.putString(

@@ -36,7 +36,7 @@ final class GleoIntentAdapter {
         context,
         OPEN,
         true,
-        "ArriveOn MOCK app is open. No search, call or reservation was started.");
+        "ArriveOn MOCK app is open. Ask the user to invoke Gleo again and provide adult and child counts for ArriveOn restaurant recommendations. Opening the app does not start a search, call or reservation.");
   }
 
   static void reply(Context context, boolean accepted) {
@@ -59,7 +59,7 @@ final class GleoIntentAdapter {
         GleoSearchCommand.ACTION,
         accepted,
         accepted
-            ? "MOCK recommendation search started using the verified current navigation destination. No booking or call was made. Check the app for results."
+            ? "MOCK recommendation search started using the demo destination shown in ArriveOn. No booking or call was made. Check the app for results."
             : "MOCK search was not started. Check the app connection, driving restriction and adult and child counts, then explicitly retry.");
   }
 

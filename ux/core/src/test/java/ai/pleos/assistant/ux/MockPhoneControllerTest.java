@@ -93,6 +93,48 @@ class MockPhoneControllerTest {
   }
 
   @Test
+  void demoResetClearsConfirmedAndSurvivesRestart() throws Exception {
+    Wire w = new Wire();
+    Store s = new Store();
+    String task = UUID.randomUUID().toString();
+    try (var c = controller(w, s)) {
+      c.approve(task, body(1), 4);
+      done(c);
+      assertTrue(c.startNew());
+      assertFalse(c.hasRequest());
+      assertEquals(1, w.posts);
+      assertEquals(0, new JSONObject(s.value).getJSONArray("history").length());
+    }
+    try (var c = controller(w, s)) {
+      assertEquals("IDLE", c.state());
+      assertTrue(c.canApprove(UUID.randomUUID().toString(), 1));
+      c.approve(UUID.randomUUID().toString(), body(1), 4);
+      done(c);
+      assertEquals(0, new JSONObject(s.value).getJSONArray("history").length());
+    }
+  }
+
+  @Test
+  void unknownAndArchiveStorageFailureNeverUnlockNewApproval() throws Exception {
+    Wire w = new Wire();
+    Store s = new Store();
+    w.lost = true;
+    try (var c = controller(w, s)) {
+      c.approve(UUID.randomUUID().toString(), body(1), 4);
+      done(c);
+      assertFalse(c.startNew());
+      c.refresh();
+      done(c);
+      s.fail = true;
+      String saved = s.value;
+      assertFalse(c.startNew());
+      assertEquals(saved, s.value);
+      assertTrue(c.hasRequest());
+      assertFalse(c.canApprove(UUID.randomUUID().toString(), 1));
+    }
+  }
+
+  @Test
   void persistsBeforePostAndBlocksDuplicate() throws Exception {
     Wire w = new Wire();
     w.release = new CountDownLatch(1);

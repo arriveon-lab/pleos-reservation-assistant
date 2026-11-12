@@ -6,16 +6,11 @@
       android:icon="@mipmap/ic_launcher"
       android:theme="@style/Theme.Reservation"
       android:supportsRtl="true">
-    <activity android:name=".DemoFlowActivity" android:exported="true" android:resizeableActivity="true">
+    <activity android:name=".FinalReservationActivity" android:launchMode="singleTop" android:exported="true" android:resizeableActivity="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
-    </activity>
-    <activity android:name=".PhoneTrialActivity" android:exported="false" android:resizeableActivity="true" />
-    <activity android:name=".ReservationActivity" android:exported="true" android:resizeableActivity="true"
-        android:launchMode="singleTop" android:windowSoftInputMode="adjustResize">
-
       <intent-filter>
         <action android:name="OPEN_ARRIVEON" />
         <action android:name="${applicationId}.OPEN_ARRIVEON" />
@@ -25,6 +20,13 @@
         <action android:name="${applicationId}.SEARCH_MOCK_RESTAURANTS" />
         <category android:name="android.intent.category.DEFAULT" />
       </intent-filter>
+    </activity>
+    <activity android:name=".DemoFlowActivity" android:exported="false" android:resizeableActivity="true" />
+    <activity android:name=".PhoneTrialActivity" android:exported="false" android:resizeableActivity="true" />
+    <activity android:name=".ReservationActivity" android:exported="true" android:resizeableActivity="true"
+        android:launchMode="singleTop" android:windowSoftInputMode="adjustResize">
+
+
     </activity>
   </application>
 </manifest>
