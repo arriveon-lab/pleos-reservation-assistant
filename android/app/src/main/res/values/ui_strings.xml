@@ -93,13 +93,7 @@
   <string name="phone_decline">예약 거절</string>
   <string name="phone_scenario">가상 응답: %1$s · 눌러 변경</string>
   <string name="phone_approve_title">가상 문의·예약을 승인할까요?</string>
-  <string name="phone_approve_body">%1$s
-총 %2$d명 · %3$s (한국 시각)
-예약자: 가상 예약자 · 추가 비용 0원
-필수 조건: %5$s
-조건 확인 후 예약을 요청합니다.
-내비 ETA가 아닌 연습 예약 시각입니다.
-가상 응답: %4$s</string>
+  <string name="phone_approve_body">%1$s\n총 %2$d명 · %3$s (한국 시각)\n예약자: 가상 예약자 · 추가 비용 0원\n필수 조건: %5$s\n조건 확인 후 예약을 요청합니다.\n내비 ETA가 아닌 연습 예약 시각입니다.\n가상 응답: %4$s</string>
   <string name="phone_cancel">취소</string>
   <string name="phone_approve">이 조건으로 승인</string>
   <string name="phone_sending">가상 조건 문의·예약 결과 확인 중</string>
@@ -121,4 +115,13 @@
   <string name="phone_base_conditions">주차 · 최대 대기 15분 · 아동 동반 시 이용 가능</string>
   <string name="real_place_notice">실제 식당 조회 시험 · 전화·예약 요청은 차단됩니다</string>
   <string name="real_place_navigation_notice">내비 목적지를 확인한 뒤 1회 조회합니다. 시연 중 목적지를 변경하지 마세요. 검색 정보는 빈자리·예약 확정을 뜻하지 않습니다.</string>
+  <string name="phone_conversation_show">모의 대화 내역 보기</string>
+  <string name="phone_conversation_hide">대화 내역 접기</string>
+  <string name="phone_conversation_notice">서버가 제공한 모의 대화입니다. 실제 통화·예약이 아닙니다.</string>
+  <string name="phone_conversation_empty">서버에서 받은 대화 내역이 없습니다. 예약 상태는 위 결과를 확인해 주세요.</string>
+  <string name="phone_speaker_agent">예약 비서</string>
+  <string name="phone_speaker_restaurant">가상 매장</string>
+  <string name="phone_speaker_other">기타 응답</string>
+  <string name="phone_conversation_turn">%1$s\n%2$s</string>
+  <string name="phone_candidate_notice">조건은 아직 미확인입니다. 식당을 선택하면 가상 문의·예약 내용을 확인할 수 있어요.</string>
 </resources>

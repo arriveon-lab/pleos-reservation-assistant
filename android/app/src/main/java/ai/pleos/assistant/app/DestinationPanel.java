@@ -269,7 +269,13 @@ final class DestinationPanel {
               adultCount,
               childCount),
           22);
-      text(results, activity.getString(R.string.destination_not_bookable), 22);
+      text(
+          results,
+          activity.getString(
+              model.phoneTask() != null
+                  ? R.string.phone_candidate_notice
+                  : R.string.destination_not_bookable),
+          22);
       LinearLayout actions = row();
       results.addView(actions);
       Button change =

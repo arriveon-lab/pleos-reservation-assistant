@@ -335,7 +335,28 @@ final class PhoneDeviceChecks {
     click(R.string.phone_refresh);
     await(() -> !model.phone.busy());
     check(attempt.equals(model.phone.receipt().getString("attemptId")), "GET changed attempt");
+    check(model.phone.receipt().getInt("externalCalls") == 0, "external call executed");
     capture(fixture.toLowerCase() + "-result");
+    click(R.string.phone_conversation_show);
+    var turns = model.phone.receipt().getJSONArray("conversation");
+    check(turns.length() > 0, "server conversation missing");
+    String displayed = main(() -> visibleText(activity.getWindow().getDecorView()));
+    for (int i = 0; i < turns.length(); i++)
+      check(
+          displayed.contains(turns.getJSONObject(i).getString("message")),
+          "conversation UI mismatch");
+    main(
+        () -> {
+          View text =
+              find(
+                  activity.getWindow().getDecorView(),
+                  activity.getString(R.string.phone_conversation_notice));
+          text.requestRectangleOnScreen(
+              new android.graphics.Rect(0, 0, text.getWidth(), text.getHeight()), true);
+          return null;
+        });
+    capture(fixture.toLowerCase() + "-conversation");
+    click(R.string.phone_conversation_hide);
     check(original.equals(journal()), "legacy journal changed");
   }
 

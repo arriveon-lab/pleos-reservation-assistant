@@ -16,6 +16,7 @@ final class MockPhonePanel {
   private final ReservationViewModel model;
   private AlertDialog dialog;
   private int scenario;
+  private boolean conversationOpen;
   private String rendered = "";
   private static final String[] CASES = {"ACCEPT", "UNMET", "AMBIGUOUS", "DECLINE"};
   private static final int[] LABELS = {
@@ -73,6 +74,17 @@ final class MockPhonePanel {
                   R.string.phone_approve, (d, w) -> model.approvePhone(task, body, party))
               .create();
       dialog.show();
+      TextView message = dialog.findViewById(android.R.id.message);
+      if (message != null) VehicleUi.text(message, 24);
+      VehicleUi.button(dialog.getButton(AlertDialog.BUTTON_POSITIVE), true);
+      VehicleUi.button(dialog.getButton(AlertDialog.BUTTON_NEGATIVE), false);
+      if (dialog.getWindow() != null) {
+        int width = activity.getResources().getDisplayMetrics().widthPixels;
+        dialog
+            .getWindow()
+            .setLayout(
+                Math.min(width - VehicleUi.dp(activity, 48), VehicleUi.dp(activity, 880)), -2);
+      }
     } catch (Exception invalid) {
       rendered = "";
     }
@@ -93,6 +105,7 @@ final class MockPhonePanel {
             + model.phone.receipt()
             + model.canWrite()
             + scenario
+            + conversationOpen
             + model.phoneTask();
     if (signature.equals(rendered)) return;
     rendered = signature;
@@ -128,7 +141,9 @@ final class MockPhonePanel {
               R.string.phone_receipt,
               receipt.optString("restaurantName"),
               receipt.optString("date"),
-              receipt.optString("requestedTime"),
+              "CONFIRMED".equals(state)
+                  ? receipt.optString("confirmedTime", activity.getString(R.string.phone_unknown))
+                  : receipt.optString("requestedTime"),
               receipt.optInt("partySize")),
           22);
       label(
@@ -140,6 +155,40 @@ final class MockPhonePanel {
                   ? activity.getString(R.string.phone_requested)
                   : activity.getString(R.string.phone_not_requested)),
           20);
+      var conversation = receipt.optJSONArray("conversation");
+      button(
+          activity.getString(
+              conversationOpen
+                  ? R.string.phone_conversation_hide
+                  : R.string.phone_conversation_show),
+          model.canWrite(),
+          () -> {
+            conversationOpen = !conversationOpen;
+            rendered = "";
+            update();
+          });
+      if (conversationOpen && model.canWrite()) {
+        label(activity.getString(R.string.phone_conversation_notice), 20);
+        if (conversation == null || conversation.length() == 0)
+          label(activity.getString(R.string.phone_conversation_empty), 22);
+        else
+          for (int i = 0; i < conversation.length(); i++) {
+            JSONObject turn = conversation.optJSONObject(i);
+            if (turn == null || turn.optString("message").isBlank()) continue;
+            int speaker =
+                switch (turn.optString("speaker")) {
+                  case "agent" -> R.string.phone_speaker_agent;
+                  case "restaurant" -> R.string.phone_speaker_restaurant;
+                  default -> R.string.phone_speaker_other;
+                };
+            label(
+                activity.getString(
+                    R.string.phone_conversation_turn,
+                    activity.getString(speaker),
+                    turn.optString("message")),
+                22);
+          }
+      }
       JSONObject next = receipt.optJSONObject("nextCandidate");
       if ("DECLINED".equals(state) && next != null)
         label(activity.getString(R.string.phone_next, next.optInt("ordinal")), 22);
@@ -169,7 +218,7 @@ final class MockPhonePanel {
   private void button(String text, boolean enabled, Runnable action) {
     Button b = new Button(activity);
     b.setText(text);
-    VehicleUi.text(b, 24);
+    VehicleUi.button(b, false);
     b.setMinHeight((int) (72 * activity.getResources().getDisplayMetrics().density));
     b.setEnabled(enabled);
     b.setOnClickListener(v -> action.run());

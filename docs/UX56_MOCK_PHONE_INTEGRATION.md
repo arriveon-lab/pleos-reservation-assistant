@@ -204,3 +204,18 @@ APK SHA256: `4859c51dd836c89d40eb70409053e273f0c45b2717fe7e42abbd382c80a705ff`.
 미검증: 다른 목적지/복수 지점 반복, 실차, 실제 전화·예약, 좌표/POI 기반 직접 목적지 변경, 변경/취소 직후 SDK 응답 연관성 보장. #56 OPEN/PR Draft를 유지한다. 기존 카페 제외 검증은 보류하되 이번 표본은 식당1/카페0으로 기록한다.
 
 근거: [Pleos 목적지 설정](https://document.pleos.ai/api-reference/connect-sdk-pleos/NaviHelper/destinations), [권한](https://document.pleos.ai/en/api-reference/connect-sdk-pleos/NaviHelper/declaring-permissions), 고정 navi-data3.0.4의 NavigationScreenRequest.kt/RouteInfo.kt와 NaviHelper3.0.5의 NaviHelper.kt. 이름/주소 확인 단계를 생략해 다른 지점을 목적지로 설정하지 않는다.
+
+## 2026-11-12 Swagger 기준 앱 대화·결과 표시 완료
+
+사용자 요청으로 EC2 `/pleos-mock` Swagger의 가상 후보/예약 계약을 앱에서 검증했다. 실제 식당 WEB_SEARCH 예약 연결과 구분한다. 실제 전화·실예약·외부 추천 호출0회.
+
+변경: receipt.conversation의 화자/메시지를 순서대로 표시하는 펼침/접기 추가(차량 제한 중 긴 대화 숨김), 빈 대화 안내, CONFIRMED 시 confirmedTime 표시. 승인창24sp 본문·72dp 버튼과 명시 줄바꿈, 가상 예약 가능 후보의 잘못된 '예약할 수 없음' 문구 수정. 기본 MOCK/UNKNOWN 보존/조회 복구 및 실제조회 전화 차단 유지. API 변경 없음.
+
+- format/verifyAll/:android:app:assembleDebugAndroidTest 및 smoke-test.py PASS. 캐시·UP-TO-DATE 포함. 새 Lint 억제 없음.
+- 최종 EC2 MOCK APK를 기존 ec2validation에 업데이트 설치. Pleos2.1.0/API34, 사용자10에서 PHONE_UNKNOWN/PHONE_REPEAT PASS.
+- 가상 목적지 주입→실제 EC2 가상 후보 응답→선택→승인 취소(전화 요청 없음)→재선택·승인→CONFIRMED→동일 attemptId GET→대화 펼침/서버 메시지 전부 대조/접기 PASS. 날짜2026-11-13/19시(KST)/3명/외부호출0. 기기 시계 표시를 관측시각 근거로 사용하지 않는다.
+- UNKNOWN 응답에서 다음 후보 승인 차단/GET 동일 작업/대화 표시 PASS. 이는 실제 서버 MOCK 시나리오이며 실전화 불명확성 재현이 아니다.
+- 이번 요청은 테스트 메모리 Store에 격리. 기존 ec2validation·realplacevalidation·realplacefiltervalidation의 일반/전화 journal 전후 해시 동일. 이번 새 결과의 강제 종료 후 영속 복구는 미검증이며 이전 FULL/RESTORE 증거와 구분한다. 기존 인증/요청 초기화 없음.
+- APK SHA256 `35d79066894fd4e7b0bb0f6b265b7f8a37293e2391e88fe663cd42068ae74c1e`.
+- 로컬 증거 `work/ux56-swagger-app/{build,smoke,device,unknown}.log`, `journals-{before,after}.json`, `captures/ux56/swagger-app/{candidates,approval,phone_repeat-result,phone_repeat-conversation,phone_unknown-result}.png`. Swagger 직접검사 증거는 `work/ux56-swagger-mock/result.txt`.
+- [최종 앱 설계안](UX56_FINAL_APP_DESIGN.md)과 클릭 가능한 HTML을 작성했다. 이것은 향후 화면 재구성 설계이며 최종 release APK로 표시하지 않는다. 실제 식당 예약·실차·ETA·공동 인수는 미완료. #56 OPEN/PR Draft 유지.

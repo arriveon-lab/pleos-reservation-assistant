@@ -1049,3 +1049,8 @@ SSH로 실제 WEB_SEARCH 서버18769의 Bearer1.1.0 API를 연결했다. 별도 
 - 현재 추천 계약에 좌표/내비 POI가 없어 공식 SearchPlace 화면을 열고 내비에서 최종 선택하는 방식이다. 앱 카드 한 번으로 requestRoute 직접 변경은 미구현.
 - format/verifyAll/test APK 및 PHONE_NAVI_SELECT/PHONE_NAVI_READ PASS. 기존 인증/예약 journal 보존, 전화·예약0회. 승인된 추천1회 소비, 추가 재검색 없음.
 - 증거 work/ux56-navigation-select, captures/ux56/navigation-select. 실제 식당3개 확보/실차/실통화/ETA·SDK 응답연관성 보장과 구분한다. 상세 UX56_MOCK_PHONE_INTEGRATION 마지막 절. #56 OPEN/PR Draft.
+
+
+### 2026-11-12 Swagger MOCK 예약 대화·결과 UI
+
+EC2 MOCK 후보 선택→승인 취소/재승인→CONFIRMED/GET 동일 작업→서버 대화 내역 표시를 최종 APK PHONE_REPEAT로 확인. PHONE_UNKNOWN 새 승인 차단도 PASS. 승인창 가독성·확정시간·후보 안내 보완. verifyAll/test APK/smoke PASS, 기존 예약 journal 보존. 실제 전화·외부 추천0회. 새 반복검사는 메모리 격리로 신규 결과 재시작 영속성은 미검증. [기기 기록](../docs/UX56_MOCK_PHONE_INTEGRATION.md), [최종 화면 설계안](../docs/UX56_FINAL_APP_DESIGN.md). 설계안은 release 구현 완료와 구분, #56 OPEN/PR Draft.
