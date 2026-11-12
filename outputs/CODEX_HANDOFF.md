@@ -1,5 +1,10 @@
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-12 Pleos 식당 업종 필터
+
+- 기존 목적지 POST의 `userRequest`로 업종을 해석합니다. 가상 EC2 조회 서비스가 식당 2곳과 카페 1곳을 보내는 시험에서 수정본은 식당 2곳만 표시하고 주차 조사 조건을 유지했습니다. 유료 조회와 실차 재실행은 이번 검증에 포함되지 않았습니다. [#56](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/56)
+- EC2의 기존 추천 JAR와 GitHub 기준 빌드를 대조한 뒤, 실행 중인 JAR에 이 변경에 해당하는 클래스 4개만 교체했습니다. 추천 서비스와 주소 조회 서비스의 정상 상태를 확인했습니다. 이전 JAR는 EC2의 주소 조회 디렉터리 아래 `rollback-venue.xc1EWg`에 있습니다.
+
 ## 2026-11-12 도로명주소 후보 검색과 방문 시간 반영
 
 - 리뷰 수 출처·집계일 표시, 예약 시각과 필수 조건을 반영한 도로명주소 검색을 구현하고 로컬에서 검증했습니다. [추천 인계](../docs/RECOMMENDATION_LATEST_HANDOFF.md)
