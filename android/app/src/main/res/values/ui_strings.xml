@@ -124,4 +124,7 @@
   <string name="phone_speaker_other">기타 응답</string>
   <string name="phone_conversation_turn">%1$s\n%2$s</string>
   <string name="phone_candidate_notice">조건은 아직 미확인입니다. 식당을 선택하면 가상 문의·예약 내용을 확인할 수 있어요.</string>
+  <string name="phone_mock_destination">가상 서울숲으로 연습</string>
+  <string name="phone_mock_destination_name">가상 서울숲</string>
+  <string name="phone_mock_destination_notice">이 MOCK 서버는 가상 서울숲 전용입니다. 실제 내비 목적지는 바꾸지 않습니다.</string>
 </resources>

@@ -68,6 +68,11 @@ final class DestinationPanel {
                   ? R.string.real_place_navigation_notice
                   : R.string.navigation_demo_notice),
           20);
+    if (BuildConfig.EC2_MOCK_DEMO && !BuildConfig.REAL_PLACE_DEMO) {
+      inputs.add(
+          button(people, R.string.phone_mock_destination, false, activity::useMockDestination));
+      text(people, activity.getString(R.string.phone_mock_destination_notice), 20);
+    }
     stepper(people, true);
     stepper(people, false);
     LinearLayout needs = VehicleUi.card(activity);

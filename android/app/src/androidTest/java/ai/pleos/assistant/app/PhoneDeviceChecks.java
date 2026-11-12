@@ -280,15 +280,24 @@ final class PhoneDeviceChecks {
             return null;
           });
     }
-    main(
-        () -> {
-          ((NavigationDestinationAdapter) field(activity, "navigation")).close();
-          model.navigation(
-              new DestinationController.Destination("가상 성수 시험목적지", 37.544, 127.055, false),
-              "UNVERIFIED");
-          return null;
-        });
-    click(R.string.destination_open);
+    if (BuildConfig.EC2_MOCK_DEMO) {
+      click(R.string.destination_open);
+      click(R.string.phone_mock_destination);
+      check(
+          main(() -> model.navigationDestination().name())
+              .equals(activity.getString(R.string.phone_mock_destination_name)),
+          "MOCK destination button failed");
+    } else {
+      main(
+          () -> {
+            ((NavigationDestinationAdapter) field(activity, "navigation")).close();
+            model.navigation(
+                new DestinationController.Destination("가상 성수 시험목적지", 37.544, 127.055, false),
+                "UNVERIFIED");
+            return null;
+          });
+      click(R.string.destination_open);
+    }
     click(R.string.navigation_demo_confirm);
     click(R.string.destination_search);
     await(() -> model.destinationView().state().equals("RESULTS"));

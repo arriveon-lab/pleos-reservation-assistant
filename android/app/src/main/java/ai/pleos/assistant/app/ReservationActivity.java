@@ -113,6 +113,18 @@ public final class ReservationActivity extends ComponentActivity {
     return requested;
   }
 
+  void useMockDestination() {
+    if (!BuildConfig.EC2_MOCK_DEMO
+        || BuildConfig.REAL_PLACE_DEMO
+        || !model.canWrite()
+        || (model.phone != null && model.phone.hasRequest())) return;
+    if (navigation != null) navigation.close();
+    model.navigation(
+        new ai.pleos.assistant.ux.DestinationController.Destination(
+            getString(R.string.phone_mock_destination_name), 37.544, 127.055, false),
+        "UNVERIFIED");
+  }
+
   void retryNavigation() {
     if (navigation == null || !model.restriction().allowsInput()) return;
     navigation.close();
