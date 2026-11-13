@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 SONIOX_TRIAL_MODEL = "soniox/stt-rt-v6"
+SELF_SERVICE_MAX_SECONDS = 120
 
 
 class ConfigurationError(ValueError):
@@ -98,14 +99,16 @@ class VoiceConfig:
                 raise ValueError
             mapping = {str(k): normalize_number(v) for k, v in mapping.items()}
             allowed = tuple(normalize_number(v) for v in env.get("PHONE_ALLOWED_NUMBERS", "").split(",") if v.strip())
-            seconds, daily = int(env.get("PHONE_MAX_SECONDS", "180")), int(env.get("PHONE_DAILY_CALLS", "1"))
+            self_service_test = env.get("PHONE_CALLBACK_TEST_SELF_SERVICE", "false").lower()
+            default_seconds = str(SELF_SERVICE_MAX_SECONDS) if self_service_test == "true" else "180"
+            seconds = int(env.get("PHONE_MAX_SECONDS", default_seconds))
+            daily = int(env.get("PHONE_DAILY_CALLS", "1"))
             noise = env.get("PHONE_NOISE_SUPPRESSION", "true").lower()
             echo = env.get("PHONE_ECHO_CANCELLATION", "false").lower()
             echo_delay = int(env.get("PHONE_ECHO_DELAY_MS", "200"))
             probe = env.get("PHONE_INPUT_LEVEL_PROBE", "false").lower()
             inbound = env.get("PHONE_INBOUND_ENABLED", "false").lower()
             test_phone_input = env.get("PHONE_TEST_PHONE_INPUT", "false").lower()
-            self_service_test = env.get("PHONE_CALLBACK_TEST_SELF_SERVICE", "false").lower()
             callback_test_booking_id = env.get("PHONE_CALLBACK_TEST_BOOKING_ID", "")
             interruption = env.get("PHONE_INTERRUPTION_MODE", "adaptive").lower()
             if (noise not in ("true", "false") or echo not in ("true", "false")
@@ -132,7 +135,8 @@ class VoiceConfig:
             inbound_enabled=inbound == "true",
             test_phone_input=test_phone_input == "true", self_service_test=self_service_test == "true",
             callback_test_booking_id=callback_test_booking_id,
-            max_seconds=seconds, daily_calls=daily, database=env.get("PHONE_DATABASE", cls.database),
+            max_seconds=min(seconds, SELF_SERVICE_MAX_SECONDS) if self_service_test == "true" else seconds,
+            daily_calls=daily, database=env.get("PHONE_DATABASE", cls.database),
             agent_name=env.get("PHONE_AGENT_NAME", cls.agent_name), secrets_dir=str(folder),
             stt_model=env.get("PHONE_STT_MODEL", cls.stt_model),
             soniox_key=env.get("SONIOX_API_KEY", "").strip(),

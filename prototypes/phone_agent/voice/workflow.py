@@ -47,7 +47,8 @@ CALLBACK_CONFIRM_QUESTION = "예약자가 동의했습니다. 말씀하신 시�
 
 
 def callback_confirmation_question(change):
-    return f"예약자가 동의했습니다. 추가 비용 없이 {change['proposedTime']}로 변경 확정해 주시겠어요?"
+    fee = "추가 비용 없이 " if change.get("additionalCostKrw") == 0 else ""
+    return f"예약자가 동의했습니다. {fee}{change['proposedTime']}로 변경 확정해 주시겠어요?"
 
 
 def reports_required_fee(reply):
@@ -343,8 +344,12 @@ class LiveWorkflow:
                 require(caller in self.config.allowed_numbers and called_number
                         and normalize_number(called_number) == normalize_number(self.config.telkit_number),
                         "CALLER_NOT_ALLOWED", "허용한 회신 시험 번호를 확인해 주세요.", 403)
-                require(callback_bookings(self.service, caller), "CALLBACK_TEST_UNMATCHED",
+                matches = callback_bookings(self.service, caller)
+                require(matches, "CALLBACK_TEST_UNMATCHED",
                         "이 번호로 확정한 Pleos 시험 예약을 찾을 수 없어요.")
+                if len(matches) == 1:
+                    owner, booking = matches[0]
+                    return self._save_inbound(room, booking["restaurantId"], owner, booking, paired_caller=caller)
                 return self._save_inbound(room, None, None, None, paired_caller=caller)
 
             return self._atomic(test_callback)
@@ -390,6 +395,7 @@ class LiveWorkflow:
                         and booking["confirmedTime"] == current_time,
                         "BOOKING_LOCKED", "확인한 예약을 다른 예약으로 바꿀 수 없어요.")
                 return {**self._context(booking), "purpose": "CALLBACK",
+                        "pairedCallback": bool(call.get("pairedCaller")),
                         "personalAssistant": bool(call.get("ownerBound"))}
             if call.get("pairedCaller"):
                 from ..paired_phone import callback_bookings
@@ -424,6 +430,7 @@ class LiveWorkflow:
                     event["bookingId"] = booking["id"]
                     self.service._put(new_owner, "event", event)
             return {**self._context(booking), "purpose": "CALLBACK",
+                    "pairedCallback": bool(call.get("pairedCaller")),
                     "personalAssistant": bool(call.get("ownerBound"))}
         return self._atomic(operation)
 
@@ -450,6 +457,7 @@ class LiveWorkflow:
             booking = self.service._get(owner, "booking", call["bookingId"])
             context = self._context(booking)
             context["purpose"] = call.get("purpose", "CALLBACK")
+            context["pairedCallback"] = bool(call.get("pairedCaller"))
             context["personalAssistant"] = bool(call.get("ownerBound"))
             if context["purpose"] == "BOOKING" and booking.get("liveTest"):
                 context["testCall"] = True
@@ -605,16 +613,17 @@ class LiveWorkflow:
             return {"saved": True, "status": status}
         return self._atomic(operation)
 
-    def _callback_receipt(self, call_id, evidence, payload):
+    def _callback_receipt(self, call_id, evidence, payload, *, time_change=False):
         owner, call = self._find(call_id)
         require(call["direction"] == "inbound" and call.get("bookingId") and call["status"] == "ACTIVE",
                 "IDENTIFICATION_REQUIRED", "예약을 먼저 확인해야 해요.")
-        recent = [e for e in self.service._list(owner, "event")
-                  if e.get("callId") == call_id and e["speaker"] == "restaurant"][-3:]
+        replies = [e for e in self._call_events(owner, call_id) if e["speaker"] == "restaurant"]
+        # The original proposal may precede several time and cost confirmation turns.
+        recent = replies if time_change and call.get("pairedCaller") else replies[-3:]
         compact = lambda value: re.sub(r"[\s,.!?~…。！？]+", "", value)
         matching = [e for e in recent if isinstance(evidence, str) and compact(evidence)
                     and compact(e["message"]) == compact(evidence)]
-        require(bool(matching), "EVIDENCE_REQUIRED", "식당이 실제로 말한 최근 전체 발화를 인용해 주세요.")
+        require(bool(matching), "EVIDENCE_REQUIRED", "식당이 이 통화에서 실제로 말한 전체 발화를 인용해 주세요.")
         actual = matching[-1]["message"]
         digest = hashlib.sha256(json.dumps([payload, actual], sort_keys=True).encode()).hexdigest()
         if call.get("receiptDigest"):
@@ -631,7 +640,8 @@ class LiveWorkflow:
             payload = ["TIME_CHANGE", proposed_time, reason]
             if additional_cost_krw is not None or proposed_date is not None:
                 payload.extend((additional_cost_krw, proposed_date))
-            owner, call, booking, actual, digest = self._callback_receipt(call_id, evidence, payload)
+            owner, call, booking, actual, digest = self._callback_receipt(
+                call_id, evidence, payload, time_change=True)
             if booking is None:
                 return {"saved": True, "status": "AWAITING_USER", "id": call["callbackId"]}
             extra = {}
@@ -645,14 +655,16 @@ class LiveWorkflow:
                 require(visit > datetime.now(timezone.utc), "CHANGE_TIME_PAST",
                         "이미 지난 시각으로 변경할 수 없어요.")
                 events = self._call_events(owner, call_id)
-                require(type(additional_cost_krw) is int and additional_cost_krw == 0
-                        and any(latest_no_extra_cost_reply(events[:end])
-                                for end in range(1, len(events) + 1))
+                require((additional_cost_krw is None
+                         or type(additional_cost_krw) is int and additional_cost_krw == 0)
                         and not any(reports_required_fee(event["message"]) for event in events
                                     if event["speaker"] == "restaurant"),
-                        "CHANGE_COST_UNCONFIRMED", "추가 비용이 없는지 식당에 확인해 주세요.")
+                        "CHANGE_COST_REVIEW", "추가 비용이 있는 변경은 별도 확인이 필요해요.")
+                cost_confirmed = any(latest_no_extra_cost_reply(events[:end])
+                                     for end in range(1, len(events) + 1))
                 extra = {"expiresAt": (datetime.now(timezone.utc) + timedelta(
-                    seconds=CALLBACK_APPROVAL_SECONDS)).isoformat(), "additionalCostKrw": 0}
+                    seconds=CALLBACK_APPROVAL_SECONDS)).isoformat(),
+                    "additionalCostKrw": 0 if cost_confirmed else None}
             result = self.service._receive_callback(owner, {
                 "restaurantId": call["restaurantId"], "reservationName": booking["reservationName"],
                 "date": booking["date"], "currentTime": booking["confirmedTime"],

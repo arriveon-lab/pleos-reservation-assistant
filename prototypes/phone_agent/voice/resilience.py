@@ -19,6 +19,8 @@ REPEAT_TEXT = "말씀을 처리하지 못했어요. 다시 한 번 말씀해 주
 
 
 def opening_text(context):
+    if context.get("pairedCallback"):
+        return "안녕하세요, AI 예약 비서입니다."
     name = context.get("reservationName")
     if isinstance(name, str) and name.strip():
         if context.get("testCall"):

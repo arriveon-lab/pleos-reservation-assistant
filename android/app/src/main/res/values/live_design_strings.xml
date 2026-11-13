@@ -10,7 +10,7 @@
   <string name="live_pair_refresh">서버 상태 다시 확인</string>
   <string name="live_bound">등록 번호 끝자리 %1$s · %2$s</string>
   <string name="live_search_notice">LIVE에서는 실제 웹검색을 호출합니다. 연결당 검색·전화 각 3회 제한, 등록 유효시간 1시간입니다. 검색 비용은 서버 공급자 설정에 따라 발생할 수 있습니다.</string>
-  <string name="live_call_notice">LIVE에서는 선택한 식당의 예약 내용을 등록된 개발자 번호로 전화합니다. 식당의 실제 번호에는 발신하지 않습니다. 최대 60초이며 공급자 통화·AI 요금이 발생할 수 있습니다. 정확한 금액은 서버 계약에서 제공하지 않습니다. 아래 승인 버튼을 누르면 즉시 요청합니다.</string>
+  <string name="live_call_notice">LIVE에서는 선택한 식당의 예약 내용을 등록된 개발자 번호로 전화합니다. 식당의 실제 번호에는 발신하지 않습니다. 최대 120초이며 공급자 통화·AI 요금이 발생할 수 있습니다. 정확한 금액은 서버 계약에서 제공하지 않습니다. 아래 승인 버튼을 누르면 즉시 요청합니다.</string>
   <string name="live_approve">등록 번호 전화 시험 승인</string>
   <string name="live_confirmed">예약 확정 응답을 받았어요</string>
   <string name="live_result_title">전화 시험 진행·결과</string>

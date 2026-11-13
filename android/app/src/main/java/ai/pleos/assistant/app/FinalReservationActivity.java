@@ -565,7 +565,8 @@ public final class FinalReservationActivity extends ComponentActivity {
     detail(R.string.live_callback_original, change.optString("originalTime"));
     detail(R.string.live_callback_proposed, change.optString("proposedTime"));
     text(body, change.optString("reason"), 20, false);
-    text(body, getString(R.string.live_callback_no_fee), 20, false);
+    if (change.optInt("additionalCostKrw", -1) == 0)
+      text(body, getString(R.string.live_callback_no_fee), 20, false);
     String state = change.optString("status");
     int status =
         switch (state) {

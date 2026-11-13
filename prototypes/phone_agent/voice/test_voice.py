@@ -1191,10 +1191,11 @@ class ConfigurationAndSDKTest(unittest.TestCase):
     def test_setup_schemas_match_installed_livekit_protocol(self):
         from google.protobuf.json_format import ParseDict
         from livekit import api
-        plan=setup_plan(fake_config())
+        plan=setup_plan(fake_config(max_seconds=120))
         for key,cls in [("inbound",api.SIPInboundTrunkInfo),("outbound",api.SIPOutboundTrunkInfo),
                         ("dispatch",api.SIPDispatchRuleInfo)]:ParseDict(plan[key],cls())
         self.assertEqual(["+821000000000"],plan["inbound"]["allowed_numbers"])
+        self.assertEqual("120s", plan["inbound"]["max_call_duration"])
         self.assertEqual("tls",plan["telkitConnection"]["transport"])
 
     def test_sdk_voice_worker_and_tools_import_without_network(self):
@@ -1211,9 +1212,9 @@ class ConfigurationAndSDKTest(unittest.TestCase):
         client=SimpleNamespace(agent_dispatch=SimpleNamespace(create_dispatch=AsyncMock()),
                                sip=SimpleNamespace(create_sip_participant=AsyncMock()))
         try:
-            asyncio.run(dial_booking(service,fake_config(),owner,booking,2,"request",client))
+            asyncio.run(dial_booking(service,fake_config(max_seconds=120),owner,booking,2,"request",client))
             request=client.sip.create_sip_participant.await_args.args[0]
-            self.assertEqual(180,request.max_call_duration.seconds)
+            self.assertEqual(120,request.max_call_duration.seconds)
             metadata=client.agent_dispatch.create_dispatch.await_args.args[0].metadata
             self.assertNotIn("김예약",metadata)
             self.assertNotIn("partySize",metadata)

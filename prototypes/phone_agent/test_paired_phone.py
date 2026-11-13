@@ -135,18 +135,19 @@ class PairedPhoneTest(unittest.TestCase):
             workflow.begin_inbound("01000005678", config.inbound_trunk_id, "wrong", config.telkit_number)
         call = workflow.begin_inbound(self.phone, config.inbound_trunk_id, "test", config.telkit_number)
         call_id = call["id"]
-        self.assertFalse(workflow.context(call_id)["found"])
-        self.assertFalse(workflow.identify(call_id, "다른이름", day, "18:30")["found"])
-        self.assertTrue(workflow.identify(call_id, "가상시험", day, "18:30")["found"])
+        context = workflow.context(call_id)
+        self.assertTrue(context["found"])
+        self.assertTrue(context["pairedCallback"])
+        self.assertEqual("18:30", context["time"])
         proposal = "같은 날 19시로 변경할 수 있을까요?"
         workflow.transcript(call_id, "restaurant", proposal)
         with self.assertRaisesRegex(DomainError, "추가 비용"):
-            workflow.request_change(call_id, "19:00", "가상 지연", proposal, 0, day)
-        workflow.transcript(call_id, "agent", "추가 비용은 없을까요?")
-        workflow.transcript(call_id, "restaurant", "네, 따로 없습니다.")
+            workflow.request_change(call_id, "19:00", "가상 지연", proposal, 1000, day)
+        for reply in ("네, 맞아요.", "그렇습니다.", "네."):
+            workflow.transcript(call_id, "restaurant", reply)
         with self.assertRaisesRegex(DomainError, "날짜"):
             workflow.request_change(call_id, "19:00", "가상 지연", proposal, 0, "2099-01-01")
-        workflow.request_change(call_id, "19:00", "가상 지연", proposal, 0, day)
+        workflow.request_change(call_id, "19:00", "가상 지연", proposal, proposed_date=day)
         return workflow, call_id
 
     def test_callback_change_is_owned_idempotent_and_requires_restaurant_confirmation(self):
@@ -163,6 +164,7 @@ class PairedPhoneTest(unittest.TestCase):
         headers = {"Authorization": "Bearer " + "o" * 32, "Idempotency-Key": str(uuid4())}
         pending = paired.status(self.service, self.owner)["callback"]["change"]
         self.assertTrue(pending["canDecide"])
+        self.assertIsNone(pending["additionalCostKrw"])
         body = {"changeId": pending["id"], "version": pending["version"], "approve": True}
         with patch.object(paired, "upstream", return_value=(200, {"subject": "other"})):
             with self.assertRaises(DomainError) as denied:
@@ -181,6 +183,7 @@ class PairedPhoneTest(unittest.TestCase):
 
         prompt = workflow.callback_confirmation_prompt(call_id)
         self.assertIn("19:00", prompt)
+        self.assertNotIn("추가 비용", prompt)
         workflow.transcript(call_id, "agent", prompt)
         workflow.transcript(call_id, "restaurant", "네, 19시 반으로 변경했습니다.")
         with self.assertRaises(DomainError):
@@ -221,5 +224,7 @@ class PairedPhoneTest(unittest.TestCase):
         config = replace(self.config, allowed_numbers=(paired.normalize_number(self.phone),))
         workflow = LiveWorkflow(self.service, config)
         call = workflow.begin_inbound(self.phone, config.inbound_trunk_id, "ambiguous", config.telkit_number)
+        self.assertFalse(workflow.context(call["id"])["found"])
+        self.assertNotIn("reservationName", workflow.context(call["id"]))
         self.assertFalse(workflow.identify(call["id"], "가상시험", day, "18:30")["found"])
         self.assertIsNone(workflow._find(call["id"])[1]["bookingId"])

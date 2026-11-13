@@ -492,7 +492,8 @@
             "format": "date-time"
           },
           "additionalCostKrw": {
-            "const": 0
+            "enum": [0, null],
+            "description": "0 when confirmed by the restaurant, null when the restaurant did not mention a fee."
           },
           "version": {
             "type": "integer",
