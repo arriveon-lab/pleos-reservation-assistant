@@ -16,7 +16,6 @@
   <string name="live_result_title">전화 시험 진행·결과</string>
   <string name="live_status">서버 상태: %1$s</string>
   <string name="live_error">서버 확인이 필요합니다: %1$s</string>
-  <string name="live_change_unavailable">현재 앱용 API에는 대화 내역·예약 변경 요청·변경 동의/거절 경로가 없습니다. 이 화면에서는 변경이나 취소가 전송되지 않습니다. 결과 미확인 시 재발신하지 않고 조회만 합니다.</string>
   <string name="live_candidates">서버가 반환한 후보 %1$d곳 · 예약 가능 여부는 문의 전 미확인</string>
   <string name="live_mock_blocked">현재 연결은 실제 검색·발신용이 아닙니다. 가상 예약은 전화하지 않습니다. 연결 해제 후 LIVE로 다시 등록하세요.</string>
   <string name="live_disconnect_mock">가상 연결 해제 · LIVE 재등록 준비</string>
@@ -43,4 +42,17 @@
   <string name="live_demo_kept">기존 시간 %1$s 유지를 선택했어요</string>
   <string name="live_demo_unchanged">실제 서버 예약은 아래 확정 시각 그대로입니다. 변경 요청·식당 재확인은 전송되지 않았습니다.</string>
   <string name="live_demo_next_day">다음 날 %1$s</string>
+  <string name="live_callback_title">식당에서 시간 변경을 요청했어요</string>
+  <string name="live_callback_original">기존 확정 시간</string>
+  <string name="live_callback_proposed">식당이 제안한 시간</string>
+  <string name="live_callback_no_fee">추가 비용 없음</string>
+  <string name="live_callback_waiting">식당과 통화 중이에요. 지금 응답해 주세요.</string>
+  <string name="live_callback_reconfirming">식당에 새 시간을 확인 중이에요. 기존 확정 시간은 유지돼요.</string>
+  <string name="live_callback_applied">식당이 확인해서 새 시간으로 확정됐어요.</string>
+  <string name="live_callback_rejected">시간 변경을 거절했어요. 기존 확정 시간은 유지돼요.</string>
+  <string name="live_callback_expired">응답 시간이 끝났어요. 기존 확정 시간은 유지돼요.</string>
+  <string name="live_callback_unknown">식당의 확인을 받지 못했어요. 기존 확정 시간은 유지돼요.</string>
+  <string name="live_callback_refreshing">요청이 바뀌었어요. 최신 상태를 확인하고 있어요.</string>
+  <string name="live_callback_accept">새 시간 수락</string>
+  <string name="live_callback_reject">변경 거절</string>
 </resources>

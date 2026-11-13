@@ -823,7 +823,8 @@ class ConfigurationAndSDKTest(unittest.TestCase):
         ):
             with self.subTest(decision=decision), patch("prototypes.phone_agent.voice.worker.CHANGE_APPROVAL_SECONDS", 0):
                 workflow = SimpleNamespace(request_change=Mock(return_value={"saved": True}),
-                                           callback_change_decision=Mock(return_value=decision))
+                                           callback_change_decision=Mock(return_value=decision),
+                                           callback_confirmation_prompt=Mock(return_value=CALLBACK_CONFIRM_QUESTION))
                 close, say = AsyncMock(), AsyncMock()
                 agent = BookingVoiceAgent(workflow, "callback", {"purpose": "CALLBACK"}, close)
                 context = SimpleNamespace(wait_for_playout=AsyncMock(), session=SimpleNamespace(say=say))

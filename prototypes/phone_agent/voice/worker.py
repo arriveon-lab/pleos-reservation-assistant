@@ -284,13 +284,19 @@ class BookingVoiceAgent(Agent):
 
     @function_tool()
     async def save_change_request(self, context: RunContext, proposed_time: str, reason: str,
-                                  restaurant_evidence: str) -> dict:
+                                  restaurant_evidence: str, additional_cost_krw: int | None = None,
+                                  proposed_date: str | None = None) -> dict:
         """식별한 식당 회신의 새 시간·사유·실제 전체 발화 근거를 접수한다.
+
+        pairedCallback=true인 Pleos 회신은 같은 날짜의 새 시간과 추가 비용이 0원인지 확인한 뒤 접수한다.
+        proposed_date에는 확인한 변경 날짜를 YYYY-MM-DD로 제출한다.
+        날짜가 다르거나 비용이 있으면 시간 변경 대신 기타 회신을 접수한다.
+        비용 답변 후에도 restaurant_evidence에는 식당의 원래 변경 요청을 그대로 인용한다.
 
         proposed_time은 HH:MM이다. 저장 후 사용자의 결정을 기다려 같은 통화에서 식당에 답한다.
         """
         result = await self._tool(lambda: self.workflow.request_change(
-            self.call_id, proposed_time, reason, restaurant_evidence))
+            self.call_id, proposed_time, reason, restaurant_evidence, additional_cost_krw, proposed_date))
         if not result.get("saved"):
             return result
         if self.supervisor:
@@ -308,13 +314,18 @@ class BookingVoiceAgent(Agent):
             self.awaiting_callback_confirmation = True
             if self.supervisor:
                 self.supervisor.closing = False
-            await context.session.say(CALLBACK_CONFIRM_QUESTION, allow_interruptions=False)
+            question = await self._tool(lambda: self.workflow.callback_confirmation_prompt(self.call_id))
+            if not isinstance(question, str):
+                question = CALLBACK_CONFIRM_QUESTION
+            await context.session.say(question, allow_interruptions=False)
             raise StopResponse()
         if decision == "REJECTED":
             closing = "예약자가 시간 변경을 원하지 않습니다. 기존 시간으로 부탁드립니다. 감사합니다."
             reason = "callback_change_rejected"
         else:
-            closing = "예약자 확인이 필요한 요청으로 남겨두겠습니다. 기다려 주셔서 감사합니다."
+            closing = ("응답 시간이 지나 기존 예약 시간을 유지하겠습니다. 감사합니다."
+                       if decision == "EXPIRED" else
+                       "예약자 확인이 필요한 요청으로 남겨두겠습니다. 기다려 주셔서 감사합니다.")
             reason = "callback_approval_pending"
         await context.session.say(closing, allow_interruptions=False)
         await self.close_call(reason)

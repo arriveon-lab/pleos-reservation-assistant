@@ -8,6 +8,7 @@ import secrets
 from uuid import uuid4
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from .service import DomainError, conditions, identifier, integer, require, text, valid_time
 from .voice.config import ConfigurationError, normalize_number
@@ -20,6 +21,7 @@ CODE = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 ACTIVE = {"RESERVED", "CALLING"}
 MAX_SEARCHES = 3
 MAX_CALLS = 3
+CALLBACK_APPROVAL_SECONDS = 20
 
 
 def now():
@@ -57,6 +59,25 @@ def registered_target(service, owner, generation):
     return binding["phone"] if binding and binding["mode"] == "LIVE" and binding["generation"] == generation else None
 
 
+def callback_bookings(service, caller):
+    """Match confirmed Pleos bookings to the recipient of their completed outbound call."""
+    rows = service.db.execute(
+        "SELECT owner, body FROM objects WHERE kind='live_call' "
+        "AND json_extract(body, '$.direction')='outbound' AND json_extract(body, '$.purpose')='BOOKING' "
+        "AND json_extract(body, '$.status')='ENDED' AND json_extract(body, '$.outcome')='CONFIRMED' "
+        "AND json_extract(body, '$.target')=?", (caller,))
+    matches = []
+    today = now().astimezone(ZoneInfo("Asia/Seoul")).date().isoformat()
+    for owner, raw in rows:
+        call = json.loads(raw)
+        booking = _one(service, owner, "booking", call["bookingId"])
+        if (booking and booking.get("pleosPairedTest") and booking.get("mode") == "LIVE"
+                and booking["status"] == "CONFIRMED" and booking["date"] >= today
+                and booking.get("confirmedTime") and booking.get("liveCallId") == call["id"]):
+            matches.append((owner, booking))
+    return matches
+
+
 def _public(binding):
     if not binding:
         return {"active": False}
@@ -68,7 +89,15 @@ def status(service, owner):
     with service.lock:
         result = _public(_active(service, owner))
         attempts = service._list(owner, "pleos_phone_attempt")
-        return {**result, "latest": _attempt_view(service, owner, attempts[-1]) if attempts else None}
+        callbacks = []
+        for attempt in attempts:
+            booking = service._get(owner, "booking", attempt["bookingId"])
+            change = booking.get("change") or {}
+            if change.get("expiresAt") and booking.get("pleosPairedTest"):
+                callbacks.append((change["createdAt"], attempt))
+        callback = _attempt_view(service, owner, max(callbacks, key=lambda item: item[0])[1]) if callbacks else None
+        return {**result, "latest": _attempt_view(service, owner, attempts[-1]) if attempts else None,
+                "callback": callback}
 
 
 def _purge(service):
@@ -243,7 +272,20 @@ def _attempt_view(service, owner, attempt):
     if state == "READY":
         started = datetime.fromisoformat(booking["approvedAt"].replace("Z", "+00:00"))
         state = "RESERVED" if started + timedelta(seconds=45) > now() else "UNKNOWN"
+    change = booking.get("change") or {}
+    callback = None
+    if booking.get("pleosPairedTest") and change.get("expiresAt"):
+        callback = {name: change[name] for name in (
+            "id", "status", "originalTime", "proposedTime", "reason", "expiresAt", "additionalCostKrw")}
+        inbound = _one(service, owner, "live_call", change["callId"])
+        callback["version"] = booking["version"]
+        callback["canDecide"] = bool(
+            callback["status"] == "AWAITING_USER" and not booking.get("reviewRequired")
+            and inbound and inbound["status"] == "ACTIVE" and change["expiresAt"] > now().isoformat())
+        if callback["status"] == "AWAITING_USER" and not callback["canDecide"]:
+            callback["status"] = "EXPIRED"
     return {"id": attempt["id"], "mode": attempt["mode"], "status": state,
+            "change": callback,
             "transportStatus": call["status"] if call else None,
             "restaurantName": booking["restaurantName"], "date": booking["date"],
             "requestedTime": booking["requestedTime"], "confirmedTime": booking["confirmedTime"],
@@ -256,6 +298,19 @@ def _attempt_view(service, owner, attempt):
 def attempt_result(service, owner, key):
     with service.lock:
         return _attempt_view(service, owner, service._get(owner, "pleos_phone_attempt", key))
+
+
+def decide_change(service, owner, attempt_id, body, key):
+    require(isinstance(key, str) and re.fullmatch(UUID, key), "IDEMPOTENCY_KEY_REQUIRED",
+            "요청 키를 확인해 주세요.", 400)
+    require(isinstance(body, dict) and set(body) == {"changeId", "version", "approve"}
+            and isinstance(body["changeId"], str) and re.fullmatch(r"[0-9a-f]{32}", body["changeId"])
+            and type(body["version"]) is int and body["version"] > 0 and type(body["approve"]) is bool,
+            "INVALID_INPUT", "변경 요청과 수락 또는 거절을 확인해 주세요.", 400)
+    attempt = service._get(owner, "pleos_phone_attempt", attempt_id)
+    require(attempt["mode"] == "LIVE", "NOT_FOUND", "실제 변경 요청을 찾을 수 없어요.", 404)
+    service.command(owner, "decide_change", {**body, "bookingId": attempt["bookingId"]}, key)
+    return status(service, owner)
 
 
 def dial(service, port, owner, body, key, bearer, live_config):
@@ -367,6 +422,8 @@ def route(service, port, method, path, headers, body, live_config):
         return 200, dial(service, port, owner, body, key, bearer, live_config)
     if method == "GET" and (match := re.fullmatch(rf"/api/v1/paired-phone/calls/({UUID})", path)):
         return 200, attempt_result(service, owner, match[1])
+    if method == "POST" and (match := re.fullmatch(rf"/api/v1/paired-phone/calls/({UUID})/change", path)):
+        return 200, decide_change(service, owner, match[1], body, key)
     if path == BASE and method == "POST":
         return start(service, port, owner, body, bearer)
     if method == "GET" and (match := re.fullmatch(rf"{BASE}/({UUID})", path)):

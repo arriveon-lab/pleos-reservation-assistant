@@ -487,6 +487,7 @@ public final class FinalReservationActivity extends ComponentActivity {
           });
     }
     if (paired()) {
+      if (model.connected()) pairedCallback();
       if (!model.connected() || model.snapshot().has("pending")) connection();
       else if (hasBooking()) pairedResult();
       else if (!model.pairedLiveReady()) pairing();
@@ -554,6 +555,55 @@ public final class FinalReservationActivity extends ComponentActivity {
         () -> model.pairedRequest("", null, null, false));
   }
 
+  private void pairedCallback() {
+    JSONObject booking = model.pairedStatus.optJSONObject("callback");
+    JSONObject change = booking == null ? null : booking.optJSONObject("change");
+    if (change == null) return;
+    text(body, getString(R.string.live_callback_title), 30, true);
+    text(body, booking.optString("restaurantName"), 24, true);
+    detail(R.string.design_date, booking.optString("date"));
+    detail(R.string.live_callback_original, change.optString("originalTime"));
+    detail(R.string.live_callback_proposed, change.optString("proposedTime"));
+    text(body, change.optString("reason"), 20, false);
+    text(body, getString(R.string.live_callback_no_fee), 20, false);
+    String state = change.optString("status");
+    int status =
+        switch (state) {
+          case "AWAITING_USER" -> R.string.live_callback_waiting;
+          case "RECONFIRMING" -> R.string.live_callback_reconfirming;
+          case "APPLIED" -> R.string.live_callback_applied;
+          case "REJECTED" -> R.string.live_callback_rejected;
+          case "EXPIRED" -> R.string.live_callback_expired;
+          default -> R.string.live_callback_unknown;
+        };
+    text(body, getString(status), 22, true);
+    if (!"AWAITING_USER".equals(state)) return;
+    if ("CHANGE_NOT_PENDING".equals(model.pairedError))
+      text(body, getString(R.string.live_callback_refreshing), 20, false);
+    boolean enabled =
+        ready()
+            && change.optBoolean("canDecide")
+            && !model.pairedBusy
+            && !"CHANGE_NOT_PENDING".equals(model.pairedError);
+    String attemptId = booking.optString("id");
+    String changeId = change.optString("id");
+    int version = change.optInt("version");
+    action(
+        body,
+        "live_callback_accept",
+        R.string.live_callback_accept,
+        false,
+        enabled,
+        () -> model.decidePairedChange(attemptId, changeId, version, true));
+    action(
+        body,
+        "live_callback_reject",
+        R.string.live_callback_reject,
+        true,
+        enabled,
+        () -> model.decidePairedChange(attemptId, changeId, version, false));
+  }
+
   private void pairedResult() {
     JSONObject r = model.pairedStatus.optJSONObject("latest");
     String status = r == null ? "UNKNOWN" : r.optString("status", "UNKNOWN");
@@ -585,7 +635,7 @@ public final class FinalReservationActivity extends ComponentActivity {
           text(body, key + " · " + conditions.optString(key), 22, false);
         }
     }
-    text(body, getString(R.string.live_change_unavailable), 22, false);
+
     if (!model.pairedError.isEmpty())
       text(body, getString(R.string.live_error, model.pairedError), 22, false);
     action(

@@ -71,7 +71,30 @@ final class PairedFinalUiChecks {
             render(a);
             require(a, "예약 확정 응답");
             require(a, "19:10");
-            require(a, "변경 동의/거절 경로가 없습니다");
+            var liveChange =
+                new JSONObject()
+                    .put("id", "00000000000000000000000000000000")
+                    .put("version", 2)
+                    .put("status", "AWAITING_USER")
+                    .put("canDecide", true)
+                    .put("originalTime", "19:10")
+                    .put("proposedTime", "19:30")
+                    .put("reason", "가상 지연")
+                    .put("additionalCostKrw", 0);
+            var callback = new JSONObject(r.toString()).put("change", liveChange);
+            a.model.pairedStatus.put("callback", callback);
+            render(a);
+            require(a, "식당에서 시간 변경을 요청했어요");
+            require(a, "19:30");
+            require(a, "새 시간 수락");
+            require(a, "변경 거절");
+            liveChange.put("status", "RECONFIRMING").put("canDecide", false);
+            render(a);
+            require(a, "식당에 새 시간을 확인 중");
+            if (text(a.getWindow().getDecorView()).contains("새 시간 수락"))
+              throw new AssertionError("decision remained available");
+            a.model.pairedStatus.remove("callback");
+            render(a);
             String beforeChange = a.model.pairedStatus.toString();
             var showAlert = a.getClass().getDeclaredMethod("showDemoChangeAlert");
             showAlert.setAccessible(true);
