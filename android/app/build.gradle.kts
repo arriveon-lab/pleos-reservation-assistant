@@ -5,6 +5,18 @@ android {
     compileSdk = 35
     useLibrary("android.car", false)
     defaultConfig {
+        val submissionDemo =
+            providers.gradleProperty("submissionDemo").orElse("false").get().toBoolean()
+        if (submissionDemo) {
+            require(
+                listOf("phoneTrialDial", "realPlaceDemo", "pairedPhoneDemo").none {
+                    providers.gradleProperty(it).orNull.toBoolean()
+                }
+            ) {
+                "submissionDemo supports only the MOCK reservation flow"
+            }
+        }
+        buildConfigField("boolean", "SUBMISSION_DEMO", submissionDemo.toString())
         buildConfigField(
             "boolean",
             "PHONE_TRIAL_DIAL",
@@ -22,17 +34,23 @@ android {
         buildConfigField(
             "boolean",
             "NAVIGATION_DEMO",
-            providers.gradleProperty("navigationDemo").orElse("false").get().toBoolean().toString(),
+            (submissionDemo ||
+                    providers.gradleProperty("navigationDemo").orElse("false").get().toBoolean())
+                .toString(),
         )
         buildConfigField(
             "boolean",
             "MOCK_PHONE_DEMO",
-            providers.gradleProperty("mockPhoneDemo").orElse("false").get().toBoolean().toString(),
+            (submissionDemo ||
+                    providers.gradleProperty("mockPhoneDemo").orElse("false").get().toBoolean())
+                .toString(),
         )
         buildConfigField(
             "boolean",
             "EC2_MOCK_DEMO",
-            providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean().toString(),
+            (submissionDemo ||
+                    providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean())
+                .toString(),
         )
         if (providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean()) {
             applicationId =
@@ -70,6 +88,7 @@ android {
             }
             applicationId = "ai.pleos.assistant.pairedphone"
         }
+        if (submissionDemo) applicationId = "ai.pleos.assistant.submission"
         val trialReservationName =
             providers.gradleProperty("liveTestReservationName").orElse("가상 시험자").get().trim()
         require(trialReservationName.matches(Regex("[\\p{L}\\p{M} -]{1,40}"))) {
@@ -87,7 +106,7 @@ android {
                 "filmingDemo requires the isolated EC2 MOCK phone build"
             }
         }
-        buildConfigField("boolean", "FILMING_DEMO", filmingDemo.toString())
+        buildConfigField("boolean", "FILMING_DEMO", (filmingDemo || submissionDemo).toString())
         versionCode = if (pairedPhone) 2 else 1
         versionName = if (pairedPhone) "0.2.0-paired-test" else "0.1.0-mock"
     }

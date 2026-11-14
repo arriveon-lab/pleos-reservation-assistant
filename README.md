@@ -16,6 +16,7 @@
 <p align="center">
   <a href="https://github.com/arriveon-lab/pleos-reservation-assistant/issues">작업 이슈</a> ·
   <a href="https://github.com/arriveon-lab/pleos-reservation-assistant/actions">CI</a> ·
+  <a href="#공모전-제출용-apk">제출용 APK</a> ·
   <a href="docs/STATUS.md">검증 현황</a> ·
   <a href="docs/README.md">팀 문서</a>
 </p>
@@ -66,7 +67,7 @@ ArriveOn 안에서는 목적지와 예약 시각 요약을 왼쪽 카드에 고�
 
 | 기능 | 사용한 것 | 쓰는 곳 | 확인 수준 |
 | --- | --- | --- | --- |
-| 목적지 · 주행 정보 | Pleos NaviHelper SDK 3.0.5 | 검색 기준 목적지와 도착 예정 시각 | 에뮬레이터에서 목적지 · TripInfo 수신 확인 |
+| 목적지 · 주행 정보 | Pleos NaviHelper SDK 3.0.5 | LIVE 시험의 주변 식당 검색 기준 목적지 | 목적지와 남은 이동시간 수신 확인. 예약 시각 계산 연동은 [#1](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1)에서 진행 |
 | 음성으로 앱 실행 | Pleos 음성 비서 Gleo | "어라이브온 앱 열어줘"로 앱 실행 | 에뮬레이터에서 실행 확인 |
 | 주행 제한 | AAOS `CarUxRestrictionsManager` | 주행 중 입력과 승인 차단 | 에뮬레이터에서 제한 상태를 주입해 확인 |
 | 실행 환경 | Pleos Connect 에뮬레이터 | 전체 앱 흐름 시연 | 위 앱 화면 캡처 |
@@ -99,6 +100,7 @@ ArriveOn 안에서는 목적지와 예약 시각 요약을 왼쪽 카드에 고�
 | Pleos 에뮬레이터에서 후보 · 승인 · 결과 · 재실행 복구 화면 | 기기 확인 (MOCK 데이터) |
 | 등록 휴대폰 대상 AI 전화 예약 | 격리 시험에서 확정까지 확인, 근거가 부족한 시험은 미확인으로 보존 |
 | 식당 회신에 따른 시간 변경 | 가상 통화와 기기 화면 확인 |
+| 교통 지연에 따른 변경 제안 | 가상 도착시간으로 시연. 별도 LIVE 시험에서 변경 확인 전화와 결과 반영 검증 |
 
 
 ## 시스템 구성
@@ -182,6 +184,30 @@ docs/         기능 명세, ERD, 이슈별 설계와 검증 기록
 ```
 
 ## 실행
+
+### 공모전 제출용 APK
+
+[ArriveOn_ArriveOn_release.apk](apk/ArriveOn_ArriveOn_release.apk)는 서울숲 주변 식당 추천과 모의 전화 예약을 체험하는 서명된 release 빌드입니다.
+
+- **테스트 환경:** Pleos Connect Emulator 2.1.0, Android 14 (API 34), 2560×1440 px, 160 dpi. 차량은 정차 상태로 설정합니다.
+- **필요한 설정:** 에뮬레이터의 인터넷 연결과 ADB가 필요합니다. 앱은 EC2의 [MOCK 서버](https://43.201.115.170/pleos-mock/api/v1/status)에 HTTPS로 접속합니다. 계정, API 키, 전화번호 입력은 필요 없습니다.
+- **실행:** APK를 내려받아 아래 명령을 실행하고, 차량 화면의 앱 목록에서 **어라이브온 · MOCK**을 엽니다. ADB에 기기가 여러 대 연결되어 있으면 `adb -s <serial>`로 Pleos 에뮬레이터를 지정합니다.
+
+```bash
+adb install -r apk/ArriveOn_ArriveOn_release.apk
+```
+
+**체험 연결 시작 → 주변 식당 찾기 → 후보 선택 → 가상 예약 요청** 순으로 진행합니다. 예약 결과 화면에서 **교통 지연 시연 시작**을 누르면 가상 도착 시각과 변경 제안을 볼 수 있습니다. 제출용 APK의 후보 이름과 통화 결과는 시연용이며, 등록 휴대폰으로 실제 통화를 시험하는 절차는 [팀 시연 가이드](docs/PLEOS_TEAM_DEMO_FILMING.md)에 있습니다.
+
+소스에서 같은 구성의 서명 전 APK를 빌드하려면 [Android 빌드 환경](docs/ANDROID_SETUP.md)을 준비한 뒤 다음 명령을 실행합니다.
+
+```bash
+./gradlew -PincludeAndroid=true -PsubmissionDemo=true :android:app:assembleRelease
+```
+
+산출물은 `android/app/build/outputs/apk/release/app-release-unsigned.apk`에 생성됩니다. 기기에 설치하려면 Android SDK의 `apksigner`로 서명합니다.
+
+### 개발 환경에서 실행
 
 필요한 것은 JDK 21, Python 3.10 이상(전화 에이전트 음성 기능은 3.12)입니다. 서버만 개발할 때는 Android SDK가 필요 없습니다. 아래 명령은 모두 저장소 루트에서 실행합니다.
 
