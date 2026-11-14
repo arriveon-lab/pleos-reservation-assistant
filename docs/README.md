@@ -1,5 +1,7 @@
 # 팀 문서 안내
 
+[팀원용 Pleos 전화 시연 촬영 가이드](PLEOS_TEAM_DEMO_FILMING.md) — 본인 번호 연결, 예약·교통 지연 변경 전화, 070 회신 촬영 절차
+
 [REC-13 검색 기반 추천·직접 피드백](REC13_WEB_RECOMMENDATION.md) — #50의 기본 비활성 MOCK 실험 API와 사용자 입력/직접 평가 전용 V5 테이블입니다. 기존 v1·앱 계약/아래 논리 ERD 제안을 대체하지 않습니다.
 [REC-12 공공데이터 로컬 catalog](REC12_PUBLIC_CATALOG.md) — #48의 오프라인 코드 준비이며 제품 HTTP/DB/실제 발신 연결은 아닙니다.
 

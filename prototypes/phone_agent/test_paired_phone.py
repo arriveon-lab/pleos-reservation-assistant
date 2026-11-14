@@ -2,7 +2,7 @@
 import unittest
 from dataclasses import replace
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 from . import paired_phone as paired
@@ -19,6 +19,8 @@ class PairedPhoneTest(unittest.TestCase):
         self.other = "pleos-paired:other"
         self.config = fake_config(self_service_test=True, test_phone_input=True)
         self.phone = "01000001234"  # Synthetic only; no transport connection.
+        self.sync_inbound = self.enterContext(patch(
+            "prototypes.phone_agent.voice.callback_test.sync_inbound_numbers", new_callable=AsyncMock))
         self.start = {"viewId": str(uuid4()), "generation": 1, "destination": {"name": "가상"},
                       "party": {"adults": 2, "children": 1}, "maxWaitMinutes": 15,
                       "requiredFeatures": ["parking", "stepFreeAccess"]}
@@ -133,7 +135,7 @@ class PairedPhoneTest(unittest.TestCase):
         config = replace(self.config, allowed_numbers=(paired.normalize_number(self.phone),))
         workflow = LiveWorkflow(self.service, config)
         with self.assertRaisesRegex(DomainError, "허용"):
-            workflow.begin_inbound("01000005678", config.inbound_trunk_id, "wrong", config.telkit_number)
+            workflow.begin_inbound("01000009999", config.inbound_trunk_id, "wrong", config.telkit_number)
         call = workflow.begin_inbound(self.phone, config.inbound_trunk_id, "test", config.telkit_number)
         call_id = call["id"]
         context = workflow.context(call_id)
@@ -175,6 +177,41 @@ class PairedPhoneTest(unittest.TestCase):
         call = workflow.begin_inbound(self.phone, config.inbound_trunk_id, "ambiguous", config.telkit_number)
         self.assertFalse(call["ownerBound"])
         self.assertIsNone(call["bookingId"])
+
+    def test_registered_team_numbers_can_return_calls_without_static_allowlist(self):
+        first, _ = self.confirmed_attempt(self.owner, self.phone)
+        other_phone = "01000005678"
+        second, _ = self.confirmed_attempt(self.other, other_phone)
+        caller, other_caller = map(paired.normalize_number, (self.phone, other_phone))
+        self.sync_inbound.assert_awaited_with(self.config, {caller, other_caller})
+        self.assertNotIn(caller, self.config.allowed_numbers)
+        self.assertNotIn(other_caller, self.config.allowed_numbers)
+        workflow = LiveWorkflow(self.service, self.config)
+        for owner, attempt, number in ((self.owner, first, caller), (self.other, second, other_caller)):
+            booking = self.service._get(owner, "pleos_phone_attempt", attempt)["bookingId"]
+            call = workflow.begin_inbound(number, self.config.inbound_trunk_id, "team", self.config.telkit_number)
+            self.assertEqual(booking, call["bookingId"])
+            workflow.finish(call["id"])
+        binding = paired._active(self.service, self.owner)
+        binding["expiresAt"] = (paired.now() - timedelta(seconds=1)).isoformat()
+        self.service._put(self.owner, "pleos_phone_binding", binding)
+        with self.assertRaises(DomainError) as denied:
+            workflow.begin_inbound(caller, self.config.inbound_trunk_id, "expired", self.config.telkit_number)
+        self.assertEqual("CALLER_NOT_ALLOWED", denied.exception.code)
+        self.bind("LIVE")
+        with self.assertRaises(DomainError) as unmatched:
+            workflow.begin_inbound(caller, self.config.inbound_trunk_id, "new", self.config.telkit_number)
+        self.assertEqual("CALLBACK_TEST_UNMATCHED", unmatched.exception.code)
+
+    def test_inbound_sync_failure_leaves_pairing_code_available_for_retry(self):
+        code = paired.issue(self.service, self.owner)["pairingCode"]
+        body = {"pairingCode": code, "testPhoneNumber": self.phone, "mode": "LIVE"}
+        self.sync_inbound.side_effect = DomainError("CALLBACK_TEST_UNAVAILABLE", "test", 503)
+        with self.assertRaises(DomainError):
+            paired.claim(self.service, body, self.live_config)
+        self.assertFalse(paired.status(self.service, self.owner)["active"])
+        self.sync_inbound.side_effect = None
+        self.assertTrue(paired.claim(self.service, body, self.live_config)["active"])
 
     def test_driver_delay_dials_same_booking_and_requires_call_evidence(self):
         attempt_id, day = self.confirmed_attempt(self.owner, self.phone)

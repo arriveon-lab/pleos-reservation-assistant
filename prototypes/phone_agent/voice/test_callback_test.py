@@ -40,14 +40,21 @@ class CallbackTestRegistrationTest(unittest.TestCase):
         self.assertEqual(120, VoiceConfig.from_env({**env, "PHONE_MAX_SECONDS": "180"}).max_seconds)
 
     def test_registration_is_scoped_to_browser_and_restores_trunk_on_stop(self):
+        from .. import paired_phone
+
+        team_phone = "+821000005678"
+        self.service._put("pleos-paired:team", "pleos_phone_binding", {
+            "id": "active", "phone": team_phone, "mode": "LIVE", "expiresAt": "2099-01-01T00:00:00Z",
+        })
+        self.assertEqual({team_phone}, paired_phone.active_callback_numbers(self.service))
         self.assertEqual("1234", self.register()["phoneLast4"])
-        self.update_inbound.assert_awaited_once_with(self.config, self.phone)
+        self.update_inbound.assert_awaited_once_with(self.config, {self.phone, team_phone})
         self.assertEqual({"active": False}, callback_test.status(self.service, self.other))
         with self.assertRaises(DomainError) as error:
             self.register(owner=self.other)
         self.assertEqual("CALLBACK_TEST_ACTIVE", error.exception.code)
         self.assertEqual({"active": False}, self.register("STOP"))
-        self.update_inbound.assert_awaited_with(self.config, None)
+        self.update_inbound.assert_awaited_with(self.config, {team_phone})
 
     def test_inbound_matches_latest_confirmed_outbound_in_registered_browser(self):
         self.register()

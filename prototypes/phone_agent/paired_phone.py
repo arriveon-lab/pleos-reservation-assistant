@@ -59,7 +59,14 @@ def registered_target(service, owner, generation):
     return binding["phone"] if binding and binding["mode"] == "LIVE" and binding["generation"] == generation else None
 
 
-def callback_bookings(service, caller):
+def active_callback_numbers(service):
+    return {row[0] for row in service.db.execute(
+        "SELECT DISTINCT json_extract(body,'$.phone') FROM objects WHERE kind='pleos_phone_binding' "
+        "AND json_extract(body,'$.mode')='LIVE' AND json_extract(body,'$.expiresAt')>?",
+        (now().isoformat(),))}
+
+
+def callback_bookings(service, caller, *, active_only=False):
     """Match confirmed Pleos bookings to the recipient of their completed outbound call."""
     rows = service.db.execute(
         "SELECT owner, body FROM objects WHERE kind='live_call' "
@@ -74,7 +81,8 @@ def callback_bookings(service, caller):
         if (booking and booking.get("pleosPairedTest") and booking.get("mode") == "LIVE"
                 and booking["status"] == "CONFIRMED" and booking["date"] >= today
                 and booking.get("confirmedTime")
-                and booking.get("bookingCallId", booking.get("liveCallId")) == call["id"]):
+                and booking.get("bookingCallId", booking.get("liveCallId")) == call["id"]
+                and (not active_only or registered_target(service, owner, booking["pleosPairedTest"]) == caller)):
             matches.append((owner, booking))
     return matches
 
@@ -172,6 +180,14 @@ def claim(service, body, live_config):
         result = service._put(owner, "pleos_phone_binding",
                               {"id": "active", "generation": identifier(), "phone": phone, "mode": mode,
                                "expiresAt": (now() + timedelta(hours=1)).isoformat(), "searches": 0, "calls": 0})
+        if mode == "LIVE" and config.inbound_enabled:
+            from .voice import callback_test
+
+            _, window = callback_test.active_window(service)
+            numbers = active_callback_numbers(service)
+            if window:
+                numbers.add(window["phone"])
+            asyncio.run(callback_test.sync_inbound_numbers(config, numbers))
     return _public(result)
 
 
