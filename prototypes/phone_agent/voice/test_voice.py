@@ -123,6 +123,37 @@ class LiveWorkflowTest(unittest.TestCase):
                 self.workflow.transcript(call["id"], "restaurant", reply)
                 self.assertFalse(self.workflow.cost_reply_needs_clarification(call["id"]))
 
+    def test_combined_cost_and_facility_answers_reach_model_without_repeat_question(self):
+        from livekit.agents.llm import ChatMessage
+        from .worker import BookingVoiceAgent
+
+        booking, call = self.reserve()
+        for reply in (
+            "추가 비용은 없어요. 유아의자도 있습니다.",
+            "주차 가능합니다. 추가 비용은 없습니다.",
+            "추가 비용은 없어요, 계단 없이 들어오실 수 있어요.",
+        ):
+            with self.subTest(reply=reply):
+                self.workflow.transcript(call["id"], "agent", "추가 비용이 있을까요?")
+                close, say = AsyncMock(), AsyncMock()
+                agent = BookingVoiceAgent(self.workflow, call["id"], self.workflow.context(call["id"]), close)
+                with patch.object(BookingVoiceAgent, "session", new_callable=PropertyMock,
+                                  return_value=SimpleNamespace(say=say)):
+                    asyncio.run(agent.on_user_turn_completed(None, ChatMessage(role="user", content=[reply])))
+                say.assert_not_awaited()
+                close.assert_not_awaited()
+                self.assertEqual("CALLING", self.get_booking(booking)["status"])
+                self.assertEqual(reply, self.workflow._call_events(self.owner, call["id"])[-1]["message"])
+
+    def test_questions_and_misheard_costs_still_need_clarification(self):
+        _, call = self.reserve()
+        for reply in ("추가 비용은 없어요?", "추가 비용은 없어요? 확인해 볼게요.",
+                      "추가 배움 없습니다. 주차 가능합니다."):
+            with self.subTest(reply=reply):
+                self.workflow.transcript(call["id"], "agent", "추가 비용이 있을까요?")
+                self.workflow.transcript(call["id"], "restaurant", reply)
+                self.assertTrue(self.workflow.cost_reply_needs_clarification(call["id"]))
+
     def test_reported_fee_ends_booking_before_model_can_request_reservation(self):
         from livekit.agents import StopResponse
         from livekit.agents.llm import ChatMessage
@@ -144,6 +175,25 @@ class LiveWorkflowTest(unittest.TestCase):
         self.assertEqual("UNKNOWN", self.get_booking(booking)["status"])
         self.assertIn("추가 요금", self.get_booking(booking)["notice"])
         self.assertEqual(reply, self.service._list(self.owner, "event")[-1]["message"])
+
+    def test_deferred_booking_finishes_and_preserves_the_approved_time(self):
+        from livekit.agents import StopResponse
+        from .worker import BookingVoiceAgent
+
+        booking, call = self.reserve()
+        self.workflow.transcript(call["id"], "restaurant", "아니, 일곱 시 말고 여덟 시만 돼요.")
+        say = AsyncMock()
+        close = AsyncMock(side_effect=lambda reason: self.workflow.finish(call["id"], reason))
+        agent = BookingVoiceAgent(self.workflow, call["id"], self.workflow.context(call["id"]), close)
+        context = SimpleNamespace(wait_for_playout=AsyncMock(), session=SimpleNamespace(say=say))
+        with self.assertRaises(StopResponse):
+            asyncio.run(agent.finish_call(context))
+        say.assert_awaited_once_with("더 생각해보고 말씀드리겠습니다. 감사합니다.", allow_interruptions=False)
+        self.assertEqual("UNKNOWN", self.get_booking(booking)["status"])
+        self.assertEqual("19:00", self.get_booking(booking)["requestedTime"])
+        self.assertIsNone(self.get_booking(booking)["confirmedTime"])
+        self.assertEqual("ENDED", self.workflow._find(call["id"])[1]["status"])
+        close.assert_awaited_once_with("agent_finished")
 
     def test_only_explicit_nonzero_surcharges_trigger_early_deferral(self):
         from .workflow import reports_required_fee
@@ -1071,7 +1121,9 @@ class ConfigurationAndSDKTest(unittest.TestCase):
             with self.subTest(purpose=purpose):
                 order.clear()
                 agent = BookingVoiceAgent(None, "test-call", {"purpose": purpose}, close)
-                asyncio.run(agent.finish_call(context))
+                from livekit.agents import StopResponse
+                with self.assertRaises(StopResponse):
+                    asyncio.run(agent.finish_call(context))
                 self.assertEqual(["prior_speech_played", expected, "room_deleted"], order)
 
     def test_audio_and_stt_diagnostics_distinguish_silence_without_saving_content(self):

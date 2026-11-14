@@ -524,8 +524,12 @@ class LiveWorkflow:
         if not COST_QUESTION.search(question.strip()):
             return False
         reply = events[-1]["message"].strip()
+        # A caller can answer the fee question and volunteer facilities together.
+        # Preserve question marks so "없어요?" still requires clarification.
+        has_cost_statement = any(NO_EXTRA_COST_REPLY.fullmatch(part.strip())
+                                 for part in re.split(r"[.,，。!！]", reply))
         return not (NO_EXTRA_COST_REPLY.fullmatch(reply) or SHORT_COST_REPLY.fullmatch(reply)
-                    or FEE_OR_REFUSAL.search(reply))
+                    or has_cost_statement or FEE_OR_REFUSAL.search(reply))
 
     def record_diagnostics(self, call_id, diagnostics):
         def operation():
