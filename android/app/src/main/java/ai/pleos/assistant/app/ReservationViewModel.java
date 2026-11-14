@@ -573,7 +573,7 @@ public final class ReservationViewModel extends AndroidViewModel {
   }
 
   boolean canWrite() {
-    return BuildConfig.DEBUG
+    return (BuildConfig.DEBUG || BuildConfig.SUBMISSION_DEMO)
         && connected
         && repository != null
         && !busy

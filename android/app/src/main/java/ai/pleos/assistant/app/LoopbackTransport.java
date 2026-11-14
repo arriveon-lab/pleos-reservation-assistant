@@ -26,7 +26,7 @@ final class LoopbackTransport implements AuthSession.Wire {
         BuildConfig.PAIRED_PHONE_DEMO
             && path.matches(
                 "/paired-phone(?:/disconnect|/calls(?:/[a-f0-9-]{36}(?:/change|/delay-change)?)?)?");
-    if (!BuildConfig.DEBUG
+    if (!(BuildConfig.DEBUG || BuildConfig.SUBMISSION_DEMO)
         || (!paired
             && !preview
             && !path.matches(

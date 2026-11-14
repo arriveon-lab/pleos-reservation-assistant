@@ -1,3 +1,7 @@
+## 2026-11-15 공모전 제출용 APK
+
+[README](../README.md#공모전-제출용-apk)에 [서명된 release APK](../apk/ArriveOn_ArriveOn_release.apk) 경로, 설치, Pleos 에뮬레이터 환경, MOCK 체험 절차를 정리했습니다. Pleos Connect 2.1.0에서 후보 3곳·가상 예약 확정·교통 지연 제안·기존 시각 유지·재실행 복구를 확인했습니다. 실제 전화 시연은 [팀원용 촬영 가이드](../docs/PLEOS_TEAM_DEMO_FILMING.md)를 따릅니다.
+
 ## 2026-11-15 판교 LIVE 시연과 내비 도착 예정 시각
 
 팀원이 본인 휴대폰으로 재현할 수 있도록 [전화 시연 촬영 가이드](../docs/PLEOS_TEAM_DEMO_FILMING.md)에 APK 빌드·등록, 시험 대사, 변경 발신과 070 회신 준비를 정리했습니다.

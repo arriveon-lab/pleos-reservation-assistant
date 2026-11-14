@@ -1,3 +1,9 @@
+## 2026-11-15 공모전 제출용 ArriveOn APK (#52)
+
+[제출용 APK](../apk/ArriveOn_ArriveOn_release.apk)는 `submissionDemo`로 빌드한 서명된 release입니다. 공개 HTTPS MOCK 서버의 상태를 확인한 뒤 요청하며, 계정과 시험 전화번호 등록 없이 이용할 수 있습니다. 팀의 LIVE 전화 시험은 별도 빌드로 진행합니다.
+
+Pleos Connect 2.1.0 / Android 14(API 34), 2560×1440 px / 160 dpi에서 APK 설치·실행, 익명 연결, 서울숲 가상 식당 3곳, 가상 예약 확정, 교통 지연 제안·기존 시각 유지, 앱 재실행 후 확정 조회를 확인했습니다. 서명·정렬·release Lint를 통과했습니다. [README 실행 절차](../README.md#공모전-제출용-apk).
+
 ## 2026-11-15 판교 LIVE 시연 및 내비 도착 예정 시각 (#1 / #52 / #56)
 
 [팀원용 촬영 가이드](PLEOS_TEAM_DEMO_FILMING.md)에 본인 번호 등록, 실제 시험 전화, 교통 지연 변경 발신과 070 회신 절차를 정리했습니다. EC2 API·워커 `pleos-paired-inbound-v6`는 Swagger LIVE 등록 시 번호를 LiveKit 수신 목록에 반영합니다. 유효한 연결의 확정 예약을 같은 번호에서 회신할 수 있고, 연결이 만료되거나 해제되면 해당 연결의 회신은 차단합니다. 가상 번호 두 개로 연결별 예약 식별과 만료를 검증했으며, 배포 후 EC2와 LiveKit의 등록 목록 및 수신 설정을 대조했습니다. 새 팀원 번호의 실제 회신은 아직 확인하지 않았습니다.
