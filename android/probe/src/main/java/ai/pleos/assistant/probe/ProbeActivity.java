@@ -33,7 +33,10 @@ public final class ProbeActivity extends Activity {
         @Override
         public void onDestinationInfo(DestinationInfo info) {
           destination = info;
-          record("destinationInfo", "hasDestination", true);
+          record("destinationInfo", "hasDestination", info != null);
+          if (info != null) {
+            record("destinationRemainTime", "remainingTravelSeconds", info.getRemainTime());
+          }
           runOnUiThread(() -> query.setEnabled(!closed));
         }
 
