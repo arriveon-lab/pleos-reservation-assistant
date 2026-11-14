@@ -87,7 +87,7 @@ final class VehicleUi {
     GradientDrawable background = new GradientDrawable();
     background.setColor(c.getColor(R.color.ui_surface));
     background.setCornerRadius(dp(c, 16));
-    background.setStroke(dp(c, 1), c.getColor(R.color.ui_outline));
+    background.setStroke(dp(c, 1), c.getColor(R.color.ui_card_border));
     card.setBackground(background);
     LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
     params.setMargins(0, dp(c, 8), 0, dp(c, 8));

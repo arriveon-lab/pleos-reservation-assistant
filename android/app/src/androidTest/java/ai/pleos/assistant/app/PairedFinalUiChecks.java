@@ -25,6 +25,12 @@ final class PairedFinalUiChecks {
             a.model.observe(null);
             field(a.model, "connected", true);
             field(a.model, "busy", false);
+            // Presentation fixtures must not depend on the timing of the real CarUx callback.
+            field(
+                a.model,
+                "restriction",
+                ai.pleos.assistant.ux.MockRepository.Restriction.SIMULATED_PARKED);
+            field(a.model, "snapshot", new JSONObject());
             field(a.model, "destinationOpen", true);
             field(a.model, "pairedAuth", null); // prohibit network through paired API in fixtures
             var journal = runner.getTargetContext().getSharedPreferences("paired-reset-fixture", 0);
@@ -63,7 +69,7 @@ final class PairedFinalUiChecks {
                     .put("phoneLast4", "0000")
                     .put("latest", r);
             render(a);
-            require(a, "UNKNOWN");
+            require(a, "예약 결과를 아직 확인하지 못했어요");
             if (a.model.startNewPairedDemo()) throw new AssertionError("UNKNOWN reset allowed");
             if (text(a.getWindow().getDecorView()).contains("예약 확정 응답"))
               throw new AssertionError("unknown promoted");

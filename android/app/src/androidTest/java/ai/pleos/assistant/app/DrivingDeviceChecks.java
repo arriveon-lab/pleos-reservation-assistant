@@ -47,7 +47,8 @@ public final class DrivingDeviceChecks extends Instrumentation {
     Bundle result = new Bundle();
     try {
       if (!finalFlow.isEmpty()) {
-        if (finalFlow.equals("PAIRED_VIEW")) PairedFinalUiChecks.run(this);
+        if (finalFlow.equals("PDF_VIEW")) PdfDesignChecks.run(this, windowWidth);
+        else if (finalFlow.equals("PAIRED_VIEW")) PairedFinalUiChecks.run(this);
         else FinalFlowChecks.run(this, finalFlow);
         result.putString("stream", "PASS final API UI " + finalFlow + "\n");
         finish(Activity.RESULT_OK, result);

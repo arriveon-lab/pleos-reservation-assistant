@@ -9,4 +9,15 @@
   <color name="ui_on_disabled">#545F6C</color>
   <color name="ui_outline">#697889</color>
   <color name="icon_background">#17634B</color>
+  <color name="ui_surface_variant">#EEF1F5</color>
+  <color name="ui_accent_container">#E4ECFD</color>
+  <color name="ui_success">#11663B</color>
+  <color name="ui_success_container">#E2F3E9</color>
+  <color name="ui_warning">#865000</color>
+  <color name="ui_warning_container">#FFF1D5</color>
+  <color name="ui_live">#9A3D00</color>
+  <color name="ui_live_container">#FFF0E2</color>
+  <color name="ui_mock">#0E5F6E</color>
+  <color name="ui_mock_container">#E3F4F6</color>
+<color name="ui_card_border">#D3DAE3</color>
 </resources>

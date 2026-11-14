@@ -10,8 +10,9 @@
   <string name="live_pair_refresh">서버 상태 다시 확인</string>
   <string name="live_bound">등록 번호 끝자리 %1$s · %2$s</string>
   <string name="live_search_notice">LIVE에서는 실제 웹검색을 호출합니다. 연결당 검색·전화 각 3회 제한, 등록 유효시간 1시간입니다. 검색 비용은 서버 공급자 설정에 따라 발생할 수 있습니다.</string>
-  <string name="live_call_notice">LIVE에서는 선택한 식당의 예약 내용을 등록된 개발자 번호로 전화합니다. 식당의 실제 번호에는 발신하지 않습니다. 최대 120초이며 공급자 통화·AI 요금이 발생할 수 있습니다. 정확한 금액은 서버 계약에서 제공하지 않습니다. 아래 승인 버튼을 누르면 즉시 요청합니다.</string>
-  <string name="live_approve">등록 번호 전화 시험 승인</string>
+  <string name="live_call_notice">등록된 시험 번호로 전화해요. 실제 식당에는 걸지 않습니다.
+승인 즉시 요청 · 최대 120초 · 통화·AI 요금 발생 가능(금액 미제공)</string>
+  <string name="live_approve">이 조건으로 시험 전화 예약</string>
   <string name="live_confirmed">예약 확정 응답을 받았어요</string>
   <string name="live_result_title">전화 시험 진행·결과</string>
   <string name="live_status">서버 상태: %1$s</string>
@@ -20,7 +21,7 @@
   <string name="live_mock_blocked">현재 연결은 실제 검색·발신용이 아닙니다. 가상 예약은 전화하지 않습니다. 연결 해제 후 LIVE로 다시 등록하세요.</string>
   <string name="live_disconnect_mock">가상 연결 해제 · LIVE 재등록 준비</string>
   <string name="live_result_mode">통화 결과 모드: %1$s</string>
-  <string name="live_search_hint">실제 주변 식당을 검색합니다. 식당 선택 후 승인하면 등록한 개발자 번호로 시험 전화가 걸립니다.</string>
+  <string name="live_search_hint">검색만 합니다. 전화는 식당을 고르고 승인한 뒤에 걸어요.</string>
   <string name="live_new_demo">새 시연 처음부터 시작</string>
   <string name="live_new_demo_notice">완료된 결과를 접고 새 조건을 입력합니다. 기존 예약을 취소하지 않으며 검색·전화는 자동 실행하지 않습니다. 통화 진행 중·결과 미확인 상태에서는 사용할 수 없습니다.</string>
   <string name="live_demo_trigger">가상 연락 · 20분 지연 알림 띄우기</string>

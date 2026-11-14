@@ -1,0 +1,19 @@
+<resources>
+  <string name="pdf_live_mode">실제 시험 발신</string>
+  <string name="pdf_mock_mode">MOCK · 실제 전화 없음</string>
+  <string name="pdf_destination">내비 목적지</string>
+  <string name="pdf_eta_label">도착 예정 · 목적지 기준 · 시연값</string>
+  <string name="pdf_compact_eta">시연 ETA 25분 · 내일 19:00 도착 기준</string>
+  <string name="pdf_needs_hint">꼭 필요한 조건을 골라주세요. 전화로 확인합니다.</string>
+  <string name="pdf_parking_fixed">✓  주차 필요 · 기본 조건</string>
+  <string name="pdf_candidates_title">어느 식당에 문의할까요?</string>
+  <string name="pdf_calling">식당에 예약을 요청하고 있어요</string>
+  <string name="pdf_calling_hint">결과가 확인되면 이 화면이 바뀌어요. 추가로 전화하지 않아요.</string>
+  <string name="pdf_unknown">예약 결과를 아직 확인하지 못했어요</string>
+  <string name="pdf_confirmed_hint">서버가 확인한 최종 예약 결과입니다.</string>
+  <string-array name="pdf_steps"><item>예약 조건</item><item>식당 선택</item><item>전화·예약</item><item>식당 회신</item></string-array>
+  <string name="pdf_live_search_cost">실제 검색 · 공급자 요금이 발생할 수 있어요.</string>
+  <string name="pdf_confirmed_time">확정 시각</string>
+  <string name="pdf_requested_time">요청한 시각 %1$s · 서버가 확인한 확정 시각을 위에 표시합니다.</string>
+  <string name="pdf_declined_hint">서버가 예약 거절 결과를 알려왔어요. 자동으로 다시 전화하지 않아요.</string>
+</resources>

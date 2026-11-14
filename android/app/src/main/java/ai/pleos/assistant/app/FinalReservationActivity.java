@@ -110,6 +110,8 @@ public final class FinalReservationActivity extends ComponentActivity {
   private String stage = "CONDITIONS", selectedTask = "", selectedName = "", selectedAddress = "";
   private LinearLayout page, body, footer;
   private boolean wide;
+  private ScrollView bodyScroll;
+  private String renderedStage = "";
   private final android.os.Handler voiceHandler =
       new android.os.Handler(android.os.Looper.getMainLooper());
   private ai.pleos.assistant.ux.GleoSearchCommand pendingVoice;
@@ -389,70 +391,116 @@ public final class FinalReservationActivity extends ComponentActivity {
     page.setPadding(dp(wide ? 32 : 24), dp(20), dp(wide ? 32 : 24), dp(20));
     page.setBackgroundColor(getColor(R.color.ui_background));
     LinearLayout header = row();
+    header.setMinimumHeight(dp(80));
     page.addView(header);
-    TextView brand = text(header, "ArriveOn", 30, true);
-    brand.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
-    text(header, getString(paired() ? R.string.live_mode : R.string.design_mode), 18, false)
-        .setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
-    action(
-        header,
-        "design_tools",
-        R.string.design_tools,
-        false,
-        true,
-        () -> {
-          tools = !tools;
-          render();
-        });
-    header
-        .getChildAt(header.getChildCount() - 1)
-        .setLayoutParams(new LinearLayout.LayoutParams(dp(160), -2));
-    text(page, getString(R.string.design_steps), 20, false);
-    if (!model.restriction().allowsInput())
-      text(page, getString(R.string.flow_restricted), 22, true);
-    ScrollView scroll = new ScrollView(this);
-    scroll.setFillViewport(true);
-    page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+    TextView logo = text(header, "⌖", 30, true);
+    logo.setGravity(Gravity.CENTER);
+    logo.setTextColor(getColor(R.color.ui_on_accent));
+    logo.setBackground(shape(R.color.ui_accent, 12));
+    logo.setLayoutParams(new LinearLayout.LayoutParams(dp(48), dp(48)));
+    TextView brand = text(header, "ArriveOn", 28, true);
+    brand.setPadding(dp(12), 0, dp(20), 0);
+    brand.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+    TextView mode =
+        text(
+            header,
+            getString(paired() ? R.string.pdf_live_mode : R.string.pdf_mock_mode),
+            18,
+            true);
+    mode.setTextColor(getColor(paired() ? R.color.ui_live : R.color.ui_mock));
+    mode.setBackground(shape(paired() ? R.color.ui_live_container : R.color.ui_mock_container, 24));
+    mode.setPadding(dp(16), dp(8), dp(16), dp(8));
+    mode.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+    android.view.View spacer = new android.view.View(this);
+    header.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1));
+    if (wide) steps(header);
+    Button toolButton =
+        action(
+            header,
+            "design_tools",
+            R.string.design_tools,
+            false,
+            true,
+            () -> {
+              tools = !tools;
+              render();
+            });
+    toolButton.setTextSize(18);
+    toolButton.setLayoutParams(new LinearLayout.LayoutParams(dp(144), dp(64)));
+    toolButton.setVisibility(
+        BuildConfig.DEBUG ? android.view.View.VISIBLE : android.view.View.GONE);
+    if (!wide) steps(page);
     LinearLayout columns = wide ? row() : column();
     columns.setGravity(Gravity.TOP);
-    scroll.addView(columns);
+    page.addView(columns, new LinearLayout.LayoutParams(-1, 0, 1));
     LinearLayout summary = card(columns);
-    summary.setLayoutParams(new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 0.27f : 0));
-    text(
-        summary,
-        getString(paired() ? R.string.live_destination : R.string.design_destination),
-        18,
-        false);
-    text(
-        summary,
+    summary.setTag("trip_summary");
+    summary.setLayoutParams(new LinearLayout.LayoutParams(wide ? dp(360) : -1, wide ? -1 : -2));
+    String destination =
         paired()
             ? (model.navigationDestination() == null
                 ? getString(R.string.live_no_destination)
                 : model.navigationDestination().name())
-            : getString(R.string.flow_destination),
-        32,
-        true);
-    text(summary, getString(R.string.design_remaining), 18, false);
-    text(summary, getString(R.string.design_remaining_value), 44, true);
-    text(summary, getString(R.string.design_eta), 22, true);
-    text(summary, getString(R.string.design_eta_notice), 18, false);
-    if (!stage.equals("RESULT")) {
-      text(summary, getString(R.string.design_request_time), 18, false);
-      text(summary, time(), 38, true);
-      text(
+            : getString(R.string.flow_destination);
+    JSONObject summaryBooking = paired() ? model.pairedStatus.optJSONObject("callback") : null;
+    if (summaryBooking == null && paired())
+      summaryBooking = model.pairedStatus.optJSONObject("latest");
+    boolean summaryConfirmed = ai.pleos.assistant.ux.LiveTrialPolicy.confirmed(summaryBooking);
+    String summaryTime =
+        summaryBooking == null
+            ? time()
+            : summaryBooking.optString(
+                summaryConfirmed ? "confirmedTime" : "requestedTime", time());
+    String summaryParty =
+        summaryBooking == null
+            ? getString(R.string.design_party, adults + children, adults, children)
+            : getString(R.string.design_total_people, summaryBooking.optInt("partySize"));
+    if (wide) {
+      caption(summary, getString(R.string.pdf_destination));
+      text(summary, destination, 28, true);
+      divider(summary);
+      caption(summary, getString(R.string.design_remaining));
+      text(summary, getString(R.string.design_remaining_value), 48, true);
+      divider(summary);
+      caption(summary, getString(R.string.pdf_eta_label));
+      text(summary, "19:00", 36, true);
+      caption(summary, getString(R.string.design_eta_notice));
+      divider(summary);
+      caption(
           summary,
-          getString(R.string.design_party, adults + children, adults, children),
-          22,
-          false);
+          getString(summaryConfirmed ? R.string.pdf_confirmed_time : R.string.design_request_time));
+      text(summary, summaryTime, 36, true);
+      caption(summary, summaryParty);
+      divider(summary);
+      caption(summary, getString(R.string.design_needs));
+      text(summary, needs(), 22, true);
+    } else {
+      text(summary, destination + " · " + summaryTime + " · " + summaryParty, 22, true);
+      caption(summary, getString(R.string.pdf_compact_eta));
     }
-    body = card(columns);
-    LinearLayout.LayoutParams bp =
-        new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 0.73f : 0);
-    bp.setMargins(wide ? dp(24) : 0, wide ? 0 : dp(16), 0, 0);
-    body.setLayoutParams(bp);
-    body.setPadding(dp(wide ? 32 : 24), dp(24), dp(wide ? 32 : 24), dp(24));
-    footer = row();
-    page.addView(footer);
+    LinearLayout panel = card(columns);
+    panel.setPadding(0, 0, 0, 0);
+    LinearLayout.LayoutParams panelParams =
+        new LinearLayout.LayoutParams(wide ? 0 : -1, wide ? -1 : 0, 1);
+    panelParams.setMargins(wide ? dp(24) : 0, wide ? 0 : dp(16), 0, 0);
+    panel.setLayoutParams(panelParams);
+    if (!model.restriction().allowsInput())
+      notice(panel, getString(R.string.flow_restricted), R.color.ui_warning_container);
+    int previousScroll =
+        bodyScroll != null && renderedStage.equals(stage) ? bodyScroll.getScrollY() : 0;
+    ScrollView scroll = new ScrollView(this);
+    bodyScroll = scroll;
+    renderedStage = stage;
+    scroll.setFillViewport(true);
+    scroll.post(() -> scroll.scrollTo(0, previousScroll));
+    panel.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+    body = column();
+    body.setPadding(dp(wide ? 36 : 24), dp(28), dp(wide ? 36 : 24), dp(28));
+    scroll.addView(body);
+    divider(panel);
+    footer = wide ? row() : column();
+    footer.setPadding(dp(24), dp(12), dp(24), dp(12));
+    panel.addView(footer, new LinearLayout.LayoutParams(-1, -2));
     if (tools && paired()) {
       action(
           body,
@@ -508,11 +556,15 @@ public final class FinalReservationActivity extends ComponentActivity {
         case "APPROVAL" -> approval();
         default -> conditions();
       }
-    if (tools) {
+    if (tools && !paired()) {
       text(page, getString(R.string.design_change_off), 18, false);
       action(page, "change_accept", R.string.flow_accept_change, false, false, () -> {});
       action(page, "change_reject", R.string.flow_reject_change, false, false, () -> {});
       legacy();
+    }
+    if (wide && footer.getChildCount() == 1) {
+      footer.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+      footer.getChildAt(0).setLayoutParams(new LinearLayout.LayoutParams(dp(360), -2));
     }
     setContentView(page);
     voiceHandler.post(this::applyVoice);
@@ -562,8 +614,20 @@ public final class FinalReservationActivity extends ComponentActivity {
     text(body, getString(R.string.live_callback_title), 30, true);
     text(body, booking.optString("restaurantName"), 24, true);
     detail(R.string.design_date, booking.optString("date"));
-    detail(R.string.live_callback_original, change.optString("originalTime"));
-    detail(R.string.live_callback_proposed, change.optString("proposedTime"));
+    LinearLayout times = row();
+    body.addView(times);
+    for (int i = 0; i < 2; i++) {
+      LinearLayout box = card(times);
+      LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(0, -2, 1);
+      size.setMargins(dp(6), dp(12), dp(6), dp(12));
+      box.setLayoutParams(size);
+      box.setBackground(
+          shape(i == 0 ? R.color.ui_surface_variant : R.color.ui_accent_container, 16));
+      caption(
+          box,
+          getString(i == 0 ? R.string.live_callback_original : R.string.live_callback_proposed));
+      text(box, change.optString(i == 0 ? "originalTime" : "proposedTime"), 48, true);
+    }
     text(body, change.optString("reason"), 20, false);
     if (change.optInt("additionalCostKrw", -1) == 0)
       text(body, getString(R.string.live_callback_no_fee), 20, false);
@@ -590,17 +654,17 @@ public final class FinalReservationActivity extends ComponentActivity {
     String changeId = change.optString("id");
     int version = change.optInt("version");
     action(
-        body,
+        footer,
         "live_callback_accept",
         R.string.live_callback_accept,
-        false,
+        true,
         enabled,
         () -> model.decidePairedChange(attemptId, changeId, version, true));
     action(
-        body,
+        footer,
         "live_callback_reject",
         R.string.live_callback_reject,
-        true,
+        false,
         enabled,
         () -> model.decidePairedChange(attemptId, changeId, version, false));
   }
@@ -614,21 +678,64 @@ public final class FinalReservationActivity extends ComponentActivity {
       text(body, demoChangeSummary, 32, true);
       text(body, getString(R.string.live_demo_unchanged), 20, false);
     }
-    title(confirmed ? R.string.live_confirmed : R.string.live_result_title);
-    text(
-        body,
+    if (model.pairedStatus.optJSONObject("callback") != null) {
+      if (!model.pairedError.isEmpty())
+        caption(body, getString(R.string.live_error, model.pairedError));
+      action(
+          body,
+          "paired_refresh",
+          R.string.live_pair_refresh,
+          false,
+          !model.pairedBusy,
+          () -> model.pairedRequest("", null, null, false));
+      return;
+    }
+    boolean declined = "DECLINED".equals(status);
+    boolean pending =
+        java.util.Set.of(
+                "READY", "RESERVED", "QUEUED", "DIALING", "IN_PROGRESS", "CALLING", "RUNNING")
+            .contains(status);
+    hero(
         getString(
-            R.string.live_result_mode, r == null ? "UNKNOWN" : r.optString("mode", "UNKNOWN")),
-        24,
-        true);
-    text(body, getString(R.string.live_status, status), 28, true);
+            confirmed
+                ? R.string.live_confirmed
+                : declined
+                    ? R.string.flow_declined
+                    : pending ? R.string.pdf_calling : R.string.pdf_unknown),
+        getString(
+            confirmed
+                ? R.string.pdf_confirmed_hint
+                : declined
+                    ? R.string.pdf_declined_hint
+                    : pending ? R.string.pdf_calling_hint : R.string.design_no_retry),
+        confirmed,
+        !confirmed && !pending);
+    if (tools) {
+      caption(
+          body,
+          getString(
+              R.string.live_result_mode, r == null ? "UNKNOWN" : r.optString("mode", "UNKNOWN")));
+      caption(body, getString(R.string.live_status, status));
+    }
     if (r != null) {
-      text(body, r.optString("restaurantName"), 30, true);
-      detail(R.string.design_date, r.optString("date"));
-      detail(R.string.design_request_time, r.optString("requestedTime"));
-      if (confirmed) text(body, r.optString("confirmedTime"), 64, true);
-      text(body, getString(R.string.design_total_people, r.optInt("partySize")), 26, true);
-      text(body, r.optString("notice"), 22, false);
+      caption(
+          body,
+          r.optString("date")
+              + " · "
+              + getString(confirmed ? R.string.pdf_confirmed_time : R.string.design_request_time));
+      LinearLayout stats = row();
+      body.addView(stats);
+      TextView timeValue =
+          text(stats, r.optString(confirmed ? "confirmedTime" : "requestedTime"), 64, true);
+      timeValue.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+      TextView party =
+          text(stats, getString(R.string.design_total_people, r.optInt("partySize")), 40, true);
+      party.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+      detail(R.string.design_restaurant, r.optString("restaurantName"));
+      if (confirmed)
+        caption(body, getString(R.string.pdf_requested_time, r.optString("requestedTime")));
+      if (!r.optString("notice").isBlank())
+        notice(body, r.optString("notice"), R.color.ui_surface_variant);
       JSONObject conditions = r.optJSONObject("requirements");
       if (conditions != null)
         for (var keys = conditions.keys(); keys.hasNext(); ) {
@@ -640,7 +747,7 @@ public final class FinalReservationActivity extends ComponentActivity {
     if (!model.pairedError.isEmpty())
       text(body, getString(R.string.live_error, model.pairedError), 22, false);
     action(
-        footer,
+        model.pairedStatus.optJSONObject("callback") == null ? footer : body,
         "paired_refresh",
         R.string.live_pair_refresh,
         true,
@@ -650,7 +757,7 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private void legacy() {
     action(
-        page,
+        body,
         "legacy",
         R.string.flow_legacy,
         false,
@@ -689,70 +796,58 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private void conditions() {
     title(R.string.design_conditions_title);
-    if (!paired()) text(body, getString(R.string.design_voice_steps), 22, false);
+    if (!paired() && tools) text(body, getString(R.string.design_voice_steps), 22, false);
     if (paired()) {
-      text(
-          body,
-          getString(
-              R.string.live_bound,
-              model.pairedStatus.optString("phoneLast4"),
-              model.pairedStatus.optString("mode")),
-          22,
-          true);
-      text(body, getString(R.string.live_search_notice), 20, false);
-      text(body, getString(R.string.live_destination_notice), 20, false);
-      action(
-          body,
-          "confirm_destination",
-          R.string.live_confirm_destination,
-          false,
-          ready() && model.navigationDestination() != null && !model.navigationReady(),
-          model::confirmDemoNavigation);
+      if (tools)
+        caption(
+            body,
+            getString(
+                R.string.live_bound,
+                model.pairedStatus.optString("phoneLast4"),
+                model.pairedStatus.optString("mode")));
+      caption(body, getString(R.string.pdf_live_search_cost));
+      if (tools) text(body, getString(R.string.live_search_notice), 20, false);
+      if (tools) text(body, getString(R.string.live_destination_notice), 20, false);
+      if (!model.navigationReady())
+        action(
+            body,
+            "confirm_destination",
+            R.string.live_confirm_destination,
+            false,
+            ready() && model.navigationDestination() != null && !model.navigationReady(),
+            model::confirmDemoNavigation);
     }
     text(
         body,
         getString(paired() ? R.string.live_search_hint : R.string.design_search_hint),
         22,
         false);
-    counter(
-        R.string.flow_adults,
-        adults,
-        1,
-        8,
-        () -> {
-          adults--;
-        },
-        () -> {
-          adults++;
-        });
-    counter(
-        R.string.flow_children,
-        children,
-        0,
-        6,
-        () -> {
-          children--;
-        },
-        () -> {
-          children++;
-        });
-    counter(
-        R.string.flow_buffer,
-        buffer,
-        0,
-        20,
-        () -> {
-          buffer -= 10;
-        },
-        () -> {
-          buffer += 10;
-        });
-    text(body, getString(R.string.design_time_formula, time()), 28, true);
-    text(body, getString(R.string.flow_conditions_label), 22, true);
-    action(body, "parking", R.string.design_parking, true, false, () -> {});
+    LinearLayout content = wide ? row() : column();
+    content.setGravity(Gravity.TOP);
+    body.addView(content);
+    LinearLayout originalBody = body;
+    LinearLayout counts = column();
+    LinearLayout choices = column();
+    content.addView(counts, new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 1 : 0));
+    LinearLayout.LayoutParams choiceParams =
+        new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 1 : 0);
+    choiceParams.setMargins(wide ? dp(32) : 0, wide ? 0 : dp(16), 0, 0);
+    content.addView(choices, choiceParams);
+    body = counts;
+    counter(R.string.flow_adults, adults, 1, 8, () -> adults--, () -> adults++);
+    counter(R.string.flow_children, children, 0, 6, () -> children--, () -> children++);
+    counter(R.string.flow_buffer, buffer, 0, 20, () -> buffer -= 10, () -> buffer += 10);
+    notice(body, getString(R.string.design_time_formula, time()), R.color.ui_surface_variant);
+    body = choices;
+    text(body, getString(R.string.design_needs), 24, true);
+    caption(body, getString(R.string.pdf_needs_hint));
+    TextView parking =
+        notice(body, getString(R.string.pdf_parking_fixed), R.color.ui_accent_container);
+    parking.setTextColor(getColor(R.color.ui_accent));
     toggle("chair", R.string.flow_chair, chair, () -> chair = !chair);
-    action(body, "pet", R.string.design_pet, false, false, () -> {});
+    if (tools) caption(body, getString(R.string.design_pet));
     toggle("stepfree", R.string.flow_stepfree, stepFree, () -> stepFree = !stepFree);
+    body = originalBody;
     text(body, getString(R.string.design_not_bookable), 18, false);
     action(
         footer,
@@ -764,7 +859,7 @@ public final class FinalReservationActivity extends ComponentActivity {
   }
 
   private void candidates() {
-    title(R.string.flow_candidates);
+    title(R.string.pdf_candidates_title);
     var view = model.destinationView();
     String status = view.state();
     if (!status.equals("RESULTS")) {
@@ -797,16 +892,25 @@ public final class FinalReservationActivity extends ComponentActivity {
             new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 1 : 0);
         cp.setMargins(dp(4), dp(8), dp(4), dp(8));
         card.setLayoutParams(cp);
+        if (wide) {
+          cp.height = dp(420);
+          card.setLayoutParams(cp);
+        }
         text(card, name, 28, true);
         text(card, address, 18, false);
         text(card, getString(R.string.design_candidate_unknown), 20, false);
-        action(
-            card,
-            "select_" + ordinal,
-            R.string.flow_select,
-            false,
-            ready() && canSelect(ordinal),
-            () -> select(ordinal, name, address));
+        if (wide) card.addView(new android.view.View(this), new LinearLayout.LayoutParams(1, 0, 1));
+        Button selectButton =
+            action(
+                card,
+                "select_" + ordinal,
+                R.string.flow_select,
+                false,
+                ready() && canSelect(ordinal),
+                () -> select(ordinal, name, address));
+        selectButton.setTextColor(
+            VehicleUi.states(this, R.color.ui_accent, R.color.ui_on_disabled));
+        selectButton.setElevation(0);
       }
     }
     action(footer, "edit", R.string.flow_edit, false, ready(), this::edit);
@@ -814,11 +918,10 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private void approval() {
     title(R.string.design_approval_title);
-    text(
+    notice(
         body,
         getString(paired() ? R.string.live_call_notice : R.string.design_mock_call_hint),
-        22,
-        false);
+        paired() ? R.color.ui_live_container : R.color.ui_mock_container);
     if (paired())
       text(
           body,
@@ -975,10 +1078,101 @@ public final class FinalReservationActivity extends ComponentActivity {
   }
 
   private void detail(int name, String value) {
-    LinearLayout line = column();
+    LinearLayout line = row();
+    line.setPadding(0, dp(4), 0, dp(4));
     body.addView(line);
-    text(line, getString(name), 18, false);
-    text(line, value, 26, true);
+    TextView label = text(line, getString(name), 20, false);
+    label.setTextColor(getColor(R.color.ui_secondary));
+    label.setPadding(dp(20), dp(16), dp(12), dp(16));
+    label.setBackgroundColor(getColor(R.color.ui_surface_variant));
+    label.setLayoutParams(new LinearLayout.LayoutParams(dp(wide ? 180 : 144), -1));
+    TextView detail = text(line, value, 24, true);
+    detail.setPadding(dp(24), dp(16), dp(12), dp(16));
+    detail.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+    divider(body);
+  }
+
+  private String needs() {
+    return getString(R.string.flow_parking)
+        + (chair ? " · " + getString(R.string.flow_chair) : "")
+        + (stepFree ? " · " + getString(R.string.flow_stepfree) : "");
+  }
+
+  private android.graphics.drawable.GradientDrawable shape(int color, int radius) {
+    var drawable = new android.graphics.drawable.GradientDrawable();
+    drawable.setColor(getColor(color));
+    drawable.setCornerRadius(dp(radius));
+    return drawable;
+  }
+
+  private TextView caption(LinearLayout parent, String value) {
+    TextView label = text(parent, value, 18, false);
+    label.setTextColor(getColor(R.color.ui_secondary));
+    return label;
+  }
+
+  private void divider(LinearLayout parent) {
+    android.view.View line = new android.view.View(this);
+    line.setBackgroundColor(getColor(R.color.ui_card_border));
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(1));
+    params.setMargins(0, dp(12), 0, dp(12));
+    parent.addView(line, params);
+  }
+
+  private TextView notice(LinearLayout parent, String value, int color) {
+    TextView view = text(parent, value, 20, false);
+    view.setPadding(dp(24), dp(20), dp(24), dp(20));
+    view.setBackground(shape(color, 16));
+    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+    params.setMargins(0, dp(8), 0, dp(16));
+    view.setLayoutParams(params);
+    return view;
+  }
+
+  private void steps(LinearLayout parent) {
+    int current = stage.equals("CONDITIONS") ? 0 : stage.equals("CANDIDATES") ? 1 : 2;
+    JSONObject callback = model.pairedStatus.optJSONObject("callback");
+    if (paired() && callback != null && callback.optJSONObject("change") != null) current = 3;
+    String[] labels = getResources().getStringArray(R.array.pdf_steps);
+    LinearLayout strip = row();
+    parent.addView(strip, new LinearLayout.LayoutParams(-2, -2));
+    for (int i = 0; i < labels.length; i++) {
+      TextView step =
+          text(
+              strip,
+              (i < current ? "✓" : Integer.toString(i + 1)) + "  " + labels[i],
+              wide ? 18 : 16,
+              i == current);
+      step.setPadding(dp(16), dp(12), dp(16), dp(12));
+      step.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+      step.setSelected(i == current);
+      if (i == current) {
+        step.setTextColor(getColor(R.color.ui_accent));
+        step.setBackground(shape(R.color.ui_accent_container, 28));
+      } else step.setTextColor(getColor(R.color.ui_secondary));
+    }
+  }
+
+  private void hero(String heading, String explanation, boolean confirmed, boolean warning) {
+    LinearLayout hero = row();
+    hero.setPadding(dp(24), dp(20), dp(24), dp(20));
+    hero.setBackground(
+        shape(
+            confirmed
+                ? R.color.ui_success_container
+                : warning ? R.color.ui_warning_container : R.color.ui_accent_container,
+            20));
+    body.addView(hero, new LinearLayout.LayoutParams(-1, -2));
+    TextView icon = text(hero, confirmed ? "✓" : warning ? "?" : "◷", 46, true);
+    icon.setGravity(Gravity.CENTER);
+    icon.setTextColor(
+        getColor(
+            confirmed ? R.color.ui_success : warning ? R.color.ui_warning : R.color.ui_accent));
+    icon.setLayoutParams(new LinearLayout.LayoutParams(dp(88), dp(88)));
+    LinearLayout copy = column();
+    hero.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+    text(copy, heading, 30, true);
+    caption(copy, explanation);
   }
 
   private void title(int id) {
@@ -988,7 +1182,7 @@ public final class FinalReservationActivity extends ComponentActivity {
   private void counter(int id, int value, int min, int max, Runnable minus, Runnable plus) {
     LinearLayout line = row();
     body.addView(line);
-    TextView label = text(line, getString(id) + "  " + value, 26, true);
+    TextView label = text(line, getString(id), 22, true);
     label.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
     action(
         line,
@@ -1000,6 +1194,9 @@ public final class FinalReservationActivity extends ComponentActivity {
           minus.run();
           render();
         });
+    TextView number = text(line, Integer.toString(value), 32, true);
+    number.setGravity(Gravity.CENTER);
+    number.setLayoutParams(new LinearLayout.LayoutParams(dp(64), -2));
     action(
         line,
         "plus_" + id,
@@ -1010,8 +1207,8 @@ public final class FinalReservationActivity extends ComponentActivity {
           plus.run();
           render();
         });
-    for (int i = 1; i < line.getChildCount(); i++) {
-      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(80), dp(80));
+    for (int i : new int[] {1, 3}) {
+      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(72), dp(72));
       lp.setMargins(dp(8), dp(8), dp(8), dp(8));
       line.getChildAt(i).setLayoutParams(lp);
     }
@@ -1030,6 +1227,10 @@ public final class FinalReservationActivity extends ComponentActivity {
               render();
             });
     b.setSelected(checked);
+    b.setText((checked ? "✓  " : "□  ") + getString(name));
+    b.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+    b.setTextColor(getColor(checked ? R.color.ui_accent : R.color.ui_text));
+    b.setBackground(shape(checked ? R.color.ui_accent_container : R.color.ui_surface_variant, 16));
     b.setContentDescription(
         getString(name)
             + " · "
