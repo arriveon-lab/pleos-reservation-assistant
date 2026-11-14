@@ -1,5 +1,6 @@
 """Integration boundaries for pairing, server-owned candidates and no-network dialing."""
 import unittest
+from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import patch
 from uuid import uuid4
@@ -106,12 +107,14 @@ class PairedPhoneTest(unittest.TestCase):
         code = paired.issue(self.service, owner)["pairingCode"]
         paired.claim(self.service, {"pairingCode": code, "testPhoneNumber": phone, "mode": "LIVE"},
                      self.live_config)
-        booking_id, attempt_id, call_id = (str(uuid4()) for _ in range(3))
+        booking_id, attempt_id, call_id, trip_id = (str(uuid4()) for _ in range(4))
         day = self.payload(str(uuid4()))["date"]
+        self.service._put(owner, "trip", {"id": trip_id, "version": 1})
         self.service._put(owner, "booking", {
             "id": booking_id, "mode": "LIVE", "status": "CONFIRMED", "version": 1,
             "pleosPairedTest": paired._active(self.service, owner)["generation"],
-            "liveTest": True, "liveCallId": call_id, "restaurantId": "test-restaurant",
+            "liveTest": True, "webTest": True, "liveCallId": call_id,
+            "tripId": trip_id, "tripVersion": 1, "restaurantId": "test-restaurant",
             "restaurantName": "가상 식당", "reservationName": "가상시험", "date": day,
             "snapshot": {"partySize": 3}, "approvedSnapshot": {"partySize": 3, "petAccompanied": "NO",
                                                                 "stepFree": False, "highChairCount": 0,
@@ -127,8 +130,6 @@ class PairedPhoneTest(unittest.TestCase):
         return attempt_id, day
 
     def callback(self, day):
-        from dataclasses import replace
-
         config = replace(self.config, allowed_numbers=(paired.normalize_number(self.phone),))
         workflow = LiveWorkflow(self.service, config)
         with self.assertRaisesRegex(DomainError, "허용"):
@@ -149,6 +150,132 @@ class PairedPhoneTest(unittest.TestCase):
             workflow.request_change(call_id, "19:00", "가상 지연", proposal, 0, "2099-01-01")
         workflow.request_change(call_id, "19:00", "가상 지연", proposal, proposed_date=day)
         return workflow, call_id
+
+    def test_callback_prefers_unique_reservation_from_latest_test_pairing(self):
+        older_id, _ = self.confirmed_attempt(self.other, self.phone)
+        current_id, _ = self.confirmed_attempt(self.owner, self.phone)
+        old_booking = self.service._get(self.other, "pleos_phone_attempt", older_id)["bookingId"]
+        new_booking = self.service._get(self.owner, "pleos_phone_attempt", current_id)["bookingId"]
+        config = replace(self.config, allowed_numbers=(paired.normalize_number(self.phone),))
+        workflow = LiveWorkflow(self.service, config)
+        call = workflow.begin_inbound(self.phone, config.inbound_trunk_id, "current", config.telkit_number)
+        self.assertTrue(call["ownerBound"])
+        self.assertEqual(new_booking, call["bookingId"])
+        self.assertNotEqual(old_booking, call["bookingId"])
+        self.assertEqual(old_booking, self.service._get(self.other, "booking", old_booking)["id"])
+        workflow.finish(call["id"])
+
+        caller = config.allowed_numbers[0]
+        matches = paired.callback_bookings(self.service, caller)
+        current = self.service._get(self.owner, "booking", new_booking)
+        self.assertIsNone(paired.current_callback_booking(
+            self.service, caller, matches + [(self.owner, {**current, "id": str(uuid4())})]))
+        paired.disconnect(self.service, self.owner)
+        paired.disconnect(self.service, self.other)
+        call = workflow.begin_inbound(self.phone, config.inbound_trunk_id, "ambiguous", config.telkit_number)
+        self.assertFalse(call["ownerBound"])
+        self.assertIsNone(call["bookingId"])
+
+    def test_driver_delay_dials_same_booking_and_requires_call_evidence(self):
+        attempt_id, day = self.confirmed_attempt(self.owner, self.phone)
+        attempt = self.service._get(self.owner, "pleos_phone_attempt", attempt_id)
+        booking_id = attempt["bookingId"]
+        workflow = LiveWorkflow(self.service, self.config)
+        key = str(uuid4())
+        body = {"version": 1, "proposedTime": "19:00"}
+
+        async def reserve_only(service, config, owner, booking, version, request_key, **kwargs):
+            call, created = workflow.reserve(owner, booking, version, request_key, **kwargs)
+            self.assertEqual("CHANGE_CONFIRMATION", call["purpose"])
+            self.assertEqual("+821000001234", call["target"])
+            if created:
+                workflow.mark_dispatching(call["id"])
+
+        with patch("prototypes.phone_agent.voice.transport.dial_booking", side_effect=reserve_only) as dial:
+            with self.assertRaises(DomainError):
+                paired.request_delay_change(self.service, self.other, attempt_id, body, key, self.live_config)
+            with self.assertRaises(DomainError):
+                paired.request_delay_change(self.service, self.owner, attempt_id,
+                                            {**body, "proposedTime": "18:00"}, key, self.live_config)
+            running = paired.request_delay_change(self.service, self.owner, attempt_id, body, key, self.live_config)
+            self.assertEqual("18:30", running["latest"]["confirmedTime"])
+            self.assertEqual("CALLING", running["latest"]["delayChange"]["status"])
+            self.assertEqual(running, paired.request_delay_change(
+                self.service, self.owner, attempt_id, body, key, self.live_config))
+            self.assertEqual(3, dial.await_count)  # Earlier-time request is rejected in reserve.
+        self.assertEqual(1, paired._active(self.service, self.owner)["calls"])
+        booking = self.service._get(self.owner, "booking", booking_id)
+        call_id = booking["liveCallId"]
+        with self.assertRaises(DomainError):
+            workflow.confirm_driver_delay(call_id, "네.")
+        question = workflow.context(call_id)["driverDelayQuestion"]
+        self.assertIn("저녁 여섯 시 삼십 분", question)
+        self.assertIn("저녁 일곱 시", question)
+        workflow.transcript(call_id, "agent", question)
+        workflow.transcript(call_id, "restaurant", "네, 변경 가능합니다.")
+        with self.assertRaises(DomainError):
+            workflow.confirm_driver_delay(call_id, "네, 변경 가능합니다.")
+        followup = workflow.context(call_id)["driverDelayFollowup"]
+        self.assertEqual("저녁 일곱 시로 변경을 확정해 주셨나요?", followup)
+        workflow.transcript(call_id, "agent", followup)
+        workflow.transcript(call_id, "restaurant", "네, 19:30으로 변경 확정됐습니다.")
+        with self.assertRaises(DomainError):
+            workflow.confirm_driver_delay(call_id, "네, 19:30으로 변경 확정됐습니다.")
+        workflow.transcript(call_id, "agent", followup)
+        workflow.transcript(call_id, "restaurant", "네, 저녁 7시로 변경 확정됐습니다.")
+        self.assertEqual("APPLIED", workflow.confirm_driver_delay(call_id, "네, 저녁 7시로 변경 확정됐습니다."))
+        workflow.finish(call_id)
+        final = paired.status(self.service, self.owner)
+        self.assertEqual("19:00", final["latest"]["confirmedTime"])
+        self.assertEqual("APPLIED", final["latest"]["delayChange"]["status"])
+        self.assertIsNone(final["callback"])
+        self.assertEqual(booking_id, paired.callback_bookings(
+            self.service, "+821000001234")[0][1]["id"])
+
+    def test_unconfirmed_driver_delay_only_rechecks_the_same_time(self):
+        attempt_id, _ = self.confirmed_attempt(self.owner, self.phone)
+        attempt = self.service._get(self.owner, "pleos_phone_attempt", attempt_id)
+        booking_id = attempt["bookingId"]
+        workflow = LiveWorkflow(self.service, self.config)
+        kwargs = {"test_phone_number": self.phone, "delay_time": "19:30"}
+        first_key = str(uuid4())
+        call, _ = workflow.reserve(self.owner, booking_id, 1, first_key, **kwargs)
+        workflow.finish(call["id"], "delay_change_unconfirmed")
+        latest = paired.status(self.service, self.owner)["latest"]
+        self.assertTrue(latest["delayChange"]["canRetry"])
+        self.assertEqual("18:30", latest["confirmedTime"])
+        with self.assertRaises(DomainError) as raised:
+            workflow.reserve(self.owner, booking_id, latest["version"], str(uuid4()),
+                             **{**kwargs, "delay_time": "19:40"})
+        self.assertEqual("CHANGE_PENDING", raised.exception.code)
+        original, created = workflow.reserve(self.owner, booking_id, 1, first_key, **kwargs)
+        self.assertFalse(created)
+        self.assertEqual("ENDED", original["status"])
+        retry, created = workflow.reserve(self.owner, booking_id, latest["version"], str(uuid4()), **kwargs)
+        self.assertTrue(created)
+        self.assertNotEqual(call["id"], retry["id"])
+        self.assertIn("아까 문의드린 예약 시간 변경", retry["delayQuestion"])
+        workflow.finish(call["id"], "late_cleanup")
+        running = paired.status(self.service, self.owner)["latest"]
+        self.assertEqual("CALLING", running["delayChange"]["status"])
+        self.assertEqual("18:30", running["confirmedTime"])
+
+    def test_voice_day_matches_real_booking_date(self):
+        from datetime import date
+        from .voice.workflow import spoken_booking_day
+
+        today = date(2026, 11, 14)
+        self.assertEqual("오늘", spoken_booking_day("2026-11-14", today=today))
+        self.assertEqual("내일", spoken_booking_day("2026-11-15", today=today))
+        self.assertEqual("11월 16일", spoken_booking_day("2026-11-16", today=today))
+
+    def test_callback_prompt_reads_korean_twenty_four_hour_time(self):
+        from .voice.workflow import callback_confirmation_question
+
+        self.assertEqual("예약자가 동의했습니다. 십구 시 사십 분으로 변경 확정해 주시겠어요?",
+                         callback_confirmation_question({"proposedTime": "19:40"}))
+        self.assertEqual("예약자가 동의했습니다. 추가 비용 없이 영 시로 변경 확정해 주시겠어요?",
+                         callback_confirmation_question({"proposedTime": "00:00", "additionalCostKrw": 0}))
 
     def test_callback_change_is_owned_idempotent_and_requires_restaurant_confirmation(self):
         attempt_id, day = self.confirmed_attempt(self.owner, self.phone)
@@ -182,7 +309,7 @@ class PairedPhoneTest(unittest.TestCase):
             self.assertEqual("IDEMPOTENCY_CONFLICT", different.exception.code)
 
         prompt = workflow.callback_confirmation_prompt(call_id)
-        self.assertIn("19:00", prompt)
+        self.assertEqual("예약자가 동의했습니다. 십구 시로 변경 확정해 주시겠어요?", prompt)
         self.assertNotIn("추가 비용", prompt)
         workflow.transcript(call_id, "agent", prompt)
         workflow.transcript(call_id, "restaurant", "네, 19시 반으로 변경했습니다.")
@@ -217,10 +344,10 @@ class PairedPhoneTest(unittest.TestCase):
                         }, str(uuid4()))
 
     def test_ambiguous_caller_details_do_not_link_a_reservation(self):
-        from dataclasses import replace
-
         _, day = self.confirmed_attempt(self.owner, self.phone)
         self.confirmed_attempt(self.other, self.phone)
+        paired.disconnect(self.service, self.owner)
+        paired.disconnect(self.service, self.other)
         config = replace(self.config, allowed_numbers=(paired.normalize_number(self.phone),))
         workflow = LiveWorkflow(self.service, config)
         call = workflow.begin_inbound(self.phone, config.inbound_trunk_id, "ambiguous", config.telkit_number)

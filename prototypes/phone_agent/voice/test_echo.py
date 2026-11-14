@@ -11,7 +11,7 @@ import wave
 from livekit.agents.voice import io
 
 from .config import ConfigurationError, VoiceConfig
-from .diagnostics import AudioDiagnostics
+from .diagnostics import AudioDiagnostics, VoiceLevelOutput
 from .echo import EchoInput, EchoOutput, EchoProcessor, PLAYOUT_LEAD_SECONDS, attach_echo, pcm_frame
 from .resilience import room_options
 
@@ -44,6 +44,28 @@ class Sink(io.AudioOutput):
 
 
 class EchoTest(unittest.IsolatedAsyncioTestCase):
+    async def test_voice_level_limits_playback_and_feeds_the_same_audio_to_aec(self):
+        sink = Sink()
+        processor = EchoProcessor()
+        paced = EchoOutput(sink, processor)
+        output = VoiceLevelOutput(paced)
+        quiet = pcm_frame(array.array("h", [1000, -1000] * 80).tobytes())
+        loud = pcm_frame(array.array("h", [32767, -32768] * 80).tobytes())
+        await output.capture_frame(quiet)
+        await output.capture_frame(loud)
+        await output.capture_frame(quiet)
+        output.flush()
+        await asyncio.wait_for(output.wait_for_playout(), timeout=1)
+        samples = array.array("h", sink.data)
+        self.assertEqual(len(samples), 480)
+        self.assertEqual(800, samples[0])
+        self.assertEqual(-16384, samples[161])
+        self.assertGreater(samples[320], 500)
+        self.assertLess(samples[320], samples[0])
+        self.assertEqual(bytes(sink.data), b"".join(data for _, data in processor.references))
+        self.assertEqual({"frames": 3, "peakBefore": 1.0, "peakAfter": 0.5, "limitedFrames": 1},
+                         output.snapshot())
+
     def test_native_delayed_speech_echo_is_reduced_and_double_talk_retains_energy(self):
         folder = Path(__file__).with_name("audio")
         def samples(name):

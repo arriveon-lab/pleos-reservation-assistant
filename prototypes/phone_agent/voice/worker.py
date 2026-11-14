@@ -15,7 +15,7 @@ from livekit.plugins import silero, soniox
 from ..service import DomainError, ReservationService
 from .agent_text import AgentTextOutput, AgentTextSTT
 from .config import SONIOX_TRIAL_MODEL, VoiceConfig, load_env_file
-from .diagnostics import AudioDiagnostics
+from .diagnostics import AudioDiagnostics, VoiceLevelOutput
 from .echo import attach_echo
 from .input_probe import InputProbe
 from .resilience import (CallSupervisor, SerializedStore, initial_reply_instructions,
@@ -63,7 +63,8 @@ INSTRUCTIONS = """너는 한국어 식당 예약 비서다. 짧고 자연스러�
 상대가 처음 예약 요청을 못 들었다고 하면 날짜·시간·인원을 포함한 질문을 짧게 다시 말한다.
 다시 잘못 들리면 실제 제공된 spokenReservationName을 천천히 한 번 말한다. 예시는 실제 이름 대신 사용하지 않는다.
 날짜·시간·인원 확인과 추가 비용 질문을 서로 다른 차례에 한다. 길게 설명하거나 사과를 덧붙이지 않는다.
-말로 날짜를 읽을 때 연도·하이픈을 나열하지 않고 '십일월 십육일'처럼 읽는다.
+말로 날짜를 읽을 때 spokenBookingDay와 spokenBookingTime이 있으면 그대로 사용한다.
+날짜 표현이 제공되지 않으면 연도·하이픈을 나열하지 않고 월과 일을 읽는다.
 시간은 '십구 시 영 분' 대신 '저녁 일곱 시'처럼, 인원은 '두 명'처럼 자연스럽게 읽는다.
 예약자 이름은 제공된 이름 그대로 또렷하게 말한다. 영문 상태명·JSON·도구 이름을 소리 내지 않는다.
 도구에 제출하는 날짜와 시간은 말하는 표현과 구분하여 YYYY-MM-DD와 HH:MM 형식을 유지한다.
@@ -182,6 +183,9 @@ class BookingVoiceAgent(Agent):
         self.workflow, self.call_id, self.close_call = workflow, call_id, close_call
         self.is_booking = context.get("purpose", "BOOKING") == "BOOKING"
         self.is_test_booking = self.is_booking and context.get("testCall") is True
+        self.driver_delay_question = context.get("driverDelayQuestion")
+        self.driver_delay_followup = context.get("driverDelayFollowup") or self.driver_delay_question
+        self.driver_delay_repeated = False
         self.spoken_booking_name = context.get("spokenReservationName") or context.get("reservationName")
         self.named_request_turn = None
         self.has_booking_name = bool(context.get("reservationName"))
@@ -212,6 +216,26 @@ class BookingVoiceAgent(Agent):
             await self.store.run(operation)
         else:
             operation()
+        if self.driver_delay_question:
+            result = await self._tool(
+                lambda: self.workflow.confirm_driver_delay(self.call_id, new_message.text_content))
+            if result == "APPLIED":
+                closing, reason = "네, 확인했습니다. 감사합니다.", "agent_finished"
+            elif result == "REJECTED":
+                closing, reason = "알겠습니다. 기존 예약 시간으로 부탁드립니다.", "agent_finished"
+            elif (isinstance(result, dict) and result.get("code") == "EVIDENCE_REQUIRED"
+                  and not self.driver_delay_repeated):
+                self.driver_delay_repeated = True
+                await self.session.say(self.driver_delay_followup, allow_interruptions=False)
+                raise StopResponse()
+            else:
+                closing = "변경 확정을 확인하지 못했습니다. 안내 감사합니다."
+                reason = "delay_change_unconfirmed"
+            if self.supervisor:
+                self.supervisor.closing = True
+            await self.session.say(closing, allow_interruptions=False)
+            await self.close_call(reason)
+            raise StopResponse()
         if self.awaiting_callback_confirmation:
             self.awaiting_callback_confirmation = False
             result = await self._tool(lambda: self.workflow.confirm_callback_change(self.call_id, new_message.text_content))
@@ -535,6 +559,8 @@ async def reservation_agent(ctx: agents.JobContext):
             input_probe = InputProbe(session, participant)
             diagnostics.input_probe = input_probe
         echo = attach_echo(session, config, diagnostics)
+        diagnostics.voice_output = VoiceLevelOutput(session.output.audio)
+        session.output.audio = diagnostics.voice_output
         if agent_text_output:
             await asyncio.wait_for(session.stt.connected.wait(), timeout=6)
         reminder = supervisor.spawn(supervisor.watch())
@@ -543,10 +569,15 @@ async def reservation_agent(ctx: agents.JobContext):
             await speak_trial_opening(session, ctx.room, booking_context, diagnostics)
         else:
             await session.say(opening_text(booking_context), allow_interruptions=False)
-        if not ended and not supervisor.terminal and agent.user_turns == 0:
-            await session.generate_reply(
-                instructions=initial_reply_instructions(booking_context),
-                allow_interruptions=True)
+        if not ended and not supervisor.terminal and not supervisor.closing and (
+                agent.driver_delay_question or agent.user_turns == 0):
+            if agent.driver_delay_question:
+                if not agent.driver_delay_repeated:
+                    await session.say(agent.driver_delay_question, allow_interruptions=False)
+            elif not (booking_context.get("pairedCallback") and booking_context.get("found")):
+                await session.generate_reply(
+                    instructions=initial_reply_instructions(booking_context),
+                    allow_interruptions=True)
     except Exception:
         await close_call("worker_error")
 

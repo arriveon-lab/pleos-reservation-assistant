@@ -24,7 +24,8 @@ final class LoopbackTransport implements AuthSession.Wire {
     boolean preview = destination || path.matches("/experimental/place-previews(/[a-zA-Z0-9-]+)*");
     boolean paired =
         BuildConfig.PAIRED_PHONE_DEMO
-            && path.matches("/paired-phone(?:/disconnect|/calls(?:/[a-f0-9-]{36}(?:/change)?)?)?");
+            && path.matches(
+                "/paired-phone(?:/disconnect|/calls(?:/[a-f0-9-]{36}(?:/change|/delay-change)?)?)?");
     if (!BuildConfig.DEBUG
         || (!paired
             && !preview
@@ -63,7 +64,10 @@ final class LoopbackTransport implements AuthSession.Wire {
                 .openConnection(Proxy.NO_PROXY);
     try {
       connection.setConnectTimeout(5000);
-      connection.setReadTimeout(paired && body != null && path.endsWith("/calls") ? 45000 : 10000);
+      connection.setReadTimeout(
+          paired && body != null && (path.endsWith("/calls") || path.endsWith("/delay-change"))
+              ? 45000
+              : 10000);
       connection.setInstanceFollowRedirects(false);
       connection.setUseCaches(false);
       connection.setRequestProperty("Accept", "application/json");

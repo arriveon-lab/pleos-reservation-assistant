@@ -2,6 +2,7 @@ package ai.pleos.assistant.app;
 
 import ai.pleos.assistant.ux.DestinationController;
 import ai.pleos.assistant.ux.DrivingRestrictionController;
+import ai.pleos.assistant.ux.LiveTrialPolicy;
 import ai.pleos.assistant.ux.MockRepository;
 import android.content.Intent;
 import android.graphics.Typeface;
@@ -19,60 +20,173 @@ public final class FinalReservationActivity extends ComponentActivity {
   private DrivingRestrictionController driving;
   private NavigationDestinationAdapter navigation;
   private String selectedBinding = "";
-  private android.app.AlertDialog demoChangeDialog;
-  private String demoChangeId = "", demoChangeSummary = "";
+  private static final java.time.format.DateTimeFormatter DEMO_TIME_FORMAT =
+      java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT);
+  private static final int TRAFFIC_DEMO_WAIT_MS = 4000;
+  private static final int MIN_DELAY_MINUTES = 10;
+  private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+  private static final LocalTime DEFAULT_ARRIVAL = LocalTime.of(19, 0);
+  private static final String MOCK_CATALOG_NAME = "가상 공공데이터 식당 ";
 
-  private void showDemoChangeAlert() {
-    JSONObject result = model.pairedStatus.optJSONObject("latest");
-    if (!ready() || !ai.pleos.assistant.ux.LiveTrialPolicy.confirmed(result)) return;
-    String id = result.optString("id");
-    String original = result.optString("confirmedTime");
-    java.time.LocalTime proposed = java.time.LocalTime.parse(original).plusMinutes(20);
-    String later = proposed.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
-    if (proposed.isBefore(java.time.LocalTime.parse(original)))
-      later = getString(R.string.live_demo_next_day, later);
-    String proposedLabel = later;
-    tools = false;
-    render();
-    if (demoChangeDialog != null) demoChangeDialog.dismiss();
-    demoChangeDialog =
-        new android.app.AlertDialog.Builder(this)
-            .setTitle(R.string.live_demo_alert_title)
-            .setMessage(
-                getString(
-                    R.string.live_demo_alert_body,
-                    result.optString("restaurantName"),
-                    original,
-                    proposedLabel))
-            .setPositiveButton(
-                R.string.live_demo_accept,
-                (dialog, which) -> finishDemoChange(id, proposedLabel, true))
-            .setNegativeButton(
-                R.string.live_demo_keep, (dialog, which) -> finishDemoChange(id, original, false))
-            .setNeutralButton(R.string.live_demo_later, (dialog, which) -> {})
-            .create();
-    demoChangeDialog.setCanceledOnTouchOutside(false);
-    demoChangeDialog.show();
-    TextView message = demoChangeDialog.findViewById(android.R.id.message);
-    if (message != null) message.setTextSize(26);
-    for (int button : new int[] {-1, -2, -3}) {
-      demoChangeDialog.getButton(button).setTextSize(22);
-      demoChangeDialog.getButton(button).setMinHeight(dp(64));
+  private record DemoReservation(String id, LocalDateTime time, String restaurant) {}
+
+  private android.app.AlertDialog demoChangeDialog;
+  private android.app.AlertDialog callbackChangeDialog;
+  private String displayedCallback = "";
+  private DemoReservation trafficDemoReservation;
+  private LocalDateTime demoEta;
+  private String demoChangeSummary = "";
+  private final Runnable trafficDemoUpdate = this::applyDemoTraffic;
+
+  private DemoReservation confirmedDemoReservation() {
+    if (!ready()) return null;
+    JSONObject result;
+    if (paired()) {
+      JSONObject callback = model.pairedStatus.optJSONObject("callback");
+      JSONObject change = callback == null ? null : callback.optJSONObject("change");
+      if (change != null
+          && ("AWAITING_USER".equals(change.optString("status"))
+              || "RECONFIRMING".equals(change.optString("status")))) return null;
+      result = model.pairedStatus.optJSONObject("latest");
+      if (!LiveTrialPolicy.confirmed(result)) return null;
+    } else {
+      if (model.phone == null || model.phone.busy() || !"CONFIRMED".equals(model.phone.state()))
+        return null;
+      result = model.phone.receipt();
+      if (!"MOCK".equals(result.optString("mode"))) return null;
     }
-    demoChangeDialog
-        .getWindow()
-        .setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - dp(48), dp(900)), -2);
+    if (result.optString("id").isEmpty()) return null;
+    try {
+      return new DemoReservation(
+          result.getString("id"),
+          LocalDateTime.of(
+              LocalDate.parse(result.getString("date")),
+              LocalTime.parse(result.getString("confirmedTime"))),
+          result.optString("restaurantName"));
+    } catch (DateTimeException | JSONException invalid) {
+      return null;
+    }
   }
 
-  private void finishDemoChange(String id, String time, boolean accept) {
-    JSONObject current = model.pairedStatus.optJSONObject("latest");
-    if (!ready()
-        || !ai.pleos.assistant.ux.LiveTrialPolicy.confirmed(current)
-        || !id.equals(current.optString("id"))) return;
-    demoChangeId = id;
-    demoChangeSummary =
-        getString(accept ? R.string.live_demo_accepted : R.string.live_demo_kept, time);
+  private void resetTrafficDemo() {
+    voiceHandler.removeCallbacks(trafficDemoUpdate);
+    if (demoChangeDialog != null) demoChangeDialog.dismiss();
+    demoChangeDialog = null;
+    trafficDemoReservation = null;
+    demoEta = null;
+    demoChangeSummary = "";
+  }
+
+  private void startTrafficDemo() {
+    DemoReservation reservation = confirmedDemoReservation();
+    if (!voiceResumed || reservation == null) return;
+    resetTrafficDemo();
+    trafficDemoReservation = reservation;
+    demoEta =
+        BuildConfig.FILMING_DEMO && reservation.time().equals(reservationAt())
+            ? filmArrival
+            : reservation.time().minusMinutes(15);
+    tools = false;
     render();
+    voiceHandler.postDelayed(trafficDemoUpdate, TRAFFIC_DEMO_WAIT_MS);
+  }
+
+  private String demoTime(LocalDateTime time) {
+    String clock = time.format(DEMO_TIME_FORMAT);
+    int day = time.toLocalDate().compareTo(trafficDemoReservation.time().toLocalDate());
+    if (day < 0) return getString(R.string.traffic_demo_previous_day, clock);
+    if (day > 0) return getString(R.string.live_demo_next_day, clock);
+    return clock;
+  }
+
+  private void applyDemoTraffic() {
+    DemoReservation reservation = trafficDemoReservation;
+    if (!voiceResumed || reservation == null || !reservation.equals(confirmedDemoReservation()))
+      return;
+    String before = demoTime(demoEta);
+    demoEta = reservation.time().plusMinutes(MIN_DELAY_MINUTES);
+    render();
+    long delayMinutes = Duration.between(reservation.time(), demoEta).toMinutes();
+    if (delayMinutes < MIN_DELAY_MINUTES) return;
+    String original = demoTime(reservation.time());
+    LocalDateTime proposedTime = demoEta.plusMinutes(10);
+    String proposal = demoTime(proposedTime);
+    boolean supportsCall = paired() && model.pairedStatus.optBoolean("delayChangeEnabled");
+    boolean canCall =
+        supportsCall
+            && proposedTime.toLocalDate().equals(reservation.time().toLocalDate())
+            && model.canRequestDelayChange(proposal);
+    LinearLayout popup = changePopup();
+    text(popup, getString(R.string.traffic_demo_badge), 20, false);
+    text(popup, getString(R.string.traffic_demo_title, delayMinutes), 36, true)
+        .setAccessibilityHeading(true);
+    text(popup, restaurantLabel(reservation.restaurant()), 24, false);
+    text(popup, getString(R.string.traffic_demo_arrival, before, demoTime(demoEta)), 24, false);
+    text(popup, getString(R.string.traffic_demo_proposal, original, proposal), 34, true);
+    if (canCall) text(popup, getString(R.string.traffic_trial_dial_notice), 22, false);
+    else if (supportsCall && !proposedTime.toLocalDate().equals(reservation.time().toLocalDate()))
+      text(popup, getString(R.string.traffic_trial_next_day_unavailable), 22, false);
+    LinearLayout buttons = changeButtons(popup);
+    action(
+        buttons,
+        "traffic_keep",
+        R.string.live_demo_keep,
+        false,
+        true,
+        () -> chooseTrafficOption(reservation, original, false, false));
+    action(
+        buttons,
+        "traffic_inquire",
+        getString(canCall ? R.string.traffic_trial_dial : R.string.traffic_demo_accept, proposal),
+        true,
+        !supportsCall || canCall,
+        () -> chooseTrafficOption(reservation, proposal, true, canCall));
+    demoChangeDialog = showChangePopup(popup);
+  }
+
+  private LinearLayout changePopup() {
+    LinearLayout popup = column();
+    popup.setPadding(dp(32), dp(22), dp(32), dp(20));
+    var surface = new android.graphics.drawable.GradientDrawable();
+    surface.setColor(getColor(R.color.ui_surface));
+    surface.setCornerRadius(dp(24));
+    popup.setBackground(surface);
+    return popup;
+  }
+
+  private LinearLayout changeButtons(LinearLayout popup) {
+    boolean sideBySide =
+        getResources().getConfiguration().screenWidthDp >= 700
+            && getResources().getConfiguration().fontScale <= 1.2;
+    LinearLayout buttons = sideBySide ? row() : column();
+    popup.addView(buttons);
+    return buttons;
+  }
+
+  private android.app.AlertDialog showChangePopup(LinearLayout popup) {
+    ScrollView dialogScroll = new ScrollView(this);
+    dialogScroll.addView(popup);
+    var dialog = new android.app.AlertDialog.Builder(this).setView(dialogScroll).create();
+    dialog.setCanceledOnTouchOutside(false);
+    dialog.show();
+    dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+    dialog
+        .getWindow()
+        .setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - dp(48), dp(900)), -2);
+    return dialog;
+  }
+
+  private void chooseTrafficOption(
+      DemoReservation reservation, String time, boolean accept, boolean call) {
+    if (!voiceResumed || !reservation.equals(confirmedDemoReservation())) return;
+    demoChangeDialog.dismiss();
+    demoChangeDialog = null;
+    if (call) model.requestDelayChange(reservation.id(), time);
+    else {
+      demoChangeSummary =
+          getString(accept ? R.string.traffic_demo_accepted : R.string.live_demo_kept, time);
+      render();
+    }
   }
 
   private boolean paired() {
@@ -105,11 +219,13 @@ public final class FinalReservationActivity extends ComponentActivity {
         : model.phone.canApprove(task(), ordinal);
   }
 
-  private int adults = 2, children = 2, buffer = 10, selected = -1;
+  private int adults = 2, children = BuildConfig.FILMING_DEMO ? 1 : 2, buffer = 10, selected = -1;
   private boolean chair, stepFree, transcript, tools, restoring;
   private String stage = "CONDITIONS", selectedTask = "", selectedName = "", selectedAddress = "";
   private LinearLayout page, body, footer;
   private boolean wide;
+  private LocalDateTime filmArrival;
+  private boolean filmTimeExpired;
   private final android.os.Handler voiceHandler =
       new android.os.Handler(android.os.Looper.getMainLooper());
   private ai.pleos.assistant.ux.GleoSearchCommand pendingVoice;
@@ -213,6 +329,8 @@ public final class FinalReservationActivity extends ComponentActivity {
   @Override
   protected void onPause() {
     voiceResumed = false;
+    resetTrafficDemo();
+    dismissCallbackPopup();
     finishVoice(false);
     super.onPause();
   }
@@ -223,10 +341,14 @@ public final class FinalReservationActivity extends ComponentActivity {
     model = new ViewModelProvider(this).get(ReservationViewModel.class);
     if (saved != null) {
       adults = saved.getInt("adults", 2);
-      children = saved.getInt("children", 2);
+      children = saved.getInt("children", children);
       buffer = saved.getInt("buffer", 10);
       chair = saved.getBoolean("chair");
       stepFree = saved.getBoolean("stepFree");
+    }
+    if (BuildConfig.FILMING_DEMO || paired()) {
+      String savedArrival = saved == null ? null : saved.getString("filmArrival");
+      filmArrival = savedArrival == null ? nextFilmArrival() : LocalDateTime.parse(savedArrival);
     }
     if (saved == null) receiveVoice(getIntent());
     driving = new DrivingRestrictionController(CarRestrictionSource.create(this), model::driving);
@@ -266,7 +388,7 @@ public final class FinalReservationActivity extends ComponentActivity {
   @Override
   protected void onStop() {
     model.observe(null);
-    if (demoChangeDialog != null) demoChangeDialog.dismiss();
+    resetTrafficDemo();
     if (navigation != null) {
       navigation.close();
       navigation = null;
@@ -286,6 +408,7 @@ public final class FinalReservationActivity extends ComponentActivity {
     out.putInt("buffer", buffer);
     out.putBoolean("chair", chair);
     out.putBoolean("stepFree", stepFree);
+    if (filmArrival != null) out.putString("filmArrival", filmArrival.toString());
   }
 
   private boolean ready() {
@@ -297,11 +420,79 @@ public final class FinalReservationActivity extends ComponentActivity {
   }
 
   private String time() {
-    return String.format(java.util.Locale.ROOT, "19:%02d", buffer);
+    return reservationAt().toLocalTime().format(DEMO_TIME_FORMAT);
   }
 
   private String day() {
-    return LocalDate.now(ZoneId.of("Asia/Seoul")).plusDays(1).toString();
+    return reservationAt().toLocalDate().toString();
+  }
+
+  private LocalDateTime reservationAt() {
+    LocalDateTime arrival =
+        filmArrival != null
+            ? filmArrival
+            : LocalDate.now(SEOUL).plusDays(1).atTime(DEFAULT_ARRIVAL);
+    return arrival.plusMinutes(buffer);
+  }
+
+  private LocalDateTime nextFilmArrival() {
+    LocalDateTime now = LocalDateTime.now(SEOUL);
+    if (paired()) {
+      LocalDateTime today = arrivalForToday(now, buffer);
+      return today != null ? today : now.toLocalDate().plusDays(1).atTime(DEFAULT_ARRIVAL);
+    }
+    LocalDateTime evening = now.toLocalDate().atTime(DEFAULT_ARRIVAL);
+    LocalDateTime next = now.plusMinutes(40).withSecond(0).withNano(0);
+    next = next.plusMinutes((5 - next.getMinute() % 5) % 5);
+    if (evening.isAfter(next)) return evening;
+    // Leave room for the reservation buffer and the subsequent simulated delay.
+    return next.plusMinutes(45).toLocalDate().equals(now.toLocalDate())
+        ? next
+        : evening.plusDays(1);
+  }
+
+  static LocalDateTime arrivalForToday(LocalDateTime now, int bufferMinutes) {
+    LocalDateTime endOfDay = now.toLocalDate().atTime(23, 59);
+    LocalDateTime evening = now.toLocalDate().atTime(DEFAULT_ARRIVAL);
+    LocalDateTime firstArrival = now.plusMinutes(3).withSecond(0).withNano(0);
+    if (evening.isAfter(firstArrival)) return evening;
+    LocalDateTime lastArrival = endOfDay.minusMinutes(bufferMinutes);
+    if (!lastArrival.isAfter(now)) return null;
+    return firstArrival.isBefore(lastArrival) ? firstArrival : lastArrival;
+  }
+
+  private void changeBuffer(int next) {
+    if (paired() && filmArrival.toLocalDate().equals(LocalDate.now(SEOUL))) {
+      LocalDateTime now = LocalDateTime.now(SEOUL);
+      LocalDateTime arrival = arrivalForToday(now, next);
+      if (arrival == null) return;
+      filmArrival = arrival;
+    }
+    buffer = next;
+  }
+
+  private String filmDay(String date) {
+    LocalDate today = LocalDate.now(SEOUL);
+    if (date.equals(today.toString())) return getString(R.string.film_today);
+    if (date.equals(today.plusDays(1).toString())) return getString(R.string.film_tomorrow);
+    return date;
+  }
+
+  private String filmSummary() {
+    return getString(R.string.film_reservation_summary, filmDay(day()), time(), adults + children);
+  }
+
+  private int filmRestaurantIndex(String name) {
+    if (!BuildConfig.FILMING_DEMO || !name.startsWith(MOCK_CATALOG_NAME)) return -1;
+    String index = name.substring(MOCK_CATALOG_NAME.length());
+    return index.length() == 1 && index.charAt(0) >= '0' && index.charAt(0) <= '3'
+        ? index.charAt(0) - '0'
+        : -1;
+  }
+
+  private String restaurantLabel(String name) {
+    int index = filmRestaurantIndex(name);
+    return index < 0 ? name : getResources().getStringArray(R.array.film_restaurants)[index];
   }
 
   private void edit() {
@@ -309,6 +500,11 @@ public final class FinalReservationActivity extends ComponentActivity {
     stage = "CONDITIONS";
     selected = -1;
     selectedTask = "";
+    if (BuildConfig.FILMING_DEMO
+        || (paired() && !reservationAt().isAfter(LocalDateTime.now(SEOUL)))) {
+      filmArrival = nextFilmArrival();
+      filmTimeExpired = false;
+    }
     render();
   }
 
@@ -339,30 +535,32 @@ public final class FinalReservationActivity extends ComponentActivity {
     selectedName = name;
     selectedAddress = address;
     stage = "APPROVAL";
+    filmTimeExpired = false;
     render();
   }
 
   private void approve() {
     if (!ready() || selected < 1 || !selectedTask.equals(task())) return;
+    LocalDateTime requestedAt = reservationAt();
+    if (filmArrival != null && !requestedAt.isAfter(LocalDateTime.now(SEOUL))) {
+      filmArrival = nextFilmArrival();
+      filmTimeExpired = true;
+      render();
+      return;
+    }
     if (paired()) {
       if (!selectedBinding.equals(binding()) || hasBooking()) return;
       model.approvePairedPhone(
-          selectedTask, selected, day(), time(), getString(R.string.design_test_name));
+          selectedTask, selected, day(), time(), getString(R.string.live_test_reservation_name));
       render();
       return;
     }
     try {
-      String at =
-          LocalDate.parse(day())
-              .atTime(19, buffer)
-              .atZone(ZoneId.of("Asia/Seoul"))
-              .toInstant()
-              .toString();
       JSONObject request =
           new JSONObject()
               .put("approved", true)
               .put("candidateOrdinal", selected)
-              .put("reservationAt", at)
+              .put("reservationAt", requestedAt.atZone(SEOUL).toInstant().toString())
               .put("reservationName", getString(R.string.design_test_name))
               .put("conditionScenario", "MET")
               .put("availabilityScenario", "AVAILABLE")
@@ -376,6 +574,8 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private void render() {
     if (isFinishing()) return;
+    if (trafficDemoReservation != null
+        && !trafficDemoReservation.equals(confirmedDemoReservation())) resetTrafficDemo();
     if (!paired() && model.phone != null) model.phone.allow(ready());
     if (model.phone != null && hasBooking()) stage = "RESULT";
     if (stage.equals("APPROVAL") && (!ready() || !selectedTask.equals(task()))) {
@@ -392,22 +592,34 @@ public final class FinalReservationActivity extends ComponentActivity {
     page.addView(header);
     TextView brand = text(header, "ArriveOn", 30, true);
     brand.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
-    text(header, getString(paired() ? R.string.live_mode : R.string.design_mode), 18, false)
+    text(
+            header,
+            getString(
+                BuildConfig.FILMING_DEMO
+                    ? R.string.film_mode
+                    : paired() ? R.string.live_mode : R.string.design_mode),
+            BuildConfig.FILMING_DEMO ? 22 : 18,
+            BuildConfig.FILMING_DEMO)
         .setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
-    action(
-        header,
-        "design_tools",
-        R.string.design_tools,
-        false,
-        true,
-        () -> {
-          tools = !tools;
-          render();
-        });
-    header
-        .getChildAt(header.getChildCount() - 1)
-        .setLayoutParams(new LinearLayout.LayoutParams(dp(160), -2));
-    text(page, getString(R.string.design_steps), 20, false);
+    Button settings =
+        action(
+            header,
+            "design_tools",
+            BuildConfig.FILMING_DEMO ? R.string.film_settings : R.string.design_tools,
+            false,
+            true,
+            () -> {
+              tools = !tools;
+              render();
+            });
+    LinearLayout.LayoutParams settingsLayout =
+        new LinearLayout.LayoutParams(dp(BuildConfig.FILMING_DEMO ? 96 : 160), -2);
+    settingsLayout.setMarginStart(dp(16));
+    settings.setLayoutParams(settingsLayout);
+    if (BuildConfig.FILMING_DEMO)
+      settings.setContentDescription(
+          getString(tools ? R.string.film_settings_close : R.string.film_settings_open));
+    else text(page, getString(R.string.design_steps), 20, false);
     if (!model.restriction().allowsInput())
       text(page, getString(R.string.flow_restricted), 22, true);
     ScrollView scroll = new ScrollView(this);
@@ -420,7 +632,10 @@ public final class FinalReservationActivity extends ComponentActivity {
     summary.setLayoutParams(new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 0.27f : 0));
     text(
         summary,
-        getString(paired() ? R.string.live_destination : R.string.design_destination),
+        getString(
+            BuildConfig.FILMING_DEMO
+                ? R.string.film_destination
+                : paired() ? R.string.live_destination : R.string.design_destination),
         18,
         false);
     text(
@@ -432,11 +647,26 @@ public final class FinalReservationActivity extends ComponentActivity {
             : getString(R.string.flow_destination),
         32,
         true);
-    text(summary, getString(R.string.design_remaining), 18, false);
-    text(summary, getString(R.string.design_remaining_value), 44, true);
-    text(summary, getString(R.string.design_eta), 22, true);
-    text(summary, getString(R.string.design_eta_notice), 18, false);
-    if (!stage.equals("RESULT")) {
+    if (demoEta != null) {
+      text(summary, getString(R.string.traffic_demo_eta, demoTime(demoEta)), 22, true);
+    } else if (paired() && !stage.equals("RESULT")) {
+      text(summary, getString(R.string.live_eta_unavailable), 22, false);
+    } else if (filmArrival != null && !stage.equals("RESULT")) {
+      text(
+          summary,
+          getString(R.string.film_eta, filmArrival.toLocalTime().format(DEMO_TIME_FORMAT)),
+          24,
+          true);
+    } else if (filmArrival == null) {
+      text(summary, getString(R.string.design_remaining), 18, false);
+      text(summary, getString(R.string.design_remaining_value), 44, true);
+      text(summary, getString(R.string.design_eta), 22, true);
+      text(summary, getString(R.string.design_eta_notice), 18, false);
+    }
+    if (!stage.equals("RESULT") && filmArrival != null) {
+      text(summary, getString(R.string.design_request_time), 18, false);
+      text(summary, filmSummary(), 28, true);
+    } else if (!stage.equals("RESULT")) {
       text(summary, getString(R.string.design_request_time), 18, false);
       text(summary, time(), 38, true);
       text(
@@ -453,16 +683,16 @@ public final class FinalReservationActivity extends ComponentActivity {
     body.setPadding(dp(wide ? 32 : 24), dp(24), dp(wide ? 32 : 24), dp(24));
     footer = row();
     page.addView(footer);
-    if (tools && paired()) {
+    if (!BuildConfig.FILMING_DEMO && tools && confirmedDemoReservation() != null) {
       action(
           body,
-          "demo_change_alert",
-          R.string.live_demo_trigger,
+          "traffic_delay_demo",
+          R.string.traffic_demo_start,
           true,
-          ready()
-              && ai.pleos.assistant.ux.LiveTrialPolicy.confirmed(
-                  model.pairedStatus.optJSONObject("latest")),
-          this::showDemoChangeAlert);
+          true,
+          this::startTrafficDemo);
+    }
+    if (tools && paired()) {
       text(body, getString(R.string.live_new_demo_notice), 20, false);
       action(
           body,
@@ -477,11 +707,12 @@ public final class FinalReservationActivity extends ComponentActivity {
               buffer = 10;
               chair = false;
               stepFree = false;
+              filmArrival = nextFilmArrival();
+              filmTimeExpired = false;
               tools = false;
               transcript = false;
               restoring = false;
-              demoChangeId = "";
-              demoChangeSummary = "";
+              resetTrafficDemo();
               edit();
             }
           });
@@ -508,13 +739,14 @@ public final class FinalReservationActivity extends ComponentActivity {
         case "APPROVAL" -> approval();
         default -> conditions();
       }
-    if (tools) {
+    if (tools && !BuildConfig.FILMING_DEMO) {
       text(page, getString(R.string.design_change_off), 18, false);
       action(page, "change_accept", R.string.flow_accept_change, false, false, () -> {});
       action(page, "change_reject", R.string.flow_reject_change, false, false, () -> {});
       legacy();
     }
     setContentView(page);
+    if (paired()) updateCallbackPopup();
     voiceHandler.post(this::applyVoice);
     if (paired() && ready() && !model.destinationOpen()) voiceHandler.post(model::openDestination);
     if (!paired() && model.connected() && model.phone != null && hasBooking() && !restoring) {
@@ -578,42 +810,84 @@ public final class FinalReservationActivity extends ComponentActivity {
           default -> R.string.live_callback_unknown;
         };
     text(body, getString(status), 22, true);
-    if (!"AWAITING_USER".equals(state)) return;
-    if ("CHANGE_NOT_PENDING".equals(model.pairedError))
+    if ("AWAITING_USER".equals(state) && "CHANGE_NOT_PENDING".equals(model.pairedError))
       text(body, getString(R.string.live_callback_refreshing), 20, false);
-    boolean enabled =
-        ready()
-            && change.optBoolean("canDecide")
-            && !model.pairedBusy
-            && !"CHANGE_NOT_PENDING".equals(model.pairedError);
+  }
+
+  private void dismissCallbackPopup() {
+    if (callbackChangeDialog != null) callbackChangeDialog.dismiss();
+    callbackChangeDialog = null;
+    displayedCallback = "";
+  }
+
+  private void updateCallbackPopup() {
+    JSONObject booking = model.pairedStatus.optJSONObject("callback");
+    JSONObject change = booking == null ? null : booking.optJSONObject("change");
+    if (!voiceResumed
+        || !model.connected()
+        || !ready()
+        || change == null
+        || !"AWAITING_USER".equals(change.optString("status"))
+        || !change.optBoolean("canDecide")
+        || model.pairedBusy
+        || "CHANGE_NOT_PENDING".equals(model.pairedError)) {
+      dismissCallbackPopup();
+      return;
+    }
     String attemptId = booking.optString("id");
     String changeId = change.optString("id");
     int version = change.optInt("version");
+    String request = attemptId + ":" + changeId + ":" + version;
+    if (request.equals(displayedCallback)) return;
+    dismissCallbackPopup();
+
+    LinearLayout popup = changePopup();
+    text(popup, getString(R.string.live_callback_title), 36, true).setAccessibilityHeading(true);
+    text(popup, booking.optString("restaurantName"), 24, false);
+    text(popup, booking.optString("date"), 22, false);
+    text(
+        popup,
+        getString(
+            R.string.live_callback_times,
+            change.optString("originalTime"),
+            change.optString("proposedTime")),
+        34,
+        true);
+    if (!change.optString("reason").isBlank()) text(popup, change.optString("reason"), 22, false);
+    if (change.optInt("additionalCostKrw", -1) == 0)
+      text(popup, getString(R.string.live_callback_no_fee), 22, false);
+    text(popup, getString(R.string.live_callback_waiting), 22, false);
+    LinearLayout buttons = changeButtons(popup);
     action(
-        body,
-        "live_callback_accept",
-        R.string.live_callback_accept,
-        false,
-        enabled,
-        () -> model.decidePairedChange(attemptId, changeId, version, true));
-    action(
-        body,
+        buttons,
         "live_callback_reject",
         R.string.live_callback_reject,
+        false,
         true,
-        enabled,
         () -> model.decidePairedChange(attemptId, changeId, version, false));
+    action(
+        buttons,
+        "live_callback_accept",
+        R.string.live_callback_accept,
+        true,
+        true,
+        () -> model.decidePairedChange(attemptId, changeId, version, true));
+    callbackChangeDialog = showChangePopup(popup);
+    callbackChangeDialog.setCancelable(false);
+    displayedCallback = request;
+  }
+
+  private void showTrafficDemoOutcome() {
+    if (demoChangeSummary.isEmpty()) return;
+    text(body, getString(R.string.traffic_demo_badge), 22, true);
+    text(body, demoChangeSummary, 32, true);
   }
 
   private void pairedResult() {
     JSONObject r = model.pairedStatus.optJSONObject("latest");
     String status = r == null ? "UNKNOWN" : r.optString("status", "UNKNOWN");
     boolean confirmed = ai.pleos.assistant.ux.LiveTrialPolicy.confirmed(r);
-    if (confirmed && demoChangeId.equals(r.optString("id")) && !demoChangeSummary.isEmpty()) {
-      text(body, getString(R.string.live_demo_badge), 22, true);
-      text(body, demoChangeSummary, 32, true);
-      text(body, getString(R.string.live_demo_unchanged), 20, false);
-    }
+    showTrafficDemoOutcome();
     title(confirmed ? R.string.live_confirmed : R.string.live_result_title);
     text(
         body,
@@ -627,6 +901,19 @@ public final class FinalReservationActivity extends ComponentActivity {
       detail(R.string.design_date, r.optString("date"));
       detail(R.string.design_request_time, r.optString("requestedTime"));
       if (confirmed) text(body, r.optString("confirmedTime"), 64, true);
+      JSONObject delay = r.optJSONObject("delayChange");
+      if (delay != null) {
+        int message =
+            switch (delay.optString("status")) {
+              case "CALLING" -> R.string.traffic_trial_calling;
+              case "APPLIED" -> R.string.traffic_trial_applied;
+              case "REJECTED" -> R.string.traffic_trial_rejected;
+              default -> R.string.traffic_trial_unknown;
+            };
+        text(body, getString(message, delay.optString("proposedTime")), 26, true);
+      } else if (model.pairedBusy && demoEta != null) {
+        text(body, getString(R.string.traffic_trial_starting), 26, true);
+      }
       text(body, getString(R.string.design_total_people, r.optInt("partySize")), 26, true);
       text(body, r.optString("notice"), 22, false);
       JSONObject conditions = r.optJSONObject("requirements");
@@ -689,7 +976,8 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private void conditions() {
     title(R.string.design_conditions_title);
-    if (!paired()) text(body, getString(R.string.design_voice_steps), 22, false);
+    if (!paired() && (!BuildConfig.FILMING_DEMO || tools))
+      text(body, getString(R.string.design_voice_steps), 22, false);
     if (paired()) {
       text(
           body,
@@ -709,11 +997,12 @@ public final class FinalReservationActivity extends ComponentActivity {
           ready() && model.navigationDestination() != null && !model.navigationReady(),
           model::confirmDemoNavigation);
     }
-    text(
-        body,
-        getString(paired() ? R.string.live_search_hint : R.string.design_search_hint),
-        22,
-        false);
+    if (!BuildConfig.FILMING_DEMO)
+      text(
+          body,
+          getString(paired() ? R.string.live_search_hint : R.string.design_search_hint),
+          22,
+          false);
     counter(
         R.string.flow_adults,
         adults,
@@ -741,19 +1030,16 @@ public final class FinalReservationActivity extends ComponentActivity {
         buffer,
         0,
         20,
-        () -> {
-          buffer -= 10;
-        },
-        () -> {
-          buffer += 10;
-        });
-    text(body, getString(R.string.design_time_formula, time()), 28, true);
+        () -> changeBuffer(buffer - 10),
+        () -> changeBuffer(buffer + 10));
+    if (filmArrival == null) text(body, getString(R.string.design_time_formula, time()), 28, true);
     text(body, getString(R.string.flow_conditions_label), 22, true);
-    action(body, "parking", R.string.design_parking, true, false, () -> {});
+    if (BuildConfig.FILMING_DEMO) text(body, getString(R.string.flow_parking), 24, true);
+    else action(body, "parking", R.string.design_parking, true, false, () -> {});
     toggle("chair", R.string.flow_chair, chair, () -> chair = !chair);
-    action(body, "pet", R.string.design_pet, false, false, () -> {});
+    if (!BuildConfig.FILMING_DEMO) action(body, "pet", R.string.design_pet, false, false, () -> {});
     toggle("stepfree", R.string.flow_stepfree, stepFree, () -> stepFree = !stepFree);
-    text(body, getString(R.string.design_not_bookable), 18, false);
+    if (!BuildConfig.FILMING_DEMO) text(body, getString(R.string.design_not_bookable), 18, false);
     action(
         footer,
         "search",
@@ -780,7 +1066,9 @@ public final class FinalReservationActivity extends ComponentActivity {
       text(
           body,
           getString(
-              paired() ? R.string.live_candidates : R.string.design_candidate_count,
+              BuildConfig.FILMING_DEMO
+                  ? R.string.film_candidates
+                  : paired() ? R.string.live_candidates : R.string.design_candidate_count,
               view.candidates().length()),
           20,
           false);
@@ -797,16 +1085,25 @@ public final class FinalReservationActivity extends ComponentActivity {
             new LinearLayout.LayoutParams(wide ? 0 : -1, -2, wide ? 1 : 0);
         cp.setMargins(dp(4), dp(8), dp(4), dp(8));
         card.setLayoutParams(cp);
-        text(card, name, 28, true);
-        text(card, address, 18, false);
-        text(card, getString(R.string.design_candidate_unknown), 20, false);
-        action(
+        text(card, restaurantLabel(name), 28, true);
+        int fixture = filmRestaurantIndex(name);
+        if (fixture < 0) text(card, address, 18, false);
+        text(
             card,
-            "select_" + ordinal,
-            R.string.flow_select,
-            false,
-            ready() && canSelect(ordinal),
-            () -> select(ordinal, name, address));
+            fixture < 0
+                ? getString(R.string.design_candidate_unknown)
+                : getResources().getStringArray(R.array.film_restaurant_notes)[fixture],
+            22,
+            false);
+        action(
+                card,
+                "select_" + ordinal,
+                R.string.flow_select,
+                false,
+                ready() && canSelect(ordinal),
+                () -> select(ordinal, name, address))
+            .setContentDescription(
+                getString(R.string.design_select_restaurant, restaurantLabel(name)));
       }
     }
     action(footer, "edit", R.string.flow_edit, false, ready(), this::edit);
@@ -816,7 +1113,10 @@ public final class FinalReservationActivity extends ComponentActivity {
     title(R.string.design_approval_title);
     text(
         body,
-        getString(paired() ? R.string.live_call_notice : R.string.design_mock_call_hint),
+        getString(
+            BuildConfig.FILMING_DEMO
+                ? R.string.film_phone_hint
+                : paired() ? R.string.live_call_notice : R.string.design_mock_call_hint),
         22,
         false);
     if (paired())
@@ -828,18 +1128,26 @@ public final class FinalReservationActivity extends ComponentActivity {
               model.pairedStatus.optString("mode")),
           24,
           true);
-    detail(R.string.design_restaurant, selectedName + "\n" + selectedAddress);
-    detail(R.string.design_date, day());
-    detail(R.string.design_request_time, time());
-    detail(
-        R.string.design_people,
-        getString(R.string.design_party, adults + children, adults, children));
+    if (filmArrival != null) {
+      text(body, restaurantLabel(selectedName), 32, true);
+      text(body, filmSummary(), 38, true);
+      if (filmTimeExpired) text(body, getString(R.string.film_time_expired), 22, true);
+    } else {
+      detail(R.string.design_restaurant, selectedName + "\n" + selectedAddress);
+      detail(R.string.design_date, day());
+      detail(R.string.design_request_time, time());
+      detail(
+          R.string.design_people,
+          getString(R.string.design_party, adults + children, adults, children));
+    }
     detail(
         R.string.design_needs,
         getString(R.string.flow_parking)
             + (chair ? " · " + getString(R.string.flow_chair) : "")
             + (stepFree ? " · " + getString(R.string.flow_stepfree) : ""));
-    detail(R.string.design_name, getString(R.string.design_test_name));
+    detail(
+        R.string.design_name,
+        getString(paired() ? R.string.live_test_reservation_name : R.string.design_test_name));
     text(body, getString(R.string.design_fee_notice), 20, false);
     action(
         footer,
@@ -854,7 +1162,9 @@ public final class FinalReservationActivity extends ComponentActivity {
     action(
         footer,
         "approve",
-        paired() ? R.string.live_approve : R.string.design_approve,
+        BuildConfig.FILMING_DEMO
+            ? R.string.film_approve
+            : paired() ? R.string.live_approve : R.string.design_approve,
         true,
         ready() && selectedTask.equals(task()),
         this::approve);
@@ -862,6 +1172,7 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private void result() {
     JSONObject r = model.phone.receipt();
+    showTrafficDemoOutcome();
     String status = model.phone.state();
     boolean confirmed = status.equals("CONFIRMED"), busy = model.phone.busy();
     title(
@@ -870,18 +1181,31 @@ public final class FinalReservationActivity extends ComponentActivity {
             : confirmed
                 ? R.string.design_confirmed
                 : status.equals("DECLINED") ? R.string.flow_declined : R.string.flow_unknown);
-    text(body, r.optString("restaurantName", getString(R.string.design_saved)), 30, true);
+    text(
+        body,
+        restaurantLabel(r.optString("restaurantName", getString(R.string.design_saved))),
+        30,
+        true);
     if (confirmed) {
       text(body, r.optString("confirmedTime"), 64, true);
       text(
           body,
-          r.optString("date")
-              + " · "
-              + getString(R.string.design_total_people, r.optInt("partySize")),
+          BuildConfig.FILMING_DEMO
+              ? getString(
+                  R.string.film_reservation_details,
+                  filmDay(r.optString("date")),
+                  r.optInt("partySize"))
+              : r.optString("date")
+                  + " · "
+                  + getString(R.string.design_total_people, r.optInt("partySize")),
           26,
           true);
     } else text(body, getString(R.string.design_no_retry), 22, false);
-    if (r.has("requestedTime")) detail(R.string.design_request_time, r.optString("requestedTime"));
+    if (r.has("requestedTime")
+        && (!BuildConfig.FILMING_DEMO
+            || !confirmed
+            || !r.optString("requestedTime").equals(r.optString("confirmedTime"))))
+      detail(R.string.design_request_time, r.optString("requestedTime"));
     detail(R.string.design_deposit, getString(R.string.design_unverified));
     JSONObject checks = r.optJSONObject("requirementChecks");
     if (checks != null) {
@@ -951,27 +1275,45 @@ public final class FinalReservationActivity extends ComponentActivity {
           !model.busy(),
           () -> model.run(MockRepository::connect));
     }
-    text(body, getString(R.string.design_change_off), 18, false);
-    action(footer, "refresh", R.string.phone_refresh, false, !busy, () -> model.phone.refresh());
+    if (!BuildConfig.FILMING_DEMO) text(body, getString(R.string.design_change_off), 18, false);
+    DemoReservation trafficReservation =
+        BuildConfig.FILMING_DEMO ? confirmedDemoReservation() : null;
     action(
         footer,
-        "new_booking",
-        R.string.design_new_booking,
-        true,
-        ready() && model.phone.canStartNew(),
-        () -> {
-          if (model.phone.startNew()) {
-            adults = 2;
-            children = 2;
-            buffer = 10;
-            chair = false;
-            stepFree = false;
-            tools = false;
-            transcript = false;
-            restoring = false;
-            edit();
-          }
-        });
+        "refresh",
+        R.string.phone_refresh,
+        BuildConfig.FILMING_DEMO && !confirmed,
+        !busy,
+        () -> model.phone.refresh());
+    if (trafficReservation != null && (demoChangeSummary.isEmpty() || tools))
+      action(
+          footer,
+          "traffic_delay_demo",
+          R.string.traffic_demo_start,
+          true,
+          true,
+          this::startTrafficDemo);
+    if (!BuildConfig.FILMING_DEMO || tools)
+      action(
+          BuildConfig.FILMING_DEMO ? body : footer,
+          "new_booking",
+          R.string.design_new_booking,
+          !BuildConfig.FILMING_DEMO,
+          ready() && model.phone.canStartNew(),
+          () -> {
+            if (model.phone.startNew()) {
+              adults = 2;
+              children = BuildConfig.FILMING_DEMO ? 1 : 2;
+              buffer = 10;
+              chair = false;
+              stepFree = false;
+              tools = false;
+              transcript = false;
+              restoring = false;
+              resetTrafficDemo();
+              edit();
+            }
+          });
   }
 
   private void detail(int name, String value) {
@@ -1038,6 +1380,16 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private Button action(
       LinearLayout parent, String tag, int title, boolean primary, boolean enabled, Runnable run) {
+    return action(parent, tag, getString(title), primary, enabled, run);
+  }
+
+  private Button action(
+      LinearLayout parent,
+      String tag,
+      String title,
+      boolean primary,
+      boolean enabled,
+      Runnable run) {
     Button b = new Button(this);
     b.setTag(tag);
     b.setText(title);

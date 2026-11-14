@@ -22,16 +22,17 @@ def failure_reason(error):
 
 
 async def dial_booking(service, config, owner, booking_id, version, request_id, client=None, *,
-                       test_phone_number=None):
+                       test_phone_number=None, delay_time=None):
     from google.protobuf.duration_pb2 import Duration
     from livekit import api
     workflow = LiveWorkflow(service, config)
-    call, created = workflow.reserve(owner, booking_id, version, request_id, test_phone_number=test_phone_number)
+    call, created = workflow.reserve(owner, booking_id, version, request_id,
+                                     test_phone_number=test_phone_number, delay_time=delay_time)
     if not created:
         return {"id": call["id"], "reused": True, "status": call["status"]}
     own_client = client is None
-    client = client or api.LiveKitAPI(config.livekit_url, config.api_key, config.api_secret)
     try:
+        client = client or api.LiveKitAPI(config.livekit_url, config.api_key, config.api_secret)
         call = workflow.mark_dispatching(call["id"])
         await client.agent_dispatch.create_dispatch(api.CreateAgentDispatchRequest(
             room=call["room"], agent_name=config.agent_name,
@@ -45,11 +46,12 @@ async def dial_booking(service, config, owner, booking_id, version, request_id, 
     except Exception as error:
         # A timeout is not proof that no INVITE went out. Do not redial an uncertain call.
         workflow.finish(call["id"], failure_reason(error))
-        try:
-            await client.room.delete_room(api.DeleteRoomRequest(room=call["room"]))
-        except Exception:
-            pass  # The SIP provider's max_call_duration still bounds a surviving call.
+        if client:
+            try:
+                await client.room.delete_room(api.DeleteRoomRequest(room=call["room"]))
+            except Exception:
+                pass  # The SIP provider's max_call_duration still bounds a surviving call.
         return {"id": call["id"], "requested": False, "status": "UNKNOWN"}
     finally:
-        if own_client:
+        if own_client and client:
             await client.aclose()

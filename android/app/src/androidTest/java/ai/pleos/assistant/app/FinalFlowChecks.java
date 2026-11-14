@@ -1,5 +1,6 @@
 package ai.pleos.assistant.app;
 
+import android.app.AlertDialog;
 import android.app.Instrumentation;
 import android.content.Intent;
 import android.view.View;
@@ -27,9 +28,22 @@ final class FinalFlowChecks {
     if (scenario.equals("FULL")) {
       if (activity.model.phone.hasRequest())
         throw new AssertionError("existing test record preserved; no new booking");
+      if (BuildConfig.FILMING_DEMO) click(runner, activity, "chair");
       VehicleUiChecks.capture(runner, "design-conditions");
       click(runner, activity, "search");
-      await(runner, () -> activity.model.phoneTask() != null);
+      await(
+          runner,
+          () -> {
+            View button = find(activity.getWindow().getDecorView(), "select_1");
+            return button != null && button.isEnabled();
+          });
+      if (BuildConfig.FILMING_DEMO) {
+        String candidates = main(runner, () -> text(activity.getWindow().getDecorView()));
+        if (!candidates.contains("서울숲 가족식당")
+            || !candidates.contains("유아의자 있음")
+            || candidates.contains("가상 공공데이터 식당"))
+          throw new AssertionError("filming candidates not rendered");
+      }
       VehicleUiChecks.capture(runner, "design-candidates");
       click(runner, activity, "select_1");
       VehicleUiChecks.capture(runner, "design-approval");
@@ -38,13 +52,22 @@ final class FinalFlowChecks {
       click(runner, activity, "other");
       if (activity.model.phone.hasRequest()) throw new AssertionError("back submitted approval");
       click(runner, activity, "select_1");
+      String approval = main(runner, () -> text(activity.getWindow().getDecorView()));
       click(runner, activity, "approve");
       await(runner, () -> !activity.model.phone.busy() && activity.model.phone.hasRequest());
       if (!activity.model.phone.state().equals("CONFIRMED"))
         throw new AssertionError("not confirmed: " + activity.model.phone.state());
-      if (activity.model.phone.receipt().getInt("partySize") != 4
-          || !activity.model.phone.receipt().getString("requestedTime").equals("19:10"))
+      var receipt = activity.model.phone.receipt();
+      if (receipt.getInt("partySize") != (BuildConfig.FILMING_DEMO ? 3 : 4)
+          || !approval.contains(receipt.getString("requestedTime")))
         throw new AssertionError("approval mismatch");
+      if (BuildConfig.FILMING_DEMO) {
+        var date = java.time.LocalDate.parse(receipt.getString("date"));
+        var today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"));
+        if (!(date.equals(today) && approval.contains("오늘")
+            || date.equals(today.plusDays(1)) && approval.contains("내일")))
+          throw new AssertionError("visible reservation day differs from requested day");
+      }
     } else {
       await(runner, () -> activity.model.phone.hasRequest() && !activity.model.phone.busy());
       click(runner, activity, "refresh");
@@ -63,10 +86,44 @@ final class FinalFlowChecks {
       if (!text.contains(turns.getJSONObject(i).getString("message")))
         throw new AssertionError("transcript mismatch");
     VehicleUiChecks.capture(runner, "design-conversation-" + scenario);
-    click(runner, activity, "design_tools");
-    if (main(runner, () -> find(activity.getWindow().getDecorView(), "change_accept").isEnabled()))
-      throw new AssertionError("change enabled");
-    click(runner, activity, "design_tools");
+    click(runner, activity, "conversation");
+    if (!BuildConfig.FILMING_DEMO) {
+      click(runner, activity, "design_tools");
+      if (main(
+          runner, () -> find(activity.getWindow().getDecorView(), "change_accept").isEnabled()))
+        throw new AssertionError("change enabled");
+    }
+    String original = activity.model.phone.receipt().getString("confirmedTime");
+    click(runner, activity, "traffic_delay_demo");
+    var dialogField = FinalReservationActivity.class.getDeclaredField("demoChangeDialog");
+    dialogField.setAccessible(true);
+    await(
+        runner, () -> dialogField.get(activity) instanceof AlertDialog alert && alert.isShowing());
+    Thread.sleep(300); // Allow the dialog to render before taking the screenshot.
+    VehicleUiChecks.capture(runner, "traffic-delay-mock");
+    main(
+        runner,
+        () -> {
+          var alert = (AlertDialog) dialogField.get(activity);
+          if (!text(alert.getWindow().getDecorView()).contains("예약보다 10분 늦게 도착해요"))
+            throw new AssertionError("traffic delay is unclear");
+          find(
+                  alert.getWindow().getDecorView(),
+                  BuildConfig.FILMING_DEMO ? "traffic_inquire" : "traffic_keep")
+              .performClick();
+          return null;
+        });
+    await(
+        runner,
+        () ->
+            text(activity.getWindow().getDecorView())
+                .contains(
+                    BuildConfig.FILMING_DEMO
+                        ? "변경 문의 선택 · 시연"
+                        : "기존 시간 " + original + " 유지를 선택했어요"));
+    if (!original.equals(activity.model.phone.receipt().getString("confirmedTime")))
+      throw new AssertionError("traffic simulation changed the MOCK reservation");
+    VehicleUiChecks.capture(runner, "traffic-delay-outcome");
   }
 
   private static void click(Instrumentation r, FinalReservationActivity a, String tag)

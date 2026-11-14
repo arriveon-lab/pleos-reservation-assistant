@@ -12,8 +12,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
 /**
- * Operator-enabled paid search for authenticated app requests. The process-wide cap limits calls
- * after each startup; every request still uses a one-shot adapter permit and never retries.
+ * Operator-enabled paid search for authenticated app requests. A positive budget caps calls after
+ * startup. The operator can disable this cap with -1. Every request uses a one-shot adapter permit.
  */
 final class RuntimeWebRecommendationGateway implements DestinationRecommendationService.WebGateway {
   private final Clock clock;
@@ -33,7 +33,9 @@ final class RuntimeWebRecommendationGateway implements DestinationRecommendation
     this.adapter = Objects.requireNonNull(adapter);
     if (model == null || !model.matches("[a-zA-Z0-9._:-]{1,100}"))
       throw new IllegalArgumentException("Explicit runtime web model required");
-    if (maxOutputTokens < 256 || maxOutputTokens > 3072 || maxCalls < 1 || maxCalls > 1000)
+    if (maxOutputTokens < 256
+        || maxOutputTokens > 3072
+        || (maxCalls != -1 && (maxCalls < 1 || maxCalls > 1000)))
       throw new IllegalArgumentException("Invalid runtime web budget");
     this.model = model;
     this.maxOutputTokens = maxOutputTokens;
@@ -69,10 +71,12 @@ final class RuntimeWebRecommendationGateway implements DestinationRecommendation
     if (!current.getAsBoolean()) return empty(Mode.WEB_SEARCH, State.CANCELLED);
     Instant now = clock.instant();
     if (!now.isBefore(deadline)) return empty(Mode.WEB_SEARCH, State.EXPIRED);
-    while (true) {
-      int used = consumed.get();
-      if (used >= maxCalls) return failed(Mode.WEB_SEARCH, FailureReason.BUDGET_EXHAUSTED);
-      if (consumed.compareAndSet(used, used + 1)) break;
+    if (maxCalls > 0) {
+      while (true) {
+        int used = consumed.get();
+        if (used >= maxCalls) return failed(Mode.WEB_SEARCH, FailureReason.BUDGET_EXHAUSTED);
+        if (consumed.compareAndSet(used, used + 1)) break;
+      }
     }
     var permit =
         new GptWebRecommendationAdapter.Permit(

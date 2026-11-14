@@ -1,6 +1,52 @@
 """Observe audio delivery without saving raw audio, words, or provider errors."""
 import asyncio
+from array import array
+import math
 import time
+
+from livekit import rtc
+from livekit.agents.voice import io
+
+
+class VoiceLevelOutput(io.AudioOutput):
+    """Limit peaks in all agent playback, before the AEC reference and SIP output."""
+
+    DEFAULT_GAIN = 0.8
+    PEAK_LIMIT = 16384  # Half of 16-bit full scale, about -6 dBFS.
+    RELEASE_SECONDS = 0.25
+
+    def __init__(self, sink):
+        super().__init__(label="SIP voice level", next_in_chain=sink, sample_rate=sink.sample_rate,
+                         capabilities=io.AudioOutputCapabilities(pause=True))
+        self.gain = self.DEFAULT_GAIN
+        self.input_peak = self.output_peak = self.frames = self.limited_frames = 0
+
+    async def capture_frame(self, frame):
+        samples = frame.data
+        peak = max((abs(sample) for sample in samples), default=0)
+        released = self.DEFAULT_GAIN - (self.DEFAULT_GAIN - self.gain) * math.exp(
+            -frame.duration / self.RELEASE_SECONDS)
+        self.gain = min(released, self.PEAK_LIMIT / peak) if peak else released
+        pcm = array("h", (int(sample * self.gain) for sample in samples))
+        output = rtc.AudioFrame(pcm.tobytes(), frame.sample_rate, frame.num_channels,
+                                frame.samples_per_channel, userdata=frame.userdata)
+        await super().capture_frame(output)
+        await self.next_in_chain.capture_frame(output)
+        self.frames += 1
+        self.limited_frames += peak * self.DEFAULT_GAIN > self.PEAK_LIMIT
+        self.input_peak = max(self.input_peak, peak)
+        self.output_peak = max(self.output_peak, max((abs(sample) for sample in pcm), default=0))
+
+    def flush(self):
+        super().flush()
+        self.next_in_chain.flush()
+
+    def clear_buffer(self):
+        self.next_in_chain.clear_buffer()
+
+    def snapshot(self):
+        return {"frames": self.frames, "peakBefore": round(self.input_peak / 32768, 4),
+                "peakAfter": round(self.output_peak / 32768, 4), "limitedFrames": self.limited_frames}
 
 
 class AudioDiagnostics:
@@ -25,6 +71,7 @@ class AudioDiagnostics:
         self.response_delays = []
         self.echo = None
         self.input_probe = None
+        self.voice_output = None
         self.agent_text = None
         self.opening_audio = {}
 
@@ -62,6 +109,7 @@ class AudioDiagnostics:
                 "openingAudio": dict(self.opening_audio),
                 "responseDelaySeconds": list(self.response_delays),
                 "echoCancellation": self.echo.snapshot() if self.echo else {"enabled": False},
+                "voiceOutput": self.voice_output.snapshot() if self.voice_output else None,
                 "inputLevelProbe": self.input_probe.snapshot() if self.input_probe else {"enabled": False}}
 
 

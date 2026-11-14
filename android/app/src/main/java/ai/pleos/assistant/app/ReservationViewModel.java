@@ -59,6 +59,8 @@ public final class ReservationViewModel extends AndroidViewModel {
     if (!canWrite() || pairedBusy || pairedRefreshing || pairedJournal == null) return false;
     JSONObject latest = pairedStatus.optJSONObject("latest");
     if (latest == null) return !pairedAttempted();
+    JSONObject delay = latest.optJSONObject("delayChange");
+    if (delay != null && "CALLING".equals(delay.optString("status"))) return false;
     return !latest.optString("id").isEmpty()
         && currentPairedResult(latest)
         && (ai.pleos.assistant.ux.LiveTrialPolicy.confirmed(latest)
@@ -202,6 +204,40 @@ public final class ReservationViewModel extends AndroidViewModel {
               .nameUUIDFromBytes(decision.getBytes(java.nio.charset.StandardCharsets.UTF_8))
               .toString();
       pairedRequest("/calls/" + attemptId + "/change", body, key, false);
+    } catch (org.json.JSONException impossible) {
+      throw new IllegalStateException(impossible);
+    }
+  }
+
+  boolean canRequestDelayChange(String proposedTime) {
+    JSONObject latest = pairedStatus.optJSONObject("latest");
+    if (!canWrite()
+        || pairedBusy
+        || !pairedLiveReady()
+        || !pairedStatus.optBoolean("delayChangeEnabled")
+        || !ai.pleos.assistant.ux.LiveTrialPolicy.confirmed(latest)
+        || !currentPairedResult(latest)
+        || latest.optInt("version") <= 0) return false;
+    JSONObject delay = latest.optJSONObject("delayChange");
+    return delay == null
+        || java.util.Set.of("APPLIED", "REJECTED", "EXPIRED").contains(delay.optString("status"))
+        || (delay.optBoolean("canRetry") && proposedTime.equals(delay.optString("proposedTime")));
+  }
+
+  void requestDelayChange(String attemptId, String proposedTime) {
+    JSONObject latest = pairedStatus.optJSONObject("latest");
+    if (!canRequestDelayChange(proposedTime) || !attemptId.equals(latest.optString("id"))) return;
+    try {
+      int version = latest.getInt("version");
+      var body = new JSONObject().put("version", version).put("proposedTime", proposedTime);
+      String key =
+          java.util
+              .UUID
+              .nameUUIDFromBytes(
+                  ("traffic-delay:" + attemptId + ":" + version + ":" + proposedTime)
+                      .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+              .toString();
+      pairedRequest("/calls/" + attemptId + "/delay-change", body, key, false);
     } catch (org.json.JSONException impossible) {
       throw new IllegalStateException(impossible);
     }
