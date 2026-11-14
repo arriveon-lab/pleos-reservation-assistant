@@ -30,12 +30,10 @@ def status(service, owner):
     return {"active": True, "phoneLast4": window["phone"][-4:], "expiresAt": window["expiresAt"]}
 
 
-async def _allow_inbound(config, phone):
+async def sync_inbound_numbers(config, registered_numbers):
     from livekit import api
 
-    allowed = set(config.allowed_numbers)
-    if phone is not None:
-        allowed.add(phone)
+    allowed = set(config.allowed_numbers) | registered_numbers
     require(bool(allowed), "CALLBACK_TEST_UNAVAILABLE", "기존 수신 허용 설정을 확인해 주세요.", 503)
     try:
         async with asyncio.timeout(6):
@@ -48,7 +46,7 @@ async def _allow_inbound(config, phone):
         raise DomainError("CALLBACK_TEST_UNAVAILABLE", "수신 설정을 확인하지 못했어요. 다시 시도해 주세요.", 503) from None
 
 
-def configure(service, config, owner, payload, *, update_inbound=_allow_inbound):
+def configure(service, config, owner, payload, *, update_inbound=sync_inbound_numbers):
     action = payload.get("action")
     require(action in ("START", "STOP"), "INVALID_INPUT", "등록 또는 종료를 선택해 주세요.", 400)
     phone = None
@@ -79,7 +77,12 @@ def configure(service, config, owner, payload, *, update_inbound=_allow_inbound)
                 "AND json_extract(body,'$.status') IN ('RESERVED','DISPATCHING','ACTIVE','RESULT_SAVED') LIMIT 1"
             ).fetchone()
             require(not active_call, "CALL_ACTIVE", "진행 중인 통화를 마친 뒤 번호를 바꿔 주세요.")
-            asyncio.run(update_inbound(config, phone))
+            from ..paired_phone import active_callback_numbers
+
+            numbers = active_callback_numbers(service)
+            if phone is not None:
+                numbers.add(phone)
+            asyncio.run(update_inbound(config, numbers))
             service.db.execute("DELETE FROM objects WHERE kind='callback_test_window' AND id='active'")
             if phone is not None:
                 now = datetime.now(timezone.utc)

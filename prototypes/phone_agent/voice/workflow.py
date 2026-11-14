@@ -418,12 +418,13 @@ class LiveWorkflow:
                 if window and window["phone"] == caller:
                     owner, booking = callback_test.match_booking(self.service, self.config, caller, called_number)
                     return self._save_inbound(room, booking["restaurantId"], owner, booking)
-                from ..paired_phone import callback_bookings, current_callback_booking
+                from ..paired_phone import active_callback_numbers, callback_bookings, current_callback_booking
 
-                require(caller in self.config.allowed_numbers and called_number
+                active_only = caller not in self.config.allowed_numbers
+                require((not active_only or caller in active_callback_numbers(self.service)) and called_number
                         and normalize_number(called_number) == normalize_number(self.config.telkit_number),
                         "CALLER_NOT_ALLOWED", "허용한 회신 시험 번호를 확인해 주세요.", 403)
-                matches = callback_bookings(self.service, caller)
+                matches = callback_bookings(self.service, caller, active_only=active_only)
                 require(matches, "CALLBACK_TEST_UNMATCHED",
                         "이 번호로 확정한 Pleos 시험 예약을 찾을 수 없어요.")
                 matched = current_callback_booking(self.service, caller, matches)
@@ -480,7 +481,9 @@ class LiveWorkflow:
             if call.get("pairedCaller"):
                 from ..paired_phone import callback_bookings
 
-                candidates = callback_bookings(self.service, call["pairedCaller"])
+                caller = call["pairedCaller"]
+                candidates = callback_bookings(self.service, caller,
+                                               active_only=caller not in self.config.allowed_numbers)
             else:
                 rows = self.service.db.execute("SELECT owner,body FROM objects WHERE kind='booking'")
                 candidates = []
