@@ -42,7 +42,13 @@ class RecommendationPhoneController {
       Set.of(
           "NOT_FOUND",
           "INVALID_INPUT",
+          "INVALID_ACTION",
+          "INVALID_STATE",
           "INVALID_SCENARIO",
+          "CHANGE_NOT_FOUND",
+          "CHANGE_PENDING",
+          "CONFIRMED_BOOKING_REQUIRED",
+          "CALLBACK_REVIEW_REQUIRED",
           "UNVERIFIED_MOCK_CANDIDATE",
           "FALLBACK_APPROVAL_REQUIRED",
           "APPROVAL_SCOPE_CHANGED",
@@ -94,6 +100,30 @@ class RecommendationPhoneController {
   @GetMapping
   JsonNode latest(HttpServletRequest request, @PathVariable UUID id) {
     return send(requestToPhone(RequestActor.from(request), id).GET().build());
+  }
+
+  @GetMapping("/change")
+  JsonNode latestChange(HttpServletRequest request, @PathVariable UUID id) {
+    return send(requestToPhone(RequestActor.from(request), id + "/change").GET().build());
+  }
+
+  @PostMapping("/change")
+  JsonNode change(
+      HttpServletRequest request,
+      @PathVariable UUID id,
+      @RequestHeader(value = "Idempotency-Key", required = false) String key,
+      @RequestBody ObjectNode input)
+      throws IOException {
+    var actor = RequestActor.from(request);
+    if (key == null || !key.matches("[A-Za-z0-9._-]{1,100}")) {
+      throw ApiError.bad("INVALID_APPROVAL", "변경 요청의 요청 키를 확인해 주세요.");
+    }
+    return send(
+        requestToPhone(actor, id + "/change")
+            .header("Idempotency-Key", key)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofByteArray(json.writeValueAsBytes(input)))
+            .build());
   }
 
   @PostMapping
@@ -200,7 +230,11 @@ class RecommendationPhoneController {
   }
 
   private HttpRequest.Builder requestToPhone(RequestActor actor, UUID id) {
-    return HttpRequest.newBuilder(URI.create(endpoint + id))
+    return requestToPhone(actor, id.toString());
+  }
+
+  private HttpRequest.Builder requestToPhone(RequestActor actor, String suffix) {
+    return HttpRequest.newBuilder(URI.create(endpoint + suffix))
         .timeout(Duration.ofSeconds(5))
         .header("Authorization", "Bearer " + token)
         .header("X-Recommendation-Owner", actor.subject());

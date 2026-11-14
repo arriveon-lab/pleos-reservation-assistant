@@ -53,6 +53,10 @@ APK label `어라이브온 · MOCK`, 스키마 invokeWord `어라이브온`, 무
 
 # Pleos 차량용 AI 예약 비서 — 작업 인계
 
+## 2026-11-12 Pleos MOCK 식당 회신과 예약 변경
+
+- MOCK 시험 클라이언트는 확정된 가상 예약의 `taskId`로 변경 상태를 조회하고 `AWAITING_USER`에서 사용자 결정을 보냅니다. 시험용 식당 수락 이후 서버의 `confirmedTime`을 표시합니다. [요청 예제와 상태 매핑](../api/README.md#가상-전화-예약-연결)
+
 ## 2026-11-12 Pleos 식당 업종 필터
 
 - 기존 목적지 POST의 `userRequest`로 업종을 해석합니다. 가상 EC2 조회 서비스가 식당 2곳과 카페 1곳을 보내는 시험에서 수정본은 식당 2곳만 표시하고 주차 조사 조건을 유지했습니다. 유료 조회와 실차 재실행은 이번 검증에 포함되지 않았습니다. [#56](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/56)

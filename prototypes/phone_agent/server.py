@@ -20,7 +20,7 @@ from .web_recommendation import booking_web_needs, search_web
 STATIC = Path(__file__).with_name("static")
 CALLBACK_TEST_PATH = "/api/live/callback-test-target"
 RECOMMENDATION_PATH = re.compile(
-    r"/api/internal/mock-recommendation-bookings/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})")
+    r"/api/internal/mock-recommendation-bookings/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})(/change)?")
 
 
 def load_test_restaurants(path):
@@ -188,7 +188,8 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                     return
                 recommendation = RECOMMENDATION_PATH.fullmatch(path)
                 if recommendation:
-                    self._json(200, service.recommendation_attempt(self._recommendation_owner(), recommendation[1]))
+                    handler = service.recommendation_change if recommendation[2] else service.recommendation_attempt
+                    self._json(200, handler(self._recommendation_owner(), recommendation[1]))
                     return
                 if path == "/api/state":
                     owner, cookie = self._owner(create=True)
@@ -246,6 +247,10 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                     from .voice import callback_test
 
                     self._json(200, callback_test.configure(service, config, owner, body), cookie)
+                    return
+                if recommendation and recommendation[2]:
+                    self._json(200, service.recommendation_change(
+                        owner, recommendation[1], body, self.headers.get("Idempotency-Key")))
                     return
                 if self.path == "/api/web-recommendations":
                     snapshot = None

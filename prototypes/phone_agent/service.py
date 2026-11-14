@@ -225,6 +225,45 @@ class ReservationService:
         with self.lock:
             return self._get(owner, "recommendation_receipt", result["id"])
 
+    def recommendation_change(self, owner, recommendation_id, payload=None, request_id=None):
+        if payload is not None:
+            self._command(owner, "update_recommendation_change", {
+                **payload, "recommendationId": recommendation_id,
+            }, request_id)
+        with self.lock:
+            booking = self._confirmed_recommendation_booking(owner, recommendation_id)
+            return {"mode": "MOCK", "externalCalls": 0, "attemptId": booking["id"],
+                    "date": booking["date"], "confirmedTime": booking["confirmedTime"],
+                    "notice": booking["notice"], "change": booking.get("change")}
+
+    def _confirmed_recommendation_booking(self, owner, recommendation_id):
+        flow = self._get(owner, "recommendation_flow", recommendation_id)
+        booking = self._get(owner, "booking", flow["latestAttemptId"])
+        require(booking.get("mockOnly") is True and booking.get("mode") != "LIVE"
+                and booking["status"] == "CONFIRMED",
+                "CONFIRMED_BOOKING_REQUIRED", "확정된 가상 예약에서 변경을 시험해 주세요.")
+        return booking
+
+    def _update_recommendation_change(self, owner, payload):
+        booking = self._confirmed_recommendation_booking(owner, payload["recommendationId"])
+        action = payload.get("action")
+        if action == "SIMULATE_CALLBACK":
+            return self._receive_callback(owner, {
+                "restaurantId": booking["restaurantId"], "reservationName": booking["reservationName"],
+                "date": booking["date"], "currentTime": booking["confirmedTime"],
+                "proposedTime": payload.get("proposedTime"), "reason": payload.get("reason", "식당 사정"),
+            }, booking_id=booking["id"])
+
+        require(action in ("DECIDE", "SIMULATE_RECONFIRMATION"),
+                "INVALID_ACTION", "지원하지 않는 변경 동작이에요.", 400)
+        change = booking.get("change")
+        require(change is not None and change["id"] == payload.get("changeId"),
+                "CHANGE_NOT_FOUND", "현재 변경 요청을 다시 조회해 주세요.", 404)
+        target = {"bookingId": booking["id"], "version": booking["version"]}
+        if action == "DECIDE":
+            return self._decide_change(owner, {**target, "approve": payload.get("approve")})
+        return self._reconfirm_change(owner, {**target, "result": payload.get("result")})
+
     def _approve_recommendation(self, owner, payload):
         require(payload.get("approved") is True, "APPROVAL_REQUIRED", "이 후보의 예약을 승인해 주세요.", 400)
         check = payload.get("conditionScenario")
@@ -474,8 +513,8 @@ class ReservationService:
                    and b["reservationName"] == name and b["date"] == day
                    and b["confirmedTime"] == payload.get("currentTime")
                    and b["status"] == "CONFIRMED"
-                   and (b.get("mode") == "LIVE" and b["id"] == booking_id
-                        if live else b.get("mode") != "LIVE")]
+                   and (b.get("mode") == "LIVE") == live
+                   and (b["id"] == booking_id or (not live and booking_id is None))]
         callback = {"id": identifier(), "status": "UNMATCHED", "bookingId": None, "at": timestamp(),
                     "mode": "LIVE" if live else "MOCK", "callId": call_id, "category": "TIME_CHANGE"}
         if len(matches) != 1:

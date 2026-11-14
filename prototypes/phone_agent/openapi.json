@@ -252,6 +252,111 @@
         }
       }
     },
+    "/api/internal/mock-recommendation-bookings/{id}/change": {
+      "description": "Loopback only. Service token and owner from the recommendation server are required.",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Recommendation taskId",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "X-Recommendation-Owner",
+          "in": "header",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,100}$"
+          }
+        }
+      ],
+      "get": {
+        "security": [
+          {
+            "recommendationService": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current reservation time and latest change state for this owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MockReservationChangeState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Service token required"
+          },
+          "404": {
+            "description": "Reservation or current change not found for this owner"
+          },
+          "409": {
+            "description": "Reservation is unconfirmed or the change, state, or request key conflicts"
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "recommendationService": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Use a new key for each action. Retrying the same request returns the current state without repeating the action.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]{1,100}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MockReservationChangeCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current reservation time and latest change state for this owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MockReservationChangeState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Service token required"
+          },
+          "404": {
+            "description": "Reservation or current change not found for this owner"
+          },
+          "409": {
+            "description": "Reservation is unconfirmed or the change, state, or request key conflicts"
+          },
+          "400": {
+            "description": "Invalid request key or action body"
+          }
+        }
+      }
+    },
     "/api/internal/mock-recommendation-bookings/{id}": {
       "description": "Opt-in loopback handoff. The service token protects this route. The recommendation server supplies the authenticated subject and canonical candidates; each candidate is checked against the fictional catalog.",
       "parameters": [
@@ -586,6 +691,162 @@
       }
     },
     "schemas": {
+      "MockReservationChangeCommand": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "proposedTime"
+            ],
+            "properties": {
+              "action": {
+                "const": "SIMULATE_CALLBACK"
+              },
+              "proposedTime": {
+                "type": "string",
+                "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "changeId",
+              "approve"
+            ],
+            "properties": {
+              "action": {
+                "const": "DECIDE"
+              },
+              "changeId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "approve": {
+                "type": "boolean"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "changeId",
+              "result"
+            ],
+            "properties": {
+              "action": {
+                "const": "SIMULATE_RECONFIRMATION"
+              },
+              "changeId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "result": {
+                "enum": [
+                  "ACCEPT",
+                  "DECLINE",
+                  "DISCONNECT"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "MockReservationChangeState": {
+        "type": "object",
+        "required": [
+          "mode",
+          "externalCalls",
+          "attemptId",
+          "date",
+          "confirmedTime",
+          "notice",
+          "change"
+        ],
+        "properties": {
+          "mode": {
+            "const": "MOCK"
+          },
+          "externalCalls": {
+            "const": 0
+          },
+          "attemptId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{32}$"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "confirmedTime": {
+            "type": "string",
+            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "notice": {
+            "type": "string"
+          },
+          "change": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "id",
+                  "status",
+                  "originalTime",
+                  "proposedTime",
+                  "reason",
+                  "approved",
+                  "createdAt"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{32}$"
+                  },
+                  "status": {
+                    "enum": [
+                      "AWAITING_USER",
+                      "RECONFIRMING",
+                      "APPLIED",
+                      "REJECTED",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "originalTime": {
+                    "type": "string",
+                    "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+                  },
+                  "proposedTime": {
+                    "type": "string",
+                    "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "approved": {
+                    "type": "boolean"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
       "RecommendationJobState": {
         "type": "string",
         "enum": [

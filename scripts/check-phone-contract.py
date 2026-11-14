@@ -39,6 +39,8 @@ def recommendation_schemas(root):
         "RecommendationJobState": expand(schemas["JobState"], source),
         "WebTestRecommendation": expand(web, source),
         "MockPhoneReceipt": expand(schemas["MockPhoneReceipt"], source),
+        "MockReservationChangeCommand": expand(schemas["MockReservationChangeCommand"], source),
+        "MockReservationChangeState": expand(schemas["MockReservationChangeState"], source),
     }
 
 

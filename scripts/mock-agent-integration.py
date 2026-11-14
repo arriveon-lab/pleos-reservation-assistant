@@ -32,6 +32,8 @@ SCENARIOS = ReservationService.SCENARIOS | {"SLOT_UNAVAILABLE", "SLOT_UNKNOWN"}
 CONTRACT = json.loads((ROOT / "prototypes/phone_agent/openapi.json").read_text())
 RECEIPT = Draft202012Validator(
     CONTRACT["components"]["schemas"]["MockPhoneReceipt"], format_checker=FormatChecker())
+CHANGE = Draft202012Validator(
+    CONTRACT["components"]["schemas"]["MockReservationChangeState"], format_checker=FormatChecker())
 
 
 def request(port, method, path, body=None, token=None, *, key=None, expected=200):
@@ -47,7 +49,9 @@ def request(port, method, path, body=None, token=None, *, key=None, expected=200
         value = json.load(response)
         if response.status != expected:
             raise RuntimeError(f"{method} {path}: expected HTTP {expected}, got {response.status}: {value}")
-        if response.status == 200 and (
+        if response.status == 200 and path.endswith("/phone-reservations/change"):
+            CHANGE.validate(value)
+        elif response.status == 200 and (
             path.endswith("/phone-reservations") or path.startswith("/api/internal/mock-recommendation-bookings/")
         ):
             RECEIPT.validate(value)
@@ -144,6 +148,44 @@ def verify(port, phone_port, token):
     other = request(port, "POST", "/api/v1/anonymous-sessions", {})["accessToken"]
     request(port, "GET", path, token=other, expected=404)
     request(port, "POST", path, first_body, other, key=uuid.uuid4().hex, expected=404)
+
+    change_path = path + "/change"
+    callback = {"action": "SIMULATE_CALLBACK", "proposedTime": "19:30"}
+    request(port, "GET", change_path, expected=401)
+    request(port, "GET", change_path, token=other, expected=404)
+    request(port, "POST", change_path, callback, other, key=uuid.uuid4().hex, expected=404)
+    request(phone_port, "GET", f"/api/internal/mock-recommendation-bookings/{path.split('/')[-2]}/change",
+            token=token, expected=401)
+    unchanged = request(port, "GET", change_path, token=token)
+    assert unchanged["change"] is None and unchanged["confirmedTime"] == "19:00"
+
+    callback_key = uuid.uuid4().hex
+    pending = post(change_path, callback, key=callback_key)
+    assert pending["change"]["status"] == "AWAITING_USER" and pending["confirmedTime"] == "19:00"
+    assert post(change_path, callback, key=callback_key) == pending
+    post(change_path, {**callback, "proposedTime": "19:45"}, expected=409, key=callback_key)
+    first_change_id = pending["change"]["id"]
+    reconfirm = {"action": "SIMULATE_RECONFIRMATION", "changeId": first_change_id, "result": "ACCEPT"}
+    post(change_path, reconfirm, expected=409)
+    rejected = post(change_path, {"action": "DECIDE", "changeId": first_change_id, "approve": False})
+    assert rejected["change"]["status"] == "REJECTED" and rejected["confirmedTime"] == "19:00"
+
+    pending = post(change_path, callback)
+    change_id = pending["change"]["id"]
+    decision = {"action": "DECIDE", "changeId": change_id, "approve": True}
+    post(change_path, {**decision, "changeId": first_change_id}, expected=404)
+    approved = post(change_path, decision)
+    assert approved["change"]["status"] == "RECONFIRMING" and approved["confirmedTime"] == "19:00"
+    applied = post(change_path, {**reconfirm, "changeId": change_id})
+    assert applied["change"]["status"] == "APPLIED" and applied["confirmedTime"] == "19:30"
+    assert request(port, "GET", change_path, token=token) == applied
+    assert request(port, "GET", path, token=token) == second
+
+    pending = post(change_path, {**callback, "proposedTime": "20:00"})
+    change_id = pending["change"]["id"]
+    post(change_path, {**decision, "changeId": change_id})
+    unknown = post(change_path, {**reconfirm, "changeId": change_id, "result": "DISCONNECT"})
+    assert unknown["change"]["status"] == "UNKNOWN" and unknown["confirmedTime"] == "19:30"
 
     cases = (
         ("SLOT_UNAVAILABLE", "DECLINED", False, True),
