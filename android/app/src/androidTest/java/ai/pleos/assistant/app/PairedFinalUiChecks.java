@@ -1,10 +1,13 @@
 package ai.pleos.assistant.app;
 
+import android.app.AlertDialog;
 import android.app.Instrumentation;
 import android.content.Intent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
 /**
@@ -13,6 +16,12 @@ import org.json.JSONObject;
 final class PairedFinalUiChecks {
   static void run(Instrumentation runner) throws Exception {
     if (!BuildConfig.PAIRED_PHONE_DEMO) throw new AssertionError("paired build required");
+    var night = LocalDateTime.of(2026, 11, 14, 23, 52, 30);
+    var arrival = FinalReservationActivity.arrivalForToday(night, 0);
+    if (!LocalDateTime.of(2026, 11, 14, 23, 55).equals(arrival)
+        || FinalReservationActivity.arrivalForToday(night, 10) != null) {
+      throw new AssertionError("late-night same-day test time is incorrect");
+    }
     var a =
         (FinalReservationActivity)
             runner.startActivitySync(
@@ -84,51 +93,100 @@ final class PairedFinalUiChecks {
             var callback = new JSONObject(r.toString()).put("change", liveChange);
             a.model.pairedStatus.put("callback", callback);
             render(a);
-            require(a, "식당에서 시간 변경을 요청했어요");
-            require(a, "19:30");
-            require(a, "새 시간 수락");
-            require(a, "변경 거절");
+            AlertDialog request = dialog(a, "callbackChangeDialog");
+            if (request == null || !request.isShowing())
+              throw new AssertionError("callback popup missing");
+            String proposal = text(request.getWindow().getDecorView());
+            if (!proposal.contains("19:10 예약 → 19:30 변경 요청")
+                || !proposal.contains("새 시간 수락")
+                || !proposal.contains("변경 거절"))
+              throw new AssertionError("callback popup missing proposal or actions");
+            render(a);
+            if (request != dialog(a, "callbackChangeDialog"))
+              throw new AssertionError("status polling replaced the callback popup");
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
+    Thread.sleep(300);
+    VehicleUiChecks.capture(runner, "paired-callback-popup");
+    runner.runOnMainSync(
+        () -> {
+          try {
+            JSONObject callback = a.model.pairedStatus.getJSONObject("callback");
+            JSONObject liveChange = callback.getJSONObject("change");
             liveChange.put("status", "RECONFIRMING").put("canDecide", false);
             render(a);
             require(a, "식당에 새 시간을 확인 중");
-            if (text(a.getWindow().getDecorView()).contains("새 시간 수락"))
+            if (dialog(a, "callbackChangeDialog") != null)
               throw new AssertionError("decision remained available");
+            liveChange.put("status", "AWAITING_USER").put("canDecide", true);
+            render(a);
+            if (dialog(a, "callbackChangeDialog") == null)
+              throw new AssertionError("new pending request was not displayed");
+            liveChange.put("status", "EXPIRED").put("canDecide", false);
+            render(a);
+            if (dialog(a, "callbackChangeDialog") != null)
+              throw new AssertionError("expired callback popup remained visible");
             a.model.pairedStatus.remove("callback");
             render(a);
-            String beforeChange = a.model.pairedStatus.toString();
-            var showAlert = a.getClass().getDeclaredMethod("showDemoChangeAlert");
-            showAlert.setAccessible(true);
-            showAlert.invoke(a);
-            var dialogField = a.getClass().getDeclaredField("demoChangeDialog");
-            dialogField.setAccessible(true);
-            var alert = (android.app.AlertDialog) dialogField.get(a);
-            if (alert == null || !alert.isShowing()) throw new AssertionError("alert not shown");
+            click(a, "design_tools");
+            click(a, "traffic_delay_demo");
+            require(a, "도착 예정 18:55 · 교통 시연");
+            if (dialog(a) != null) throw new AssertionError("proposal shown before ETA update");
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
+    long deadline = android.os.SystemClock.elapsedRealtime() + 8000;
+    var shown = new AtomicBoolean();
+    while (!shown.get() && android.os.SystemClock.elapsedRealtime() < deadline) {
+      runner.runOnMainSync(
+          () -> {
+            AlertDialog alert = dialog(a);
+            shown.set(alert != null && alert.isShowing());
+          });
+      if (!shown.get()) Thread.sleep(100);
+    }
+    if (!shown.get()) throw new AssertionError("traffic proposal did not appear automatically");
+    Thread.sleep(300); // Allow the dialog to render before taking the screenshot.
+    VehicleUiChecks.capture(runner, "traffic-delay-proposal");
+    var originalState = new String[1];
+    runner.runOnMainSync(
+        () -> {
+          try {
+            AlertDialog alert = dialog(a);
             String alertText = text(alert.getWindow().getDecorView());
-            if (!alertText.contains("19:30") || !alertText.contains("시연용 가상 연락"))
-              throw new AssertionError("delay or simulation label missing");
-            var decide =
-                a.getClass()
-                    .getDeclaredMethod(
-                        "finishDemoChange", String.class, String.class, boolean.class);
-            decide.setAccessible(true);
-            decide.invoke(a, r.getString("id"), "19:30", true);
-            alert.dismiss();
-            require(a, "변경 수락을 선택했어요");
-            if (!beforeChange.equals(a.model.pairedStatus.toString()))
-              throw new AssertionError("simulation changed server result");
-            showAlert.invoke(a);
-            alert = (android.app.AlertDialog) dialogField.get(a);
-            decide.invoke(a, r.getString("id"), "19:10", false);
-            alert.dismiss();
-            require(a, "기존 시간 19:10 유지를 선택했어요");
-            if (!beforeChange.equals(a.model.pairedStatus.toString()))
-              throw new AssertionError("simulation changed server result");
+            if (!alertText.contains("18:55 → 19:20")
+                || !alertText.contains("19:30")
+                || !alertText.contains("교통 지연 시연")
+                || !alertText.contains("예약보다 10분 늦게 도착해요"))
+              throw new AssertionError("traffic proposal times or simulation label missing");
+            originalState[0] = a.model.pairedStatus.toString();
+            alert.getWindow().getDecorView().findViewWithTag("traffic_inquire").performClick();
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        });
+    runner.waitForIdleSync();
+    runner.runOnMainSync(
+        () -> {
+          try {
+            require(a, "19:30 변경 문의 선택 · 시연");
+            if (!originalState[0].equals(a.model.pairedStatus.toString()))
+              throw new AssertionError("traffic proposal changed server result");
+            require(a, "도착 예정 19:20 · 교통 시연");
+            var r = a.model.pairedStatus.getJSONObject("latest");
+            if (!"19:10".equals(r.getString("confirmedTime")))
+              throw new AssertionError("traffic demo rewrote confirmed time");
             r.put("status", "UNKNOWN");
-            alert.dismiss();
-            showAlert.invoke(a);
-            if (((android.app.AlertDialog) dialogField.get(a)).isShowing())
-              throw new AssertionError("UNKNOWN change alert allowed");
+            render(a);
+            click(a, "design_tools");
+            if (a.getWindow().getDecorView().findViewWithTag("traffic_delay_demo") != null)
+              throw new AssertionError("UNKNOWN traffic proposal enabled");
+            click(a, "design_tools");
             r.put("status", "CONFIRMED");
+            var journal = runner.getTargetContext().getSharedPreferences("paired-reset-fixture", 0);
             journal
                 .edit()
                 .putString("attempt", new JSONObject().put("key", r.getString("id")).toString())
@@ -143,8 +201,12 @@ final class PairedFinalUiChecks {
             hide.invoke(a.model);
             if (a.model.pairedStatus.has("latest"))
               throw new AssertionError("completed result returned");
-            render(a);
+            var edit = a.getClass().getDeclaredMethod("edit");
+            edit.setAccessible(true);
+            edit.invoke(a);
             require(a, "이 조건으로 주변 식당");
+            require(a, "현재 이동시간을 확인할 수 없어요");
+            require(a, "예약 희망 시각");
             r.put("id", "another-attempt").put("status", "UNKNOWN");
             a.model.pairedStatus.put("latest", r);
             hide.invoke(a.model);
@@ -156,6 +218,27 @@ final class PairedFinalUiChecks {
         });
     VehicleUiChecks.capture(runner, "paired-final-fixture");
     runner.runOnMainSync(a::finish);
+  }
+
+  private static AlertDialog dialog(FinalReservationActivity a) {
+    return dialog(a, "demoChangeDialog");
+  }
+
+  private static AlertDialog dialog(FinalReservationActivity a, String name) {
+    try {
+      var field = a.getClass().getDeclaredField(name);
+      field.setAccessible(true);
+      return (AlertDialog) field.get(a);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError(e);
+    }
+  }
+
+  private static void click(FinalReservationActivity a, String tag) {
+    View button = a.getWindow().getDecorView().findViewWithTag(tag);
+    if (button == null || !button.isEnabled())
+      throw new AssertionError("button unavailable: " + tag);
+    button.performClick();
   }
 
   private static void field(Object target, String name, Object value) throws Exception {

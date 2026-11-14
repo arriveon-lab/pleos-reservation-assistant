@@ -73,9 +73,30 @@ def callback_bookings(service, caller):
         booking = _one(service, owner, "booking", call["bookingId"])
         if (booking and booking.get("pleosPairedTest") and booking.get("mode") == "LIVE"
                 and booking["status"] == "CONFIRMED" and booking["date"] >= today
-                and booking.get("confirmedTime") and booking.get("liveCallId") == call["id"]):
+                and booking.get("confirmedTime")
+                and booking.get("bookingCallId", booking.get("liveCallId")) == call["id"]):
             matches.append((owner, booking))
     return matches
+
+
+def current_callback_booking(service, caller, matches):
+    """Use the latest live test pairing only when it identifies one reservation."""
+    if len(matches) == 1:
+        return matches[0]
+    bindings = service.db.execute(
+        "SELECT owner,body FROM objects WHERE kind='pleos_phone_binding' "
+        "AND json_extract(body,'$.phone')=? AND json_extract(body,'$.mode')='LIVE' "
+        "AND json_extract(body,'$.expiresAt')>? ORDER BY json_extract(body,'$.expiresAt') DESC LIMIT 2",
+        (caller, now().isoformat())).fetchall()
+    if not bindings:
+        return None
+    owner, raw = bindings[0]
+    binding = json.loads(raw)
+    if len(bindings) > 1 and json.loads(bindings[1][1])["expiresAt"] == binding["expiresAt"]:
+        return None
+    current = [(subject, booking) for subject, booking in matches
+               if subject == owner and booking.get("pleosPairedTest") == binding["generation"]]
+    return current[0] if len(current) == 1 else None
 
 
 def _public(binding):
@@ -97,7 +118,7 @@ def status(service, owner):
                 callbacks.append((change["createdAt"], attempt))
         callback = _attempt_view(service, owner, max(callbacks, key=lambda item: item[0])[1]) if callbacks else None
         return {**result, "latest": _attempt_view(service, owner, attempts[-1]) if attempts else None,
-                "callback": callback}
+                "callback": callback, "delayChangeEnabled": True}
 
 
 def _purge(service):
@@ -284,8 +305,17 @@ def _attempt_view(service, owner, attempt):
             and inbound and inbound["status"] == "ACTIVE" and change["expiresAt"] > now().isoformat())
         if callback["status"] == "AWAITING_USER" and not callback["canDecide"]:
             callback["status"] = "EXPIRED"
+    if change.get("origin") == "DRIVER":
+        from .voice.workflow import can_recheck_driver_delay
+
+        delay_change = {key: change[key] for key in ("status", "originalTime", "proposedTime")}
+        if can_recheck_driver_delay(booking, call):
+            delay_change["canRetry"] = True
+    else:
+        delay_change = None
     return {"id": attempt["id"], "mode": attempt["mode"], "status": state,
             "change": callback,
+            "delayChange": delay_change, "version": booking["version"],
             "transportStatus": call["status"] if call else None,
             "restaurantName": booking["restaurantName"], "date": booking["date"],
             "requestedTime": booking["requestedTime"], "confirmedTime": booking["confirmedTime"],
@@ -310,6 +340,25 @@ def decide_change(service, owner, attempt_id, body, key):
     attempt = service._get(owner, "pleos_phone_attempt", attempt_id)
     require(attempt["mode"] == "LIVE", "NOT_FOUND", "실제 변경 요청을 찾을 수 없어요.", 404)
     service.command(owner, "decide_change", {**body, "bookingId": attempt["bookingId"]}, key)
+    return status(service, owner)
+
+
+def request_delay_change(service, owner, attempt_id, body, key, live_config):
+    require(isinstance(key, str) and re.fullmatch(UUID, key), "IDEMPOTENCY_KEY_REQUIRED",
+            "요청 키를 확인해 주세요.", 400)
+    require(isinstance(body, dict) and set(body) == {"version", "proposedTime"}
+            and type(body["version"]) is int and body["version"] > 0,
+            "INVALID_INPUT", "예약과 새 시각을 확인해 주세요.", 400)
+    proposed = valid_time(body["proposedTime"])
+    with service.lock:
+        attempt = service._get(owner, "pleos_phone_attempt", attempt_id)
+        require(attempt["mode"] == "LIVE", "NOT_FOUND", "실제 시험 예약을 찾을 수 없어요.", 404)
+        booking = service._get(owner, "booking", attempt["bookingId"])
+        target = registered_target(service, owner, booking.get("pleosPairedTest"))
+        require(target, "PAIRING_REQUIRED", "이 예약의 시험 번호 연결을 확인해 주세요.", 403)
+    from .voice.transport import dial_booking
+    asyncio.run(dial_booking(service, live_config(), owner, booking["id"], body["version"],
+                            "traffic-delay:" + key, test_phone_number=target, delay_time=proposed))
     return status(service, owner)
 
 
@@ -424,6 +473,8 @@ def route(service, port, method, path, headers, body, live_config):
         return 200, attempt_result(service, owner, match[1])
     if method == "POST" and (match := re.fullmatch(rf"/api/v1/paired-phone/calls/({UUID})/change", path)):
         return 200, decide_change(service, owner, match[1], body, key)
+    if method == "POST" and (match := re.fullmatch(rf"/api/v1/paired-phone/calls/({UUID})/delay-change", path)):
+        return 200, request_delay_change(service, owner, match[1], body, key, live_config)
     if path == BASE and method == "POST":
         return start(service, port, owner, body, bearer)
     if method == "GET" and (match := re.fullmatch(rf"{BASE}/({UUID})", path)):

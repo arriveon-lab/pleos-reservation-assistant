@@ -19,9 +19,11 @@ REPEAT_TEXT = "말씀을 처리하지 못했어요. 다시 한 번 말씀해 주
 
 
 def opening_text(context):
-    if context.get("pairedCallback"):
-        return "안녕하세요, AI 예약 비서입니다."
     name = context.get("reservationName")
+    if context.get("pairedCallback"):
+        if context.get("found") and isinstance(name, str) and name.strip():
+            return f"안녕하세요, {name} 님의 AI 비서입니다. 무엇을 도와드릴까요?"
+        return "안녕하세요, AI 예약 비서입니다."
     if isinstance(name, str) and name.strip():
         if context.get("testCall"):
             return f"안녕하세요, {name} 님의 AI 비서입니다. 예약 통화 시험입니다."
@@ -31,7 +33,8 @@ def opening_text(context):
 
 def initial_reply_instructions(context):
     if context.get("testCall"):
-        return ("소개는 이미 했다. 날짜·시간·인원으로 예약 가능한지 먼저 묻는다. "
+        return ("소개는 이미 했다. spokenBookingDay와 spokenBookingTime이 있으면 그 표현을 그대로 써서 "
+                "인원과 함께 예약 가능한지 먼저 묻는다. 날짜와 시각을 바꾸지 않는다. "
                 "필수 조건과 추가 비용 여부를 확인한 후에만 시험 예약을 요청한다.")
     if context.get("purpose") == "CALLBACK":
         if context.get("found"):

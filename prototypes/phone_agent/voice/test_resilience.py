@@ -77,10 +77,13 @@ class ResilienceTest(unittest.IsolatedAsyncioTestCase):
                          opening_text({"reservationName": "박테스트"}))
         self.assertEqual("안녕하세요, AI 예약 비서입니다.", opening_text({}))
 
-    def test_known_paired_callback_opens_without_speaking_reservation_name(self):
+    def test_known_paired_callback_opens_as_named_assistant(self):
         context = {"purpose": "CALLBACK", "pairedCallback": True, "found": True,
                    "reservationName": "박테스트"}
-        self.assertEqual("안녕하세요, AI 예약 비서입니다.", opening_text(context))
+        self.assertEqual("안녕하세요, 박테스트 님의 AI 비서입니다. 무엇을 도와드릴까요?",
+                         opening_text(context))
+        self.assertEqual("안녕하세요, AI 예약 비서입니다.",
+                         opening_text({**context, "found": False}))
         self.assertIn("저장된 성함·날짜·시간을 다시 묻거나", initial_reply_instructions(context))
 
     async def test_input_probe_distinguishes_raw_signal_from_filtered_silence(self):

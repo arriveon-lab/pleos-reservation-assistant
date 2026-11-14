@@ -27,6 +27,7 @@
   <string name="design_candidate_count">추천 %1$d곳 · 가상 후보 / 빈자리와 조건은 확인 전이에요</string>
   <string name="design_candidate_unknown">필수 조건 · 전화로 확인
 빈자리 · 전화로 확인</string>
+  <string name="design_select_restaurant">%1$s 선택</string>
   <string name="design_approval_title">이 내용으로 예약을 요청할까요?</string>
   <string name="design_mock_call_hint">MOCK 서버에 가상 예약을 요청합니다. 실제 전화는 걸리지 않아요.</string>
   <string name="design_restaurant">식당</string>
@@ -54,4 +55,30 @@
 ① “어라이브온 켜줘”
 ② Gleo를 다시 부른 뒤 “어라이브온 성인 세 명 아이 한 명 추천해줘”
 인원만 입력하려면 “어라이브온 성인 세 명 아이 한 명으로 설정해줘”라고 말씀한 뒤 검색 버튼을 누르세요.</string>
+  <string name="film_mode">가상 시연</string>
+  <string name="film_settings">설정</string>
+  <string name="film_settings_open">가상 시연 설정 열기</string>
+  <string name="film_settings_close">가상 시연 설정 닫기</string>
+  <string name="film_destination">목적지</string>
+  <string name="film_eta">예상 도착 %1$s</string>
+  <string name="film_today">오늘</string>
+  <string name="film_tomorrow">내일</string>
+  <string name="film_reservation_summary">%1$s %2$s · %3$d명</string>
+  <string name="film_reservation_details">%1$s · %2$d명</string>
+  <string name="film_time_expired">예약 희망 시각이 지나 새 시각을 표시했어요. 다시 확인해 주세요.</string>
+  <string name="film_candidates">가상 식당 %1$d곳 · 예약 가능 여부는 문의로 확인</string>
+  <string name="film_phone_hint">가상 식당에 예약을 요청하는 시연이에요.</string>
+  <string name="film_approve">가상 예약 요청</string>
+  <string-array name="film_restaurants">
+    <item>서울숲 가족식당</item>
+    <item>성수 아이랑 파스타</item>
+    <item>뚝섬 온기국수</item>
+    <item>성수 다정식탁</item>
+  </string-array>
+  <string-array name="film_restaurant_notes">
+    <item>주차 가능 · 유아의자는 전화로 확인</item>
+    <item>유아의자 있음 · 주차는 전화로 확인</item>
+    <item>계단 없는 입장 · 주차는 전화로 확인</item>
+    <item>아동 동반 가능 · 주차는 전화로 확인</item>
+  </string-array>
 </resources>

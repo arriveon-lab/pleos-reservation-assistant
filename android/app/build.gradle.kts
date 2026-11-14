@@ -70,6 +70,24 @@ android {
             }
             applicationId = "ai.pleos.assistant.pairedphone"
         }
+        val trialReservationName =
+            providers.gradleProperty("liveTestReservationName").orElse("가상 시험자").get().trim()
+        require(trialReservationName.matches(Regex("[\\p{L}\\p{M} -]{1,40}"))) {
+            "liveTestReservationName must contain 1–40 letters, spaces, or hyphens"
+        }
+        resValue("string", "live_test_reservation_name", trialReservationName)
+        val filmingDemo = providers.gradleProperty("filmingDemo").orElse("false").get().toBoolean()
+        if (filmingDemo) {
+            require(
+                applicationId == "ai.pleos.assistant.mock.designvalidation" &&
+                    providers.gradleProperty("mockPhoneDemo").orNull == "true" &&
+                    providers.gradleProperty("realPlaceDemo").orNull != "true" &&
+                    providers.gradleProperty("phoneTrialDial").orNull != "true"
+            ) {
+                "filmingDemo requires the isolated EC2 MOCK phone build"
+            }
+        }
+        buildConfigField("boolean", "FILMING_DEMO", filmingDemo.toString())
         versionCode = if (pairedPhone) 2 else 1
         versionName = if (pairedPhone) "0.2.0-paired-test" else "0.1.0-mock"
     }
