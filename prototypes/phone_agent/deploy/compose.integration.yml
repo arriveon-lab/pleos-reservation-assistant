@@ -64,7 +64,7 @@ services:
       - --app.destination-recommendations.web.gumi-catalog-enabled=${GUMI_CATALOG_ENABLED:-true}
       - --app.destination-recommendations.web.runtime-model=gpt-6-luna
       - --app.destination-recommendations.web.runtime-max-output-tokens=3072
-      - --app.destination-recommendations.web.runtime-max-calls-per-startup=${WEB_MAX_CALLS:-3}
+      - --app.destination-recommendations.web.runtime-max-calls-per-startup=${WEB_MAX_CALLS:--1}
     healthcheck:
       test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:18769/api/v1/status"]
       interval: 15s

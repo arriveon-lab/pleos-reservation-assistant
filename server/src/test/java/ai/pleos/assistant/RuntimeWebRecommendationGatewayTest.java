@@ -88,6 +88,27 @@ class RuntimeWebRecommendationGatewayTest {
   }
 
   @Test
+  void operatorCanEnableSearchWithoutAStartupCap() {
+    var calls = new AtomicInteger();
+    var adapter =
+        new GptWebRecommendationAdapter(
+            clock,
+            (body, key, timeout) -> {
+              calls.incrementAndGet();
+              return new GptPlaceSourceDiscovery.Response(
+                  200, MockWebRecommendationGateway.fictionalResponse());
+            },
+            () -> "fixture-key");
+    var gateway = new RuntimeWebRecommendationGateway(clock, adapter, "gpt-6-luna", 3072, -1);
+    for (int i = 0; i < 4; i++) {
+      var request = new Request(UUID.randomUUID(), 1, "서울숲", Set.of(Need.PARKING), false);
+      assertThat(gateway.search(request, NOW.plusSeconds(30), () -> true).state())
+          .isEqualTo(State.RESULTS);
+    }
+    assertThat(calls.get()).isEqualTo(4);
+  }
+
+  @Test
   void rejectsMissingBudgetOrModel() {
     var adapter = new GptWebRecommendationAdapter(clock, (body, key, timeout) -> null, () -> "x");
     assertThatThrownBy(
