@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" width="1200" height="480" font-family="Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7A8794"/>
+    </marker>
+  </defs>
+  <style>
+    .band { font-size: 14px; font-weight: 600; fill: #7A8794; letter-spacing: 1px; }
+    .ours { fill: #FFFFFF; stroke: #1D4ED8; stroke-width: 2; }
+    .ext { fill: #F4F6F8; stroke: #C5CDD5; stroke-width: 1.5; }
+    .name { font-size: 19px; font-weight: 700; fill: #17202A; }
+    .tech { font-size: 14px; fill: #5B6773; }
+    .chip { fill: #FFFFFF; stroke: #C5CDD5; stroke-width: 1.2; }
+    .chipt { font-size: 14px; fill: #3E4A56; }
+    .ln { stroke: #7A8794; stroke-width: 1.8; fill: none; }
+    .thin { stroke: #B4BEC8; stroke-width: 1.4; fill: none; }
+    .dash { stroke-dasharray: 5 5; }
+    .lbl { font-size: 13px; fill: #7A8794; }
+  </style>
+
+  <rect width="1200" height="480" fill="#FFFFFF"/>
+
+  <text class="band" x="30" y="40">차량 · Pleos Connect</text>
+  <text class="band" x="290" y="40">서버 · Docker Compose</text>
+  <text class="band" x="870" y="40">통화망</text>
+  <line x1="262" y1="26" x2="262" y2="470" stroke="#E6EAEE" stroke-width="1.5"/>
+  <line x1="848" y1="26" x2="848" y2="470" stroke="#E6EAEE" stroke-width="1.5"/>
+
+  <!-- vehicle -->
+  <rect class="ours" x="30" y="140" width="210" height="96" rx="12"/>
+  <text class="name" x="135" y="182" text-anchor="middle">차량 앱</text>
+  <text class="tech" x="135" y="210" text-anchor="middle">Android · Java</text>
+
+  <line x1="135" y1="236" x2="135" y2="262" class="thin"/>
+  <rect class="chip" x="40" y="262" width="190" height="36" rx="18"/>
+  <text class="chipt" x="135" y="285" text-anchor="middle">ux:core 화면 규칙</text>
+  <rect class="chip" x="40" y="306" width="190" height="36" rx="18"/>
+  <text class="chipt" x="135" y="329" text-anchor="middle">NaviHelper 목적지 · 주행</text>
+  <rect class="chip" x="40" y="350" width="190" height="36" rx="18"/>
+  <text class="chipt" x="135" y="373" text-anchor="middle">주행 제한 신호</text>
+  <rect class="chip" x="40" y="394" width="190" height="36" rx="18"/>
+  <text class="chipt" x="135" y="417" text-anchor="middle">Gleo 음성 실행</text>
+
+  <!-- nginx -->
+  <rect class="ext" x="290" y="64" width="530" height="44" rx="10"/>
+  <text class="tech" x="555" y="92" text-anchor="middle" style="font-weight:600;fill:#17202A">nginx · HTTPS · 경로별 분기</text>
+
+  <path d="M240 188 L264 188 L264 86 L288 86" class="ln" marker-end="url(#a)"/>
+  <text class="lbl" x="200" y="128" text-anchor="middle">HTTPS · Bearer 토큰</text>
+
+  <!-- recommendation server -->
+  <rect class="ours" x="290" y="140" width="250" height="96" rx="12"/>
+  <text class="name" x="415" y="182" text-anchor="middle">추천 · 예약 서버</text>
+  <text class="tech" x="415" y="210" text-anchor="middle">Spring Boot · H2 · Flyway</text>
+  <line x1="415" y1="108" x2="415" y2="138" class="ln" marker-end="url(#a)"/>
+
+  <line x1="415" y1="236" x2="415" y2="262" class="thin dash"/>
+  <rect class="chip" x="320" y="262" width="190" height="36" rx="18"/>
+  <text class="chipt" x="415" y="285" text-anchor="middle">Kakao 장소 검색</text>
+  <rect class="chip" x="320" y="306" width="190" height="36" rx="18"/>
+  <text class="chipt" x="415" y="329" text-anchor="middle">서울 공공데이터</text>
+  <rect class="chip" x="320" y="350" width="190" height="36" rx="18"/>
+  <text class="chipt" x="415" y="373" text-anchor="middle">OpenAI 웹 출처 검색</text>
+
+  <!-- phone api -->
+  <rect class="ours" x="570" y="140" width="250" height="96" rx="12"/>
+  <text class="name" x="695" y="182" text-anchor="middle">전화 API</text>
+  <text class="tech" x="695" y="210" text-anchor="middle">Python · SQLite</text>
+  <line x1="695" y1="108" x2="695" y2="138" class="ln" marker-end="url(#a)"/>
+
+  <line x1="540" y1="188" x2="568" y2="188" class="ln" marker-start="url(#a)" marker-end="url(#a)"/>
+
+  <!-- voice worker -->
+  <rect class="ours" x="570" y="300" width="250" height="96" rx="12"/>
+  <text class="name" x="695" y="342" text-anchor="middle">음성 워커</text>
+  <text class="tech" x="695" y="370" text-anchor="middle">LiveKit Agents · STT → LLM → TTS</text>
+  <line x1="695" y1="236" x2="695" y2="298" class="ln" marker-end="url(#a)"/>
+  <text class="lbl" x="705" y="272">같은 DB에서 승인된 통화 배정</text>
+
+  <!-- telephony -->
+  <rect class="ext" x="870" y="300" width="140" height="96" rx="12"/>
+  <text class="name" x="940" y="342" text-anchor="middle">LiveKit</text>
+  <text class="tech" x="940" y="370" text-anchor="middle">SIP · 음성 추론</text>
+
+  <rect class="ext" x="1036" y="300" width="140" height="96" rx="12"/>
+  <text class="name" x="1106" y="342" text-anchor="middle">Telkit</text>
+  <text class="tech" x="1106" y="370" text-anchor="middle">070 번호</text>
+
+  <line x1="820" y1="348" x2="868" y2="348" class="ln" marker-start="url(#a)" marker-end="url(#a)"/>
+  <line x1="1010" y1="348" x2="1034" y2="348" class="ln" marker-start="url(#a)" marker-end="url(#a)"/>
+
+  <line x1="1106" y1="396" x2="1106" y2="420" class="ln" marker-start="url(#a)" marker-end="url(#a)"/>
+  <rect class="chip" x="1036" y="422" width="140" height="36" rx="18"/>
+  <text class="chipt" x="1106" y="445" text-anchor="middle">식당 전화</text>
+
+</svg>
