@@ -1,0 +1,5 @@
+# Apply only to the existing integration API, which shares the live worker database.
+services:
+  api:
+    environment:
+      PHONE_PLEOS_PAIRING: "1"

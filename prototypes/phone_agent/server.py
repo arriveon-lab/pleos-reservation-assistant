@@ -13,10 +13,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from . import paired_phone
 from .service import DomainError, ReservationService, conditions, require
 from .web_recommendation import booking_web_needs, search_web
 
 STATIC = Path(__file__).with_name("static")
+CALLBACK_TEST_PATH = "/api/live/callback-test-target"
 RECOMMENDATION_PATH = re.compile(
     r"/api/internal/mock-recommendation-bookings/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})")
 
@@ -130,10 +132,60 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                     "INVALID_OWNER", "사용자 식별자를 확인해 주세요.", 400)
             return "recommendation:" + subject
 
+        def _callback_test_config(self):
+            from .voice.config import ConfigurationError, VoiceConfig, load_env_file
+
+            require(self.headers.get("X-Phone-Test-Operator") == "1" and service.test_mode,
+                    "NOT_FOUND", "경로를 찾을 수 없어요.", 404)
+            try:
+                load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
+                config = VoiceConfig.from_env()
+                require(config.self_service_test, "NOT_FOUND", "경로를 찾을 수 없어요.", 404)
+                config.require_live()
+                config.require_live("inbound")
+                return config
+            except ConfigurationError as error:
+                raise DomainError("LIVE_NOT_READY", str(error), 409) from None
+
+        def _paired_live_config(self):
+            from .voice.config import ConfigurationError, VoiceConfig, load_env_file
+
+            try:
+                load_env_file(os.environ.get("PHONE_ENV_FILE", "work/phone-live.env"))
+                config = VoiceConfig.from_env()
+                config.require_live()
+            except ConfigurationError as error:
+                raise DomainError("LIVE_NOT_READY", str(error), 409) from None
+            require(importlib.util.find_spec("livekit") is not None and (worker_ready is None or worker_ready()),
+                    "LIVE_NOT_READY", "음성 에이전트 연결을 확인해 주세요.", 409)
+            return config
+
+        def _paired(self, method, path, body=None):
+            require(web_search_port is not None and os.environ.get("PHONE_PLEOS_PAIRING") == "1",
+                    "NOT_FOUND", "이 시험 API를 사용할 수 없어요.", 404)
+            if path == paired_phone.OPERATOR_PATH:
+                require(method == "POST" and self.headers.get("X-Phone-Test-Operator") == "1",
+                        "NOT_FOUND", "시험 번호 등록 경로를 확인해 주세요.", 404)
+                self._json(200, paired_phone.claim(service, body, self._paired_live_config))
+                return
+            status, result = paired_phone.route(service, web_search_port, method,
+                path.removeprefix(paired_phone.PREFIX), self.headers, body, self._paired_live_config)
+            self._json(status, result)
+
         def do_GET(self):
             try:
                 self._host()
                 path = urlsplit(self.path).path
+                if path.startswith(paired_phone.PREFIX + "/"):
+                    self._paired("GET", path)
+                    return
+                if path == CALLBACK_TEST_PATH:
+                    from .voice import callback_test
+
+                    self._callback_test_config()
+                    owner, cookie = self._owner(create=True)
+                    self._json(200, callback_test.status(service, owner), cookie)
+                    return
                 recommendation = RECOMMENDATION_PATH.fullmatch(path)
                 if recommendation:
                     self._json(200, service.recommendation_attempt(self._recommendation_owner(), recommendation[1]))
@@ -152,6 +204,8 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                 self.wfile.write(raw)
             except DomainError as error:
                 self._json(error.status, {"error": {"code": error.code, "message": error.message}})
+            except Exception:
+                self._json(500, {"error": {"code": "INTERNAL_ERROR", "message": "상태를 다시 조회해 주세요."}})
 
         def do_POST(self):
             try:
@@ -159,9 +213,10 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                 if self.headers.get("Origin") not in (None, origin):
                     raise DomainError("ORIGIN_DENIED", "다른 사이트에서 보낸 요청은 받지 않아요.", 403)
                 recommendation = RECOMMENDATION_PATH.fullmatch(self.path)
+                paired = self.path.startswith(paired_phone.PREFIX + "/") or self.path == paired_phone.OPERATOR_PATH
                 browser_paths = ("/api/action", "/api/live/dial", "/api/web-recommendations") if web_search else (
                     "/api/action", "/api/live/dial")
-                if not recommendation and self.path not in browser_paths:
+                if not paired and not recommendation and self.path not in (*browser_paths, CALLBACK_TEST_PATH):
                     raise DomainError("NOT_FOUND", "경로를 찾을 수 없어요.", 404)
                 if self.headers.get_content_type() != "application/json":
                     raise DomainError("INVALID_CONTENT_TYPE", "JSON 요청이 필요해요.", 415)
@@ -171,13 +226,27 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                     length = 0
                 if not 0 < length <= 24576:
                     raise DomainError("BODY_SIZE", "요청 크기를 확인해 주세요.", 413)
-                owner = self._recommendation_owner() if recommendation else self._owner()[0]
+                if paired:
+                    pass
+                elif self.path == CALLBACK_TEST_PATH:
+                    config = self._callback_test_config()
+                    owner, cookie = self._owner(create=True)
+                else:
+                    owner = self._recommendation_owner() if recommendation else self._owner()[0]
                 try:
                     body = json.loads(self.rfile.read(length))
                 except (ValueError, UnicodeDecodeError):
                     raise DomainError("INVALID_JSON", "JSON을 확인해 주세요.", 400) from None
                 if not isinstance(body, dict):
                     raise DomainError("INVALID_INPUT", "요청은 JSON 객체여야 해요.", 400)
+                if paired:
+                    self._paired("POST", self.path, body)
+                    return
+                if self.path == CALLBACK_TEST_PATH:
+                    from .voice import callback_test
+
+                    self._json(200, callback_test.configure(service, config, owner, body), cookie)
+                    return
                 if self.path == "/api/web-recommendations":
                     snapshot = None
                     if service.web_test_enabled and "conditions" in body:

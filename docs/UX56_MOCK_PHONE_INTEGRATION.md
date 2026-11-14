@@ -1,0 +1,229 @@
+# UX-56 MOCK 추천 후보와 전화 예약 연결
+
+2026-11-12. 이 문서는 로컬 기기 검증이며 실기 공동 인수 완료가 아니다. #56은 OPEN, PR은 Draft로 유지한다.
+
+## 기준과 구현
+
+- main `dc0ab0d`의 #53 계약을 사용한다. #46의 공유 브랜치에 main을 합친 `8fa56d9`에서 시작했다. #46이 미병합이므로 이 PR에도 해당 앱 구현이 포함된다.
+- PUBLIC_CATALOG/SEOUL_OPEN_DATA 가상 후보만 선택 가능하다. WEB_SEARCH 후보에는 예약 버튼을 열지 않는다. 후보의 bookable/inquiryDispatchAllowed=false를 실제 예약 가능으로 바꾸지 않는다.
+- 명시적 승인 후 `/api/experimental/destination-recommendations/{id}/phone-reservations` POST. 승인 전 정확한 요청과 Idempotency-Key를 별도 `mock-phone-recovery`에 저장한다. 인증은 기존 AuthSession을 사용한다.
+- 응답 유실·재실행은 동일 경로 GET으로 대조한다. 404/UNKNOWN/FAILED에서는 새 POST나 다음 후보 자동 예약을 하지 않는다. DECLINED에 한해 서버가 지정한 다음 후보를 같은 이름·시각으로 다시 승인하며 previousAttemptId를 보낸다.
+- CONFIRMED는 조건 MET·빈자리 AVAILABLE·명시적 bookingRequested·승인 시각 일치·MOCK/externalCalls=0을 확인한다. 예약 요청과 확정은 구분한다.
+- 승인 화면은 가상 이름·인원·필수 조건·0원·내일 19시(KST) 연습 시각을 표시한다. 연습 시각은 내비 ETA가 아니다. 테스트 시나리오 선택은 MOCK 데모 전용이다.
+- `mockPhoneDemo` 기본값은 false. true와 로컬 서버의 phoneReservationsMode=MOCK 표시가 모두 있어야 전송한다.
+
+## 실행 환경
+
+Pleos Connect 2.1.0 / API 34 / emulator-5554 / 사용자 10. 별도 설치 패키지는 `ai.pleos.assistant.mock.integrationvalidation`이다. 기존 destinationvalidation/jointvalidation의 앱 데이터·인증·예약 기록은 지우거나 이관하지 않았다.
+
+```bash
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
+./gradlew -PincludeAndroid=true verifyAll
+python3 scripts/run-mock-phone-device.py
+adb reverse tcp:8080 tcp:18088
+adb reverse tcp:8081 tcp:18088
+```
+
+런처는 127.0.0.1의 gateway 18088 / Spring 18089 / Python phone 18090을 사용한다. `work/ux56-runtime`에 독립 H2·SQLite·내부 토큰을 보존한다. 이 디렉터리는 커밋하지 않는다. 실제 공급자 관측을 갱신하지 않고 fictional catalog만 새 시각으로 준비한다. 실제 전화·외부 API·유료 호출은 없다.
+
+기기 APK 빌드는 `-PnavigationDemo=true -PmockPhoneDemo=true`와 별도 applicationId init script를 사용했다. 로컬 `work/ux56/isolated.init.gradle` 내용:
+
+```groovy
+allprojects {
+    afterEvaluate { project ->
+        if (project.path == ':android:app') {
+            project.android.defaultConfig.applicationId = 'ai.pleos.assistant.mock.integrationvalidation'
+        }
+    }
+}
+```
+
+기존 앱의 이전 연결 포트는 18085였다. 현재 reverse는 격리 서버 18088을 향하므로 기존 앱을 이 서버에 연결하지 않는다. 기존 서버로 돌아갈 때 reverse도 복원한다.
+
+## 실제 수행 및 결과
+
+| 절차 | 기대 결과 | 실제 결과 |
+| --- | --- | --- |
+| 가상 목적지 주입 → 화면의 데모 확인 → 추천 검색 | 현재 catalog 후보 표시 | PASS |
+| 후보 선택 → 승인 창 취소 | POST 없음 | PASS |
+| 후보 선택 → 명시적 승인 → 수락 | 조건/빈자리 확인 후 CONFIRMED | PASS |
+| 조건 불충족 | bookingRequested=false, DECLINED | PASS |
+| 제안된 다음 후보를 재승인 | previousAttemptId 연결, 새 승인 후 CONFIRMED | PASS |
+| 결과 불명확 | UNKNOWN, 다른 후보 자동 예약 차단 | PASS |
+| 강제 종료 → 재실행 → GET 조회 | 기존 attemptId와 확정 결과 유지 | PASS |
+
+`PhoneDeviceChecks`는 실제 Activity 버튼과 승인 대화상자를 누르고 실제 로컬 Spring→Python HTTP를 사용했다. 음성 세션·음성 Intent는 사용하지 않았다. 목적지는 가상 좌표를 주입했으며 실제 내비 응답 연관성을 검증한 것이 아니다.
+
+PHONE_FULL은 실제 SharedPreferences에 기록하고 PHONE_RESTORE가 강제 종료 이후 이를 복구했다. PHONE_ACCEPT/UNMET/UNKNOWN 반복 시나리오는 기존 영속 기록을 덮어쓰지 않도록 테스트 메모리 Store를 사용했다. 이 세 시나리오만으로 영속 복구를 통과 처리하지 않았다.
+
+## 검사와 증거
+
+- `verifyAll`, `verify`, Android APK/test APK 빌드 통과. Java 서버 464개·UX 131개, 실패/오류/skip 0. Gradle UP-TO-DATE 재사용 포함.
+- `scripts/mock-agent-integration.py --verify` 통과.
+- `scripts/smoke-test.py --check-contract` 통과(프로젝트 계약 검증 venv).
+- 단위 검사: 중복 클릭·저장 실패·주행 제한·응답 유실/GET·404·시각 불일치·DECLINED 재승인·web 후보 제외.
+- Lint errors 0, 기존 warnings 15, 신규 억제 없음.
+- 초기 컴파일 오류는 중복 삽입된 검증 호출을 제거하여 해결했고 이후 검사 통과.
+- 제품 APK SHA256: `9103650af4dc39bae2c845abd24b3c30cd641baf9f78243086680d8a23fbf7dc` (`work/ux56/tested.apk`).
+- 로그: `work/ux56/verify-final.log`, `unit-final.log`, `final-{accept,unmet,unknown,restore}.log`, `capture-restore.log`, `http-integration.json`, `smoke.log`.
+- 화면: `captures/ux56/approval.png`, `captures/ux56/restored.png`. 가상 데이터만 포함. 캡처는 로컬 증거이며 Git에는 넣지 않는다.
+- 기존 예약 XML 전후 SHA256 동일: destinationvalidation `cd53323c4c0e83e38df13804d60091ab6ff4da8c6658a567023d64524590f60d`, jointvalidation `beb02ab84b57d492514117bb1e0eb7d069c3f4036e0fd1a22e5f29967b1f13b3`.
+
+## 남은 범위
+
+- #56: Pleos 실기 설치·네트워크·화면 확인 및 공동 인수. EC2 주소·앱 인증은 인계받아 아래와 같이 에뮬레이터에서 연결 검증했다.
+- #25: 실제 차량/분할창 공동 검증. 이 문서의 에뮬레이터 결과로 실기 완료를 대신하지 않는다.
+- #1: 현재 길안내 목적지 응답 연관성 및 ETA 기준은 미확정. demo 확인과 정식 자동 활성화를 구분한다.
+- #52/#40: 실제 장소/전화 경로 및 팀 공동 인수는 미완료. 실통화는 별도 대상·비용 승인 필요. 이번 작업은 외부 호출 0의 MOCK이다.
+- 인증 저장소 자체 유실, 실제 차량 연결 단절, 배포 서버 장애는 이번 기기 시나리오에서 미검증이다.
+
+## 최신 EC2 인계 반영
+
+작업 중 [#56 EC2 인계](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/56#issuecomment-6812281297)가 추가된 것을 재확인했다. `https://43.201.115.170/pleos-mock`의 TLS 검증 및 상태 조회에서 contractVersion=1.1.0, mode=MOCK, dataSource=FICTIONAL_FIXTURES, externalCallsEnabled=false를 확인했다. 서버 기준은 담당자가 명시한 `dc0ab0d`이며 원격 OS/프로세스 커밋을 직접 감사한 것은 아니다.
+
+`-Pec2MockDemo=true -PnavigationDemo=true -PmockPhoneDemo=true`는 별도 applicationId `ai.pleos.assistant.mock.ec2validation`을 생성한다. 모든 인증·추천·예약 요청을 같은 고정 HTTPS base로 보낸다. 플랫폼 TLS/호스트 검증을 유지하며 redirect는 거부한다. 매 호출 전 MOCK 상태를 확인한다. 이 배포의 PUBLIC_CATALOG 및 외부 호출 비활성은 인계 계약에 따른다. 기본 앱은 계속 loopback이며 release에서는 이 전송을 허용하지 않는다.
+
+EC2 빌드에서 verifyAll 및 test APK 빌드 통과. APK SHA256 `a8bd75cd7e989be1ff6ebe0f08cab9abf4e92c957afd69155fac52f03946bca8`. 에뮬레이터에서 신규 시험 세션 발급→가상 목적지 확인→후보 검색→선택→승인 취소→재승인→예약 확정→GET을 실제 버튼으로 검증했다. 로컬 중계나 adb reverse를 거치지 않는 HTTPS 요청이다. 기존 설치의 자격 증명을 옮기거나 재사용하지 않았다.
+
+EC2 기기 로그는 `work/ux56/ec2-{full,unmet,unknown,restore}.log`, 빌드 로그는 `ec2-build.log`. PHONE_FULL/RESTORE는 보호 저장의 같은 인증·예약 기록을 사용하며, UNMET/UNKNOWN은 반복용 메모리 phone Store를 사용한다. 모든 시나리오는 가상 목적지/가상 후보/가상 이름이며 실제 전화·유료 호출 0이다. 토큰 강제 만료·실제 서버 장애·실차 검증은 미수행이다.
+
+## 2026-11-12 실제 내비 고정 목적지 조회 — 추천 실패 확인
+
+요청에 따라 합성 목적지 주입을 제거하고 실제 NaviHelper 3.0.5 콜백을 사용하는 `PHONE_NAVI_QUERY` 기기 검사를 추가했다. 목적지 확인·검색 버튼만 누르며 음성/예약 POST는 호출하지 않는다. 공개 목적지의 SDK 이름·위도·경도와 실제 전송 body가 같은지 메모리에서 비교하고 원문은 로그에 남기지 않는다.
+
+- 실제 SDK 수신 → 화면 확인 → 데모 확인 → EC2 POST/GET까지 실행했다. `SDK_REQUEST_MATCH=true`.
+- 서버 작업의 외부 state는 RESULTS였지만 내부 `result.listing.state=FAILED`, `failure=INVALID_QUERY`, 후보 0개였다. 앱도 FAILED/후보0과 실패 안내를 표시했다. **실제 식당 추천과 상호·주소·근거 카드 대조는 미완료다.** 검사 도구의 PASS는 요청 일치·실패 관측·예약 기록 보존 검사 통과이지 추천 성공이 아니다.
+- 서버 `SeoulPlaceSearchAdapter`는 기준점 37.544/127.055에서 1km 이내 목적지와 최대 검색반경1km만 허용하고, 그 밖은 INVALID_QUERY를 반환한다. 현재 내비 목적지는 그 시범 범위 밖이다. 앱의 좌표를 성수로 바꾸거나 가상 후보를 실제 식당으로 표시하지 않았다.
+- 공개 `/pleos-mock/api/v1/status`는 여전히 `FICTIONAL_FIXTURES`, 외부 호출 false다. 실제 식당용 주소 조회는 별도 시험 서비스이며 공개 루트는 HTTP401, 문서상 SSH 터널18767/시험 화면 인증을 요구한다. 현재 로컬 터널과 EC2 연결 설정이 없어 해당 실제 조회를 실행하지 않았다. 무료 공공자료/유료 보강 비활성 경로의 앱용 주소·인증·지원 범위 인계가 필요하다.
+- 새 ec2navigationvalidation 설치의 최초 인증 준비가 시간 초과됐다. 해당 인증 시도/저장을 보존했고 원인을 확정하지 않았다. 재발급·삭제하지 않았다. 이미 인증된 ec2validation의 **같은 주체**로 조회만 수행했다. 기존 phone journal은 그대로 두고 검사 중 UI용 메모리 controller만 사용했다(save는 금지). 일반 예약 journal 및 phone journal 원문이 전후 동일함을 검사했다.
+- `format`, `verifyAndroid`, test APK 빌드 통과. 실제 제품 코드는 변경하지 않았고 기존 c40152d EC2 제품 APK를 사용했다. 초기 인증 timeout과 추천 실패를 숨기지 않는다.
+- 재현: EC2 옵션으로 test APK 빌드/설치 후 `adb shell am instrument --user 10 -w -e destinationFixture PHONE_NAVI_QUERY ai.pleos.assistant.mock.ec2validation.test/ai.pleos.assistant.app.DrivingDeviceChecks`.
+- 로컬 증거: `work/ux56/actual-navi-final.log`, `nav-final-build.log`, `captures/ux56/actual-navi-query.png`. 화면은 로컬에만 보존한다. 기기 로그 시각은 host UTC와 다르므로 같은 시각으로 합치지 않는다.
+- 실제 식당 응답을 확보한 뒤 이름·주소·출처·조건 UNKNOWN·관측/유효시각·화면 표시를 대조해야 한다. 기존 MOCK 예약 성공은 이 실제 데이터 인수의 증거가 아니다. #56 OPEN/PR Draft 유지.
+
+## 2026-11-12 실제 추천 서버 직접 연결·승인된 1회 조회
+
+사용자가 SSH 키를 제공하고 추천 에이전트 1회 시험을 승인했다. 원격 설정을 읽기 전용으로 확인했다. 실제 추천 프로세스는 loopback18769, source=WEB_SEARCH, runtime-model=gpt-6-luna, runtime-max-calls-per-startup=3이다. 주소 조회 보강은 false, 텍스트 fallback은 true다. 서버 설정·프로세스·상한은 변경하거나 초기화하지 않았다.
+
+브라우저 cookie/Basic 비밀번호를 복사하지 않고 실제 추천 Spring 서버의 동일 Bearer1.1.0 API를 사용한다. `realPlaceDemo` 기본 false; true이면 별도 `ai.pleos.assistant.mock.realplacevalidation` 패키지와 8083 조회 전용 전송을 사용한다. release 전송 차단은 유지한다. 기존 MOCK/EC2 패키지와 인증/예약 기록을 공유하지 않는다.
+
+```bash
+ssh -i ~/pleos.pem -o ExitOnForwardFailure=yes -N -L 127.0.0.1:18769:127.0.0.1:18769 ubuntu@43.201.115.170
+python3 scripts/run-real-place-device.py
+adb reverse tcp:8083 tcp:18091
+./gradlew -PincludeAndroid=true -PnavigationDemo=true -PrealPlaceDemo=true verifyAll :android:app:assembleDebugAndroidTest
+```
+
+실행 전 `JAVA_HOME`은 Java21을 사용한다. 조회 게이트웨이는 인증·추천 POST/GET·close만 허용하고, 추천 전송 전에 `work/ux56-real/search-attempted`를 배타 생성한다. 응답 유실·재시작에도 추가 검색은 409이며 기록을 삭제해서 한도를 우회하지 않는다. 전화/예약 경로403을 로컬에서 확인했고 upstream으로 전달하지 않았다. 기본 `/status`의 FICTIONAL_FIXTURES 표시는 기존 예약용 값이며, 실제 추천 결과의 source=WEB_SEARCH 및 조회 경로와 구분한다.
+
+실행 결과:
+- 실제 NaviHelper 목적지를 확인 버튼으로 승인하고 요청했다. SDK의 이름·위도·경도와 서버 전송 body 일치. 실제 검색 POST는 1회, 자동 재검색 없음.
+- 실제 서버 RESULT/WEB RESULTS 및 후보3개를 수신했다. 이름·전체 주소의 응답/UI 일치를 기기 검사로 확인했고 screenshot을 직접 검토했다. 주차3개 모두 UNKNOWN→미확인, 전화/예약 불가 표시 유지.
+- 반환은 **식당2곳과 카페1곳**이다. 감성커피 판교아이스퀘어점(CAFE, 창업로17 F동105호), 이자와 판교아이스퀘어점(RESTAURANT, F동212호), 오지버거 판교1호점(RESTAURANT, B동102-1호). 세 곳 모두 응답의 공개 출처 페이지에서 상호/도로명주소를 대조했다. 세 식당 확보 또는 매장 조건/영업 여부 확정으로 세지 않는다.
+- 응답 identityVerified/bookable/inquiryDispatchAllowed=false. businessDetails와 reviews는 비어 있다. 주차 후기 문구가 있어도 매장 확인으로 승격하지 않았다. 매장별 영업시간·실시간 빈자리·실제 전화는 미검증이다.
+- 일반 목적지 POST는 userRequest에 식당 요청을 보내지만 venueCategory 필드가 없고, 별도 /web 입력에만 존재한다. 카페 혼입 문제는 서버 인계/후속 범위로 남긴다. 1회 승인 이후 추가 검색해서 3개를 채우지 않았다.
+- 기존 일반/전화 journal 보존 검사 PASS. 별도 신규 앱만 설치했다. 실제 전화/예약 POST는 0회; 차단 확인 요청은 Mac gateway에서403으로 끝났으며 서버로 전달하지 않았다.
+- format/verifyAll/test APK PASS, gateway 허용 경로 검사 PASS, 실제 소비 후 두 번째 검색409·예약경로403 확인. 초기 sandbox 포트 바인딩 실패는 권한 있는 실행으로 해결했고 검색 전이었다.
+- 실제 제품 APK SHA256 `ce5b27be72d3167531783b6a772f296035d5dde9cd6dffed2e892aaa416c9842`.
+- 로컬 증거: `work/ux56-real/build.log`, `device.log`, `result.json`, `tested.apk`, `captures/ux56/real-place-result.png`. 원문 인증 응답·키는 기록하지 않는다. 결과의 원 관측/유효시각을 변경하지 않았고 유효기한 후 현재 후보로 재생하지 않는다.
+- 이번 단계는 Mac SSH/adb reverse에 의존하는 개발용 조회 연결이다. 실제 차량 독립 HTTPS 배포 연결이나 전화 공동 인수 완료는 아니다. 현재 경로 응답 연관성은 여전히 UNVERIFIED/사용자 확인 데모로 구분한다.
+
+출처 대조: [감성커피](https://www.diningcode.com/profile.php?rid=YazD7jicBSyK), [이자와](https://www.diningcode.com/profile.php?rid=wQibM5jrWpZd), [오지버거](https://www.diningcode.com/profile.php?rid=fq7heKPigxRq). 공개 페이지의 현재 영업 여부를 실시간 확인한 것으로 해석하지 않는다.
+
+
+## 2026-11-12 #62 카페 제외 재검증 — 기존 인증에서 차단
+
+[#62](https://github.com/arriveon-lab/pleos-reservation-assistant/pull/62) `b4d9783`와 [서버 담당 인계](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/56#issuecomment-6815286588)를 확인했다. 기존 `userRequest=주차 가능한 식당 추천`에서 RESTAURANT를 해석하므로 앱 계약 변경은 없다. 서버 담당자는 EC2 배포·가상 응답의 식당2/카페1→식당2를 확인했지만 실제 장소/기기 재시험은 수행하지 않았다. 이 보고와 이번 실제 기기 결과를 구분한다.
+
+사용자가 추가 추천1회를 승인하여 기존 `work/ux56-real/search-attempted`를 보존하고 `work/ux56-cafe-filter`/port18092로 별도 1회 gateway를 준비했다. 기존 realplacevalidation 앱을 업데이트 설치하고 버튼 검사 `PHONE_NAVI_RESTAURANTS`를 실행했으나 **추천 전송 전 중단**됐다. 해당 설치에는 기존 `/searches` 미확인 요청이 있고, 조회 전용 전송이 이 경로를 차단한다. 첫 검사는 canWrite 대기 timeout이었다. 같은 인증의 기존 계약 `/searches/reconcile`로 대조를 시도했지만 완료 영수증이 생기지 않았고, 후속 기기 검사에서 `AUTH_PHASE=BLOCKED`를 직접 확인했다. 인증 실패의 정확한 서버 원인은 첫 시도에 HTTP 상태를 수집하지 않아 확정하지 않는다. 원 요청/인증을 삭제하거나 새 사용자로 대체하지 않았다.
+
+수정 및 검증:
+- 실제조회 전용 빌드에서 일반 가상 후보 찾기·미리보기 버튼을 비활성화했다. 잘못된 경로가 미확인 요청을 더 만들지 않도록 한다. 기본 MOCK 앱 동작은 유지한다.
+- 같은 인증으로 기존 검색을 대조하는 POST `/searches/reconcile`과 그 결과의 GET `/searches/{id}`만 전송/gateway 허용 목록에 추가했다. 신규 일반 검색·전화·예약 POST는 계속 차단한다. 복구 성공은 이번 기기에서 미검증이다.
+- `PHONE_NAVI_RESTAURANTS`는 SDK 목적지/전송 일치, RESULTS/후보 존재, 모든 venueCategory=RESTAURANT, 이름·주소/UI 일치, 예약 journal 보존을 검사한다. BLOCKED 인증이면 즉시 중단하며 인증 원문은 출력하지 않는다. 성공하지 않은 검사를 PASS로 세지 않는다.
+- gateway는 요청 종류·HTTP 상태·허용된 형식의 오류 코드만 출력한다. 토큰/요청 body/좌표/주소는 로그에 남기지 않는다.
+- 별도 `realPlaceFilterValidation=true` 설치 옵션은 기존 설치 보존용으로 빌드만 준비했다. **설치·신규 인증·추천은 아직 실행하지 않았다.** 기존 미확인 요청을 새 주체로 우회하지 않는 원칙에 따라 사용자에게 검증 분리 여부를 질문한 상태다.
+- format, verifyAll, test APK 빌드, smoke-test.py PASS(UP-TO-DATE 포함). gateway 허용 목록 검사에서 대조/결과 GET 허용 및 신규 일반 검색/전화/예약 거부 PASS. 별도 옵션 APK 빌드는 기기 검증 통과가 아니다.
+- 실제 추천 POST **0회**, 전화/예약 **0회**. 추가 추천 1회 표식은 아직 생성되지 않았다. #62의 실제 응답에서 카페가 제외됐는지와 카드 표시는 **미검증**이다.
+- 보존된 기존 journal 파일 SHA256: `9edb71e74e7303f3887b19939d503666611fb766e28c934dab7e8e3acecc2b25`. 원문 인증/요청은 앱 내부에 유지한다.
+- 로컬 증거: `work/ux56-cafe-filter/{pre-recovery-timeout,recovery-failure,device,gateway,build,isolated-build,smoke}.log`, `preserved-journal.sha256`, `captures/ux56/cafe-filter-auth-blocked.png`.
+
+다음 단계: 기존 주체의 서버 복구가 가능하면 같은 인증으로 대조를 완료한다. 별도 검증 설치가 승인되면 기존 기록은 그대로 두고 승인된 추천1회만 실행해 반환 업종/카드/UNKNOWN 표시를 대조한다. #56 OPEN, PR #59 Draft 유지. 실차·현재 경로 연관성·공동 인수·실제 전화/예약 완료로 표시하지 않는다.
+
+
+### 같은 날 후속 — 사용자 승인 후 분리 설치·추천1회 수행
+
+사용자가 별도 검증 설치를 승인했다. 기존 realplacevalidation은 유지하고 `realPlaceFilterValidation=true`의 `ai.pleos.assistant.mock.realplacefiltervalidation`을 별도로 설치했다. 신규 인증 HTTP200, 추천 POST **정확히 1회 HTTP200**, 이후 작업 GET HTTP200 4회를 gateway에서 관측했다. 추천1회 표식은 소비됐으며 삭제/재시도하지 않았다. 실제 전화/예약은 0회다.
+
+기기 검사는 `FAIL: AssertionError: no restaurant results`로 끝났다. 이 assertion 전에 SDK 목적지/실제 전송 body 일치 검사를 통과했지만, 후보 존재/RESULTS 조건을 충족하지 못했다. gateway에는 최종 result.json이 생성되지 않았고, 당시 로그에는 GET 응답의 상태 본문 및 로컬 전송 예외가 없어 **빈 결과인지, 실패 응답인지, 통신 오류인지 확정할 수 없다**. 원격 추천 컨테이너의 해당 시간 로그도 비어 있었다. 이를 서버 카페 필터 실패 또는 식당만 표시 성공으로 해석하지 않는다. 자동 화면 종료/close 이후의 화면을 결과 화면으로 제출하지 않는다.
+
+기존 설치 journal SHA256을 다시 확인해 위 값과 같음을 확인했다. 신규 시험 인증을 기존 미확인 요청의 복구로 간주하지 않는다. 추가 기기 실행은 하지 않고 다음 실패에서 원인을 남기도록 assertion 전에 UI 상태/스크린샷을 기록하고 gateway에 상태·오류 종류·경과시간 로그를 보완했다. 이 진단 보완은 빌드/검사만 통과했고 기기 재실행은 미수행이다. 후보/카페 업종 대조·카드 표시는 여전히 미검증이다.
+
+증거: `work/ux56-cafe-filter/device.log`(후속 실패), `blocked-identity.log`(기존 인증 차단), `gateway.log`(추천 POST1회/GET/close), `search-attempted`, `final-build.log`. 최종 응답과 오류 원인을 보존할 수 있는 재실행이 필요하다. 추가 외부 추천 승인은 이번 1회에 포함되지 않으므로 임의로 재검색하지 않는다.
+
+`e243ed8` CI는 기존 Spotless/JGit 의존성 해석 실패 후 실패한 Server and contract 작업만 재실행하여 최종4개 PASS했다(run43163347561, naming43163403593). 최신 진단/기록 후속 커밋 CI는 PR에서 별도로 확인한다. #56 OPEN/PR #59 Draft 유지.
+
+
+## 2026-11-12 MOCK 전화 예약 재검증 — 기존 기록 보존
+
+사용자 요청으로 EC2 MOCK 경로만 사용해 `PHONE_REPEAT` 기기 검사를 실행했다. 실제조회/추천 에이전트 호출은 필요하지 않아 이번 승인1회를 소비하지 않았다. 실제 전화·실예약·유료 검색은 0회다.
+
+- EC2 `/pleos-mock/api/v1/status`에서 MOCK/FICTIONAL_FIXTURES/externalCallsEnabled=false/계약1.1.0을 확인했다.
+- 기존 ec2validation 앱을 최신 코드8b8acc1과 navigationDemo/mockPhoneDemo/ec2MockDemo 옵션으로 업데이트하고 다시 활성화했다. 다른 사용 중지 앱과 기록은 유지했다.
+- 가상 성수 목적지·가상 후보3개 → 첫 식당 선택 → 승인 대화 → 취소(요청 없음) → 재선택·명시적 승인 → CONFIRMED → GET으로 같은 attemptId 유지까지 실제 기기 PASS.
+- 화면에서 `모의 예약 확정 · 실제 예약 아님`, 가상 공공데이터 식당0, 성인2/아이1 총3명, 2026-11-13 19:00(KST), 조건 충족·빈자리 있음·예약 요청 진행함을 확인했다. 이는 가상 서버 응답이며 실제 매장의 상태/예약이 아니다.
+- PHONE_REPEAT는 이번 전화 요청을 메모리 Store로 격리한다. 서버에는 새 MOCK 요청이 생성되지만 기존 앱의 영속 phone journal은 덮어쓰지 않는다. 이번 신규 결과의 앱 재실행 복구 검사는 미수행이며 기존 PHONE_FULL/RESTORE 증거와 구분한다.
+- ec2validation 일반/전화 journal 및 기존 realplacevalidation, realplacefiltervalidation, jointvalidation, destinationvalidation의 기록 비교에서 변경 없음. ec2validation phone SHA256은 `b38c69af87f472e04bd5c5bb948e99aa92a98f5b167cb78cf02da4d4fe804b71`로 동일하다. 인증 삭제/초기화/새 주체 생성은 하지 않았다.
+- verifyAndroid/test APK 빌드 PASS(캐시·UP-TO-DATE 포함), 제품 APK SHA256 `569f7e8c0cbe90ba0a49cd2c25b4e4f16f7ddcce9d25b912a0d3013aa92f3a6d`. 제품/테스트 코드 수정 없음.
+- 증거: `work/ux56-mock-retest/build.log`, `device.log`, `journals-before.json`, `journals-after.json`; 화면 `captures/ux56/mock-retest/{candidates,approval,result}.png`.
+- 승인 대화의 본문/버튼은 차량 화면에서 작게 보인다. 기능 검증은 통과했지만 차량 UI 가독성 최종 인수로 세지 않는다. 실제 내비 목적지·실제 식당·실통화·음성 예약은 이번 범위 밖이다. #56 OPEN/PR Draft 유지.
+
+
+## 2026-11-12 실제 추천→식당 선택→내비 목적지 변경 PASS
+
+사용자가 목표를 실제 식당 조회/표시/선택/내비 목적지 변경으로 정정했다. 앞선 MOCK 검사는 이 목표의 완료 증거가 아니다. 미사용 상태였던 추천 에이전트1회 승인을 이번 실행에 사용했다. 전화/예약은 실행하지 않았다.
+
+구현:
+- 실제조회 데모의 RESTAURANT 카드에 `이 식당을 내비에서 찾기` 버튼을 추가했다. 정차 입력 허용·현재 RESULTS·후보 이름/주소/ordinal 일치·유효기간을 다시 확인한 뒤 호출한다. 만료/화면 종료/다른 후보는 전달하지 않는다.
+- 고정 NaviHelper3.0.5와 navi-data3.0.4 sources에서 `requestNavigationScreen(new NavigationScreenRequest.SearchPlace(name))`, NAVI_CUSTOM_MAP(Normal) 권한을 확인해 사용했다. API를 추정하거나 임의 intent를 만들지 않았다.
+- 현재 웹 추천 Candidate 계약은 좌표/내비 POI ID가 없다. 따라서 자동 requestRoute를 만들지 않고 **앱에서 선택→내비 검색 결과에서 지점/주소 확인→목적지로 선택** 단계를 사용한다. 좌표·POI 기반 한 번 클릭 직접 변경은 미구현이다. SDK 호출 반환은 목적지 변경 성공으로 세지 않는다.
+
+실행 결과:
+1. 기존 realplacefiltervalidation 앱을 업데이트해 같은 인증/기록으로 실행했다. 현재 SDK 목적지 `구미역 경부선`을 확인 버튼으로 승인했다. SDK 이름/좌표와 실제 추천 POST body 일치 PASS. 현재경로 연관성의 일반적 보장은 계속 UNVERIFIED이며 이번 고정 데모 관측과 구분한다.
+2. 새 `work/ux56-navigation-select`/gateway18093에서 실제 추천 POST1회만 전송. WEB_SEARCH/RESULTS, 멘야타누키(RESTAURANT) **1곳** 반환. 주소 `경북 구미시 금오산로12길 19, 1층`과 이름을 앱 카드와 대조했다. 3곳 확보로 표시하지 않는다. 주차 UNKNOWN, identityVerified/bookable/inquiryDispatchAllowed=false 유지.
+3. 카드 버튼으로 내비 SearchPlace 화면이 실제 열렸다. 내비 검색에서 같은 이름의 식당을 선택하고 상세의 도로명주소 `경상북도 구미시 금오산로12길 19`와 대조했다. 전화 아이콘은 누르지 않았다.
+4. 내비 `목적지로` 버튼을 눌러 길안내 목적지가 멘야타누키로 변경된 화면을 확인했다. 이후 PHONE_NAVI_READ로 SDK 목적지를 새로 조회해 선택한 후보 이름의 SHA256과 일치함을 검사했다. 실제내비→앱추천→내비변경→SDK재조회 연결 PASS.
+5. 구미 식당까지 표시된 장거리 경로는 에뮬레이터 현재 위치에서의 경로다. 조회 기준은 현재 차 위치가 아닌 원 목적지 구미역이다. 내비 자체 시간 표시는 앱 ETA 계약 검증으로 세지 않는다.
+6. 기존 일반/전화 journal 전후 해시 동일. 인증 삭제·새 주체 발급 없음. 추천1회 표식은 소비 후 보존하며 추가 검색0, 전화/예약0. 네이티브 장소 검색은 SDK 검색이며 추천 에이전트를 다시 호출하지 않는다.
+
+검증: format/verifyAll/test APK 빌드 PASS(캐시·UP-TO-DATE 포함). PHONE_NAVI_SELECT, PHONE_NAVI_READ 기기 PASS. 공통 검사 출력에 `MOCK fixture` 문구가 있지만 이번 realPlaceDemo 데이터/네이티브 내비 동작은 실제이며 가상 주입을 하지 않았다. 신규 선택 기능은 실제조회 데모에만 노출하고 MOCK 예약 경로는 변경하지 않는다.
+
+APK SHA256: `4859c51dd836c89d40eb70409053e273f0c45b2717fe7e42abbd382c80a705ff`.
+증거: `work/ux56-navigation-select/{build,final-build,device,readback,gateway,observations}.log`, `result.json`, `journals-after.json`, `search-attempted`; `captures/ux56/navigation-select/{recommendation,native-search,native-detail,native-route,readback}.png`. 전화번호가 보이는 내비 상세 캡처는 로컬에만 보관하고 저장소/이슈에 첨부하지 않는다.
+
+미검증: 다른 목적지/복수 지점 반복, 실차, 실제 전화·예약, 좌표/POI 기반 직접 목적지 변경, 변경/취소 직후 SDK 응답 연관성 보장. #56 OPEN/PR Draft를 유지한다. 기존 카페 제외 검증은 보류하되 이번 표본은 식당1/카페0으로 기록한다.
+
+근거: [Pleos 목적지 설정](https://document.pleos.ai/api-reference/connect-sdk-pleos/NaviHelper/destinations), [권한](https://document.pleos.ai/en/api-reference/connect-sdk-pleos/NaviHelper/declaring-permissions), 고정 navi-data3.0.4의 NavigationScreenRequest.kt/RouteInfo.kt와 NaviHelper3.0.5의 NaviHelper.kt. 이름/주소 확인 단계를 생략해 다른 지점을 목적지로 설정하지 않는다.
+
+## 2026-11-12 Swagger 기준 앱 대화·결과 표시 완료
+
+사용자 요청으로 EC2 `/pleos-mock` Swagger의 가상 후보/예약 계약을 앱에서 검증했다. 실제 식당 WEB_SEARCH 예약 연결과 구분한다. 실제 전화·실예약·외부 추천 호출0회.
+
+변경: receipt.conversation의 화자/메시지를 순서대로 표시하는 펼침/접기 추가(차량 제한 중 긴 대화 숨김), 빈 대화 안내, CONFIRMED 시 confirmedTime 표시. 승인창24sp 본문·72dp 버튼과 명시 줄바꿈, 가상 예약 가능 후보의 잘못된 '예약할 수 없음' 문구 수정. 기본 MOCK/UNKNOWN 보존/조회 복구 및 실제조회 전화 차단 유지. API 변경 없음.
+
+- format/verifyAll/:android:app:assembleDebugAndroidTest 및 smoke-test.py PASS. 캐시·UP-TO-DATE 포함. 새 Lint 억제 없음.
+- 최종 EC2 MOCK APK를 기존 ec2validation에 업데이트 설치. Pleos2.1.0/API34, 사용자10에서 PHONE_UNKNOWN/PHONE_REPEAT PASS.
+- 가상 목적지 주입→실제 EC2 가상 후보 응답→선택→승인 취소(전화 요청 없음)→재선택·승인→CONFIRMED→동일 attemptId GET→대화 펼침/서버 메시지 전부 대조/접기 PASS. 날짜2026-11-13/19시(KST)/3명/외부호출0. 기기 시계 표시를 관측시각 근거로 사용하지 않는다.
+- UNKNOWN 응답에서 다음 후보 승인 차단/GET 동일 작업/대화 표시 PASS. 이는 실제 서버 MOCK 시나리오이며 실전화 불명확성 재현이 아니다.
+- 이번 요청은 테스트 메모리 Store에 격리. 기존 ec2validation·realplacevalidation·realplacefiltervalidation의 일반/전화 journal 전후 해시 동일. 이번 새 결과의 강제 종료 후 영속 복구는 미검증이며 이전 FULL/RESTORE 증거와 구분한다. 기존 인증/요청 초기화 없음.
+- APK SHA256 `35d79066894fd4e7b0bb0f6b265b7f8a37293e2391e88fe663cd42068ae74c1e`.
+- 로컬 증거 `work/ux56-swagger-app/{build,smoke,device,unknown}.log`, `journals-{before,after}.json`, `captures/ux56/swagger-app/{candidates,approval,phone_repeat-result,phone_repeat-conversation,phone_unknown-result}.png`. Swagger 직접검사 증거는 `work/ux56-swagger-mock/result.txt`.
+- [최종 앱 설계안](UX56_FINAL_APP_DESIGN.md)과 클릭 가능한 HTML을 작성했다. 이것은 향후 화면 재구성 설계이며 최종 release APK로 표시하지 않는다. 실제 식당 예약·실차·ETA·공동 인수는 미완료. #56 OPEN/PR Draft 유지.
+
+후속 수동 경로 보완: EC2 MOCK 빌드에 `가상 서울숲으로 연습` 버튼을 추가했다. 선택 시 SDK 리스너를 닫고 가상 목적지로 입력을 설정하며, 기존 명시 확인 뒤 검색한다. 실제 내비 목적지는 변경하지 않는다. 기본/실제조회 빌드에는 노출하지 않으며 진행·보관 중 전화 요청은 덮어쓰지 않는다. 기존 예약이 있는 설치는 결과 조회를 유지한다. 재시작/복귀 시 내비를 다시 읽으므로 가상 목적지는 재선택한다. PHONE_REPEAT/UNKNOWN도 reflection 목적지 주입 대신 이 제품 버튼을 사용하도록 변경했다.
+
+후속 최종 APK `d655aa56b48a1b198d8d35ee0b3a5ecf7387f6283717aaccf832f62b20ea076d`: format/verifyAll/test APK와 실제 버튼 경로 PHONE_UNKNOWN/PHONE_REPEAT PASS, 기존 journal 동일. 위 기기 화면·로그를 이 최종 실행 증거로 갱신했다. 직전 e746d88 CI4개 PASS(run43171189193/naming43171191505); 후속 커밋 CI는 별도 확인한다.
+
+## 2026-11-12 최종 UI Android 적용·영속 복구
+
+단계별 UI·큰 승인창·결과 계층·대화 상세·주야간 색상을 적용하고 전용 설치에서 실제 SharedPreferences로 새 예약을 저장했다. 앱 업데이트/강제 종료 뒤 같은 attemptId·대화와 서버 GET 성공(신규 POST0)을 확인했다. 야간840dp 승인창 잘림을 수정하고 버튼 앱 경계 검사를 통과했다. 기존 EC2 설치도 데이터 보존 업데이트 및 기존 예약 GET 복구 PASS, 기존3설치 journal 동일. [세부 검증](UX56_FINAL_UI_VALIDATION.md). 실제 전화·실예약·외부 추천0, #56 OPEN/PR Draft 유지.

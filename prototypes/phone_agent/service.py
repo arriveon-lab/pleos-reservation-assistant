@@ -464,7 +464,7 @@ class ReservationService:
         return {"id": booking["id"]}
 
     def _receive_callback(self, owner, payload, live=False, call_id=None, evidence=None,
-                          booking_id=None):
+                          booking_id=None, change_details=None):
         restaurant = payload.get("restaurantId")
         require(isinstance(restaurant, str) and (live or restaurant in self.restaurants),
                 "INVALID_INPUT", "가상 식당을 선택해 주세요.", 400)
@@ -495,6 +495,8 @@ class ReservationService:
                       "approved": False, "createdAt": timestamp()}
         if live:
             change["callId"] = call_id
+        if change_details:
+            change.update(change_details)
         booking.update(change=change, version=booking["version"] + 1, notice="식당에서 시간 변경을 요청했어요. 기존 예약은 유지하고 사용자 확인을 기다려요.")
         callback.update(status="MATCHED", bookingId=booking["id"])
         if live:
@@ -513,6 +515,11 @@ class ReservationService:
         require(not booking.get("reviewRequired"), "CALLBACK_REVIEW_REQUIRED",
                 "식당의 취소·예약 불가 통보를 먼저 확인해야 해요.")
         require(change is not None and change["status"] == "AWAITING_USER", "INVALID_STATE", "승인 대기인 변경 요청이 없어요.")
+        if "changeId" in payload or change.get("expiresAt"):
+            require(change.get("expiresAt") and payload.get("changeId") == change["id"], "VERSION_CONFLICT", "변경 요청이 바뀌었어요.")
+            call = self._get(owner, "live_call", change["callId"])
+            require(call["status"] == "ACTIVE" and change["expiresAt"] > timestamp(),
+                    "CHANGE_EXPIRED", "식당과 통화가 끝났거나 응답 시간이 지났어요.")
         require(type(payload.get("approve")) is bool, "INVALID_INPUT", "승인 또는 거절을 선택해 주세요.", 400)
         change.update(approved=payload["approve"], status="RECONFIRMING" if payload["approve"] else "REJECTED")
         booking.update(version=booking["version"] + 1, notice="사용자 승인 완료. 식당 재확인이 필요해요." if payload["approve"] else "변경을 거절했어요. 기존 확정 시간은 유지해요. 식당의 유지 가능 여부는 별도 확인 대상이에요.")

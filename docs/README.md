@@ -18,6 +18,9 @@
 
 | 문서 | 확인할 내용 | 상태 |
 | --- | --- | --- |
+| [UX 이슈·PR 통합 관계](UX_INTEGRATION_STATUS.md) | #5/#25/#26/#39 현재 잔여와 #27/#36/#44/#46 Git 포함 관계·통합 전 조건 | 문서/Git 점검, 병합 미실행 |
+| [목적지 MOCK 추천 화면](UX52_DESTINATION_MOCK.md) | #52/#53 초안 POST/GET·가변 후보·메모리 폐기·기기 증거 | 로컬 MOCK, 공동 인수 미완료 |
+| [Docker 서버·Pleos 인수](UX16_DOCKER_ACCEPTANCE.md) | #16 최신 서버4상태·인증·화면 수명·증거 | 앱 측 실행, 공동 결과 검토 대기 |
 | [STATUS](STATUS.md) | 실행한 검사와 미검증 범위 | 실행 증거 기준, 날짜 확인 |
 | [REC-05 공동 인수·MOCK fixture](REC05_JOINT_ACCEPTANCE.md) | #16/#26 필드·인원 합의, 직접4상태 재현과 격리 시험 명령, 웹 상세정보 다음 협의안 | 서버 준비/HTTP 검증, 공동 기기 실행 대기 |
 | [REC-05 Docker 실행](REC05_DOCKER.md) | 각 PC의 Compose 기동·4상태·인증 DB 유지·기기 포트 연결/복구 | 개발용 MOCK 이미지, Docker 실행 검증/기기 인수 구분 |
@@ -73,5 +76,6 @@
 
 - [추천 에이전트 최신 변경 인계](RECOMMENDATION_LATEST_HANDOFF.md)
 - [Pleos 추천·전화 연결 인계](PLEOS_AGENT_INTEGRATION_HANDOFF.md)
-
 - [전화 에이전트 최신 변경 인계](PHONE_AGENT_LATEST_HANDOFF.md)
+- [UX-04 차량 UI 개선·동일 APK 검증](UX39_VEHICLE_UI.md): 주야간·후보 비교·키패드·좁은 창, #25/#40 인수 경계.
+- [UX-02 실제 차량 제한 연결](UX25_CAR_RESTRICTIONS.md): 실제 초기값·수명 검사와 제한/실패 주입, 미검증·공동 인수 구분.

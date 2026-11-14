@@ -4,10 +4,11 @@ import hashlib
 import hmac
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from ..service import DomainError, identifier, require, required_conditions, timestamp
+from ..service import DomainError, identifier, require, required_conditions, timestamp, valid_time
+from . import callback_test
 from .config import ConfigurationError, normalize_number
 
 
@@ -18,6 +19,10 @@ NO_EXTRA_COST_REPLY = re.compile(
 COST_QUESTION = re.compile(
     r"(?:추가\s*(?:비용|요금|금)|별도\s*(?:비용|요금)|예약금|보증금)"
     r"[^.!?。！？]{0,36}(?:까요|나요|습니까|인가요|세요|시겠어요)\s*[.?!。！？]?$"
+)
+SHORT_NO_EXTRA_COST_REPLY = re.compile(
+    r"(?:(?:네|예|아니요)\s*[,，]?\s*)?(?:(?:비용|요금)(?:은|는|이|가)?\s*)?(?:따로\s*)?"
+    r"(?:없습니다|없어요|없네요|안\s*(?:들어요|듭니다))[.!…。！\s]*"
 )
 SHORT_COST_REPLY = re.compile(
     r"(?:(?:네|예|아니요)\s*[,，]?\s*)?(?:(?:비용|요금)(?:은|는|이|가)?\s*)?(?:따로\s*)?"
@@ -39,6 +44,11 @@ REQUIRED_FEE_REPLY = re.compile(
     rf"(?:{FEE_AMOUNT}(?:\s*(?:입니다|이에요|예요|{FEE_AFFIRMATION}))?|{FEE_AFFIRMATION})[.!。！\s]*$"
 )
 CALLBACK_CONFIRM_QUESTION = "예약자가 동의했습니다. 말씀하신 시간으로 변경 확정해 주시겠어요?"
+
+
+def callback_confirmation_question(change):
+    fee = "추가 비용 없이 " if change.get("additionalCostKrw") == 0 else ""
+    return f"예약자가 동의했습니다. {fee}{change['proposedTime']}로 변경 확정해 주시겠어요?"
 
 
 def reports_required_fee(reply):
@@ -80,7 +90,8 @@ def acknowledged_booking_name(events, evidence, name):
     quote = compact(evidence)
     # Acceptance intent comes from the model, not a fixed list of replies.
     # Keep a conservative veto for explicit qualifications, refusal, and pending checks.
-    if (not quote or re.search(r"다만|하지만|그런데|근데|대신|말고|됐지만|되었지만|"
+    if (not quote or SHORT_NO_EXTRA_COST_REPLY.fullmatch(evidence.strip())
+            or re.search(r"다만|하지만|그런데|근데|대신|말고|됐지만|되었지만|"
                               r"아니|불가|취소|안\s*(?:돼|되|됩)|못|잠시|잠깐|아직|"
                               r"확인해\s*볼|확인\s*중|다른\s*(?:이름|시간|날짜)|"
                               r"추가\s*비용.{0,8}(?:있|발생|필요)", evidence)):
@@ -107,6 +118,18 @@ def acknowledged_booking_name(events, evidence, name):
     return False
 
 
+def latest_no_extra_cost_reply(events):
+    """Short fee answers depend on the question they answer."""
+    if not events or events[-1]["speaker"] != "restaurant":
+        return False
+    reply = events[-1]["message"].strip()
+    if NO_EXTRA_COST_REPLY.fullmatch(reply):
+        return True
+    previous_agent = next((event["message"] for event in reversed(events[:-1])
+                           if event["speaker"] == "agent"), "")
+    return bool(COST_QUESTION.search(previous_agent.strip()) and SHORT_NO_EXTRA_COST_REPLY.fullmatch(reply))
+
+
 class LiveWorkflow:
     def __init__(self, service, config):
         self.service, self.config = service, config
@@ -128,12 +151,13 @@ class LiveWorkflow:
 
     def _capacity(self):
         calls = self._calls()
-        today = datetime.now(timezone.utc).date().isoformat()
-        deleted = self.service.db.execute(
-            "SELECT calls FROM deleted_live_call_usage WHERE utc_day=?", (today,)).fetchone()
-        used = sum(c["createdAt"].startswith(today) for c in calls) + (deleted[0] if deleted else 0)
-        require(used < self.config.daily_calls,
-                "CALL_LIMIT", "실전화 테스트의 일일 통화 상한에 도달했어요.")
+        if self.config.daily_calls:
+            today = datetime.now(timezone.utc).date().isoformat()
+            deleted = self.service.db.execute(
+                "SELECT calls FROM deleted_live_call_usage WHERE utc_day=?", (today,)).fetchone()
+            used = sum(c["createdAt"].startswith(today) for c in calls) + (deleted[0] if deleted else 0)
+            require(used < self.config.daily_calls,
+                    "CALL_LIMIT", "실전화 테스트의 일일 통화 상한에 도달했어요.")
         require(not any(c["status"] in ("RESERVED", "DISPATCHING", "ACTIVE", "RESULT_SAVED") for c in calls),
                 "CALL_ACTIVE", "진행 중인 실제 통화가 있어요.")
 
@@ -199,6 +223,15 @@ class LiveWorkflow:
                         "SONIOX_TEST_ONLY", "Soniox는 등록한 휴대폰으로 거는 시험전화에서만 사용할 수 있어요.", 403)
             if entered is None:
                 require(target in self.config.allowed_numbers, "TARGET_NOT_ALLOWED", "허용한 식당 테스트 번호를 설정해 주세요.")
+            if booking.get("pleosPairedTest"):
+                from ..paired_phone import registered_target
+                require(self.config.self_service_test and self.config.test_phone_input
+                        and entered and entered == registered_target(self.service, owner, booking["pleosPairedTest"]),
+                        "PAIRING_REQUIRED", "현재 앱에 연결된 시험 번호만 사용할 수 있어요.", 403)
+            elif self.config.self_service_test:
+                registered_owner, window = callback_test.active_window(self.service)
+                require(window and registered_owner == owner and entered == window["phone"],
+                        "CALLBACK_TEST_REGISTRATION_REQUIRED", "같은 브라우저에서 등록한 시험 휴대폰으로 발신해 주세요.", 403)
             self._capacity()
             call = {"id": call_id, "bookingId": booking_id, "requestedVersion": version,
                     "direction": "outbound", "purpose": "CHANGE_CONFIRMATION" if changing else "BOOKING",
@@ -297,6 +330,29 @@ class LiveWorkflow:
     def begin_inbound(self, caller, trunk_id, room, called_number=None):
         self.config.require_live("inbound")
         caller = normalize_number(caller)
+        if self.config.self_service_test:
+            require(trunk_id == self.config.inbound_trunk_id, "CALLER_NOT_ALLOWED", "시험 수신 연결을 확인해 주세요.", 403)
+
+            def test_callback():
+                self._capacity()
+                _, window = callback_test.active_window(self.service)
+                if window and window["phone"] == caller:
+                    owner, booking = callback_test.match_booking(self.service, self.config, caller, called_number)
+                    return self._save_inbound(room, booking["restaurantId"], owner, booking)
+                from ..paired_phone import callback_bookings
+
+                require(caller in self.config.allowed_numbers and called_number
+                        and normalize_number(called_number) == normalize_number(self.config.telkit_number),
+                        "CALLER_NOT_ALLOWED", "허용한 회신 시험 번호를 확인해 주세요.", 403)
+                matches = callback_bookings(self.service, caller)
+                require(matches, "CALLBACK_TEST_UNMATCHED",
+                        "이 번호로 확정한 Pleos 시험 예약을 찾을 수 없어요.")
+                if len(matches) == 1:
+                    owner, booking = matches[0]
+                    return self._save_inbound(room, booking["restaurantId"], owner, booking, paired_caller=caller)
+                return self._save_inbound(room, None, None, None, paired_caller=caller)
+
+            return self._atomic(test_callback)
         require(caller in self.config.allowed_numbers and trunk_id == self.config.inbound_trunk_id,
                 "CALLER_NOT_ALLOWED", "허용한 수신 테스트 통화가 아니에요.", 403)
         restaurants = [key for key, number in self.config.restaurant_numbers.items() if number == caller]
@@ -312,15 +368,21 @@ class LiveWorkflow:
                 matches = [b for b in self.service._list(bound_owner, "booking")
                            if b["restaurantId"] == restaurants[0] and b["status"] == "CONFIRMED"
                            and b.get("mode") == "LIVE" and not b.get("liveTest")]
-            call = {"id": identifier(), "direction": "inbound", "status": "ACTIVE",
-                    "purpose": "CALLBACK", "ownerBound": bound_owner is not None,
-                    "room": room, "restaurantId": restaurants[0], "bookingId": None,
-                    "nonce": identifier(), "createdAt": timestamp(), "inviteRequested": False}
-            if len(matches) == 1:
-                call.update(bookingId=matches[0]["id"], bookingVersion=matches[0]["version"])
-            self.service._put(bound_owner or "inbound", "live_call", call)
-            return call
+            booking = matches[0] if len(matches) == 1 else None
+            return self._save_inbound(room, restaurants[0], bound_owner, booking)
         return self._atomic(operation)
+
+    def _save_inbound(self, room, restaurant_id, owner, booking, *, paired_caller=None):
+        call = {"id": identifier(), "direction": "inbound", "status": "ACTIVE",
+                "purpose": "CALLBACK", "ownerBound": owner is not None,
+                "room": room, "restaurantId": restaurant_id, "bookingId": None,
+                "nonce": identifier(), "createdAt": timestamp(), "inviteRequested": False}
+        if booking:
+            call.update(bookingId=booking["id"], bookingVersion=booking["version"])
+        if paired_caller:
+            call["pairedCaller"] = paired_caller
+        self.service._put(owner or "inbound", "live_call", call)
+        return call
 
     def identify(self, call_id, name, day, current_time):
         def operation():
@@ -333,21 +395,33 @@ class LiveWorkflow:
                         and booking["confirmedTime"] == current_time,
                         "BOOKING_LOCKED", "확인한 예약을 다른 예약으로 바꿀 수 없어요.")
                 return {**self._context(booking), "purpose": "CALLBACK",
+                        "pairedCallback": bool(call.get("pairedCaller")),
                         "personalAssistant": bool(call.get("ownerBound"))}
-            matches = []
-            for row in self.service.db.execute("SELECT owner,body FROM objects WHERE kind='booking'"):
-                booking = json.loads(row[1])
-                if ((not call.get("ownerBound") or row[0] == owner)
-                        and booking["restaurantId"] == call["restaurantId"] and booking["status"] == "CONFIRMED"
-                        and booking.get("mode") == "LIVE" and not booking.get("liveTest")
-                        and booking["reservationName"] == name and booking["date"] == day
-                        and booking["confirmedTime"] == current_time):
-                    matches.append((row[0], booking))
+            if call.get("pairedCaller"):
+                from ..paired_phone import callback_bookings
+
+                candidates = callback_bookings(self.service, call["pairedCaller"])
+            else:
+                rows = self.service.db.execute("SELECT owner,body FROM objects WHERE kind='booking'")
+                candidates = []
+                for row_owner, body in rows:
+                    booking = json.loads(body)
+                    if ((not call.get("ownerBound") or row_owner == owner)
+                            and booking["restaurantId"] == call["restaurantId"]
+                            and booking["status"] == "CONFIRMED" and booking.get("mode") == "LIVE"
+                            and not booking.get("liveTest")):
+                        candidates.append((row_owner, booking))
+            matches = [(row_owner, booking) for row_owner, booking in candidates
+                       if booking["reservationName"] == name and booking["date"] == day
+                       and booking["confirmedTime"] == current_time]
             if len(matches) != 1:
                 return {"found": False, "message": "예약자 이름·날짜·시간을 다시 확인해 주세요."}
             new_owner, booking = matches[0]
             self.service.db.execute("DELETE FROM objects WHERE owner=? AND kind='live_call' AND id=?", (owner, call_id))
-            call.update(bookingId=booking["id"], bookingVersion=booking["version"])
+            call.update(bookingId=booking["id"], bookingVersion=booking["version"],
+                        restaurantId=booking["restaurantId"])
+            if call.get("pairedCaller"):
+                call["ownerBound"] = True
             self.service._put(new_owner, "live_call", call)
             for event in self.service._list(owner, "unidentified_call_event"):
                 if event["callId"] == call_id:
@@ -356,6 +430,7 @@ class LiveWorkflow:
                     event["bookingId"] = booking["id"]
                     self.service._put(new_owner, "event", event)
             return {**self._context(booking), "purpose": "CALLBACK",
+                    "pairedCallback": bool(call.get("pairedCaller")),
                     "personalAssistant": bool(call.get("ownerBound"))}
         return self._atomic(operation)
 
@@ -376,12 +451,13 @@ class LiveWorkflow:
         with self.service.lock:
             owner, call = self._find(call_id)
             if not call.get("bookingId"):
-                return {"found": False, "purpose": "CALLBACK",
+                return {"found": False, "purpose": "CALLBACK", "pairedCallback": bool(call.get("pairedCaller")),
                         "personalAssistant": bool(call.get("ownerBound")),
                         "today": datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()}
             booking = self.service._get(owner, "booking", call["bookingId"])
             context = self._context(booking)
             context["purpose"] = call.get("purpose", "CALLBACK")
+            context["pairedCallback"] = bool(call.get("pairedCaller"))
             context["personalAssistant"] = bool(call.get("ownerBound"))
             if context["purpose"] == "BOOKING" and booking.get("liveTest"):
                 context["testCall"] = True
@@ -424,6 +500,19 @@ class LiveWorkflow:
                        named_booking_request(event["message"], booking["reservationName"])
                        for event in self._call_events(owner, call_id))
 
+    def booking_waiting_for_request(self, call_id):
+        with self.service.lock:
+            owner, call = self._find(call_id)
+            booking = self.service._get(owner, "booking", call["bookingId"])
+            return self._waiting_for_request(booking, self._call_events(owner, call_id))
+
+    @staticmethod
+    def _waiting_for_request(booking, events):
+        return (booking.get("liveTest") and booking["status"] == "CALLING" and latest_no_extra_cost_reply(events)
+                and not any(event["speaker"] == "agent"
+                            and named_booking_request(event["message"], booking["reservationName"])
+                            for event in events))
+
     def cost_reply_needs_clarification(self, call_id):
         with self.service.lock:
             owner, _ = self._find(call_id)
@@ -435,8 +524,12 @@ class LiveWorkflow:
         if not COST_QUESTION.search(question.strip()):
             return False
         reply = events[-1]["message"].strip()
+        # A caller can answer the fee question and volunteer facilities together.
+        # Preserve question marks so "없어요?" still requires clarification.
+        has_cost_statement = any(NO_EXTRA_COST_REPLY.fullmatch(part.strip())
+                                 for part in re.split(r"[.,，。!！]", reply))
         return not (NO_EXTRA_COST_REPLY.fullmatch(reply) or SHORT_COST_REPLY.fullmatch(reply)
-                    or FEE_OR_REFUSAL.search(reply))
+                    or has_cost_statement or FEE_OR_REFUSAL.search(reply))
 
     def record_diagnostics(self, call_id, diagnostics):
         def operation():
@@ -485,8 +578,16 @@ class LiveWorkflow:
                                            and not (not changing and any(map(reports_required_fee, restaurant_replies)))),
                       "requiredConditionsConfirmed": required <= set(confirmed_requirements)}
             if booking.get("liveTest") and not changing:
-                # A complete no-fee reply is neither a final acceptance nor a reason to defer.
-                if evidence in recent[-1] and NO_EXTRA_COST_REPLY.fullmatch(recent[-1].strip()):
+                # Advance only when the approved details and required conditions match.
+                if self._waiting_for_request(booking, events):
+                    ready = all(checks[key] for key in ("dateMatches", "reservationNameMatches", "timeMatches",
+                                                       "partySizeMatches", "noAdditionalCost",
+                                                       "requiredConditionsConfirmed"))
+                    raise DomainError(
+                        "BOOKING_REQUEST_READY" if ready else "BOOKING_ACCEPTANCE_REQUIRED",
+                        "추가 비용이 없다는 답변입니다. 아직 남은 필수 조건을 확인하고, 모두 맞으면 "
+                        "승인된 예약자 이름으로 예약을 부탁한 뒤 상대의 답을 기다리세요.")
+                if evidence in recent[-1] and latest_no_extra_cost_reply(events):
                     raise DomainError(
                         "BOOKING_ACCEPTANCE_REQUIRED",
                         "추가 비용이 없다는 답변입니다. 아직 남은 필수 조건을 확인하고, 모두 맞으면 "
@@ -516,16 +617,17 @@ class LiveWorkflow:
             return {"saved": True, "status": status}
         return self._atomic(operation)
 
-    def _callback_receipt(self, call_id, evidence, payload):
+    def _callback_receipt(self, call_id, evidence, payload, *, time_change=False):
         owner, call = self._find(call_id)
         require(call["direction"] == "inbound" and call.get("bookingId") and call["status"] == "ACTIVE",
                 "IDENTIFICATION_REQUIRED", "예약을 먼저 확인해야 해요.")
-        recent = [e for e in self.service._list(owner, "event")
-                  if e.get("callId") == call_id and e["speaker"] == "restaurant"][-3:]
+        replies = [e for e in self._call_events(owner, call_id) if e["speaker"] == "restaurant"]
+        # The original proposal may precede several time and cost confirmation turns.
+        recent = replies if time_change and call.get("pairedCaller") else replies[-3:]
         compact = lambda value: re.sub(r"[\s,.!?~…。！？]+", "", value)
         matching = [e for e in recent if isinstance(evidence, str) and compact(evidence)
                     and compact(e["message"]) == compact(evidence)]
-        require(bool(matching), "EVIDENCE_REQUIRED", "식당이 실제로 말한 최근 전체 발화를 인용해 주세요.")
+        require(bool(matching), "EVIDENCE_REQUIRED", "식당이 이 통화에서 실제로 말한 전체 발화를 인용해 주세요.")
         actual = matching[-1]["message"]
         digest = hashlib.sha256(json.dumps([payload, actual], sort_keys=True).encode()).hexdigest()
         if call.get("receiptDigest"):
@@ -536,17 +638,42 @@ class LiveWorkflow:
         require(booking["version"] == call["bookingVersion"], "VERSION_CONFLICT", "예약 상태가 바뀌었어요.")
         return owner, call, booking, actual, digest
 
-    def request_change(self, call_id, proposed_time, reason, evidence=None):
+    def request_change(self, call_id, proposed_time, reason, evidence=None, additional_cost_krw=None,
+                       proposed_date=None):
         def operation():
+            payload = ["TIME_CHANGE", proposed_time, reason]
+            if additional_cost_krw is not None or proposed_date is not None:
+                payload.extend((additional_cost_krw, proposed_date))
             owner, call, booking, actual, digest = self._callback_receipt(
-                call_id, evidence, ["TIME_CHANGE", proposed_time, reason])
+                call_id, evidence, payload, time_change=True)
             if booking is None:
                 return {"saved": True, "status": "AWAITING_USER", "id": call["callbackId"]}
+            extra = {}
+            if call.get("pairedCaller"):
+                from ..paired_phone import CALLBACK_APPROVAL_SECONDS
+
+                require(proposed_date == booking["date"], "CHANGE_DATE_MISMATCH",
+                        "기존 예약 날짜의 새 시간만 접수할 수 있어요.")
+                visit = datetime.fromisoformat(f"{proposed_date}T{valid_time(proposed_time)}").replace(
+                    tzinfo=ZoneInfo("Asia/Seoul"))
+                require(visit > datetime.now(timezone.utc), "CHANGE_TIME_PAST",
+                        "이미 지난 시각으로 변경할 수 없어요.")
+                events = self._call_events(owner, call_id)
+                require((additional_cost_krw is None
+                         or type(additional_cost_krw) is int and additional_cost_krw == 0)
+                        and not any(reports_required_fee(event["message"]) for event in events
+                                    if event["speaker"] == "restaurant"),
+                        "CHANGE_COST_REVIEW", "추가 비용이 있는 변경은 별도 확인이 필요해요.")
+                cost_confirmed = any(latest_no_extra_cost_reply(events[:end])
+                                     for end in range(1, len(events) + 1))
+                extra = {"expiresAt": (datetime.now(timezone.utc) + timedelta(
+                    seconds=CALLBACK_APPROVAL_SECONDS)).isoformat(),
+                    "additionalCostKrw": 0 if cost_confirmed else None}
             result = self.service._receive_callback(owner, {
                 "restaurantId": call["restaurantId"], "reservationName": booking["reservationName"],
                 "date": booking["date"], "currentTime": booking["confirmedTime"],
                 "proposedTime": proposed_time, "reason": reason}, live=True,
-                call_id=call_id, evidence=actual, booking_id=booking["id"])
+                call_id=call_id, evidence=actual, booking_id=booking["id"], change_details=extra)
             call["changeSaved"] = result.get("matched", False)
             call.update(receiptDigest=digest, callbackId=result["id"], outcome="CHANGE_REQUESTED")
             self.service._put(owner, "live_call", call)
@@ -560,7 +687,19 @@ class LiveWorkflow:
                 return None
             booking = self.service._get(owner, "booking", call["bookingId"])
             change = booking.get("change") or {}
-            return change["status"] if change.get("callId") == call_id and not booking.get("reviewRequired") else None
+            if change.get("callId") != call_id or booking.get("reviewRequired"):
+                return None
+            if change["status"] == "AWAITING_USER" and change.get("expiresAt", "9999") <= timestamp():
+                return "EXPIRED"
+            return change["status"]
+
+    def callback_confirmation_prompt(self, call_id):
+        with self.service.lock:
+            owner, call = self._find(call_id)
+            if call.get("pairedCaller"):
+                booking = self.service._get(owner, "booking", call["bookingId"])
+                return callback_confirmation_question(booking["change"])
+            return CALLBACK_CONFIRM_QUESTION
 
     def confirm_callback_change(self, call_id, evidence):
         def operation():
@@ -573,10 +712,12 @@ class LiveWorkflow:
             events = [event for event in self.service._list(owner, "event") if event.get("callId") == call_id]
             normalize = lambda value: re.sub(r"[\s,.!?~…。！？]+", "", value)
             answer = normalize(evidence)
+            expected_question = (callback_confirmation_question(change) if call.get("pairedCaller")
+                                 else CALLBACK_CONFIRM_QUESTION)
             require(len(events) >= 2 and events[-1]["speaker"] == "restaurant"
                     and normalize(events[-1]["message"]) == answer
                     and events[-2]["speaker"] == "agent"
-                    and normalize(events[-2]["message"]) == normalize(CALLBACK_CONFIRM_QUESTION)
+                    and normalize(events[-2]["message"]) == normalize(expected_question)
                     and re.fullmatch(r"(?:네|예|(?:네|예)?(?:알겠습니다|(?:예약|변경)?(?:확정)?(?:됐습니다|되었습니다|했습니다)))", answer),
                     "EVIDENCE_REQUIRED", "식당이 실제 변경을 확정했는지 확인해 주세요.")
             booking.update(confirmedTime=change["proposedTime"], version=booking["version"] + 1,
@@ -627,6 +768,18 @@ class LiveWorkflow:
                         "additional_fee_unconfirmed": "추가 요금 여부를 확인하지 못해 예약을 확정하지 않았어요.",
                     }.get(reason, "실제 통화 결과가 확정되지 않았어요. 신규 예약 재발신을 막고 대조를 기다려요.")
                     booking.update(status="UNKNOWN", version=booking["version"] + 1, notice=notice)
+                    self.service._put(owner, "booking", booking)
+            if call.get("pairedCaller") and call.get("bookingId") and call.get("changeSaved"):
+                booking = self.service._get(owner, "booking", call["bookingId"])
+                change = booking.get("change") or {}
+                if change.get("callId") == call_id and change.get("status") in ("AWAITING_USER", "RECONFIRMING"):
+                    if change["status"] == "RECONFIRMING":
+                        change["status"] = "UNKNOWN"
+                        notice = "식당의 변경 확정을 확인하지 못했어요. 기존 확정 시간은 유지해요."
+                    else:
+                        change["status"] = "EXPIRED"
+                        notice = "변경 요청의 응답 시간이 지났어요. 기존 확정 시간은 유지해요."
+                    booking.update(version=booking["version"] + 1, notice=notice)
                     self.service._put(owner, "booking", booking)
             call.update(status="ENDED", endedAt=timestamp(), endReason=reason)
             self.service._put(owner, "live_call", call)
