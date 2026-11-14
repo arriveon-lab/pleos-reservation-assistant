@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 440" width="1280" height="440" font-family="Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7A8794"/>
+    </marker>
+  </defs>
+  <style>
+    .row { font-size: 14px; font-weight: 600; fill: #7A8794; letter-spacing: 1px; }
+    .s { fill: #FFFFFF; stroke: #C5CDD5; stroke-width: 1.5; }
+    .u { fill: #1D4ED8; }
+    .t { font-size: 17px; font-weight: 700; fill: #17202A; }
+    .tu { font-size: 17px; font-weight: 700; fill: #FFFFFF; }
+    .sub { font-size: 13px; fill: #5B6773; }
+    .ln { stroke: #7A8794; stroke-width: 1.8; fill: none; }
+    .ok { fill: #E7F3EC; stroke: #17634B; stroke-width: 1.5; }
+    .no { fill: #F7ECE9; stroke: #9A4A3A; stroke-width: 1.5; }
+    .un { fill: #FFF5DD; stroke: #9A6B12; stroke-width: 1.5; }
+    .ot { font-size: 16px; font-weight: 700; fill: #17202A; }
+    .note { font-size: 14px; fill: #3E4A56; }
+  </style>
+
+  <rect width="1280" height="440" fill="#FFFFFF"/>
+
+  <!-- booking -->
+  <text class="row" x="24" y="36">예약</text>
+
+  <rect class="s" x="24" y="56" width="130" height="56" rx="28"/>
+  <text class="t" x="89" y="90" text-anchor="middle">목적지 · ETA</text>
+  <text class="sub" x="89" y="134" text-anchor="middle">NaviHelper · 수동</text>
+
+  <rect class="u" x="178" y="56" width="130" height="56" rx="28"/>
+  <text class="tu" x="243" y="90" text-anchor="middle">동행 조건</text>
+  <text class="sub" x="243" y="134" text-anchor="middle">인원 · 필수 조건</text>
+
+  <rect class="s" x="332" y="56" width="130" height="56" rx="28"/>
+  <text class="t" x="397" y="90" text-anchor="middle">후보 3곳</text>
+  <text class="sub" x="397" y="134" text-anchor="middle">근거 · 미확인 표시</text>
+
+  <rect class="s" x="486" y="56" width="130" height="56" rx="28"/>
+  <text class="t" x="551" y="90" text-anchor="middle">문의 전화</text>
+  <text class="sub" x="551" y="134" text-anchor="middle">빠진 조건 확인</text>
+
+  <rect class="u" x="640" y="56" width="130" height="56" rx="28"/>
+  <text class="tu" x="705" y="90" text-anchor="middle">사용자 승인</text>
+  <text class="sub" x="705" y="134" text-anchor="middle">시각 · 인원 · 비용</text>
+
+  <rect class="s" x="794" y="56" width="130" height="56" rx="28"/>
+  <text class="t" x="859" y="90" text-anchor="middle">예약 전화</text>
+  <text class="sub" x="859" y="134" text-anchor="middle">승인 1건에 1통화</text>
+
+  <rect class="s" x="948" y="56" width="130" height="56" rx="28"/>
+  <text class="t" x="1013" y="90" text-anchor="middle">수락 대조</text>
+  <text class="sub" x="1013" y="134" text-anchor="middle">승인 내용과 일치?</text>
+
+  <line x1="154" y1="84" x2="176" y2="84" class="ln" marker-end="url(#a)"/>
+  <line x1="308" y1="84" x2="330" y2="84" class="ln" marker-end="url(#a)"/>
+  <line x1="462" y1="84" x2="484" y2="84" class="ln" marker-end="url(#a)"/>
+  <line x1="616" y1="84" x2="638" y2="84" class="ln" marker-end="url(#a)"/>
+  <line x1="770" y1="84" x2="792" y2="84" class="ln" marker-end="url(#a)"/>
+  <line x1="924" y1="84" x2="946" y2="84" class="ln" marker-end="url(#a)"/>
+
+  <!-- inquiry loops back to candidates -->
+  <path d="M551 148 L551 168 L397 168 L397 150" class="ln" marker-end="url(#a)"/>
+  <text class="sub" x="474" y="186" text-anchor="middle">답변으로 후보 갱신</text>
+
+  <!-- outcomes -->
+  <rect class="ok" x="1108" y="30" width="150" height="34" rx="8"/>
+  <text class="ot" x="1183" y="53" text-anchor="middle">확정</text>
+  <rect class="no" x="1108" y="70" width="150" height="34" rx="8"/>
+  <text class="ot" x="1183" y="93" text-anchor="middle">불가</text>
+  <rect class="un" x="1108" y="110" width="150" height="34" rx="8"/>
+  <text class="ot" x="1183" y="133" text-anchor="middle">미확인</text>
+  <path d="M1078 84 L1092 84 L1092 47 L1106 47" class="ln" marker-end="url(#a)"/>
+  <line x1="1092" y1="84" x2="1106" y2="87" class="ln" marker-end="url(#a)"/>
+  <path d="M1092 84 L1092 127 L1106 127" class="ln" marker-end="url(#a)"/>
+
+  <text class="sub" x="1183" y="166" text-anchor="middle">불가: 다음 후보 제안</text>
+  <text class="sub" x="1183" y="186" text-anchor="middle">미확인: 재발신 없이 보존</text>
+
+  <!-- change -->
+  <line x1="24" y1="230" x2="1258" y2="230" stroke="#E6EAEE" stroke-width="1.5"/>
+  <text class="row" x="24" y="266">시간 변경</text>
+
+  <rect class="s" x="24" y="286" width="130" height="56" rx="28"/>
+  <text class="t" x="89" y="320" text-anchor="middle">변경 요청</text>
+  <text class="sub" x="89" y="364" text-anchor="middle">식당 회신</text>
+  <text class="sub" x="89" y="382" text-anchor="middle">도착 지연 (시연)</text>
+
+  <rect class="u" x="178" y="286" width="130" height="56" rx="28"/>
+  <text class="tu" x="243" y="320" text-anchor="middle">사용자 수락</text>
+  <text class="sub" x="243" y="364" text-anchor="middle">거절 · 만료면 중단</text>
+
+  <rect class="s" x="332" y="286" width="130" height="56" rx="28"/>
+  <text class="t" x="397" y="320" text-anchor="middle">식당 동의</text>
+  <text class="sub" x="397" y="364" text-anchor="middle">새 시각 · 추가 비용 0</text>
+
+  <rect class="s" x="486" y="286" width="130" height="56" rx="28"/>
+  <text class="t" x="551" y="320" text-anchor="middle">시간 갱신</text>
+
+  <line x1="154" y1="314" x2="176" y2="314" class="ln" marker-end="url(#a)"/>
+  <line x1="308" y1="314" x2="330" y2="314" class="ln" marker-end="url(#a)"/>
+  <line x1="462" y1="314" x2="484" y2="314" class="ln" marker-end="url(#a)"/>
+
+  <text class="note" x="660" y="308">둘 다 확인되기 전까지</text>
+  <text class="note" x="660" y="328">원래 예약 시각을 유지</text>
+
+  <!-- rules + legend -->
+  <rect class="u" x="948" y="286" width="18" height="14" rx="7"/>
+  <text class="sub" x="974" y="298">사용자가 직접 결정</text>
+  <text class="sub" x="948" y="330">빈자리 · 예약 가능 · 확정은 별도 상태</text>
+  <text class="sub" x="948" y="350">MOCK 결과를 실제 예약으로 안내하지 않음</text>
+</svg>
