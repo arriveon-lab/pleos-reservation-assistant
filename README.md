@@ -16,10 +16,57 @@
 <p align="center">
   <a href="https://github.com/arriveon-lab/pleos-reservation-assistant/issues">작업 이슈</a> ·
   <a href="https://github.com/arriveon-lab/pleos-reservation-assistant/actions">CI</a> ·
-  <a href="#공모전-제출용-apk">제출용 APK</a> ·
+  <a href="#5-apk-파일-위치">제출용 APK</a> ·
   <a href="docs/STATUS.md">검증 현황</a> ·
   <a href="docs/README.md">팀 문서</a>
 </p>
+
+---
+
+## 1. 앱 이름과 한 줄 소개
+
+**ArriveOn** (차량 앱 목록 표시 이름: 어라이브온)
+
+목적지와 도착 시각에 맞춰 동행 조건에 맞는 식당을 고르고, AI가 대신 전화해 예약까지 확인하는 Pleos 차량용 예약 비서입니다.
+
+## 2. 실행 방법
+
+1. [3번](#3-테스트-환경-및-필요한-설정)의 설정으로 Pleos Connect 에뮬레이터를 실행하고 차량을 정차 상태로 둡니다.
+2. [5번](#5-apk-파일-위치)의 APK를 내려받아 설치합니다. ADB에 기기가 여러 대 연결되어 있으면 `adb -s <serial>`로 Pleos 에뮬레이터를 지정합니다.
+
+   ```bash
+   adb install -r apk/ArriveOn_ArriveOn_release.apk
+   ```
+
+3. 차량 화면의 앱 목록에서 **어라이브온 · MOCK**을 엽니다.
+4. **체험 연결 시작 → 주변 식당 찾기 → 후보 선택 → 가상 예약 요청** 순으로 진행합니다.
+5. 예약 결과 화면에서 **교통 지연 시연 시작**을 누르면 가상 도착 시각과 변경 제안을 볼 수 있습니다.
+
+후보 이름과 통화 결과는 시연용 가상 데이터입니다. 등록 휴대폰으로 실제 통화를 시험하는 절차는 [팀 시연 가이드](docs/PLEOS_TEAM_DEMO_FILMING.md)에 있습니다.
+
+## 3. 테스트 환경 및 필요한 설정
+
+- **에뮬레이터:** [4번](#4-pleos-connect-에뮬레이터-버전과-화면-규격)의 버전과 화면 규격으로 만든 Pleos Connect AVD. 설치는 [Pleos Connect SDK 에뮬레이터 안내](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator)를 따릅니다.
+- **차량 상태:** 정차 상태로 둡니다. 주행 중으로 설정하면 운전 중 안전 규칙에 따라 입력과 승인이 막힙니다.
+- **네트워크:** 에뮬레이터의 인터넷 연결이 필요합니다. 앱은 EC2의 [MOCK 서버](https://43.201.115.170/pleos-mock/api/v1/status)에 HTTPS로 접속합니다.
+- **도구:** APK 설치에 ADB(Android SDK Platform-Tools)를 씁니다.
+- **계정과 키:** 계정, API 키, 전화번호 입력은 필요 없습니다. 제출용 APK는 MOCK 예약 흐름만 포함하며 실제 식당에 전화하지 않습니다.
+
+## 4. Pleos Connect 에뮬레이터 버전과 화면 규격
+
+| 항목       | 값                           |
+| ---------- | ---------------------------- |
+| 에뮬레이터 | Pleos Connect Emulator 2.1.0 |
+| 플랫폼     | Android 14 (API 34)          |
+| 화면 규격  | 2560×1440 px, 160 dpi        |
+
+개발과 화면 확인, 제출용 APK의 설치·실행 확인을 모두 이 환경에서 했습니다.
+
+## 5. APK 파일 위치
+
+[apk/ArriveOn_ArriveOn_release.apk](apk/ArriveOn_ArriveOn_release.apk)
+
+서명된 release 빌드이며 패키지는 `ai.pleos.assistant.submission`, 버전은 0.1.0-mock입니다. 소스에서 빌드하는 방법은 [제출용 APK 빌드](#제출용-apk-빌드)에 있습니다.
 
 ---
 
@@ -47,14 +94,14 @@ Pleos Connect 에뮬레이터에서 실행한 화면입니다. 왼쪽은 차량 
 
 ArriveOn 안에서는 목적지와 예약 시각 요약을 왼쪽 카드에 고정하고, 지금 결정할 내용 하나만 오른쪽에 띄웁니다. 아래는 ArriveOn 영역만 잘라 단계별로 모은 것입니다.
 
-| 1. 식당 고르기 | 2. 예약 요청 승인 |
-| --- | --- |
-| <img src="docs/images/screens/pleos-candidates.png" alt="후보 식당 선택 화면"> | <img src="docs/images/screens/pleos-approval.png" alt="예약 요청 승인 화면"> |
+| 1. 식당 고르기                                                                                      | 2. 예약 요청 승인                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| <img src="docs/images/screens/pleos-candidates.png" alt="후보 식당 선택 화면">                      | <img src="docs/images/screens/pleos-approval.png" alt="예약 요청 승인 화면">                                                                                             |
 | 후보 3곳을 보여 주고, 공개 정보로 확인된 조건과 전화로 확인해야 하는 조건을 카드마다 나눠 적습니다. | 식당, 시각, 인원, 필수 조건, 예약자를 확인한 뒤에만 예약 전화가 나갑니다. 식당을 고르는 것만으로는 전화하지 않고, 승인하지 않은 비용은 AI가 통화 중에 수락하지 않습니다. |
 
-| 3. 도착 지연 안내 (시연) | 4. 변경 문의 중 원 예약 유지 |
-| --- | --- |
-| <img src="docs/images/screens/pleos-delay-alert.png" alt="도착 지연 시 예약 변경 문의 화면"> | <img src="docs/images/screens/pleos-change-requested.png" alt="변경 문의 후 예약 결과 화면"> |
+| 3. 도착 지연 안내 (시연)                                                                                  | 4. 변경 문의 중 원 예약 유지                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="docs/images/screens/pleos-delay-alert.png" alt="도착 지연 시 예약 변경 문의 화면">              | <img src="docs/images/screens/pleos-change-requested.png" alt="변경 문의 후 예약 결과 화면">                                                                                        |
 | 몇 분 늦는지와 바꿀 시각을 함께 보여 주고, 기존 시간을 유지할지 새 시각으로 문의할지는 사용자가 고릅니다. | 19:30 변경을 문의해도 식당이 동의하기 전까지 확정 시각은 19:10으로 남습니다. 조건은 항목별로 확인 여부를 표시하고, 예약금처럼 확인되지 않은 값은 그대로 "확인되지 않음"으로 둡니다. |
 
 ## 예약 흐름
@@ -65,12 +112,12 @@ ArriveOn 안에서는 목적지와 예약 시각 요약을 왼쪽 카드에 고�
 
 ## Pleos 플랫폼 활용
 
-| 기능 | 사용한 것 | 쓰는 곳 | 확인 수준 |
-| --- | --- | --- | --- |
-| 목적지 · 주행 정보 | Pleos NaviHelper SDK 3.0.5 | LIVE 시험의 주변 식당 검색 기준 목적지 | 목적지와 남은 이동시간 수신 확인. 예약 시각 계산 연동은 [#1](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1)에서 진행 |
-| 음성으로 앱 실행 | Pleos 음성 비서 Gleo | "어라이브온 앱 열어줘"로 앱 실행 | 에뮬레이터에서 실행 확인 |
-| 주행 제한 | AAOS `CarUxRestrictionsManager` | 주행 중 입력과 승인 차단 | 에뮬레이터에서 제한 상태를 주입해 확인 |
-| 실행 환경 | Pleos Connect 에뮬레이터 | 전체 앱 흐름 시연 | 위 앱 화면 캡처 |
+| 기능               | 사용한 것                       | 쓰는 곳                                | 확인 수준                                                                                                                                   |
+| ------------------ | ------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 목적지 · 주행 정보 | Pleos NaviHelper SDK 3.0.5      | LIVE 시험의 주변 식당 검색 기준 목적지 | 목적지와 남은 이동시간 수신 확인. 예약 시각 계산 연동은 [#1](https://github.com/arriveon-lab/pleos-reservation-assistant/issues/1)에서 진행 |
+| 음성으로 앱 실행   | Pleos 음성 비서 Gleo            | "어라이브온 앱 열어줘"로 앱 실행       | 에뮬레이터에서 실행 확인                                                                                                                    |
+| 주행 제한          | AAOS `CarUxRestrictionsManager` | 주행 중 입력과 승인 차단               | 에뮬레이터에서 제한 상태를 주입해 확인                                                                                                      |
+| 실행 환경          | Pleos Connect 에뮬레이터        | 전체 앱 흐름 시연                      | 위 앱 화면 캡처                                                                                                                             |
 
 차량 기능은 AAOS 표준 API를 먼저 쓰고, 실행할 때 기기에서 실제로 쓸 수 있는지 확인합니다. 차종 이름만 보고 기능 지원 여부를 단정하지 않습니다.
 
@@ -92,16 +139,15 @@ ArriveOn 안에서는 목적지와 예약 시각 요약을 왼쪽 카드에 고�
 
 이 프로젝트는 문서에 적힌 것, 빌드와 테스트로 확인한 것, 실제 기기에서 확인한 것을 구분해서 기록합니다. 아래는 2026년 11월 15일 기준이며, 최신 기준은 [docs/STATUS.md](docs/STATUS.md)입니다.
 
-| 항목 | 상태 |
-| --- | --- |
-| MOCK 데이터로 검색부터 예약까지 전체 흐름, 변경 실패 시 원 예약 보존 | 서버 테스트와 통합 점검 통과 |
-| 익명 토큰 발급 · 갱신 · 폐기 · 소유자 격리 | 서버 테스트 통과 |
-| Pleos 에뮬레이터에서 목적지 · TripInfo 수신 | 기기 확인 |
-| Pleos 에뮬레이터에서 후보 · 승인 · 결과 · 재실행 복구 화면 | 기기 확인 (MOCK 데이터) |
-| 등록 휴대폰 대상 AI 전화 예약 | 격리 시험에서 확정까지 확인, 근거가 부족한 시험은 미확인으로 보존 |
-| 식당 회신에 따른 시간 변경 | 가상 통화와 기기 화면 확인 |
-| 교통 지연에 따른 변경 제안 | 가상 도착시간으로 시연. 별도 LIVE 시험에서 변경 확인 전화와 결과 반영 검증 |
-
+| 항목                                                                 | 상태                                                                       |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| MOCK 데이터로 검색부터 예약까지 전체 흐름, 변경 실패 시 원 예약 보존 | 서버 테스트와 통합 점검 통과                                               |
+| 익명 토큰 발급 · 갱신 · 폐기 · 소유자 격리                           | 서버 테스트 통과                                                           |
+| Pleos 에뮬레이터에서 목적지 · TripInfo 수신                          | 기기 확인                                                                  |
+| Pleos 에뮬레이터에서 후보 · 승인 · 결과 · 재실행 복구 화면           | 기기 확인 (MOCK 데이터)                                                    |
+| 등록 휴대폰 대상 AI 전화 예약                                        | 격리 시험에서 확정까지 확인, 근거가 부족한 시험은 미확인으로 보존          |
+| 식당 회신에 따른 시간 변경                                           | 가상 통화와 기기 화면 확인                                                 |
+| 교통 지연에 따른 변경 제안                                           | 가상 도착시간으로 시연. 별도 LIVE 시험에서 변경 확인 전화와 결과 반영 검증 |
 
 ## 시스템 구성
 
@@ -137,29 +183,29 @@ Spring Boot 기반의 단일 서버입니다. 앱은 로그인 없이 설치별 
 
 ## 설계 결정
 
-| 결정 | 이유 |
-| --- | --- |
-| 서버를 Java와 Python 둘로 나눔 | 예약 상태와 소유권은 타입이 엄격한 Spring 서버가 최종 판단하고, 음성 통화는 LiveKit Agents 생태계가 있는 Python에서 처리합니다. 두 서비스는 DB와 프로세스가 분리돼 있어 따로 배포하고 재시작할 수 있습니다. |
-| 화면 규칙을 `ux:core`로 분리 | 주행 제한이나 미확인 보존 같은 안전 규칙을 에뮬레이터 없이 JVM 단위 테스트로 검증하기 위해서입니다. |
-| H2와 SQLite 파일 DB | 공모전 시연과 시험 서버가 단일 호스트라 별도 DB 서버 없이 재시작 후 복구까지 확인할 수 있습니다. 서버 스키마 변경은 Flyway 마이그레이션으로 기록합니다. |
-| 전화 회선으로 Telkit 채택 | 국내 070 번호와 LiveKit SIP 연동을 함께 제공하는 업체를 비교해 골랐습니다. 비교 기록은 [업체 검토](docs/calls/VENDOR_REVIEW.md)에 있습니다. |
-| 승인 1건에 통화 1회, 미확인 시 재발신 없음 | 식당에 같은 전화를 반복해서 거는 것은 실제 피해가 됩니다. 결과가 애매하면 사람이 확인하도록 남깁니다. |
-| 장소 데이터 공급자를 어댑터로 교체 가능하게 | 데이터 이용 조건과 공급자 최종 결정이 남아 있어, 결정 전에도 MOCK과 실제 공급자를 같은 계약으로 시험할 수 있게 했습니다. |
+| 결정                                        | 이유                                                                                                                                                                                                        |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 서버를 Java와 Python 둘로 나눔              | 예약 상태와 소유권은 타입이 엄격한 Spring 서버가 최종 판단하고, 음성 통화는 LiveKit Agents 생태계가 있는 Python에서 처리합니다. 두 서비스는 DB와 프로세스가 분리돼 있어 따로 배포하고 재시작할 수 있습니다. |
+| 화면 규칙을 `ux:core`로 분리                | 주행 제한이나 미확인 보존 같은 안전 규칙을 에뮬레이터 없이 JVM 단위 테스트로 검증하기 위해서입니다.                                                                                                         |
+| H2와 SQLite 파일 DB                         | 공모전 시연과 시험 서버가 단일 호스트라 별도 DB 서버 없이 재시작 후 복구까지 확인할 수 있습니다. 서버 스키마 변경은 Flyway 마이그레이션으로 기록합니다.                                                     |
+| 전화 회선으로 Telkit 채택                   | 국내 070 번호와 LiveKit SIP 연동을 함께 제공하는 업체를 비교해 골랐습니다. 비교 기록은 [업체 검토](docs/calls/VENDOR_REVIEW.md)에 있습니다.                                                                 |
+| 승인 1건에 통화 1회, 미확인 시 재발신 없음  | 식당에 같은 전화를 반복해서 거는 것은 실제 피해가 됩니다. 결과가 애매하면 사람이 확인하도록 남깁니다.                                                                                                       |
+| 장소 데이터 공급자를 어댑터로 교체 가능하게 | 데이터 이용 조건과 공급자 최종 결정이 남아 있어, 결정 전에도 MOCK과 실제 공급자를 같은 계약으로 시험할 수 있게 했습니다.                                                                                    |
 
 ## 기술 스택
 
-| 영역 | 언어 | 프레임워크 · 라이브러리 |
-| --- | --- | --- |
-| 차량 앱 | Java | Android Gradle Plugin 8.9, compileSdk 35 / minSdk 28, AndroidX Activity 1.9, Lifecycle ViewModel 2.8, Pleos NaviHelper 3.0.5, Android Car API(`CarUxRestrictions`), Android Keystore |
-| 화면 상태 코어 | Java | Android 비의존 순수 Java 모듈, JUnit 5 |
-| 추천·예약 서버 | Java 21 | Spring Boot 3.5 (Web, Validation, JDBC), Flyway, H2, jsoup 1.24, JUnit 5 |
-| 전화 에이전트 | Python 3.12 | 표준 라이브러리 `http.server`, SQLite, LiveKit Agents 1.8 (Silero VAD, 잡음 제거, Soniox 플러그인), LiveKit API |
-| 음성 모델 (기본값) | - | STT AssemblyAI Universal, LLM Gemma 4 31B, TTS Cartesia Sonic 3. LiveKit 추론 게이트웨이로 호출하며 환경 변수로 교체할 수 있습니다. |
-| 통신 | - | Telkit 국내 번호, LiveKit SIP 트렁크 (TLS, SRTP) |
-| 외부 데이터 | - | Kakao Local API, 서울 열린데이터광장, OpenAI Responses API |
-| API 계약 | JSON | OpenAPI 3.1, JSON Schema, openapi-spec-validator |
-| 빌드 · 품질 | Kotlin DSL | Gradle 8.11 Wrapper, Spotless (google-java-format, ktfmt), 의존성 잠금 |
-| 배포 · CI | - | Docker Compose, nginx, GitHub Actions |
+| 영역               | 언어        | 프레임워크 · 라이브러리                                                                                                                                                              |
+| ------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 차량 앱            | Java        | Android Gradle Plugin 8.9, compileSdk 35 / minSdk 28, AndroidX Activity 1.9, Lifecycle ViewModel 2.8, Pleos NaviHelper 3.0.5, Android Car API(`CarUxRestrictions`), Android Keystore |
+| 화면 상태 코어     | Java        | Android 비의존 순수 Java 모듈, JUnit 5                                                                                                                                               |
+| 추천·예약 서버     | Java 21     | Spring Boot 3.5 (Web, Validation, JDBC), Flyway, H2, jsoup 1.24, JUnit 5                                                                                                             |
+| 전화 에이전트      | Python 3.12 | 표준 라이브러리 `http.server`, SQLite, LiveKit Agents 1.8 (Silero VAD, 잡음 제거, Soniox 플러그인), LiveKit API                                                                      |
+| 음성 모델 (기본값) | -           | STT AssemblyAI Universal, LLM Gemma 4 31B, TTS Cartesia Sonic 3. LiveKit 추론 게이트웨이로 호출하며 환경 변수로 교체할 수 있습니다.                                                  |
+| 통신               | -           | Telkit 국내 번호, LiveKit SIP 트렁크 (TLS, SRTP)                                                                                                                                     |
+| 외부 데이터        | -           | Kakao Local API, 서울 열린데이터광장, OpenAI Responses API                                                                                                                           |
+| API 계약           | JSON        | OpenAPI 3.1, JSON Schema, openapi-spec-validator                                                                                                                                     |
+| 빌드 · 품질        | Kotlin DSL  | Gradle 8.11 Wrapper, Spotless (google-java-format, ktfmt), 의존성 잠금                                                                                                               |
+| 배포 · CI          | -           | Docker Compose, nginx, GitHub Actions                                                                                                                                                |
 
 ## 저장소 구조
 
@@ -185,21 +231,9 @@ docs/         기능 명세, ERD, 이슈별 설계와 검증 기록
 
 ## 실행
 
-### 공모전 제출용 APK
+### 제출용 APK 빌드
 
-[ArriveOn_ArriveOn_release.apk](apk/ArriveOn_ArriveOn_release.apk)는 서울숲 주변 식당 추천과 모의 전화 예약을 체험하는 서명된 release 빌드입니다.
-
-- **테스트 환경:** Pleos Connect Emulator 2.1.0, Android 14 (API 34), 2560×1440 px, 160 dpi. 차량은 정차 상태로 설정합니다.
-- **필요한 설정:** 에뮬레이터의 인터넷 연결과 ADB가 필요합니다. 앱은 EC2의 [MOCK 서버](https://43.201.115.170/pleos-mock/api/v1/status)에 HTTPS로 접속합니다. 계정, API 키, 전화번호 입력은 필요 없습니다.
-- **실행:** APK를 내려받아 아래 명령을 실행하고, 차량 화면의 앱 목록에서 **어라이브온 · MOCK**을 엽니다. ADB에 기기가 여러 대 연결되어 있으면 `adb -s <serial>`로 Pleos 에뮬레이터를 지정합니다.
-
-```bash
-adb install -r apk/ArriveOn_ArriveOn_release.apk
-```
-
-**체험 연결 시작 → 주변 식당 찾기 → 후보 선택 → 가상 예약 요청** 순으로 진행합니다. 예약 결과 화면에서 **교통 지연 시연 시작**을 누르면 가상 도착 시각과 변경 제안을 볼 수 있습니다. 제출용 APK의 후보 이름과 통화 결과는 시연용이며, 등록 휴대폰으로 실제 통화를 시험하는 절차는 [팀 시연 가이드](docs/PLEOS_TEAM_DEMO_FILMING.md)에 있습니다.
-
-소스에서 같은 구성의 서명 전 APK를 빌드하려면 [Android 빌드 환경](docs/ANDROID_SETUP.md)을 준비한 뒤 다음 명령을 실행합니다.
+제출용 APK의 설치와 체험 방법은 [2. 실행 방법](#2-실행-방법)에 있습니다. 소스에서 같은 구성의 서명 전 APK를 빌드하려면 [Android 빌드 환경](docs/ANDROID_SETUP.md)을 준비한 뒤 다음 명령을 실행합니다.
 
 ```bash
 ./gradlew -PincludeAndroid=true -PsubmissionDemo=true :android:app:assembleRelease
@@ -246,13 +280,13 @@ Android 빌드는 [Android 설치·설정](docs/ANDROID_SETUP.md)을 따라 SDK�
 java -jar server/build/libs/reservation-server-0.1.0-SNAPSHOT.jar --app.destination-recommendations.enabled=true
 ```
 
-| 항목 | 기본값 | 설명 |
-| --- | --- | --- |
-| `app.mode` | `MOCK` | `LIVE`는 시작 단계에서 차단 |
-| `app.place-preview.enabled` | `false` | 장소 미리보기 API |
-| `app.destination-recommendations.enabled` | `false` | 목적지 기반 추천 API |
-| `app.recommendation-phone.enabled` | `false` | 추천 결과와 전화 에이전트 연결. 목적지 추천 API도 켜져 있어야 동작 |
-| `KAKAO_REST_API_KEY`, `OPENAI_API_KEY` | 없음 | 실제 장소 검색과 웹 출처 검색용 환경 변수. 없으면 외부 호출을 하지 않습니다. |
+| 항목                                      | 기본값  | 설명                                                                         |
+| ----------------------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `app.mode`                                | `MOCK`  | `LIVE`는 시작 단계에서 차단                                                  |
+| `app.place-preview.enabled`               | `false` | 장소 미리보기 API                                                            |
+| `app.destination-recommendations.enabled` | `false` | 목적지 기반 추천 API                                                         |
+| `app.recommendation-phone.enabled`        | `false` | 추천 결과와 전화 에이전트 연결. 목적지 추천 API도 켜져 있어야 동작           |
+| `KAKAO_REST_API_KEY`, `OPENAI_API_KEY`    | 없음    | 실제 장소 검색과 웹 출처 검색용 환경 변수. 없으면 외부 호출을 하지 않습니다. |
 
 전화 에이전트의 LiveKit, Telkit, 음성 모델 설정은 Git에서 제외된 `work/` 아래 비공개 환경 파일로 관리합니다. 항목과 절차는 [음성 연결 안내](prototypes/phone_agent/voice/README.md)에 있습니다.
 
@@ -260,15 +294,15 @@ java -jar server/build/libs/reservation-server-0.1.0-SNAPSHOT.jar --app.destinat
 
 추천·예약 서버의 공개 계약은 [api/openapi.json](api/openapi.json)(OpenAPI 3.1, 기본 경로 `/api/v1`)에 있습니다. 핵심 엔드포인트는 다음과 같습니다.
 
-| 메서드 | 경로 | 용도 |
-| --- | --- | --- |
-| `POST` | `/anonymous-sessions` | 설치별 익명 토큰 발급 (`/refresh`로 갱신, `DELETE /current`로 폐기) |
-| `POST` | `/searches` | 목적지, 인원, 필수 조건으로 후보 검색 |
-| `POST` | `/searches/{id}/inquiries` | 후보 식당에 정보 문의 통화 요청 |
-| `POST` | `/searches/{id}/reservations` | 승인한 내용으로 예약 통화 요청 |
-| `GET` | `/reservations/{id}` | 예약 상태 조회 |
-| `POST` | `/reservations/{id}/changes` | 예약 시간 변경 요청 |
-| `GET` | `/calls/{id}` | 통화 상태와 결과 조회 |
+| 메서드 | 경로                          | 용도                                                                |
+| ------ | ----------------------------- | ------------------------------------------------------------------- |
+| `POST` | `/anonymous-sessions`         | 설치별 익명 토큰 발급 (`/refresh`로 갱신, `DELETE /current`로 폐기) |
+| `POST` | `/searches`                   | 목적지, 인원, 필수 조건으로 후보 검색                               |
+| `POST` | `/searches/{id}/inquiries`    | 후보 식당에 정보 문의 통화 요청                                     |
+| `POST` | `/searches/{id}/reservations` | 승인한 내용으로 예약 통화 요청                                      |
+| `GET`  | `/reservations/{id}`          | 예약 상태 조회                                                      |
+| `POST` | `/reservations/{id}/changes`  | 예약 시간 변경 요청                                                 |
+| `GET`  | `/calls/{id}`                 | 통화 상태와 결과 조회                                               |
 
 전화 시험용 API는 [api/pleos-phone-test.openapi.json](api/pleos-phone-test.openapi.json)에 따로 정의돼 있습니다.
 
@@ -278,14 +312,14 @@ java -jar server/build/libs/reservation-server-0.1.0-SNAPSHOT.jar --app.destinat
 
 PR과 main 푸시마다 GitHub Actions가 아래 검사를 실행합니다. 전화 에이전트 검사 두 개는 `prototypes/phone_agent/` 아래 파일이 바뀐 경우에만 돕니다. 외부 장소 검색, 전화, 유료 API는 CI에서 호출하지 않습니다. 이 중 Server and contract, Android checks, PR naming은 main 병합의 필수 조건입니다.
 
-| 워크플로 | 실행 조건 | 검사 내용 |
-| --- | --- | --- |
-| Server and contract | 모든 PR, main 푸시 | 포맷, 서버와 화면 코어 테스트, JAR 패키징, OpenAPI 계약 대조, MOCK smoke test, 추천 서버와 전화 에이전트 MOCK 통합 |
-| Android checks | 모든 PR, main 푸시 | Android Lint, probe 단위 테스트, debug APK 빌드, 주야간 색 대비 검사 |
-| MOCK Compose checks | 모든 PR, main 푸시 | Docker 이미지 빌드, MOCK 미리보기 서버 기동과 재시작 확인 |
-| Offline phone prototype | 전화 에이전트 변경 시 | 전화 에이전트 단위 테스트, 웹 화면 문법, 전화 계약 검사 |
-| Voice adapter | 전화 에이전트 변경 시 | 음성 워커 단위 테스트(네트워크 호출 없음), 배포 Compose 설정 검사 |
-| PR naming | 모든 PR | 브랜치·커밋·PR 제목 규칙과 이슈 연결 |
+| 워크플로                | 실행 조건             | 검사 내용                                                                                                          |
+| ----------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Server and contract     | 모든 PR, main 푸시    | 포맷, 서버와 화면 코어 테스트, JAR 패키징, OpenAPI 계약 대조, MOCK smoke test, 추천 서버와 전화 에이전트 MOCK 통합 |
+| Android checks          | 모든 PR, main 푸시    | Android Lint, probe 단위 테스트, debug APK 빌드, 주야간 색 대비 검사                                               |
+| MOCK Compose checks     | 모든 PR, main 푸시    | Docker 이미지 빌드, MOCK 미리보기 서버 기동과 재시작 확인                                                          |
+| Offline phone prototype | 전화 에이전트 변경 시 | 전화 에이전트 단위 테스트, 웹 화면 문법, 전화 계약 검사                                                            |
+| Voice adapter           | 전화 에이전트 변경 시 | 음성 워커 단위 테스트(네트워크 호출 없음), 배포 Compose 설정 검사                                                  |
+| PR naming               | 모든 PR               | 브랜치·커밋·PR 제목 규칙과 이슈 연결                                                                               |
 
 ## 운영 원칙
 
@@ -298,23 +332,23 @@ PR과 main 푸시마다 GitHub Actions가 아래 검사를 실행합니다. 전�
 
 다섯 명이 영역을 나눠 개발합니다. 담당은 GitHub 이슈 배정과 PR 기준입니다.
 
-| 영역 | 담당 | 주요 작업 |
-| --- | --- | --- |
-| 차량 / Pleos | [csjws](https://github.com/csjws) | NaviHelper 목적지 · ETA probe와 기기 검증 |
-| 추천 / 장소 | [tiemo0708](https://github.com/tiemo0708) | 장소 어댑터, 추천 근거와 확인 질문, 공공데이터 품질 검증, 웹 상세정보 보강, 저장소 · CI 초기 설정 |
-| AI 전화 | [tiemo0708](https://github.com/tiemo0708), [zito-git](https://github.com/zito-git) | 전화 업체 비교와 Telkit 채택, 전화예약 에이전트, LiveKit 음성 대화, 식당 회신 처리, 시험 서버 배포 |
-| 서버 / 예약 | [jjin70](https://github.com/jjin70) | 익명 인증 세션, 여정 소유권과 접근 격리, 미확인 대조 흐름, 취향 · 조건 추천과 전화 승인 API |
-| UX / 통합 | [soyeong03](https://github.com/soyeong03) | 차량 화면과 주야간 테마, 주행 제한 연결, 인증 보관, 최종 시연 UI와 Pleos 기기 통합 |
+| 영역         | 담당                                                                               | 주요 작업                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 차량 / Pleos | [csjws](https://github.com/csjws)                                                  | NaviHelper 목적지 · ETA probe와 기기 검증                                                          |
+| 추천 / 장소  | [tiemo0708](https://github.com/tiemo0708)                                          | 장소 어댑터, 추천 근거와 확인 질문, 공공데이터 품질 검증, 웹 상세정보 보강, 저장소 · CI 초기 설정  |
+| AI 전화      | [tiemo0708](https://github.com/tiemo0708), [zito-git](https://github.com/zito-git) | 전화 업체 비교와 Telkit 채택, 전화예약 에이전트, LiveKit 음성 대화, 식당 회신 처리, 시험 서버 배포 |
+| 서버 / 예약  | [jjin70](https://github.com/jjin70)                                                | 익명 인증 세션, 여정 소유권과 접근 격리, 미확인 대조 흐름, 취향 · 조건 추천과 전화 승인 API        |
+| UX / 통합    | [soyeong03](https://github.com/soyeong03)                                          | 차량 화면과 주야간 테마, 주행 제한 연결, 인증 보관, 최종 시연 UI와 Pleos 기기 통합                 |
 
 ## 더 읽을거리
 
-| 문서 | 내용 |
-| --- | --- |
-| [CONTRIBUTING](CONTRIBUTING.md) | 브랜치, 커밋, PR 규칙과 완료 기준 |
-| [API 계약](api/README.md) | 엔드포인트, 상태 의미, 계약 검증 절차 |
-| [기능 명세](docs/FUNCTIONAL_SPEC.md) · [ERD](docs/ERD.md) | 기능 단위 명세와 데이터 모델 |
-| [팀 계획](docs/PLAN.md) · [이슈 가이드](docs/ISSUE_GUIDE.md) | 역할 분담과 일정 |
-| [연동 검증](docs/INTEGRATIONS.md) | 차량 SDK, 전화 사업자, 장소 데이터 비교 |
-| [코드 컨벤션](docs/CODE_CONVENTIONS.md) | 언어별 스타일, Android 계층과 테스트 기준 |
+| 문서                                                         | 내용                                      |
+| ------------------------------------------------------------ | ----------------------------------------- |
+| [CONTRIBUTING](CONTRIBUTING.md)                              | 브랜치, 커밋, PR 규칙과 완료 기준         |
+| [API 계약](api/README.md)                                    | 엔드포인트, 상태 의미, 계약 검증 절차     |
+| [기능 명세](docs/FUNCTIONAL_SPEC.md) · [ERD](docs/ERD.md)    | 기능 단위 명세와 데이터 모델              |
+| [팀 계획](docs/PLAN.md) · [이슈 가이드](docs/ISSUE_GUIDE.md) | 역할 분담과 일정                          |
+| [연동 검증](docs/INTEGRATIONS.md)                            | 차량 SDK, 전화 사업자, 장소 데이터 비교   |
+| [코드 컨벤션](docs/CODE_CONVENTIONS.md)                      | 언어별 스타일, Android 계층과 테스트 기준 |
 
 이 저장소는 현대자동차그룹 앱 개발 챌린지 출품을 위해 만들고 있습니다.
