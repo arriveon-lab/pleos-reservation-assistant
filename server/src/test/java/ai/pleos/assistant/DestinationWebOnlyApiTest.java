@@ -49,6 +49,7 @@ class DestinationWebOnlyApiTest {
         String response = MockWebRecommendationGateway.fictionalResponse();
         if ("두 곳 시험".equals(request.area())
             || "업종 시험".equals(request.area())
+            || "Pleos 업종 시험".equals(request.area())
             || "음식 취향 시험".equals(request.area())) {
           try {
             var root =
@@ -69,9 +70,13 @@ class DestinationWebOnlyApiTest {
                   .put("sourceUrl", first.path("identitySourceUrl").asText())
                   .put("sourceType", "MERCHANT_PAGE")
                   .putNull("sourceUpdatedAt");
-            } else if ("업종 시험".equals(request.area())) {
+            } else if ("업종 시험".equals(request.area()) || "Pleos 업종 시험".equals(request.area())) {
               first.put("venueCategory", "CAFE");
               second.put("venueCategory", "RESTAURANT");
+              if ("Pleos 업종 시험".equals(request.area())) {
+                ((com.fasterxml.jackson.databind.node.ObjectNode) body.at("/candidates/2"))
+                    .put("venueCategory", "RESTAURANT");
+              }
             } else {
               first.put("address", "UNKNOWN");
             }
@@ -154,6 +159,52 @@ class DestinationWebOnlyApiTest {
             .getResponse()
             .getContentAsString();
     assertThat(failure).contains("FOOD_PREFERENCE_UNCLEAR");
+  }
+
+  @Test
+  void pleosRestaurantRequestExcludesCafeAndKeepsParkingAssessments() throws Exception {
+    String token = auth.issue().accessToken();
+    var request =
+        Map.of(
+            "viewId", UUID.randomUUID(),
+            "generation", 1,
+            "userRequest", "주차 가능한 식당 추천",
+            "destination", Map.of("name", "Pleos 업종 시험", "latitude", 37.544, "longitude", 127.055),
+            "party", Map.of("adults", 2, "children", 0),
+            "maxWaitMinutes", 15,
+            "requiredFeatures", Set.of("parking"),
+            "preferredCuisines", Set.of());
+    var started =
+        json.readTree(
+            http.perform(
+                    post(BASE)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsBytes(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    com.fasterxml.jackson.databind.JsonNode result = null;
+    for (int attempt = 0; attempt < 100; attempt++) {
+      result =
+          json.readTree(
+              http.perform(
+                      get(BASE + "/" + started.path("taskId").asText())
+                          .header("Authorization", "Bearer " + token))
+                  .andExpect(status().isOk())
+                  .andReturn()
+                  .getResponse()
+                  .getContentAsString());
+      if (result.path("state").asText().equals("RESULTS")) break;
+      Thread.sleep(10);
+    }
+    assertThat(result.path("state").asText()).isEqualTo("RESULTS");
+    var candidates = result.at("/result/webRecommendations");
+    assertThat(candidates.findValuesAsText("venueCategory"))
+        .containsExactly("RESTAURANT", "RESTAURANT");
+    for (var candidate : candidates)
+      assertThat(candidate.path("assessments").findValuesAsText("need")).containsExactly("PARKING");
   }
 
   @Test

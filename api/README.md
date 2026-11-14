@@ -4,6 +4,8 @@
 
 실서비스 자동 검색을 켤 때는 서버 실행 환경에 `OPENAI_API_KEY`를 안전하게 설정하고 `app.destination-recommendations.enabled=true`, `source=WEB_SEARCH`, `web.enabled=true`, `web.runtime-enabled=true`, `web.runtime-model`, `web.runtime-max-output-tokens`(256~3072), `web.runtime-max-calls-per-startup`(1~1000)을 명시합니다. 운영 모드와 시험용 `approved-*` 설정을 함께 쓰면 시작이 거부됩니다. 기본은 모두 비활성이며 폴링은 새 GPT 호출을 만들지 않습니다. 호출 한도는 **서버 프로세스마다** 적용되어 재시작 시 초기화됩니다. 배포 전에는 별도 영속 일일 예산·요금 모니터링이 필요합니다. 이 모드의 실제 유료 호출은 아직 실행하지 않았고, 가짜 전송으로 다중 목적지·동시 요청 상한 및 가짜 키로 서버 시작만 확인했습니다.
 
+일반 목적지 POST에서 `userRequest`가 ‘주차 가능한 식당 추천’처럼 식당을 명확하게 요청하면 `WEB_SEARCH`가 식당으로 분류된 후보만 반환합니다. 업종이 불명확하면 기존 전체 업종 검색을 사용합니다. 시험용 일회성 웹검색을 승인할 때 식당으로 해석되는 요청은 `app.destination-recommendations.web.approved-venue-category=RESTAURANT`를 설정해 검색 범위를 일치시킵니다.
+
 웹 후보가 Kakao 음식점 카테고리 첫 페이지에 없으면 상호만 키워드 검색으로 최대 3회 재조회하고, 상호·주소·목적지 반경이 일치하는 지점만 `result.matches.candidates`에 합칩니다. `result.listing.candidates`는 초기 목록 진단이며 최종 추천으로 표시하지 않습니다. 인용 주석 없는 웹 출처는 지점 식별에만 사용하고 조건은 UNKNOWN으로 남깁니다.
 
 Kakao Local 응답에는 별점·리뷰 수가 없습니다. `WEB_SEARCH` 결과의 `webRecommendations[].reviews`는 인용된 방문 후기의 짧은 요약과 출처이며, 수치 별점이나 매장 확정 사실이 아닙니다. 리뷰 근거가 없으면 빈 배열을 유지합니다.

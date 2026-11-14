@@ -1,5 +1,6 @@
 package ai.pleos.assistant;
 
+import ai.pleos.assistant.WebRecommendation.VenueCategory;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -15,8 +16,20 @@ public final class UserRecommendationIntent {
   private static final Map<String, String> ALIASES =
       Map.of("한국음식", "한식", "서양음식", "양식", "일본음식", "일식", "중국음식", "중식");
   private static final Pattern NEGATED = Pattern.compile("말고|빼고|제외|싫|안먹|먹기싫|먹고싶지않|먹지않|안좋아|원하지않|아닌");
+  private static final Pattern RESTAURANT_WORD = Pattern.compile("식당|음식점|밥집|레스토랑");
+  private static final Pattern CAFE_WORD = Pattern.compile("카페(?!인|테리아)|커피숍");
 
   private UserRecommendationIntent() {}
+
+  /** Interpret a clear restaurant request in an already validated utterance. */
+  static VenueCategory venueCategory(String utterance) {
+    String compact = utterance.replaceAll("\\s+", "");
+    if (NEGATED.matcher(compact).find() || compact.contains("아니어도") || compact.contains("상관없"))
+      return null;
+    return RESTAURANT_WORD.matcher(compact).find() && !CAFE_WORD.matcher(compact).find()
+        ? VenueCategory.RESTAURANT
+        : null;
+  }
 
   /** Extract only supported food categories locally; never forward the original utterance. */
   public static Set<String> preferredCuisines(

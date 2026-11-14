@@ -87,7 +87,8 @@ class DestinationRecommendationController {
               input.generation(),
               input.destination().name(),
               query,
-              requirements);
+              requirements,
+              UserRecommendationIntent.venueCategory(input.userRequest()));
       return new Started(id, service.poll(actor.subject(), id).orElseThrow().state());
     } catch (IllegalArgumentException error) {
       throw ApiError.bad("INVALID_DESTINATION_RECOMMENDATION", "추천 요청을 확인해 주세요.");
