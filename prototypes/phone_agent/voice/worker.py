@@ -50,6 +50,10 @@ INSTRUCTIONS = """너는 한국어 식당 예약 비서다. 짧고 자연스러�
 일시·이름·비용을 한 번에 다시 묻지 않는다. 한 가지가 틀렸으면 그 항목만 짧게 재확인한다.
 이미 확인한 날짜·시간·인원은 정정이나 청취 실패가 없으면 다시 반복하지 않는다.
 질문 목록을 처음부터 끝까지 읽지 말고 상대가 이미 답한 항목은 건너뛴다.
+상대가 한 번에 시간·주차·유아의자 등 여러 항목을 답하면 명확하게 답한 항목을 모두 반영하고 아직 모르는 항목 하나만 묻는다.
+'주차는 되는데 유아의자는 없어요'처럼 긍정과 부정이 함께 있으면 항목별로 해석한다. 필수 조건이 불가능하면 예약을 요청하지 않는다.
+'아니, 일곱 시 말고 여덟 시요' 같은 정정은 최신 답을 기준으로 이해하되 승인된 시간과 다르면 임의로 변경 예약하지 않는다.
+상대가 짧게 수락하면 같은 내용을 다시 말하게 요구하지 않는다. 확인되지 않은 내용을 자연스럽게 들리게 하려고 추측하지 않는다.
 이름을 전달하며 예약을 부탁한 직후 '네', '예', '알겠습니다', '예약되었습니다'처럼 수락하면 같은 이름이나 전체 예약을 다시 묻지 않는다.
 짧은 답도 직전 요청의 문맥에서 해석하고 실제 답변 그대로 수락 근거로 제출한다. '네'를 더 긴 확정 문장으로 꾸며 쓰지 않는다.
 '가능합니다'도 가능 여부 질문 뒤면 가능 여부의 답이고, 이름을 밝힌 예약 요청 뒤면 문맥상 예약 수락일 수 있다. 단어만 보고 두 경우를 같은 것으로 판단하지 않는다.
@@ -89,7 +93,9 @@ pendingChange는 변경 제안과 승인 상태다. APPLIED가 아니면 변경�
 회신의 상대 날짜는 서버 today의 한국 날짜를 기준으로 정리한다. 날짜나 오전·오후가 애매하면 해당 항목만 물어본다.
 조회 실패 시 다른 예약 목록이나 개인정보를 읽어주지 않는다. 확인한 예약만 변경 요청을 받는다.
 시간 변경은 save_change_request, 취소·예약 불가 통보나 다른 문의는 save_callback_note로 실제 근거와 함께 접수한다.
-새 시간이 명확하면 곧바로 save_change_request를 호출한다. 접수, 대기, 승인 안내는 도구가 말한다.
+pairedCallback=true이면 식당이 변경을 요청한 시점에 용건이 확인된 것이다. 이미 찾은 예약의 이름이나 기존 시간, 변경 요청 여부를 다시 묻지 않는다.
+새 시각이 명확하면 바로 save_change_request를 호출한다. “30분 늦춰 주세요”처럼 간격이 명확하면 기존 확정 시간에서 계산한다. 날짜를 바꾸자는 말이 없으면 기존 예약 날짜를 사용한다. 식당이 비용을 언급하지 않으면 비용을 묻지 않고 additional_cost_krw를 생략한다. 비용이 있다고 하면 변경 대신 기타 회신으로 접수한다.
+시간 변경 접수·대기·승인 안내는 저장에 성공한 도구만 말한다. 도구가 오류를 반환하면 부족한 정보만 짧게 묻고 대기를 안내하지 않는다.
 사용자 확인 전에는 변경이나 취소가 완료됐다고 말하지 않는다. 푸시 알림을 보냈다거나 사용자가 읽었다고 주장하지 않는다.
 CHANGE_CONFIRMATION은 이미 사용자가 승인한 변경을 식당에 재확인하는 목적이다. 원 시간을 먼저 밝힌다.
 결과 도구로 저장한 뒤 추가 요약·질문을 하지 않는다. 대화를 마쳐야 하는데 결과를 저장하지 못한 통화만 finish_call로 마친다.
@@ -98,6 +104,16 @@ CHANGE_CONFIRMATION은 이미 사용자가 승인한 변경을 식당에 재확�
 잠시 확인하거나 담당자를 부르겠다는 말에는 기다리고 질문을 반복하지 않는다.
 ARS나 음성사서함은 예약 수락이 아니다. 메시지를 남겼다고 확정하지 않는다.
 통화가 어렵거나 나중에 연락하라는 요청에는 짧게 마치고 자동 재발신을 약속하지 않는다.
+
+새 예약(BOOKING)에서 다음 행동을 고르는 순서:
+1. 요청한 시간·인원 또는 필수 조건이 불가능하다는 답이면 즉시 finish_call을 호출한다. 보류 인사와 종료는 도구가 담당한다.
+   예: 승인 시간 19:00에 대해 '여덟 시만 돼요'라고 하면 대체 시간의 가능 여부를 묻거나 예약을 요청하지 않고 finish_call을 호출한다.
+   예: 유아의자 필수인데 '유아의자는 없어요'라고 하면 보류 문장을 직접 생성하지 않고 finish_call을 호출한다.
+2. 아직 확인하지 못한 조건이 있으면 requiredConditions 순서로 한 항목만 질문한다.
+   예: 유아의자와 계단 없는 입장이 모두 미확인이면 '유아의자 한 개 이용할 수 있을까요?'만 묻고 답을 기다린다.
+   다음 차례에 계단 없는 입장을 묻는다. 한 질문에 '와', '하고', '그리고'로 여러 조건을 합치지 않는다.
+3. 조건과 비용이 모두 확인되면 이름으로 예약을 부탁하고 수락을 기다린다. 수락 후에는 save_reservation_result를 호출한다.
+이 순서는 식당 회신(CALLBACK)의 사용자 승인 후 시간 변경 처리에는 적용하지 않는다.
 """
 
 
@@ -284,13 +300,20 @@ class BookingVoiceAgent(Agent):
 
     @function_tool()
     async def save_change_request(self, context: RunContext, proposed_time: str, reason: str,
-                                  restaurant_evidence: str) -> dict:
+                                  restaurant_evidence: str, additional_cost_krw: int | None = None,
+                                  proposed_date: str | None = None) -> dict:
         """식별한 식당 회신의 새 시간·사유·실제 전체 발화 근거를 접수한다.
+
+        pairedCallback=true인 Pleos 회신은 같은 날짜의 새 시간을 접수한다.
+        식당이 비용을 말하지 않았으면 additional_cost_krw를 생략한다.
+        proposed_date에는 확인한 변경 날짜를 YYYY-MM-DD로 제출한다.
+        날짜가 다르거나 비용이 있으면 시간 변경 대신 기타 회신을 접수한다.
+        비용 답변 후에도 restaurant_evidence에는 식당의 원래 변경 요청을 그대로 인용한다.
 
         proposed_time은 HH:MM이다. 저장 후 사용자의 결정을 기다려 같은 통화에서 식당에 답한다.
         """
         result = await self._tool(lambda: self.workflow.request_change(
-            self.call_id, proposed_time, reason, restaurant_evidence))
+            self.call_id, proposed_time, reason, restaurant_evidence, additional_cost_krw, proposed_date))
         if not result.get("saved"):
             return result
         if self.supervisor:
@@ -308,13 +331,18 @@ class BookingVoiceAgent(Agent):
             self.awaiting_callback_confirmation = True
             if self.supervisor:
                 self.supervisor.closing = False
-            await context.session.say(CALLBACK_CONFIRM_QUESTION, allow_interruptions=False)
+            question = await self._tool(lambda: self.workflow.callback_confirmation_prompt(self.call_id))
+            if not isinstance(question, str):
+                question = CALLBACK_CONFIRM_QUESTION
+            await context.session.say(question, allow_interruptions=False)
             raise StopResponse()
         if decision == "REJECTED":
             closing = "예약자가 시간 변경을 원하지 않습니다. 기존 시간으로 부탁드립니다. 감사합니다."
             reason = "callback_change_rejected"
         else:
-            closing = "예약자 확인이 필요한 요청으로 남겨두겠습니다. 기다려 주셔서 감사합니다."
+            closing = ("응답 시간이 지나 기존 예약 시간을 유지하겠습니다. 감사합니다."
+                       if decision == "EXPIRED" else
+                       "예약자 확인이 필요한 요청으로 남겨두겠습니다. 기다려 주셔서 감사합니다.")
             reason = "callback_approval_pending"
         await context.session.say(closing, allow_interruptions=False)
         await self.close_call(reason)
@@ -344,7 +372,11 @@ class BookingVoiceAgent(Agent):
 
     @function_tool()
     async def finish_call(self, context: RunContext) -> dict:
-        """대화를 마쳐야 하지만 결과를 저장하지 못할 때 안내 후 종료한다. 상대의 확인을 기다리는 중에는 사용하지 않는다."""
+        """새 예약의 요청 시간이나 필수 조건이 불가능하면 호출한다. 대체 시간을 임의 협상하지 않는다.
+
+        보류 인사, 종료 상태 저장, 통화 종료를 수행한다. 별도 보류 문장을 먼저 말하지 않는다.
+        상대가 확인 중이면 사용하지 않는다. 이미 예약을 요청했다면 확정 미확인으로 안내한다.
+        """
         if self.is_test_booking and (self.named_request_turn == self.user_turns or await self._tool(
                 lambda: self.workflow.booking_waiting_for_request(self.call_id)) is True):
             return {"ended": False, "code": "BOOKING_ACCEPTANCE_REQUIRED",
@@ -355,7 +387,7 @@ class BookingVoiceAgent(Agent):
         await context.wait_for_playout()
         await context.session.say(closing, allow_interruptions=False)
         await self.close_call("agent_finished")
-        return {"ended": True}
+        raise StopResponse()
 
 
 @server.rtc_session(agent_name=config.agent_name)

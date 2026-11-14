@@ -32,6 +32,13 @@ class CallbackTestRegistrationTest(unittest.TestCase):
         })
         self.assertEqual(0, config.daily_calls)
 
+    def test_self_service_call_duration_defaults_to_two_minutes(self):
+        self.assertEqual(180, VoiceConfig.from_env({}).max_seconds)
+        env = {"PHONE_CALLBACK_TEST_SELF_SERVICE": "true"}
+        self.assertEqual(120, VoiceConfig.from_env(env).max_seconds)
+        self.assertEqual(60, VoiceConfig.from_env({**env, "PHONE_MAX_SECONDS": "60"}).max_seconds)
+        self.assertEqual(120, VoiceConfig.from_env({**env, "PHONE_MAX_SECONDS": "180"}).max_seconds)
+
     def test_registration_is_scoped_to_browser_and_restores_trunk_on_stop(self):
         self.assertEqual("1234", self.register()["phoneLast4"])
         self.update_inbound.assert_awaited_once_with(self.config, self.phone)

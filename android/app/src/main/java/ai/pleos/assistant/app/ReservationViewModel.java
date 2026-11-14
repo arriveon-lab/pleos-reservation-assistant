@@ -132,7 +132,10 @@ public final class ReservationViewModel extends AndroidViewModel {
             if (path.equals("/disconnect"))
               result = pairedAuth.exchange("/paired-phone", null, null);
           } catch (AuthSession.HttpFailure failure) {
-            error = failure.code;
+            error =
+                path.endsWith("/change") && failure.status == 409
+                    ? "CHANGE_NOT_PENDING"
+                    : failure.code;
           } catch (Exception failure) {
             error = "UNAVAILABLE";
           }
@@ -144,7 +147,9 @@ public final class ReservationViewModel extends AndroidViewModel {
                 if (quiet) pairedRefreshing = false;
                 else pairedBusy = false;
                 if (response == null) {
-                  if (!quiet) pairedError = code.isEmpty() ? "UNAVAILABLE" : code;
+                  if (!quiet) {
+                    pairedError = code.isEmpty() ? "UNAVAILABLE" : code;
+                  }
                 } else if (path.equals("") && body != null) {
                   pairingCode = response.optString("pairingCode");
                 } else if (path.equals("/calls")) {
@@ -156,6 +161,7 @@ public final class ReservationViewModel extends AndroidViewModel {
                   }
                 } else {
                   pairedStatus = response;
+                  if ("CHANGE_NOT_PENDING".equals(pairedError)) pairedError = "";
                   hideCompletedDemo();
                   JSONObject latest = pairedStatus.optJSONObject("latest");
                   forgetCompletedMockAttempt(latest);
@@ -165,10 +171,40 @@ public final class ReservationViewModel extends AndroidViewModel {
                   }
                   if (response.optBoolean("active") || path.equals("/disconnect")) pairingCode = "";
                 }
-                nextPairedPoll = android.os.SystemClock.elapsedRealtime() + 2500;
+                nextPairedPoll =
+                    response == null && path.endsWith("/change")
+                        ? 0
+                        : android.os.SystemClock.elapsedRealtime() + 2500;
                 if (observer != null) observer.run();
               });
         });
+  }
+
+  void decidePairedChange(String attemptId, String changeId, int version, boolean approve) {
+    JSONObject callback = pairedStatus.optJSONObject("callback");
+    JSONObject change = callback == null ? null : callback.optJSONObject("change");
+    if (change == null
+        || !attemptId.equals(callback.optString("id"))
+        || !changeId.equals(change.optString("id"))
+        || version != change.optInt("version")
+        || !change.optBoolean("canDecide")) return;
+    try {
+      JSONObject body =
+          new JSONObject()
+              .put("changeId", changeId)
+              .put("version", version)
+              .put("approve", approve);
+      String decision =
+          "paired-change:" + attemptId + ":" + changeId + ":" + version + ":" + approve;
+      String key =
+          java.util
+              .UUID
+              .nameUUIDFromBytes(decision.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+              .toString();
+      pairedRequest("/calls/" + attemptId + "/change", body, key, false);
+    } catch (org.json.JSONException impossible) {
+      throw new IllegalStateException(impossible);
+    }
   }
 
   void approvePairedPhone(String task, int ordinal, String day, String time, String name) {

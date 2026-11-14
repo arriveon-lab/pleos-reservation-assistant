@@ -24,7 +24,7 @@ final class LoopbackTransport implements AuthSession.Wire {
     boolean preview = destination || path.matches("/experimental/place-previews(/[a-zA-Z0-9-]+)*");
     boolean paired =
         BuildConfig.PAIRED_PHONE_DEMO
-            && path.matches("/paired-phone(/(disconnect|calls)(/[a-f0-9-]{36})?)?");
+            && path.matches("/paired-phone(?:/disconnect|/calls(?:/[a-f0-9-]{36}(?:/change)?)?)?");
     if (!BuildConfig.DEBUG
         || (!paired
             && !preview
