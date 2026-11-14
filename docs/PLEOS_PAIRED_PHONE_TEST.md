@@ -1,5 +1,7 @@
 # Pleos 앱의 전화 시험 연결
 
+처음 번호를 등록하거나 영상을 촬영하는 팀원은 [팀원용 Pleos 전화 시연 촬영 가이드](PLEOS_TEAM_DEMO_FILMING.md)를 따라 진행할 수 있습니다.
+
 시험 APK에는 기본 제품 모드와 분리된 debug 앱 ID `ai.pleos.assistant.pairedphone`를 사용합니다. 앱은 [EC2 HTTPS 게이트웨이](https://43.201.115.170/pleos-phone/api/v1/status)에 직접 연결합니다. SSH 터널이나 Swagger의 브라우저 세션을 앱에 복사할 필요는 없습니다.
 
 1. 정차 상태에서 시험 APK를 열고 **체험 연결 시작 → 목적지 주변 추천 및 전화 시험 → 연결 코드 발급**을 누릅니다.
