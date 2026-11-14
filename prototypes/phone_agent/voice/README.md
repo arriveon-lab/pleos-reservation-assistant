@@ -115,6 +115,13 @@ Agent text input을 켠 통화는 AI가 실제 말한 내용을 활용하므로 
 `TELKIT_NUMBER`와 일치해야 하며, `PHONE_RESTAURANT_NUMBERS`에 지정된 발신자 번호가
 기존 확정 시험전화의 실제 수신 번호와 일치해야 합니다. 이 설정은 기본적으로 비어 있습니다.
 
+기존 전화 시험 화면에서 `PHONE_CALLBACK_TEST_SELF_SERVICE=true`를 설정하면 같은 브라우저
+세션의 시험 번호를 [등록 API](../live-test.openapi.json)로 관리할 수 있습니다. HTTPS
+프록시는 운영자 로그인 후 등록 경로에만 `X-Phone-Test-Operator: 1`을 보냅니다.
+등록은 1시간 유효하며, 같은 번호로 발신해 가장 최근에 확정한 시험 예약을 회신에 사용합니다.
+`PHONE_DAILY_CALLS=0`은 이 모드에서 일일 횟수 제한을 해제합니다. 동시 1통과
+`PHONE_MAX_SECONDS`의 통화 시간 제한을 적용합니다.
+
 전용 binding이 없는 수신은 일반 AI 소개 후 예약자 성함부터 묻습니다. 상대가 제시한 이름·날짜·기존 시간과
 식당 mapping이 유일한 LIVE 확정 예약과 일치해야 연결하며 후보를 먼저 읽지 않습니다.
 동명이인·복수 후보·불일치이면 임의 선택하지 않습니다. 식별 전 전사는 별도 비공개

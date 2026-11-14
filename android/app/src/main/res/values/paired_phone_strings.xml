@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="paired_phone_trial_notice">차량 연동 시험 · 실제 식당에는 전화하지 않아요</string>
+    <string name="paired_phone_open">목적지 주변 추천 및 전화 시험</string>
+    <string name="paired_phone_title">전화 예약 시험 · 정차 중</string>
+    <string name="paired_phone_swagger">연결 코드를 발급한 뒤 전화 시험 Swagger의 ‘Pleos 앱 시험 번호 연결’에서 코드와 본인 010 번호를 등록하세요.</string>
+    <string name="paired_phone_code">연결 코드: %1$s · 5분간 한 번만 사용</string>
+    <string name="paired_phone_issue">연결 코드 발급</string>
+    <string name="paired_phone_bound">연결된 번호 끝 %1$s · %2$s · 등록 후 1시간</string>
+    <string name="paired_phone_disconnect">시험 번호 연결 해제</string>
+    <string name="paired_phone_refresh">번호와 시험 결과 새로고침</string>
+    <string name="paired_phone_live">실전화 시험</string>
+    <string name="paired_phone_mock">가상 시험</string>
+    <string name="paired_phone_candidate_notice">후보를 골라 예약 조건을 확인한 뒤 시험 통화를 승인하세요. 실제 식당에는 연락하지 않아요.</string>
+    <string name="paired_phone_base_conditions">주차 · 최대 대기 15분</string>
+    <string name="paired_phone_child_condition">아동 동반 가능</string>
+    <string name="paired_phone_live_search">후보를 찾으면 실제 웹검색을 실행해요. 등록된 번호에 거는 전화는 별도로 승인해요.</string>
+    <string name="paired_phone_working">요청을 처리하고 있어요.</string>
+    <string name="paired_phone_select">이 후보로 전화 시험</string>
+    <string name="paired_phone_live_consent">%1$s 예약 상황을 시험합니다. 식당에는 연락하지 않고, 등록된 휴대폰(끝 %2$s)으로 전화를 걸어요. 검색과 통화에 비용이 발생할 수 있어요.</string>
+    <string name="paired_phone_mock_consent">%1$s 예약 상황을 가상으로 시험합니다. 등록 번호 끝 %2$s에 실제 전화를 걸지 않아요.</string>
+    <string name="paired_phone_approval">전화 시험 내용 확인</string>
+    <string name="paired_phone_dial">승인하고 시험전화 걸기</string>
+    <string name="paired_phone_simulate">승인하고 가상 통화</string>
+    <string name="paired_phone_name">시험용 예약자 이름</string>
+    <string name="paired_phone_date">예약 날짜 (YYYY-MM-DD)</string>
+    <string name="paired_phone_time">예약 시간 (HH:MM, 한국 시간)</string>
+    <string name="paired_phone_input_error">형식과 내용을 확인해 주세요.</string>
+    <string name="paired_phone_party">%1$d명 · %2$s</string>
+    <string name="paired_phone_result">최근 전화 시험 결과</string>
+    <string name="paired_phone_result_line">%1$s · %2$s · %3$s</string>
+    <string name="paired_phone_details">%1$s %2$s · %3$d명</string>
+    <string name="paired_phone_condition">%1$s · %2$s</string>
+    <string name="paired_phone_confirmed">시험 예약 확정</string>
+    <string name="paired_phone_declined">예약 불가</string>
+    <string name="paired_phone_failed">연결 실패</string>
+    <string name="paired_phone_unknown">미확인</string>
+    <string name="paired_phone_verified">확인됨</string>
+    <string name="paired_phone_pending">통화 처리 중</string>
+    <string name="paired_phone_expired">번호 연결 또는 후보가 만료됐어요. 상태를 새로고침해 주세요.</string>
+    <string name="paired_phone_already">진행 중인 통화나 이 후보의 기존 시험 결과를 확인해 주세요.</string>
+    <string name="paired_phone_limit">이 시험 연결의 사용 한도에 도달했어요.</string>
+    <string name="paired_phone_wait">잠시 뒤 연결 코드를 다시 발급해 주세요.</string>
+    <string name="paired_phone_error">요청을 확인하지 못했어요. 새로고침해서 기존 시험 결과를 확인해 주세요.</string>
+</resources>

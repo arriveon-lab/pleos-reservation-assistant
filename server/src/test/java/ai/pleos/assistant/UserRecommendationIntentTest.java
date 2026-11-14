@@ -8,6 +8,17 @@ import org.junit.jupiter.api.Test;
 
 class UserRecommendationIntentTest {
   @Test
+  void infersRestaurantOnlyForClearRequests() {
+    assertThat(UserRecommendationIntent.venueCategory("주차 가능한 식당 추천"))
+        .isEqualTo(WebRecommendation.VenueCategory.RESTAURANT);
+    assertThat(UserRecommendationIntent.venueCategory("주차가능한밥집추천"))
+        .isEqualTo(WebRecommendation.VenueCategory.RESTAURANT);
+    for (String phrase : new String[] {"근처 추천", "식당과 카페 추천", "식당은 빼고 추천", "식당 아니어도 돼"}) {
+      assertThat(UserRecommendationIntent.venueCategory(phrase)).isNull();
+    }
+  }
+
+  @Test
   void extractsCuisineWithoutOverridingCompanionRequirements() {
     assertThat(UserRecommendationIntent.preferredCuisines("양식 먹고 싶어", Set.of(), true))
         .containsExactly("양식");

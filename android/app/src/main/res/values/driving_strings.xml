@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="driving_allowed">차량 플랫폼: UX 제한 없음 · 입력 가능 (정차 상태 추정 아님)</string>
+  <string name="driving_restricted">차량 플랫폼: 주행 UX 제한 · 입력·검색·승인 차단</string>
+  <string name="driving_connecting">차량 제한 확인 중 · 입력·승인 보류</string>
+  <string name="driving_unsupported">차량 제한 API 미지원 · 입력·승인 보류. 지원 기기에서 다시 확인하세요.</string>
+  <string name="driving_permission">차량 제한 접근 거부 · 입력·승인 보류. 앱 접근 상태를 확인하세요.</string>
+  <string name="driving_disconnected">차량 서비스 연결 끊김 · 입력·승인 보류. 연결 후 다시 확인하세요.</string>
+  <string name="driving_timeout">차량 제한 확인 시간 초과 · 입력·승인 보류. 다시 확인하세요.</string>
+  <string name="driving_failed">차량 제한 조회 또는 정리 실패 · 입력·승인 보류. 다시 확인하세요.</string>
+  <string name="driving_stopped">화면 복귀 후 차량 제한 재확인 필요 · 입력·승인 보류</string>
+  <string name="driving_debug_restricted">개발 시험: 추가 제한 · 실제 플랫폼 제한 발생 증거 아님. 입력·승인 차단</string>
+  <string name="driving_debug_failed">개발 시험: 조회 실패 · 실제 플랫폼 장애 증거 아님. 입력·승인 보류</string>
+  <string name="driving_retry">차량 플랫폼 제한 다시 확인</string>
+  <string name="driving_test_restricted">개발용: 추가 제한 시험</string>
+  <string name="driving_test_failed">개발용: 조회 실패 시험</string>
+</resources>

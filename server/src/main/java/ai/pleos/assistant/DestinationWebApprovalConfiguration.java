@@ -32,6 +32,7 @@ class DestinationWebApprovalConfiguration {
       @Value("${app.destination-recommendations.web.approved-generation:0}") long generation,
       @Value("${app.destination-recommendations.web.approved-area:}") String area,
       @Value("${app.destination-recommendations.web.approved-needs:}") String needs,
+      @Value("${app.destination-recommendations.web.approved-venue-category:}") String venue,
       @Value("${app.destination-recommendations.web.approved-model:}") String model,
       @Value("${app.destination-recommendations.web.approved-max-output-tokens:0}") int outputLimit,
       @Value("${app.destination-recommendations.web.approved-until:}") String until,
@@ -60,6 +61,7 @@ class DestinationWebApprovalConfiguration {
       if (!view.isBlank()
           || !area.isBlank()
           || !needs.isBlank()
+          || !venue.isBlank()
           || !model.isBlank()
           || !until.isBlank()
           || generation != 0
@@ -96,7 +98,12 @@ class DestinationWebApprovalConfiguration {
         throw new IllegalArgumentException("Parking approval required");
       var request =
           new WebRecommendation.Request(
-              UUID.fromString(view), generation, area, Set.copyOf(parsed), false);
+              UUID.fromString(view),
+              generation,
+              area,
+              Set.copyOf(parsed),
+              false,
+              venue.isBlank() ? null : WebRecommendation.VenueCategory.valueOf(venue));
       var permit =
           new GptWebRecommendationAdapter.Permit(request, model, Instant.parse(until), outputLimit);
       return (actual, deadline, current) -> adapter.search(actual, permit, deadline, current);
