@@ -1,6 +1,14 @@
-## 2026-11-15 공모전 제출용 APK
+## 2026-11-15 심사용 LIVE APK의 시험 번호 등록
 
-[README](../README.md#2-실행-방법)에 [서명된 release APK](../apk/ArriveOn_ArriveOn_release.apk) 경로, 설치, Pleos 에뮬레이터 환경, MOCK 체험 절차를 정리했습니다. Pleos Connect 2.1.0에서 후보 3곳·가상 예약 확정·교통 지연 제안·기존 시각 유지·재실행 복구를 확인했습니다. 실제 전화 시연은 [팀원용 촬영 가이드](../docs/PLEOS_TEAM_DEMO_FILMING.md)를 따릅니다.
+심사용 v0.2.1은 앱에서 본인 010 번호를 연결합니다. EC2 통합 API·워커와 Pleos 에뮬레이터에서 번호 등록과 실전화 19:10 예약 확정을 확인했습니다. 통화당 최대 120초입니다. [제출용 LIVE APK](../apk/ArriveOn_ArriveOn_release.apk), [Pleos 전화 시험](../docs/PLEOS_PAIRED_PHONE_TEST.md)
+
+## 2026-11-15 서명된 LIVE 시험 APK
+
+별도 빌드 옵션 `-PpairedPhoneRelease=true`로 APK를 만들고 기존 팀 키로 서명했습니다. Pleos Connect 2.1.0 / API 34에서 별도 앱 설치, 판교역 목적지 표시, HTTPS 및 시험 번호 연결을 확인했습니다. [빌드와 연결 절차](../docs/PLEOS_TEAM_DEMO_FILMING.md)와 [검증 상태](../docs/STATUS.md)를 참고하세요.
+
+## 2026-11-15 초기 MOCK 제출용 APK
+
+초기 MOCK 제출 빌드는 Pleos Connect 2.1.0에서 후보 3곳, 가상 예약 확정, 교통 지연 제안, 기존 시각 유지와 재실행 복구를 확인했습니다. [초기 제출 커밋](https://github.com/arriveon-lab/pleos-reservation-assistant/tree/4331d36597670f45cb0d55c28f96a597402fe8a8)
 
 ## 2026-11-15 판교 LIVE 시연과 내비 도착 예정 시각
 

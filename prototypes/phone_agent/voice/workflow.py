@@ -75,6 +75,19 @@ def spoken_booking_time(clock):
     return f"{period} {hours[hour % 12]} 시" + (f" {spoken_clock_number(minute)} 분" if minute else "")
 
 
+def _paired_callback_acceptance(answer, proposed, day):
+    hour, minute = map(int, proposed.split(":"))
+    clock = spoken_booking_time(proposed).replace(" ", "")
+    local_clock = re.sub(r"^(?:새벽|오전|오후|저녁)", "", clock)
+    twenty_four = f"{spoken_clock_number(hour)}시" + (f"{spoken_clock_number(minute)}분" if minute else "")
+    numeric = f"{hour}시" + (f"{minute}분" if minute else "")
+    times = "|".join(map(re.escape, (proposed, clock, local_clock, twenty_four, numeric)))
+    spoken_day = re.escape(spoken_booking_day(day).replace(" ", ""))
+    return bool(re.fullmatch(
+        rf"(?:(?:네|예)?확인했습니다|(?:네|예)?(?:{spoken_day})?(?:{times})(?:으로|로)"
+        r"(?:예약)?(?:변경)?(?:확정(?:됐습니다|되었습니다|했습니다)|변경해드렸습니다))", answer))
+
+
 def delay_confirmation_question(booking, proposed):
     day = spoken_booking_day(booking["date"])
     original = spoken_booking_time(booking["confirmedTime"])
@@ -850,11 +863,15 @@ class LiveWorkflow:
             answer = normalize(evidence)
             expected_question = (callback_confirmation_question(change) if call.get("pairedCaller")
                                  else CALLBACK_CONFIRM_QUESTION)
+            accepted = re.fullmatch(
+                r"(?:네|예|(?:네|예)?(?:알겠습니다|(?:예약|변경)?(?:확정)?(?:됐습니다|되었습니다|했습니다)))", answer)
+            if call.get("pairedCaller") and not accepted:
+                accepted = _paired_callback_acceptance(answer, change["proposedTime"], booking["date"])
             require(len(events) >= 2 and events[-1]["speaker"] == "restaurant"
                     and normalize(events[-1]["message"]) == answer
                     and events[-2]["speaker"] == "agent"
                     and normalize(events[-2]["message"]) == normalize(expected_question)
-                    and re.fullmatch(r"(?:네|예|(?:네|예)?(?:알겠습니다|(?:예약|변경)?(?:확정)?(?:됐습니다|되었습니다|했습니다)))", answer),
+                    and accepted,
                     "EVIDENCE_REQUIRED", "식당이 실제 변경을 확정했는지 확인해 주세요.")
             booking.update(confirmedTime=change["proposedTime"], version=booking["version"] + 1,
                            notice="식당이 통화 중 변경을 확인했어요.")

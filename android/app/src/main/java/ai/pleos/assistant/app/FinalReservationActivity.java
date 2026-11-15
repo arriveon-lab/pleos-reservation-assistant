@@ -32,6 +32,7 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private android.app.AlertDialog demoChangeDialog;
   private android.app.AlertDialog callbackChangeDialog;
+  private android.app.AlertDialog numberDialog;
   private String displayedCallback = "";
   private DemoReservation trafficDemoReservation;
   private LocalDateTime demoEta;
@@ -331,6 +332,7 @@ public final class FinalReservationActivity extends ComponentActivity {
     voiceResumed = false;
     resetTrafficDemo();
     dismissCallbackPopup();
+    dismissNumberDialog();
     finishVoice(false);
     super.onPause();
   }
@@ -574,6 +576,7 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private void render() {
     if (isFinishing()) return;
+    if (!ready()) dismissNumberDialog();
     if (trafficDemoReservation != null
         && !trafficDemoReservation.equals(confirmedDemoReservation())) resetTrafficDemo();
     if (!paired() && model.phone != null) model.phone.allow(ready());
@@ -693,6 +696,7 @@ public final class FinalReservationActivity extends ComponentActivity {
           this::startTrafficDemo);
     }
     if (tools && paired()) {
+      reviewNumberSettings();
       text(body, getString(R.string.live_new_demo_notice), 20, false);
       action(
           body,
@@ -720,6 +724,8 @@ public final class FinalReservationActivity extends ComponentActivity {
     if (paired()) {
       if (model.connected()) pairedCallback();
       if (!model.connected() || model.snapshot().has("pending")) connection();
+      else if (BuildConfig.PAIRED_PHONE_RELEASE && !model.pairedStatus.optBoolean("active"))
+        pairing();
       else if (hasBooking()) pairedResult();
       else if (!model.pairedLiveReady()) pairing();
       else
@@ -745,6 +751,7 @@ public final class FinalReservationActivity extends ComponentActivity {
       action(page, "change_reject", R.string.flow_reject_change, false, false, () -> {});
       legacy();
     }
+    if (paired()) reviewError();
     setContentView(page);
     if (paired()) updateCallbackPopup();
     voiceHandler.post(this::applyVoice);
@@ -757,7 +764,6 @@ public final class FinalReservationActivity extends ComponentActivity {
 
   private void pairing() {
     title(R.string.live_pair_title);
-    text(body, getString(R.string.live_pair_steps), 24, false);
     if (model.pairedStatus.optBoolean("active") && !model.pairedLiveReady()) {
       text(body, getString(R.string.live_mock_blocked), 28, true);
       action(
@@ -767,17 +773,21 @@ public final class FinalReservationActivity extends ComponentActivity {
           true,
           ready() && !model.pairedBusy,
           () -> model.pairedRequest("/disconnect", new JSONObject(), null, false));
+    } else if (BuildConfig.PAIRED_PHONE_RELEASE) {
+      reviewPairing();
+    } else {
+      text(body, getString(R.string.live_pair_steps), 24, false);
+      if (!model.pairingCode.isEmpty()) text(body, model.pairingCode, 44, true);
+      action(
+          body,
+          "pair_code",
+          R.string.live_pair_code,
+          true,
+          ready() && !model.pairedBusy,
+          () -> model.pairedRequest("", new JSONObject(), null, false));
     }
-    if (!model.pairingCode.isEmpty()) text(body, model.pairingCode, 44, true);
-    if (!model.pairedError.isEmpty())
+    if (!model.pairedError.isEmpty() && !BuildConfig.PAIRED_PHONE_RELEASE)
       text(body, getString(R.string.live_error, model.pairedError), 22, false);
-    action(
-        body,
-        "pair_code",
-        R.string.live_pair_code,
-        true,
-        ready() && !model.pairedBusy && !model.pairedStatus.optBoolean("active"),
-        () -> model.pairedRequest("", new JSONObject(), null, false));
     action(
         footer,
         "pair_refresh",
@@ -785,6 +795,142 @@ public final class FinalReservationActivity extends ComponentActivity {
         false,
         ready() && !model.pairedBusy,
         () -> model.pairedRequest("", null, null, false));
+  }
+
+  private void reviewPairing() {
+    boolean available =
+        !BuildConfig.PAIRING_REVIEW_KEY.isEmpty()
+            && model.pairedStatus.optBoolean("reviewRegistrationAvailable");
+    text(
+        body,
+        getString(available ? R.string.live_review_notice : R.string.live_review_unavailable),
+        24,
+        false);
+    if (!available) return;
+    action(
+        body,
+        "review_register",
+        R.string.live_review_register,
+        true,
+        ready() && !model.pairedBusy,
+        this::openNumberDialog);
+    if (model.pairedBusy) text(body, getString(R.string.paired_phone_working), 22, false);
+  }
+
+  private void dismissNumberDialog() {
+    if (numberDialog != null) numberDialog.dismiss();
+    numberDialog = null;
+  }
+
+  private void openNumberDialog() {
+    if (!ready() || !voiceResumed || model.pairedBusy) return;
+    EditText input = new EditText(this);
+    input.setSingleLine(true);
+    input.setHint(R.string.live_review_phone_hint);
+    input.setInputType(android.text.InputType.TYPE_CLASS_PHONE);
+    input.setFilters(
+        new android.text.InputFilter[] {new android.text.InputFilter.LengthFilter(13)});
+    input.setImportantForAutofill(android.view.View.IMPORTANT_FOR_AUTOFILL_NO);
+    input.setSaveEnabled(false);
+    android.app.AlertDialog dialog =
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.live_review_phone_hint)
+            .setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.live_review_register, null)
+            .create();
+    numberDialog = dialog;
+    dialog.setOnDismissListener(
+        ignored -> {
+          input.getText().clear();
+          if (numberDialog == dialog) numberDialog = null;
+        });
+    dialog.show();
+    input.requestFocus();
+    dialog
+        .getWindow()
+        .setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+    Runnable submit =
+        () -> {
+          if (!ready() || !voiceResumed || model.pairedBusy) {
+            dialog.dismiss();
+            return;
+          }
+          String value = input.getText().toString().replaceAll("[ -]", "");
+          if (!value.matches("010[0-9]{8}")) {
+            input.setError(getString(R.string.live_review_phone_hint));
+            return;
+          }
+          try {
+            dialog.dismiss();
+            model.pairedRequest(
+                "/register", new JSONObject().put("phoneNumber", value), null, false);
+          } catch (JSONException impossible) {
+            throw new IllegalStateException(impossible);
+          }
+        };
+    dialog
+        .getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+        .setOnClickListener(ignored -> submit.run());
+    input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+    input.setOnEditorActionListener(
+        (view, action, event) -> {
+          if (action != android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+              && (event == null
+                  || event.getKeyCode() != android.view.KeyEvent.KEYCODE_ENTER
+                  || event.getAction() != android.view.KeyEvent.ACTION_UP)) return false;
+          submit.run();
+          return true;
+        });
+  }
+
+  private void reviewNumberSettings() {
+    if (!BuildConfig.PAIRED_PHONE_RELEASE || !model.pairedStatus.optBoolean("active")) return;
+    action(
+        body,
+        "review_disconnect",
+        R.string.live_review_change,
+        false,
+        ready() && !model.pairedBusy,
+        this::confirmReviewNumberChange);
+    if (model.pairedBusy) text(body, getString(R.string.paired_phone_working), 22, false);
+  }
+
+  private void confirmReviewNumberChange() {
+    if (!ready() || !voiceResumed || model.pairedBusy) return;
+    android.app.AlertDialog dialog =
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.live_review_change)
+            .setMessage(R.string.live_review_change_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(
+                R.string.live_review_disconnect,
+                (ignored, button) -> {
+                  if (ready() && voiceResumed)
+                    model.pairedRequest("/disconnect", new JSONObject(), null, false);
+                })
+            .create();
+    numberDialog = dialog;
+    dialog.setOnDismissListener(
+        ignored -> {
+          if (numberDialog == dialog) numberDialog = null;
+        });
+    dialog.show();
+  }
+
+  private void reviewError() {
+    if (!BuildConfig.PAIRED_PHONE_RELEASE || model.pairedError.isEmpty()) return;
+    int message =
+        switch (model.pairedError) {
+          case "REVIEW_NUMBER_IN_USE" -> R.string.live_review_in_use;
+          case "REVIEW_ACCESS_REQUIRED" -> R.string.live_review_unavailable;
+          case "PAIRING_RATE_LIMIT" -> R.string.live_review_wait;
+          case "INVALID_TEST_PHONE" -> R.string.live_review_phone_hint;
+          case "CALLBACK_TEST_UNAVAILABLE" -> R.string.live_review_callback;
+          case "CALL_ACTIVE" -> R.string.live_review_call_active;
+          default -> 0;
+        };
+    if (message != 0) text(body, getString(message), 22, false);
   }
 
   private void pairedCallback() {

@@ -1,5 +1,6 @@
 """Integration boundaries for pairing, server-owned candidates and no-network dialing."""
 import unittest
+import hashlib
 from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import AsyncMock, patch
@@ -47,6 +48,63 @@ class PairedPhoneTest(unittest.TestCase):
             paired.claim(self.service, request, self.live_config)
         paired.disconnect(self.service, self.owner)
         self.assertFalse(paired.status(self.service, self.owner)["active"])
+
+    def review_register(self, number, *, other=False, key="a" * 64):
+        headers = {"Authorization": "Bearer " + "b" * 32, "X-Pleos-Review-Key": key}
+        with patch.object(paired, "upstream", return_value=(200, {"subject": "other" if other else "test-owner"})):
+            status, response = paired.route(self.service, 1, "POST", "/api/v1/paired-phone/register",
+                                            headers, {"phoneNumber": number}, self.live_config,
+                                            hashlib.sha256(("a" * 64).encode()).hexdigest())
+        self.assertEqual(200, status)
+        return response
+
+    def test_review_app_direct_number_requires_access_and_blocks_duplicate_number(self):
+        for number, key, code in ((self.phone, "", "REVIEW_ACCESS_REQUIRED"),
+                                  ("0212345678", "a" * 64, "INVALID_TEST_PHONE")):
+            with self.subTest(code=code), self.assertRaises(DomainError) as error:
+                self.review_register(number, key=key)
+            self.assertEqual(code, error.exception.code)
+        result = self.review_register(self.phone)
+        self.assertEqual(("LIVE", "1234", True), (result["mode"], result["phoneLast4"], result["reviewTrial"]))
+        self.assertNotIn("phone", result)
+        self.assertEqual(result, self.review_register(self.phone))
+        self.sync_inbound.assert_awaited_once_with(self.config, {paired.normalize_number(self.phone)})
+        with self.assertRaises(DomainError) as duplicate:
+            self.review_register(self.phone, other=True)
+        self.assertEqual("REVIEW_NUMBER_IN_USE", duplicate.exception.code)
+
+    def test_review_number_can_be_changed_without_moving_its_booking(self):
+        self.review_register(self.phone)
+        current = paired._active(self.service, self.owner)
+        other_phone = "01000005678"
+        booking_id, attempt_id, call_id = (str(uuid4()) for _ in range(3))
+        self.service._put(self.owner, "booking", {"id": booking_id, "pleosPairedTest": current["generation"],
+                          "pleosReviewTrial": True, "status": "CONFIRMED", "mode": "LIVE",
+                          "confirmedTime": "18:30", "date": self.payload(str(uuid4()))["date"]})
+        self.service._put(self.owner, "pleos_phone_attempt", {"id": attempt_id, "bookingId": booking_id,
+                          "bindingGeneration": current["generation"]})
+        self.service._put(self.owner, "live_call", {"id": call_id, "bookingId": booking_id, "status": "ACTIVE",
+                          "direction": "outbound", "purpose": "BOOKING", "target": paired.normalize_number(self.phone)})
+        with self.assertRaises(DomainError) as active:
+            paired.disconnect(self.service, self.owner)
+        self.assertEqual("CALL_ACTIVE", active.exception.code)
+        call = self.service._get(self.owner, "live_call", call_id)
+        call.update(status="ENDED", outcome="CONFIRMED")
+        self.service._put(self.owner, "live_call", call)
+        booking = self.service._get(self.owner, "booking", booking_id)
+        booking["bookingCallId"] = call_id
+        self.service._put(self.owner, "booking", booking)
+        self.assertEqual(1, len(paired.callback_bookings(self.service, call["target"])))
+        paired.disconnect(self.service, self.owner)
+        with patch.object(paired, "now", return_value=paired.now() + timedelta(seconds=6)):
+            result = self.review_register(other_phone)
+        self.assertEqual("5678", result["phoneLast4"])
+        self.assertIsNone(result["latest"])
+        self.assertEqual("CONFIRMED", self.service._get(self.owner, "booking", booking_id)["status"])
+        self.assertEqual([], paired.callback_bookings(self.service, call["target"]))
+        with self.assertRaises(DomainError) as previous:
+            paired.attempt_result(self.service, self.owner, attempt_id)
+        self.assertEqual(404, previous.exception.status)
 
     def test_mock_uses_server_selected_candidate_and_survives_repeat(self):
         self.bind()
@@ -354,8 +412,8 @@ class PairedPhoneTest(unittest.TestCase):
             workflow.confirm_callback_change(call_id, "네, 19시 반으로 변경했습니다.")
         self.assertEqual("18:30", paired.attempt_result(self.service, self.owner, attempt_id)["confirmedTime"])
         workflow.transcript(call_id, "agent", prompt)
-        workflow.transcript(call_id, "restaurant", "네.")
-        workflow.confirm_callback_change(call_id, "네.")
+        workflow.transcript(call_id, "restaurant", "네, 확인했습니다.")
+        workflow.confirm_callback_change(call_id, "네, 확인했습니다.")
         workflow.finish(call_id)
         result = paired.attempt_result(self.service, self.owner, attempt_id)
         self.assertEqual(("19:00", "APPLIED"), (result["confirmedTime"], result["change"]["status"]))

@@ -25,8 +25,8 @@ final class LoopbackTransport implements AuthSession.Wire {
     boolean paired =
         BuildConfig.PAIRED_PHONE_DEMO
             && path.matches(
-                "/paired-phone(?:/disconnect|/calls(?:/[a-f0-9-]{36}(?:/change|/delay-change)?)?)?");
-    if (!(BuildConfig.DEBUG || BuildConfig.SUBMISSION_DEMO)
+                "/paired-phone(?:/disconnect|/register|/calls(?:/[a-f0-9-]{36}(?:/change|/delay-change)?)?)?");
+    if (!(BuildConfig.DEBUG || BuildConfig.SUBMISSION_DEMO || BuildConfig.PAIRED_PHONE_RELEASE)
         || (!paired
             && !preview
             && !path.matches(
@@ -65,13 +65,19 @@ final class LoopbackTransport implements AuthSession.Wire {
     try {
       connection.setConnectTimeout(5000);
       connection.setReadTimeout(
-          paired && body != null && (path.endsWith("/calls") || path.endsWith("/delay-change"))
+          paired
+                  && body != null
+                  && (path.endsWith("/calls")
+                      || path.endsWith("/delay-change")
+                      || path.equals("/paired-phone/register"))
               ? 45000
               : 10000);
       connection.setInstanceFollowRedirects(false);
       connection.setUseCaches(false);
       connection.setRequestProperty("Accept", "application/json");
       if (bearer != null) connection.setRequestProperty("Authorization", "Bearer " + bearer);
+      if (BuildConfig.PAIRED_PHONE_RELEASE && path.equals("/paired-phone/register"))
+        connection.setRequestProperty("X-Pleos-Review-Key", BuildConfig.PAIRING_REVIEW_KEY);
       if (body != null) {
         byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
         connection.setRequestMethod("POST");

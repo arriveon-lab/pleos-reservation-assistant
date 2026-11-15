@@ -1,6 +1,7 @@
 """Stationary Pleos trial: operator claims a one-time code; only the app owner can dial."""
 import asyncio
 import hashlib
+import hmac
 import http.client
 import json
 import re
@@ -82,7 +83,8 @@ def callback_bookings(service, caller, *, active_only=False):
                 and booking["status"] == "CONFIRMED" and booking["date"] >= today
                 and booking.get("confirmedTime")
                 and booking.get("bookingCallId", booking.get("liveCallId")) == call["id"]
-                and (not active_only or registered_target(service, owner, booking["pleosPairedTest"]) == caller)):
+                and (not (active_only or booking.get("pleosReviewTrial"))
+                     or registered_target(service, owner, booking["pleosPairedTest"]) == caller)):
             matches.append((owner, booking))
     return matches
 
@@ -116,8 +118,13 @@ def _public(binding):
 
 def status(service, owner):
     with service.lock:
-        result = _public(_active(service, owner))
+        binding = _active(service, owner)
+        result = _public(binding)
         attempts = service._list(owner, "pleos_phone_attempt")
+        if _one(service, owner, "pleos_phone_review"):
+            result["reviewTrial"] = True
+            attempts = [attempt for attempt in attempts if binding and
+                        attempt.get("bindingGeneration") == binding["generation"]]
         callbacks = []
         for attempt in attempts:
             booking = service._get(owner, "booking", attempt["bookingId"])
@@ -153,21 +160,48 @@ def _digest(code):
     return hashlib.sha256(code.encode("ascii")).hexdigest()
 
 
-def claim(service, body, live_config):
-    code, raw, mode = body.get("pairingCode"), body.get("testPhoneNumber"), body.get("mode", "MOCK")
-    require(isinstance(code, str) and re.fullmatch(f"[{CODE}]{{10}}", code),
-            "INVALID_PAIRING_CODE", "앱 화면의 연결 코드 10자리를 입력해 주세요.", 400)
-    require(mode in ("MOCK", "LIVE"), "INVALID_MODE", "MOCK 또는 LIVE를 선택해 주세요.", 400)
+def _test_phone(raw):
     require(isinstance(raw, str) and len(raw) <= 24, "INVALID_TEST_PHONE", "시험 휴대폰 번호를 확인해 주세요.", 400)
     try:
         phone = normalize_number(raw)
     except ConfigurationError:
         phone = ""
-    require(re.fullmatch(r"\+8210\d{8}", phone), "INVALID_TEST_PHONE", "010 휴대폰 번호를 입력해 주세요.", 400)
-    if mode == "LIVE":
-        config = live_config()
-        require(config.self_service_test and config.test_phone_input,
-                "LIVE_NOT_READY", "시험 번호 등록 기능이 준비되지 않았어요.", 409)
+    require(re.fullmatch(r"\+8210[0-9]{8}", phone), "INVALID_TEST_PHONE", "010 휴대폰 번호를 입력해 주세요.", 400)
+    return phone
+
+
+def _live_binding_config(live_config):
+    config = live_config()
+    require(config.self_service_test and config.test_phone_input,
+            "LIVE_NOT_READY", "시험 번호 등록 기능이 준비되지 않았어요.", 409)
+    return config
+
+
+def _bind_number(service, owner, phone, mode, config, *, review=False):
+    require(not _active(service, owner), "PAIRING_ACTIVE", "이미 번호가 연결되어 있어요.", 409)
+    service.db.execute("DELETE FROM objects WHERE owner=? AND kind='pleos_phone_code'", (owner,))
+    result = service._put(owner, "pleos_phone_binding",
+                          {"id": "active", "generation": identifier(), "phone": phone, "mode": mode,
+                           "expiresAt": (now() + timedelta(hours=1)).isoformat(), "searches": 0, "calls": 0,
+                           "reviewTrial": review})
+    if mode == "LIVE" and config.inbound_enabled:
+        from .voice import callback_test
+
+        _, window = callback_test.active_window(service)
+        numbers = active_callback_numbers(service)
+        if window:
+            numbers.add(window["phone"])
+        asyncio.run(callback_test.sync_inbound_numbers(config, numbers))
+    return result
+
+
+def claim(service, body, live_config):
+    code, raw, mode = body.get("pairingCode"), body.get("testPhoneNumber"), body.get("mode", "MOCK")
+    require(isinstance(code, str) and re.fullmatch(f"[{CODE}]{{10}}", code),
+            "INVALID_PAIRING_CODE", "앱 화면의 연결 코드 10자리를 입력해 주세요.", 400)
+    require(mode in ("MOCK", "LIVE"), "INVALID_MODE", "MOCK 또는 LIVE를 선택해 주세요.", 400)
+    phone = _test_phone(raw)
+    config = _live_binding_config(live_config) if mode == "LIVE" else None
     with transaction(service):
         _purge(service)
         matches = service.db.execute(
@@ -175,24 +209,45 @@ def claim(service, body, live_config):
             " AND json_extract(body,'$.expiresAt')>?", (_digest(code), now().isoformat())).fetchall()
         require(len(matches) == 1, "PAIRING_CODE_EXPIRED", "연결 코드가 만료됐거나 이미 사용됐어요.", 404)
         owner = matches[0][0]
-        require(not _active(service, owner), "PAIRING_ACTIVE", "이미 번호가 연결되어 있어요.", 409)
-        service.db.execute("DELETE FROM objects WHERE owner=? AND kind='pleos_phone_code'", (owner,))
-        result = service._put(owner, "pleos_phone_binding",
-                              {"id": "active", "generation": identifier(), "phone": phone, "mode": mode,
-                               "expiresAt": (now() + timedelta(hours=1)).isoformat(), "searches": 0, "calls": 0})
-        if mode == "LIVE" and config.inbound_enabled:
-            from .voice import callback_test
-
-            _, window = callback_test.active_window(service)
-            numbers = active_callback_numbers(service)
-            if window:
-                numbers.add(window["phone"])
-            asyncio.run(callback_test.sync_inbound_numbers(config, numbers))
+        result = _bind_number(service, owner, phone, mode, config)
     return _public(result)
+
+
+def register_review_number(service, owner, body, live_config):
+    require(set(body) == {"phoneNumber"}, "INVALID_INPUT", "휴대폰 번호만 보내 주세요.", 400)
+    raw = body.get("phoneNumber")
+    require(isinstance(raw, str) and re.fullmatch(r"010[0-9]{8}", raw), "INVALID_TEST_PHONE",
+            "010 휴대폰 번호를 입력해 주세요.", 400)
+    phone = _test_phone(raw)
+    config = _live_binding_config(live_config)
+    require(config.inbound_enabled, "LIVE_NOT_READY", "회신 시험이 준비되지 않았어요.", 409)
+    with transaction(service):
+        _purge(service)
+        current = _active(service, owner)
+        if not (current and current.get("reviewTrial") and current["phone"] == phone):
+            row = service.db.execute(
+                "SELECT 1 FROM objects WHERE kind='pleos_phone_binding' AND owner<>? "
+                "AND json_extract(body,'$.mode')='LIVE' AND json_extract(body,'$.phone')=? "
+                "AND json_extract(body,'$.expiresAt')>? LIMIT 1", (owner, phone, now().isoformat())).fetchone()
+            require(not row, "REVIEW_NUMBER_IN_USE", "이 번호가 다른 시험 앱에 연결되어 있어요.", 409)
+            previous = _one(service, owner, "pleos_phone_review")
+            instant = now()
+            require(not previous or previous["retryAfter"] <= instant.isoformat(),
+                    "PAIRING_RATE_LIMIT", "잠시 후 다시 등록해 주세요.", 429)
+            _bind_number(service, owner, phone, "LIVE", config, review=True)
+            service._put(owner, "pleos_phone_review", {
+                "id": "active", "retryAfter": (instant + timedelta(seconds=5)).isoformat()})
+    return status(service, owner)
 
 
 def disconnect(service, owner):
     with transaction(service):
+        if _one(service, owner, "pleos_phone_review"):
+            calls = service.db.execute(
+                "SELECT 1 FROM objects WHERE owner=? AND kind='live_call' "
+                "AND json_extract(body,'$.status') IN ('RESERVED','DISPATCHING','ACTIVE','RESULT_SAVED') LIMIT 1",
+                (owner,)).fetchone()
+            require(not calls, "CALL_ACTIVE", "진행 중인 전화를 마친 뒤 번호를 변경해 주세요.", 409)
         service.db.execute("DELETE FROM objects WHERE owner=? AND kind IN ('pleos_phone_code','pleos_phone_binding')", (owner,))
     return {"active": False}
 
@@ -343,7 +398,12 @@ def _attempt_view(service, owner, attempt):
 
 def attempt_result(service, owner, key):
     with service.lock:
-        return _attempt_view(service, owner, service._get(owner, "pleos_phone_attempt", key))
+        attempt = service._get(owner, "pleos_phone_attempt", key)
+        if _one(service, owner, "pleos_phone_review"):
+            binding = _active(service, owner)
+            require(binding and attempt.get("bindingGeneration") == binding["generation"], "NOT_FOUND",
+                    "현재 전화 시험에 속한 예약이 없어요.", 404)
+        return _attempt_view(service, owner, attempt)
 
 
 def decide_change(service, owner, attempt_id, body, key):
@@ -438,12 +498,15 @@ def dial(service, port, owner, body, key, bearer, live_config):
         service._approve_booking(owner, {"bookingId": booking_id, "version": 1})
         booking = service._get(owner, "booking", booking_id)
         booking["pleosPairedTest"] = current["generation"]
+        if current.get("reviewTrial"):
+            booking["pleosReviewTrial"] = True
         if not config:
             booking.pop("liveTest", None)
             booking.pop("webTest", None)
         service._put(owner, "booking", booking)
         attempt = service._put(owner, "pleos_phone_attempt", {"id": key, "digest": digest, "bookingId": booking_id,
-                               "mode": current["mode"], "jobId": job, "ordinal": ordinal})
+                               "mode": current["mode"], "jobId": job, "ordinal": ordinal,
+                               "bindingGeneration": current["generation"]})
         current["calls"] += 1
         service._put(owner, "pleos_phone_binding", current)
         if not config:
@@ -462,7 +525,7 @@ def dial(service, port, owner, body, key, bearer, live_config):
     return attempt_result(service, owner, key)
 
 
-def route(service, port, method, path, headers, body, live_config):
+def route(service, port, method, path, headers, body, live_config, review_key_hash=None):
     bearer, key = headers.get("Authorization"), headers.get("Idempotency-Key")
     if path == "/api/v1/status" and method == "GET":
         return upstream(port, method, path)
@@ -479,8 +542,14 @@ def route(service, port, method, path, headers, body, live_config):
     owner = "pleos-paired:" + subject
     if path == "/api/v1/paired-phone":
         if method == "GET":
-            return 200, status(service, owner)
+            return 200, {**status(service, owner), "reviewRegistrationAvailable": review_key_hash is not None}
         return 200, issue(service, owner)
+    if method == "POST" and path == "/api/v1/paired-phone/register":
+        key = headers.get("X-Pleos-Review-Key", "")
+        require(review_key_hash is not None and re.fullmatch(r"[a-f0-9]{64}", key)
+                and hmac.compare_digest(_digest(key), review_key_hash),
+                "REVIEW_ACCESS_REQUIRED", "심사용 LIVE 앱에서 번호를 등록해 주세요.", 403)
+        return 200, {**register_review_number(service, owner, body, live_config), "reviewRegistrationAvailable": True}
     if path == "/api/v1/paired-phone/disconnect" and method == "POST":
         return 200, disconnect(service, owner)
     if path == "/api/v1/paired-phone/calls" and method == "POST":

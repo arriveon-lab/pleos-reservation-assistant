@@ -44,7 +44,7 @@ def load_test_restaurants(path):
 
 
 def make_server(service, port=8765, *, recommendation_token=None, recommendation_catalog=None,
-                worker_ready=None, web_search=False, web_search_port=None):
+                worker_ready=None, web_search=False, web_search_port=None, review_key_hash=None):
     def current_state(owner):
         value = service.state(owner)
         if web_search:
@@ -169,7 +169,7 @@ def make_server(service, port=8765, *, recommendation_token=None, recommendation
                 self._json(200, paired_phone.claim(service, body, self._paired_live_config))
                 return
             status, result = paired_phone.route(service, web_search_port, method,
-                path.removeprefix(paired_phone.PREFIX), self.headers, body, self._paired_live_config)
+                path.removeprefix(paired_phone.PREFIX), self.headers, body, self._paired_live_config, review_key_hash)
             self._json(status, result)
 
         def do_GET(self):
@@ -348,6 +348,13 @@ def main():
     web_test_enabled = args.recommendation_port is not None
     service = ReservationService(args.database, mock_restaurants=restaurants, test_restaurants=test_restaurants,
                                  web_test_enabled=web_test_enabled)
+    from .voice.config import load_env_file
+
+    if os.environ.get("PHONE_REVIEW_ENV_FILE"):
+        load_env_file(os.environ["PHONE_REVIEW_ENV_FILE"])
+    review_key_hash = os.environ.get("PHONE_PLEOS_REVIEW_KEY_SHA256")
+    if review_key_hash is not None and not re.fullmatch(r"[a-f0-9]{64}", review_key_hash):
+        parser.error("PHONE_PLEOS_REVIEW_KEY_SHA256 must be a SHA-256 hex digest.")
 
     def worker_ready():
         connection = http.client.HTTPConnection("127.0.0.1", args.worker_health_port, timeout=0.5)
@@ -361,7 +368,8 @@ def main():
 
     server = make_server(service, args.port, recommendation_token=token, recommendation_catalog=registry,
                          web_search=web_test_enabled, web_search_port=args.recommendation_port,
-                         worker_ready=worker_ready if args.worker_health_port is not None else None)
+                         worker_ready=worker_ready if args.worker_health_port is not None else None,
+                         review_key_hash=review_key_hash)
     print(f"Phone agent test UI: http://127.0.0.1:{server.server_port}", flush=True)
     print("MOCK by default. Optional LIVE requires explicit configuration and approval. Use fictional booking data.", flush=True)
     try:

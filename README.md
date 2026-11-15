@@ -38,19 +38,19 @@
    adb install -r apk/ArriveOn_ArriveOn_release.apk
    ```
 
-3. 차량 화면의 앱 목록에서 **어라이브온 · MOCK**을 엽니다.
-4. **체험 연결 시작 → 주변 식당 찾기 → 후보 선택 → 가상 예약 요청** 순으로 진행합니다.
-5. 예약 결과 화면에서 **교통 지연 시연 시작**을 누르면 가상 도착 시각과 변경 제안을 볼 수 있습니다.
+3. 차량 화면의 앱 목록에서 **어라이브온 · LIVE 시험**을 엽니다. 처음 실행하면 **체험 연결 시작**을 누르고, **시험 번호 등록**에서 본인의 010 휴대폰 번호를 입력합니다.
+4. Pleos 내비에서 목적지를 지정한 뒤 앱에서 **이 목적지로 시연 검색 허용 → 주변 식당 찾기 → 후보 선택 → 등록 번호 전화 시험 승인** 순으로 진행합니다.
+5. 등록한 휴대폰으로 전화가 오면 식당 직원 역할로 답합니다. 검증용 통화는 등록한 휴대폰으로만 발신합니다. 통화 결과는 앱에서 확인할 수 있습니다.
 
-후보 이름과 통화 결과는 시연용 가상 데이터입니다. 등록 휴대폰으로 실제 통화를 시험하는 절차는 [팀 시연 가이드](docs/PLEOS_TEAM_DEMO_FILMING.md)에 있습니다.
+예약이 확정되면 같은 휴대폰에서 통화기록에 표시된 070 번호로 걸어 시간 변경을 요청하고 앱에서 수락하거나 거절할 수 있습니다. 시험 발신과 예약 확정, 회신 연결과 앱 수락을 확인했습니다. 시간 인식이 엇갈린 최근 실통화에서는 변경 시각을 확정하지 못했습니다. [회신 시험 절차](docs/PLEOS_PAIRED_PHONE_TEST.md#심사용-live-release)
 
 ## 3. 테스트 환경 및 필요한 설정
 
 - **에뮬레이터:** [4번](#4-pleos-connect-에뮬레이터-버전과-화면-규격)의 버전과 화면 규격으로 만든 Pleos Connect AVD. 설치는 [Pleos Connect SDK 에뮬레이터 안내](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator)를 따릅니다.
 - **차량 상태:** 정차 상태로 둡니다. 주행 중으로 설정하면 운전 중 안전 규칙에 따라 입력과 승인이 막힙니다.
-- **네트워크:** 에뮬레이터의 인터넷 연결이 필요합니다. 앱은 EC2의 [MOCK 서버](https://43.201.115.170/pleos-mock/api/v1/status)에 HTTPS로 접속합니다.
+- **네트워크:** 에뮬레이터의 인터넷 연결이 필요합니다. 앱은 EC2의 [전화 시험 서버](https://43.201.115.170/pleos-phone/api/v1/status)에 HTTPS로 접속합니다.
 - **도구:** APK 설치에 ADB(Android SDK Platform-Tools)를 씁니다.
-- **계정과 키:** 계정, API 키, 전화번호 입력은 필요 없습니다. 제출용 APK는 MOCK 예약 흐름만 포함하며 실제 식당에 전화하지 않습니다.
+- **전화 시험:** 본인의 010 휴대폰이 필요합니다. 시험 발신과 070 회신은 통화당 최대 120초입니다.
 
 ## 4. Pleos Connect 에뮬레이터 버전과 화면 규격
 
@@ -66,7 +66,7 @@
 
 [apk/ArriveOn_ArriveOn_release.apk](apk/ArriveOn_ArriveOn_release.apk)
 
-서명된 release 빌드이며 패키지는 `ai.pleos.assistant.submission`, 버전은 0.1.0-mock입니다. 소스에서 빌드하는 방법은 [제출용 APK 빌드](#제출용-apk-빌드)에 있습니다.
+서명된 LIVE 시험 release이며 패키지는 `ai.pleos.assistant.pairedphone.release`, 버전은 `0.2.1-live-test`입니다. 소스에서 빌드하는 방법은 [제출용 APK 빌드](#제출용-apk-빌드)에 있습니다.
 
 ---
 
@@ -233,10 +233,10 @@ docs/         기능 명세, ERD, 이슈별 설계와 검증 기록
 
 ### 제출용 APK 빌드
 
-제출용 APK의 설치와 체험 방법은 [2. 실행 방법](#2-실행-방법)에 있습니다. 소스에서 같은 구성의 서명 전 APK를 빌드하려면 [Android 빌드 환경](docs/ANDROID_SETUP.md)을 준비한 뒤 다음 명령을 실행합니다.
+제출용 APK의 설치와 체험 방법은 [2. 실행 방법](#2-실행-방법)에 있습니다. 소스에서 같은 구성의 서명 전 APK를 빌드하려면 [Android 빌드 환경](docs/ANDROID_SETUP.md)을 준비하고, 전화 시험 서버에 맞는 `ARRIVEON_REVIEW_KEY` 환경 변수를 설정한 뒤 다음 명령을 실행합니다.
 
 ```bash
-./gradlew -PincludeAndroid=true -PsubmissionDemo=true :android:app:assembleRelease
+./gradlew -PincludeAndroid=true -PpairedPhoneRelease=true :android:app:assembleRelease
 ```
 
 산출물은 `android/app/build/outputs/apk/release/app-release-unsigned.apk`에 생성됩니다. 기기에 설치하려면 Android SDK의 `apksigner`로 서명합니다.

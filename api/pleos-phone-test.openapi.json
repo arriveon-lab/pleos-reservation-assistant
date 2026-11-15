@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Pleos 전화 시험 APK",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "description": "정차 시험 전용. 인증·목적지 추천 요청은 기존 계약을 사용하고 이 게이트웨이에서 앱 소유권과 등록 모드를 확인합니다."
   },
   "servers": [
@@ -70,6 +70,68 @@
                 "maxProperties": 0
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/paired-phone/register": {
+      "post": {
+        "operationId": "registerPleosReviewNumber",
+        "summary": "심사용 LIVE 앱의 시험 휴대폰 번호 등록",
+        "security": [
+          {
+            "appBearer": [],
+            "reviewAppKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "phoneNumber"
+                ],
+                "properties": {
+                  "phoneNumber": {
+                    "type": "string",
+                    "pattern": "^010[0-9]{8}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "LIVE 시험 번호 연결",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairingStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "국내 010 번호 형식 오류"
+          },
+          "401": {
+            "description": "앱 인증 필요"
+          },
+          "403": {
+            "description": "심사용 LIVE APK 키가 필요하거나 기능이 비활성"
+          },
+          "409": {
+            "description": "이미 연결된 번호 또는 LIVE 전화 설정 오류"
+          },
+          "429": {
+            "description": "번호 설정 요청이 너무 빠름"
+          },
+          "503": {
+            "description": "회신 수신 허용 설정 실패"
           }
         }
       }
@@ -353,6 +415,12 @@
       "appBearer": {
         "type": "http",
         "scheme": "bearer"
+      },
+      "reviewAppKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Pleos-Review-Key",
+        "description": "비공개 심사용 LIVE APK의 배포 키입니다."
       }
     },
     "schemas": {
@@ -420,6 +488,12 @@
                 "type": "null"
               }
             ]
+          },
+          "reviewRegistrationAvailable": {
+            "type": "boolean"
+          },
+          "reviewTrial": {
+            "type": "boolean"
           }
         }
       },
@@ -627,7 +701,10 @@
             "format": "date-time"
           },
           "additionalCostKrw": {
-            "enum": [0, null],
+            "enum": [
+              0,
+              null
+            ],
             "description": "0 when confirmed by the restaurant, null when the restaurant did not mention a fee."
           },
           "version": {
