@@ -1,0 +1,11 @@
+<resources>
+  <string name="driving_voice_results">음성 예약 결과</string>
+  <string name="driving_voice_confirmed">가상 예약 확정</string>
+  <string name="driving_voice_restaurant">%1$d번 후보 · %2$s</string>
+  <string name="driving_voice_booking_details">%1$s %2$s · %3$d명</string>
+  <string name="driving_voice_no_calls">실제 발신 %1$d건 · 가상 예약 시험</string>
+  <string name="driving_voice_no_receipt">확정된 음성 예약이 없습니다.</string>
+  <string name="driving_voice_unconfirmed">아직 가상 예약 확정 결과를 받지 못했습니다.</string>
+  <string name="driving_voice_start_hint">Gleo에 “아리온 앱에서 가상 식당을 찾아줘”라고 말한 뒤 인원을 알려 주세요.</string>
+  <string name="driving_voice_parked_only">정차 후 음성 예약 결과를 확인할 수 있습니다.</string>
+</resources>

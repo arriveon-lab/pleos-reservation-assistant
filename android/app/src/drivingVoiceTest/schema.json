@@ -1,0 +1,54 @@
+{
+  "packageName": "@APPLICATION_ID@",
+  "appDescription": "Arion is a voice-only test of ArriveOn restaurant recommendations and simulated reservations in Seoul Forest.",
+  "invokeWord": "아리온",
+  "version": "0.1.0",
+  "actionCalls": [
+    {
+      "type": "function",
+      "function": {
+        "component": "service",
+        "name": "FIND_TEST_RESTAURANTS",
+        "description": "Find and read fictional restaurant options around Seoul Forest for the requested group size.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "adults": { "type": "number", "description": "Whole adult count between 1 and 8." },
+            "children": { "type": "number", "description": "Whole child count between 0 and 6. Use zero when no children are requested." }
+          },
+          "required": ["adults", "children"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "component": "service",
+        "name": "SELECT_TEST_RESTAURANT",
+        "description": "Select a numbered Arion restaurant option and read its proposed simulated reservation details for review.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "candidateOrdinal": { "type": "number", "description": "The previously announced restaurant option number, between 1 and 3." }
+          },
+          "required": ["candidateOrdinal"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "component": "service",
+        "name": "APPROVE_TEST_RESERVATION",
+        "description": "Submit the selected simulated reservation only when the user explicitly approves that numbered option after hearing its details.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "candidateOrdinal": { "type": "number", "description": "The previously selected restaurant number explicitly approved by the user." }
+          },
+          "required": ["candidateOrdinal"]
+        }
+      }
+    }
+  ]
+}

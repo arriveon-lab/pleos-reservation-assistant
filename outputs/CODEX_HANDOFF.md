@@ -1,3 +1,7 @@
+## 2026-11-15 Pleos 주행 중 Gleo 음성 예약 시험
+
+`-PdrivingVoiceTest=true`로 분리한 디버그 APK는 Gleo 호출 이름 “아리온”을 사용한다. 한국어 합성 음성으로 Pleos Connect Emulator 2.1.0 주행 중 추천 → 2번 후보 선택 → 명시적 승인 → MOCK 확정을 검증했다. 실제 발신 0건이며 제출 APK 해시는 기존과 일치한다. [빌드와 재현 절차](../docs/GLEO_DRIVING_VOICE_TEST.md)
+
 ## 2026-11-15 심사용 LIVE APK의 시험 번호 등록
 
 심사용 v0.2.1은 앱에서 본인 010 번호를 연결합니다. EC2 통합 API·워커와 Pleos 에뮬레이터에서 번호 등록과 실전화 19:10 예약 확정을 확인했습니다. 통화당 최대 120초입니다. [제출용 LIVE APK](../apk/ArriveOn_ArriveOn_release.apk), [Pleos 전화 시험](../docs/PLEOS_PAIRED_PHONE_TEST.md)
