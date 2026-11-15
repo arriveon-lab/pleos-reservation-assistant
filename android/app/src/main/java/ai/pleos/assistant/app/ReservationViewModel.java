@@ -163,6 +163,16 @@ public final class ReservationViewModel extends AndroidViewModel {
                   }
                 } else {
                   pairedStatus = response;
+                  if (BuildConfig.PAIRED_PHONE_RELEASE
+                      && response.optBoolean("reviewTrial")
+                      && (!response.optBoolean("active") || path.equals("/register"))) {
+                    if (!pairedJournal.edit().remove("attempt").commit())
+                      pairedError = "STORAGE_ERROR";
+                    if (path.equals("/disconnect") || path.equals("/register")) {
+                      invalidateDestination("EDITING");
+                      openDestination();
+                    }
+                  }
                   if ("CHANGE_NOT_PENDING".equals(pairedError)) pairedError = "";
                   hideCompletedDemo();
                   JSONObject latest = pairedStatus.optJSONObject("latest");
@@ -573,7 +583,7 @@ public final class ReservationViewModel extends AndroidViewModel {
   }
 
   boolean canWrite() {
-    return (BuildConfig.DEBUG || BuildConfig.SUBMISSION_DEMO)
+    return (BuildConfig.DEBUG || BuildConfig.SUBMISSION_DEMO || BuildConfig.PAIRED_PHONE_RELEASE)
         && connected
         && repository != null
         && !busy

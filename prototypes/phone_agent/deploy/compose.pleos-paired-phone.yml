@@ -3,3 +3,4 @@ services:
   api:
     environment:
       PHONE_PLEOS_PAIRING: "1"
+      PHONE_REVIEW_ENV_FILE: /run/secrets/phone-review.env

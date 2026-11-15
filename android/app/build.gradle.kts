@@ -7,22 +7,40 @@ android {
     defaultConfig {
         val submissionDemo =
             providers.gradleProperty("submissionDemo").orElse("false").get().toBoolean()
+        val pairedPhoneRelease =
+            providers.gradleProperty("pairedPhoneRelease").orElse("false").get().toBoolean()
         if (submissionDemo) {
             require(
-                listOf("phoneTrialDial", "realPlaceDemo", "pairedPhoneDemo").none {
-                    providers.gradleProperty(it).orNull.toBoolean()
-                }
+                listOf("phoneTrialDial", "realPlaceDemo", "pairedPhoneDemo", "pairedPhoneRelease")
+                    .none { providers.gradleProperty(it).orNull.toBoolean() }
             ) {
                 "submissionDemo supports only the MOCK reservation flow"
             }
         }
+        if (pairedPhoneRelease) {
+            require(
+                listOf("phoneTrialDial", "mockPhoneDemo", "ec2MockDemo", "filmingDemo").none {
+                    providers.gradleProperty(it).orNull.toBoolean()
+                }
+            ) {
+                "pairedPhoneRelease supports only the paired HTTPS phone flow"
+            }
+        }
         buildConfigField("boolean", "SUBMISSION_DEMO", submissionDemo.toString())
+        buildConfigField("boolean", "PAIRED_PHONE_RELEASE", pairedPhoneRelease.toString())
+        val reviewKey = providers.environmentVariable("ARRIVEON_REVIEW_KEY").orElse("").get()
+        require(reviewKey.isEmpty() || reviewKey.matches(Regex("[a-f0-9]{64}"))) {
+            "ARRIVEON_REVIEW_KEY must contain 64 lowercase hexadecimal characters"
+        }
+        buildConfigField("String", "PAIRING_REVIEW_KEY", "\"$reviewKey\"")
         buildConfigField(
             "boolean",
             "PHONE_TRIAL_DIAL",
             providers.gradleProperty("phoneTrialDial").orElse("false").get().toBoolean().toString(),
         )
         applicationId = "ai.pleos.assistant.mock"
+        manifestPlaceholders["appLabel"] =
+            if (pairedPhoneRelease) "@string/app_name_paired_release" else "@string/app_name"
         minSdk = 28
         targetSdk = 35
         testInstrumentationRunner =
@@ -35,6 +53,7 @@ android {
             "boolean",
             "NAVIGATION_DEMO",
             (submissionDemo ||
+                    pairedPhoneRelease ||
                     providers.gradleProperty("navigationDemo").orElse("false").get().toBoolean())
                 .toString(),
         )
@@ -58,12 +77,11 @@ android {
                     "ai.pleos.assistant.mock.uivalidation"
                 else "ai.pleos.assistant.mock.ec2validation"
         }
-        buildConfigField(
-            "boolean",
-            "REAL_PLACE_DEMO",
-            providers.gradleProperty("realPlaceDemo").orElse("false").get().toBoolean().toString(),
-        )
-        if (providers.gradleProperty("realPlaceDemo").orElse("false").get().toBoolean()) {
+        val realPlaceDemo =
+            pairedPhoneRelease ||
+                providers.gradleProperty("realPlaceDemo").orElse("false").get().toBoolean()
+        buildConfigField("boolean", "REAL_PLACE_DEMO", realPlaceDemo.toString())
+        if (realPlaceDemo) {
             applicationId =
                 if (
                     providers
@@ -80,13 +98,14 @@ android {
             applicationId = "ai.pleos.assistant.mock.designvalidation"
         }
         val pairedPhone =
-            providers.gradleProperty("pairedPhoneDemo").orElse("false").get().toBoolean()
+            pairedPhoneRelease ||
+                providers.gradleProperty("pairedPhoneDemo").orElse("false").get().toBoolean()
         buildConfigField("boolean", "PAIRED_PHONE_DEMO", pairedPhone.toString())
         if (pairedPhone) {
-            require(providers.gradleProperty("realPlaceDemo").orNull == "true") {
-                "pairedPhoneDemo requires realPlaceDemo"
-            }
-            applicationId = "ai.pleos.assistant.pairedphone"
+            require(realPlaceDemo) { "pairedPhoneDemo requires realPlaceDemo" }
+            applicationId =
+                if (pairedPhoneRelease) "ai.pleos.assistant.pairedphone.release"
+                else "ai.pleos.assistant.pairedphone"
         }
         if (submissionDemo) applicationId = "ai.pleos.assistant.submission"
         val trialReservationName =
@@ -107,8 +126,13 @@ android {
             }
         }
         buildConfigField("boolean", "FILMING_DEMO", (filmingDemo || submissionDemo).toString())
-        versionCode = if (pairedPhone) 2 else 1
-        versionName = if (pairedPhone) "0.2.0-paired-test" else "0.1.0-mock"
+        versionCode = if (pairedPhoneRelease) 3 else if (pairedPhone) 2 else 1
+        versionName =
+            when {
+                pairedPhoneRelease -> "0.2.1-live-test"
+                pairedPhone -> "0.2.0-paired-test"
+                else -> "0.1.0-mock"
+            }
     }
     buildFeatures { buildConfig = true }
     compileOptions {

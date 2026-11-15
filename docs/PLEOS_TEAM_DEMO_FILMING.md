@@ -20,6 +20,8 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 
 ADB에 기기가 여러 개 보이면 `adb -s <serial> install -r …`로 Pleos 에뮬레이터를 지정합니다. 서명이 일치하지 않는다고 나오면 기존 앱을 지우기 전에 팀 APK와 서명을 확인합니다. 기본 예약자 이름은 **가상 시험자**입니다. 이름을 바꿔야 할 때만 빌드 명령에 `-PliveTestReservationName=김예약`을 추가합니다. 휴대폰 번호는 다음 단계에서 연결합니다.
 
+서명된 제출용 LIVE APK는 앱에서 번호를 직접 등록합니다. 패키지는 `ai.pleos.assistant.pairedphone.release`입니다. 설치와 등록은 [심사용 LIVE release](PLEOS_PAIRED_PHONE_TEST.md#심사용-live-release)를 따릅니다.
+
 ## 2. 내 번호를 앱에 연결
 
 1. ArriveOn을 열고 **체험 연결 시작 → 연결 코드 발급**을 누릅니다. 앱에 표시된 10자리 코드는 5분 동안 한 번 사용할 수 있습니다.
