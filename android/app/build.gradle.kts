@@ -1,5 +1,8 @@
 plugins { id("com.android.application") }
 
+val drivingVoiceTest =
+    providers.gradleProperty("drivingVoiceTest").orElse("false").get().toBoolean()
+
 android {
     namespace = "ai.pleos.assistant.app"
     compileSdk = 35
@@ -9,6 +12,23 @@ android {
             providers.gradleProperty("submissionDemo").orElse("false").get().toBoolean()
         val pairedPhoneRelease =
             providers.gradleProperty("pairedPhoneRelease").orElse("false").get().toBoolean()
+        if (drivingVoiceTest) {
+            require(
+                listOf(
+                        "submissionDemo",
+                        "pairedPhoneRelease",
+                        "pairedPhoneDemo",
+                        "realPlaceDemo",
+                        "phoneTrialDial",
+                        "filmingDemo",
+                        "mockDesignValidation",
+                        "mockUiValidation",
+                    )
+                    .none { providers.gradleProperty(it).orNull.toBoolean() }
+            ) {
+                "The driving voice test must use its own MOCK package"
+            }
+        }
         if (submissionDemo) {
             require(
                 listOf("phoneTrialDial", "realPlaceDemo", "pairedPhoneDemo", "pairedPhoneRelease")
@@ -61,6 +81,7 @@ android {
             "boolean",
             "MOCK_PHONE_DEMO",
             (submissionDemo ||
+                    drivingVoiceTest ||
                     providers.gradleProperty("mockPhoneDemo").orElse("false").get().toBoolean())
                 .toString(),
         )
@@ -68,6 +89,7 @@ android {
             "boolean",
             "EC2_MOCK_DEMO",
             (submissionDemo ||
+                    drivingVoiceTest ||
                     providers.gradleProperty("ec2MockDemo").orElse("false").get().toBoolean())
                 .toString(),
         )
@@ -108,6 +130,11 @@ android {
                 else "ai.pleos.assistant.pairedphone"
         }
         if (submissionDemo) applicationId = "ai.pleos.assistant.submission"
+        if (drivingVoiceTest) {
+            applicationId = "ai.pleos.assistant.drivingvoice"
+            manifestPlaceholders["appLabel"] = "@string/driving_voice_test_name"
+            resValue("string", "driving_voice_test_name", "아리온")
+        }
         val trialReservationName =
             providers.gradleProperty("liveTestReservationName").orElse("가상 시험자").get().trim()
         require(trialReservationName.matches(Regex("[\\p{L}\\p{M} -]{1,40}"))) {
@@ -146,6 +173,17 @@ android {
     }
 }
 
+if (drivingVoiceTest) {
+    android.sourceSets.getByName("debug").apply {
+        java.srcDir("src/drivingVoiceTest/java")
+        res.srcDir("src/drivingVoiceTest/res")
+        manifest.srcFile("src/drivingVoiceTest/AndroidManifest.xml")
+    }
+    androidComponents.beforeVariants(androidComponents.selector().withBuildType("release")) {
+        it.enable = false
+    }
+}
+
 dependencies {
     implementation("ai.pleos.playground:NaviHelper:3.0.5")
     implementation(project(":ux:core"))
@@ -155,16 +193,18 @@ dependencies {
 
 // Use the actual application ID also for isolated validation installations.
 val gleoAssets = layout.buildDirectory.dir("generated/gleoAssets")
+val gleoSchema =
+    file(if (drivingVoiceTest) "src/drivingVoiceTest/schema.json" else "src/main/gleo/schema.json")
 val generateGleoSchema by
     tasks.registering {
-        inputs.file("src/main/gleo/schema.json")
+        inputs.file(gleoSchema)
         inputs.property("applicationId", provider { android.defaultConfig.applicationId!! })
         outputs.dir(gleoAssets)
         doLast {
             val output = gleoAssets.get().file("schema.json").asFile
             output.parentFile.mkdirs()
             output.writeText(
-                file("src/main/gleo/schema.json")
+                gleoSchema
                     .readText()
                     .replace("@APPLICATION_ID@", android.defaultConfig.applicationId!!)
             )
